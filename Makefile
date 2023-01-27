@@ -78,11 +78,6 @@ clean-cross-build:
 	if [ -d '$(OUTPUT_DIR)' ]; then rmdir --ignore-fail-on-non-empty '$(OUTPUT_DIR)'; fi
 .PHONY: clean-cross-build
 
-build-ocm-container:
-	@if test -z ${CONTAINER_SUBSYS} ; then echo 'CONTAINER_SUBSYS must be set. Hint: `source ~/.config/ocm-container/env.source`' ; exit 1 ; fi
-	pushd ./hack/ocm-container/ ; ${CONTAINER_SUBSYS} build --network host -t ocm-container:latest .
-.PHONY: build-ocm-container
-
 openapi-image:
 	$(CONTAINER_ENGINE) build --pull --platform linux/amd64 -f openapi.Dockerfile -t backplane-cli-openapi .
 
