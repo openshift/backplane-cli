@@ -86,7 +86,7 @@ openapi-image:
 .PHONY: generate
 generate: openapi-image
 	curl -sSL $(OPENAPI_DESIGN) -o ./docs/backplane-api.yaml
-	$(CONTAINER_ENGINE) run --platform linux/amd64 --rm -v $(shell pwd):/app backplane-cli-openapi /bin/sh -c "mkdir -p /app/pkg/client && oapi-codegen -generate types,client,spec /app/docs/backplane-api.yaml > /app/pkg/client/BackplaneApi.go"
+	$(CONTAINER_ENGINE) run --platform linux/amd64 --privileged=true --rm -v $(shell pwd):/app backplane-cli-openapi /bin/sh -c "mkdir -p /app/pkg/client && oapi-codegen -generate types,client,spec /app/docs/backplane-api.yaml > /app/pkg/client/BackplaneApi.go"
 	go generate ./...
 
 .PHONY: mock-gen
