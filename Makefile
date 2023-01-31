@@ -55,6 +55,12 @@ getlint:
 lint: getlint
 	$(GOPATH)/bin/golangci-lint run
 
+ensure-goreleaser:
+	go install github.com/goreleaser/goreleaser@v1.14.1
+
+release: ensure-goreleaser
+	goreleaser release --rm-dist
+
 test:
 	for t in $$(go list ./...); do go test -v $$t ; done
 
