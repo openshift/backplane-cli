@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/hello"
+	"github.com/openshift/backplane-cli/cmd/ocm-backplane/upgrade"
 
 	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
@@ -81,4 +82,5 @@ func init() {
 
 	// Register sub-commands
 	rootCmd.AddCommand(hello.HelloCmd)
+	rootCmd.AddCommand(upgrade.UpgradeCmd)
 }
