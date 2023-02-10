@@ -9,7 +9,7 @@ import (
 	"github.com/spf13/cobra"
 	"k8s.io/client-go/tools/clientcmd"
 
-	"gitlab.cee.redhat.com/service/backplane-cli/pkg/utils"
+	"github.com/openshift/backplane-cli/pkg/utils"
 )
 
 // logoutCmd represents the logout command

@@ -2,8 +2,8 @@ package utils
 
 import (
 	"context"
-	BackplaneApi "gitlab.cee.redhat.com/service/backplane-cli/pkg/client"
-	"gitlab.cee.redhat.com/service/backplane-cli/pkg/info"
+	BackplaneApi "github.com/openshift/backplane-cli/pkg/client"
+	"github.com/openshift/backplane-cli/pkg/info"
 	"net/http"
 )
 

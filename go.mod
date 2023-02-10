@@ -14,7 +14,6 @@ require (
 	github.com/openshift-online/ocm-sdk-go v0.1.286
 	github.com/sirupsen/logrus v1.9.0
 	github.com/spf13/cobra v1.6.1
-	gitlab.cee.redhat.com/service/backplane-cli v0.0.0-20230118035840-63cc6547e975
 	golang.org/x/term v0.4.0
 	gopkg.in/AlecAivazis/survey.v1 v1.8.8
 	k8s.io/cli-runtime v0.26.1

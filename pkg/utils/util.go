@@ -12,7 +12,7 @@ import (
 
 	netUrl "net/url"
 
-	BackplaneApi "gitlab.cee.redhat.com/service/backplane-cli/pkg/client"
+	BackplaneApi "github.com/openshift/backplane-cli/pkg/client"
 
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/tools/clientcmd/api"

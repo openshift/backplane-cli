@@ -9,7 +9,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
 
-	"gitlab.cee.redhat.com/service/backplane-cli/pkg/utils"
+	"github.com/openshift/backplane-cli/pkg/utils"
 )
 
 const (
