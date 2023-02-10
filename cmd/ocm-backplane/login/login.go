@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"errors"
 	"strings"
 
 	"github.com/golang-jwt/jwt/v4"
@@ -80,12 +81,9 @@ func runLogin(cmd *cobra.Command, argv []string) error {
 
 	// Lookup backplane url
 	if args.backplaneURL == "" {
-		args.backplaneURL, err = utils.DefaultOCMInterface.GetBackplaneShard(targetClusterID)
-		if err != nil || args.backplaneURL == "" {
-			return fmt.Errorf("can't find shard url: %v", err)
-		}
-		logger.Infof("Using backplane URL: %s\n", args.backplaneURL)
+		return errors.New("No backplane URL supplied")
 	}
+	logger.Infof("Using backplane URL: %s\n", args.backplaneURL)
 
 	// Get ocm access token
 	logger.Debugln("Finding ocm token")
