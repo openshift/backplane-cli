@@ -1,32 +1,27 @@
 unexport GOFLAGS
-
 GOOS?=linux
 GOARCH?=amd64
 GOENV=GOOS=${GOOS} GOARCH=${GOARCH} CGO_ENABLED=0 GOFLAGS=
-
-GOLANGCI_LINT_VERSION=v1.50.1
-
-# These tags make sure we can statically link and avoid shared dependencies
-GO_BUILD_FLAGS :=-tags 'include_gcs include_oss containers_image_openpgp gssapi'
-GO_BUILD_FLAGS_DARWIN :=-tags 'include_gcs include_oss containers_image_openpgp'
-GO_BUILD_FLAGS_LINUX_CROSS :=-tags 'include_gcs include_oss containers_image_openpgp'
-
-# To mitigate prow lint failures
-HOME=$(shell mktemp -d)
-
-OPENAPI_DESIGN='https://raw.githubusercontent.com/openshift/backplane-api/main/openapi/openapi.yaml'
 
 IMAGE_REGISTRY?=quay.io
 IMAGE_REPOSITORY?=app-sre
 IMAGE_NAME?=backplane-cli
 VERSION=$(shell git rev-parse --short=7 HEAD)
 UNAME_S := $(shell uname -s)
+HOME=$(shell mktemp -d)
 
 IMAGE_URI_VERSION:=$(IMAGE_REGISTRY)/$(IMAGE_REPOSITORY)/$(IMAGE_NAME):$(VERSION)
 IMAGE_URI_LATEST:=$(IMAGE_REGISTRY)/$(IMAGE_REPOSITORY)/$(IMAGE_NAME):latest
 
+GOLANGCI_LINT_VERSION=v1.50.1
+
 CONTAINER_ENGINE:=$(shell command -v podman 2>/dev/null || command -v docker 2>/dev/null)
 RUN_IN_CONTAINER_CMD:=$(CONTAINER_ENGINE) run --platform linux/amd64 --rm -v $(shell pwd):/app -w=/app backplane-cli-builder /bin/bash -c
+
+# These tags make sure we can statically link and avoid shared dependencies
+GO_BUILD_FLAGS :=-tags 'include_gcs include_oss containers_image_openpgp gssapi'
+GO_BUILD_FLAGS_DARWIN :=-tags 'include_gcs include_oss containers_image_openpgp'
+GO_BUILD_FLAGS_LINUX_CROSS :=-tags 'include_gcs include_oss containers_image_openpgp'
 
 OUTPUT_DIR :=_output
 CROSS_BUILD_BINDIR :=$(OUTPUT_DIR)/bin
@@ -84,21 +79,21 @@ clean-cross-build:
 	if [ -d '$(OUTPUT_DIR)' ]; then rmdir --ignore-fail-on-non-empty '$(OUTPUT_DIR)'; fi
 .PHONY: clean-cross-build
 
-openapi-image:
-	$(CONTAINER_ENGINE) build --pull --platform linux/amd64 -f openapi.Dockerfile -t backplane-cli-openapi .
+build-ocm-container:
+	@if test -z ${CONTAINER_SUBSYS} ; then echo 'CONTAINER_SUBSYS must be set. Hint: `source ~/.config/ocm-container/env.source`' ; exit 1 ; fi
+	pushd ./hack/ocm-container/ ; ${CONTAINER_SUBSYS} build --network host -t ocm-container:latest .
+.PHONY: build-ocm-container
 
 .PHONY: generate
-generate: openapi-image
-	curl -sSL $(OPENAPI_DESIGN) -o ./docs/backplane-api.yaml
-	$(CONTAINER_ENGINE) run --platform linux/amd64 --privileged=true --rm -v $(shell pwd):/app backplane-cli-openapi /bin/sh -c "mkdir -p /app/pkg/client && oapi-codegen -generate types,client,spec /app/docs/backplane-api.yaml > /app/pkg/client/BackplaneApi.go"
+generate:
 	go generate ./...
 
 .PHONY: mock-gen
 mock-gen:
-	mockgen -destination=./pkg/client/mocks/ClientMock.go -package=mocks gitlab.cee.redhat.com/service/backplane-cli/pkg/client ClientInterface
-	mockgen -destination=./pkg/client/mocks/ClientWithResponsesMock.go -package=mocks gitlab.cee.redhat.com/service/backplane-cli/pkg/client ClientWithResponsesInterface
-	mockgen -destination=./pkg/utils/mocks/ocmWrapperMock.go -package=mocks gitlab.cee.redhat.com/service/backplane-cli/pkg/utils OCMInterface
-	mockgen -destination=./pkg/utils/mocks/clientUtilsMock.go -package=mocks gitlab.cee.redhat.com/service/backplane-cli/pkg/utils ClientUtils
+	mockgen -destination=./pkg/client/mocks/ClientMock.go -package=mocks github.com/openshift/backplane-cli/pkg/client ClientInterface
+	mockgen -destination=./pkg/client/mocks/ClientWithResponsesMock.go -package=mocks github.com/openshift/backplane-cli/pkg/client ClientWithResponsesInterface
+	mockgen -destination=./pkg/utils/mocks/ocmWrapperMock.go -package=mocks github.com/openshift/backplane-cli/pkg/utils OCMInterface
+	mockgen -destination=./pkg/utils/mocks/clientUtilsMock.go -package=mocks github.com/openshift/backplane-cli/pkg/utils ClientUtils
 
 .PHONY: build-image
 build-image:
