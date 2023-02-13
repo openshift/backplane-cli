@@ -1,3 +1,8 @@
+unexport GOFLAGS
+GOOS?=linux
+GOARCH?=amd64
+GOENV=GOOS=${GOOS} GOARCH=${GOARCH} CGO_ENABLED=0 GOFLAGS=
+
 IMAGE_REGISTRY?=quay.io
 IMAGE_REPOSITORY?=app-sre
 IMAGE_NAME?=backplane-cli
@@ -12,13 +17,6 @@ GOLANGCI_LINT_VERSION=v1.50.1
 
 CONTAINER_ENGINE:=$(shell command -v podman 2>/dev/null || command -v docker 2>/dev/null)
 RUN_IN_CONTAINER_CMD:=$(CONTAINER_ENGINE) run --platform linux/amd64 --rm -v $(shell pwd):/app -w=/app backplane-cli-builder /bin/bash -c
-
-OPENAPI_DESIGN='https://raw.githubusercontent.com/openshift/backplane-api/main/openapi/openapi.yaml'
-
-unexport GOFLAGS
-GOOS?=linux
-GOARCH?=amd64
-GOENV=GOOS=${GOOS} GOARCH=${GOARCH} CGO_ENABLED=0 GOFLAGS=
 
 # These tags make sure we can statically link and avoid shared dependencies
 GO_BUILD_FLAGS :=-tags 'include_gcs include_oss containers_image_openpgp gssapi'
@@ -86,19 +84,16 @@ build-ocm-container:
 	pushd ./hack/ocm-container/ ; ${CONTAINER_SUBSYS} build --network host -t ocm-container:latest .
 .PHONY: build-ocm-container
 
-openapi-image:
-	$(CONTAINER_ENGINE) build --pull --platform linux/amd64 -f openapi.Dockerfile -t backplane-cli-openapi .
-
 .PHONY: generate
 generate:
 	go generate ./...
 
 .PHONY: mock-gen
 mock-gen:
-	mockgen -destination=./pkg/client/mocks/ClientMock.go -package=mocks gitlab.cee.redhat.com/service/backplane-cli/pkg/client ClientInterface
-	mockgen -destination=./pkg/client/mocks/ClientWithResponsesMock.go -package=mocks gitlab.cee.redhat.com/service/backplane-cli/pkg/client ClientWithResponsesInterface
-	mockgen -destination=./pkg/utils/mocks/ocmWrapperMock.go -package=mocks gitlab.cee.redhat.com/service/backplane-cli/pkg/utils OCMInterface
-	mockgen -destination=./pkg/utils/mocks/clientUtilsMock.go -package=mocks gitlab.cee.redhat.com/service/backplane-cli/pkg/utils ClientUtils
+	mockgen -destination=./pkg/client/mocks/ClientMock.go -package=mocks github.com/openshift/backplane-cli/pkg/client ClientInterface
+	mockgen -destination=./pkg/client/mocks/ClientWithResponsesMock.go -package=mocks github.com/openshift/backplane-cli/pkg/client ClientWithResponsesInterface
+	mockgen -destination=./pkg/utils/mocks/ocmWrapperMock.go -package=mocks github.com/openshift/backplane-cli/pkg/utils OCMInterface
+	mockgen -destination=./pkg/utils/mocks/clientUtilsMock.go -package=mocks github.com/openshift/backplane-cli/pkg/utils ClientUtils
 
 .PHONY: build-image
 build-image:
