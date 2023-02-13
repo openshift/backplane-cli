@@ -90,9 +90,7 @@ openapi-image:
 	$(CONTAINER_ENGINE) build --pull --platform linux/amd64 -f openapi.Dockerfile -t backplane-cli-openapi .
 
 .PHONY: generate
-generate: openapi-image
-	curl -sSL $(OPENAPI_DESIGN) -o ./docs/backplane-api.yaml
-	$(CONTAINER_ENGINE) run --platform linux/amd64 --rm -v $(shell pwd):/app backplane-cli-openapi /bin/sh -c "mkdir -p /app/pkg/client && oapi-codegen -generate types,client,spec /app/docs/backplane-api.yaml > /app/pkg/client/BackplaneApi.go"
+generate:
 	go generate ./...
 
 .PHONY: mock-gen
