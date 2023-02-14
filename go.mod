@@ -3,6 +3,7 @@ module github.com/openshift/backplane-cli
 go 1.18
 
 require (
+	github.com/golang/mock v1.6.0
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/openshift-online/ocm-cli v0.1.65
 	github.com/openshift-online/ocm-sdk-go v0.1.316

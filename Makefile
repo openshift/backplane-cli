@@ -90,8 +90,6 @@ generate:
 
 .PHONY: mock-gen
 mock-gen:
-	mockgen -destination=./pkg/client/mocks/ClientMock.go -package=mocks github.com/openshift/backplane-cli/pkg/client ClientInterface
-	mockgen -destination=./pkg/client/mocks/ClientWithResponsesMock.go -package=mocks github.com/openshift/backplane-cli/pkg/client ClientWithResponsesInterface
 	mockgen -destination=./pkg/utils/mocks/ocmWrapperMock.go -package=mocks github.com/openshift/backplane-cli/pkg/utils OCMInterface
 	mockgen -destination=./pkg/utils/mocks/clientUtilsMock.go -package=mocks github.com/openshift/backplane-cli/pkg/utils ClientUtils
 
