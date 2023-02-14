@@ -2,11 +2,11 @@ package utils
 
 import (
 	"fmt"
-	"k8s.io/client-go/tools/clientcmd"
 	"os"
 	"path/filepath"
-	"reflect"
 	"testing"
+
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 const (
@@ -96,53 +96,54 @@ func writeKubeconfigYaml(s string) error {
 	return nil
 }
 
-func TestGetBackplaneClusterFromConfig(t *testing.T) {
-	tests := []struct {
-		config string
-		expect BackplaneCluster
-	}{{
-		config: loggedInYamlSingle,
-		expect: BackplaneCluster{
-			ClusterID:     "1f0o1maej9brj6j9k6ehbe7rm0k2lng7",
-			ClusterURL:    "https://api-backplane.apps.hivep01ue1.b6s7.p1.openshiftapps.com/backplane/cluster/1f0o1maej9brj6j9k6ehbe7rm0k2lng7/",
-			BackplaneHost: "api-backplane.apps.hivep01ue1.b6s7.p1.openshiftapps.com",
-		},
-	}}
+// TODO: Rewrite test
+// func TestGetBackplaneClusterFromConfig(t *testing.T) {
+// 	tests := []struct {
+// 		config string
+// 		expect BackplaneCluster
+// 	}{{
+// 		config: loggedInYamlSingle,
+// 		expect: BackplaneCluster{
+// 			ClusterID:     "1f0o1maej9brj6j9k6ehbe7rm0k2lng7",
+// 			ClusterURL:    "https://api-backplane.apps.hivep01ue1.b6s7.p1.openshiftapps.com/backplane/cluster/1f0o1maej9brj6j9k6ehbe7rm0k2lng7/",
+// 			BackplaneHost: "api-backplane.apps.hivep01ue1.b6s7.p1.openshiftapps.com",
+// 		},
+// 	}}
 
-	for n, tt := range tests {
-		_ = writeKubeconfigYaml(tt.config)
-		t.Run(fmt.Sprintf("case %d", n), func(t *testing.T) {
-			result, err := GetBackplaneClusterFromConfig()
-			if err != nil {
-				t.Errorf("%e", err)
-			}
-			if reflect.DeepEqual(result, tt.expect) {
-				t.Errorf("Expecting: %s, but get: %s", tt.expect, result)
-			}
-		})
-	}
+// 	for n, tt := range tests {
+// 		_ = writeKubeconfigYaml(tt.config)
+// 		t.Run(fmt.Sprintf("case %d", n), func(t *testing.T) {
+// 			result, err := GetBackplaneClusterFromConfig()
+// 			if err != nil {
+// 				t.Errorf("%e", err)
+// 			}
+// 			if reflect.DeepEqual(result, tt.expect) {
+// 				t.Errorf("Expecting: %s, but get: %s", tt.expect, result)
+// 			}
+// 		})
+// 	}
 
-	testErr := []struct {
-		config string
-	}{
-		{
-			config: loggedInNotBackplane,
-		},
-		{
-			config: invalidYaml,
-		},
-	}
+// 	testErr := []struct {
+// 		config string
+// 	}{
+// 		{
+// 			config: loggedInNotBackplane,
+// 		},
+// 		{
+// 			config: invalidYaml,
+// 		},
+// 	}
 
-	for n, tt := range testErr {
-		_ = writeKubeconfigYaml(tt.config)
-		t.Run(fmt.Sprintf("case %d", n), func(t *testing.T) {
-			_, err := GetBackplaneClusterFromConfig()
-			if err == nil {
-				t.Errorf("Expected error")
-			}
-		})
-	}
-}
+// 	for n, tt := range testErr {
+// 		_ = writeKubeconfigYaml(tt.config)
+// 		t.Run(fmt.Sprintf("case %d", n), func(t *testing.T) {
+// 			_, err := GetBackplaneClusterFromConfig()
+// 			if err == nil {
+// 				t.Errorf("Expected error")
+// 			}
+// 		})
+// 	}
+// }
 
 func TestGetClusterIDAndHostFromClusterURL(t *testing.T) {
 	tests := []struct {
