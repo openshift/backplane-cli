@@ -148,7 +148,7 @@ func (*DefaultOCMInterfaceImpl) GetBackplaneURL() (string, error) {
 	} else {
 		// get backplane URL for user home folder .backplane.json file
 		homeDir, _ := os.UserHomeDir()
-		filePath := homeDir + "/" + info.BACKPLANE_CONFIG_FILE_NAME
+		filePath := homeDir + "/" + info.BACKPLANE_CONFIG_FILE_PATH
 		if _, err := os.Stat(filePath); err == nil {
 			file, err := os.Open(filePath)
 

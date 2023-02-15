@@ -39,10 +39,6 @@ func GetBackplaneClusterFromConfig() (BackplaneCluster, error) {
 		return BackplaneCluster{}, err
 	}
 
-	backplaneServerRegex := regexp.MustCompile(BackplaneApiUrlRegexp)
-	if !backplaneServerRegex.MatchString(cfg.Host) {
-		return BackplaneCluster{}, fmt.Errorf("the api server is not a backplane url, please make sure you login to the cluster using backplane")
-	}
 	clusterID, backplaneHost, err := GetClusterIDAndHostFromClusterURL(cfg.Host)
 	if err != nil {
 		return BackplaneCluster{}, err

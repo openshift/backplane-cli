@@ -7,7 +7,6 @@ import (
 	"net"
 	"net/http"
 	"reflect"
-	"regexp"
 	"strings"
 
 	netUrl "net/url"
@@ -19,17 +18,9 @@ import (
 )
 
 const (
-	ClustersPageSize             = 50
-	BackplaneApiUrlRegexp string = `(?mi)^https:\/\/api-backplane\.apps\.(.*)`
-	ClusterIDRegexp       string = "/?backplane/cluster/([a-zA-Z0-9]+)/?"
+	ClustersPageSize        = 50
+	ClusterIDRegexp  string = "/?backplane/cluster/([a-zA-Z0-9]+)/?"
 )
-
-// GetShardName extract the hive shard name from shardURL.
-func GetShardName(shardURL string) (shardName string) {
-	r := regexp.MustCompile("hive[0-9a-z-]*")
-	shardName = r.FindString(shardURL)
-	return shardName
-}
 
 // GetFreePort asks the OS for an available port to listen to.
 // https://github.com/phayes/freeport/blob/master/freeport.go
