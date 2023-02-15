@@ -20,20 +20,18 @@ import (
 	"os"
 	"strings"
 
-	"github.com/openshift/backplane-cli/cmd/ocm-backplane/hello"
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/upgrade"
 
-	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
 // Created so that multiple inputs can be accepted
-type levelFlag logrus.Level
+type levelFlag log.Level
 
 func (l *levelFlag) String() string {
 	// change this, this is just can example to satisfy the interface
-	return logrus.Level(*l).String()
+	return log.Level(*l).String()
 }
 
 func (l *levelFlag) Set(value string) error {
@@ -78,9 +76,8 @@ func init() {
 	// Set default log level
 	_ = logLevel.Set(defaultLogLevel)
 	logLevelFlag := rootCmd.PersistentFlags().VarPF(&logLevel, "verbosity", "v", "Verbosity level: panic, fatal, error, warn, info, debug. Providing no level string will select info.")
-	logLevelFlag.NoOptDefVal = logrus.InfoLevel.String()
+	logLevelFlag.NoOptDefVal = log.InfoLevel.String()
 
 	// Register sub-commands
-	rootCmd.AddCommand(hello.HelloCmd)
 	rootCmd.AddCommand(upgrade.UpgradeCmd)
 }
