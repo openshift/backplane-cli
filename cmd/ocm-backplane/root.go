@@ -20,6 +20,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/openshift/backplane-cli/cmd/ocm-backplane/cloud"
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/upgrade"
 
 	log "github.com/sirupsen/logrus"
@@ -80,4 +81,5 @@ func init() {
 
 	// Register sub-commands
 	rootCmd.AddCommand(upgrade.UpgradeCmd)
+	rootCmd.AddCommand(cloud.CloudCmd)
 }
