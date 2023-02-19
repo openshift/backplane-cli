@@ -58,20 +58,20 @@ func GetBackplaneClusterFromConfig() (BackplaneCluster, error) {
 func GetBackplaneClusterFromClusterKey(clusterKey string) (BackplaneCluster, error) {
 	logger.WithField("SearchKey", clusterKey).Debugln("Finding target cluster")
 	clusterID, clusterName, err := DefaultOCMInterface.GetTargetCluster(clusterKey)
+
 	if err != nil {
 		return BackplaneCluster{}, err
 	}
 
-	// TODO: Deprecate tunneling
-	//backplaneHost, err := DefaultOCMInterface.GetBackplaneShard(clusterID)
-	backplaneHost := ""
+	backplaneURL, err := DefaultOCMInterface.GetBackplaneURL()
+
 	if err != nil {
 		return BackplaneCluster{}, err
 	}
 	cluster := BackplaneCluster{
 		ClusterID:     clusterID,
-		BackplaneHost: backplaneHost,
-		ClusterURL:    fmt.Sprintf("%s/backplane/cluster/%s", backplaneHost, clusterID),
+		BackplaneHost: backplaneURL,
+		ClusterURL:    fmt.Sprintf("%s/backplane/cluster/%s", backplaneURL, clusterID),
 	}
 	logger.WithFields(logger.Fields{
 		"ClusterID":     cluster.ClusterID,

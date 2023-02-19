@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"reflect"
 	"testing"
+
+	"github.com/openshift/backplane-cli/pkg/info"
 )
 
 func TestParseParamFlag(t *testing.T) {
@@ -100,6 +102,24 @@ func TestGetBackplaneURL(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestGetBackplaneConfigFile(t *testing.T) {
+	t.Run("it returns the Backplane configuration file path if it exists in the user's env", func(t *testing.T) {
+		t.Setenv(info.BACKPLANE_CONFIG_PATH_ENV_NAME, "~/.backplane.stg.env.json")
+		path := getBackplaneConfigFile()
+		if path != "~/.backplane.stg.env.json" {
+			t.Errorf("expected path to be %v, got %v", "~/.backplane.stg.env.json", path)
+		}
+	})
+
+	t.Run("it returns the default configuration file path if it does not exist in the user's env", func(t *testing.T) {
+		path := getBackplaneConfigFile()
+		expectedPath := info.BACKPLANE_CONFIG_DEFAULT_PATH
+		if path != expectedPath {
+			t.Errorf("expected path to be %v, got %v", expectedPath, path)
+		}
+	})
 }
 
 func TestMatchBaseDomain(t *testing.T) {
