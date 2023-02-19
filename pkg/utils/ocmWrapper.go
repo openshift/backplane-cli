@@ -136,7 +136,6 @@ func (*DefaultOCMInterfaceImpl) IsProduction() (bool, error) {
 
 // GetBackplaneURL from local settings
 func (*DefaultOCMInterfaceImpl) GetBackplaneURL() (string, error) {
-
 	// get backplane URL from BACKPLANE_URL env variables
 	bpURL, hasURL := os.LookupEnv(info.BACKPLANE_URL_ENV_NAME)
 	if hasURL {
@@ -147,13 +146,12 @@ func (*DefaultOCMInterfaceImpl) GetBackplaneURL() (string, error) {
 		}
 	} else {
 		// get backplane URL for user home folder .backplane.json file
-		homeDir, _ := os.UserHomeDir()
-		filePath := homeDir + "/" + info.BACKPLANE_CONFIG_FILE_PATH
+		filePath := getBackplaneConfigFile()
 		if _, err := os.Stat(filePath); err == nil {
 			file, err := os.Open(filePath)
 
 			if err != nil {
-				return "", fmt.Errorf("failed to read file %s : %v", info.BACKPLANE_URL_ENV_NAME, err)
+				return "", fmt.Errorf("failed to read file %s : %v", filePath, err)
 			}
 
 			defer file.Close()
@@ -162,13 +160,22 @@ func (*DefaultOCMInterfaceImpl) GetBackplaneURL() (string, error) {
 			err = decoder.Decode(&configuration)
 
 			if err != nil {
-				return "", fmt.Errorf("failed to decode file %s : %v", info.BACKPLANE_URL_ENV_NAME, err)
+				return "", fmt.Errorf("failed to decode file %s : %v", filePath, err)
 			}
 			return configuration.URL, nil
 		}
 
 	}
 	return "", nil
+}
+
+func getBackplaneConfigFile() string {
+	path, bpConfigFound := os.LookupEnv(info.BACKPLANE_CONFIG_PATH_ENV_NAME)
+	if bpConfigFound {
+		return path
+	}
+
+	return info.BACKPLANE_CONFIG_DEFAULT_PATH
 }
 
 func getClusters(client *cmv1.ClustersClient, clusterKey string) ([]*cmv1.Cluster, error) {

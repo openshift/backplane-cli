@@ -7,5 +7,6 @@ const (
 	Version = "0.0.0"
 
 	BACKPLANE_URL_ENV_NAME     = "BACKPLANE_URL"
-	BACKPLANE_CONFIG_FILE_PATH = "~/.backplane.json"
+	BACKPLANE_CONFIG_PATH_ENV_NAME     = "BACKPLANE_CONFIG"
+	BACKPLANE_CONFIG_DEFAULT_PATH = "~/.backplane.json"
 )
