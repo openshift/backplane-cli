@@ -22,6 +22,8 @@ import (
 
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/cloud"
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/upgrade"
+	"github.com/openshift/backplane-cli/cmd/ocm-backplane/login"
+	"github.com/openshift/backplane-cli/cmd/ocm-backplane/logout"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -80,6 +82,9 @@ func init() {
 	logLevelFlag.NoOptDefVal = log.InfoLevel.String()
 
 	// Register sub-commands
+	rootCmd.AddCommand(login.LoginCmd)
 	rootCmd.AddCommand(upgrade.UpgradeCmd)
 	rootCmd.AddCommand(cloud.CloudCmd)
+	rootCmd.AddCommand(logout.LogoutCmd)
+
 }

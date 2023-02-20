@@ -78,7 +78,7 @@ hello: world
 func writeKubeconfigYaml(s string) error {
 	kubeconfigPath := clientcmd.NewDefaultPathOptions().GlobalFile
 	dirname := filepath.Dir(kubeconfigPath)
-	err := os.MkdirAll(dirname, 0744)
+	err := os.MkdirAll(dirname, os.ModePerm)
 	if err != nil {
 		return err
 	}
