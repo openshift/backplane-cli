@@ -30,6 +30,8 @@ import (
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/status"
 
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/console"
+
+	"github.com/openshift/backplane-cli/cmd/ocm-backplane/status"
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/testJob"
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/upgrade"
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/version"
