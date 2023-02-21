@@ -29,11 +29,10 @@ func NewScriptCmd() *cobra.Command {
 
 	// url flag
 	// Denotes backplane url
-	// If this flag is empty, its value will be populated by --cluster-id flag supplied by user. cluster-id flag will be used to find corresponding hive-shard and composing backplane url.
 	cmd.PersistentFlags().String(
 		"url",
 		"",
-		"Specify backplane url. Default: The corresponding hive shard of the target cluster.",
+		"Specify backplane url.",
 	)
 
 	// cluster-id Flag
