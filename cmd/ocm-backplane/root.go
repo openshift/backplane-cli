@@ -26,7 +26,7 @@ import (
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/logout"
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/managedJob"
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/script"
-	"github.com/openshift/backplane-cli/cmd/ocm-backplane/status"	
+	"github.com/openshift/backplane-cli/cmd/ocm-backplane/status"
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/testJob"
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/upgrade"
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/version"
