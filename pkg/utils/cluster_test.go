@@ -18,15 +18,15 @@ const (
 apiVersion: v1
 clusters:
 - cluster:
-    server: https://api-backplane.apps.hivep01ue1.b6s7.p1.openshiftapps.com/backplane/cluster/1f0o1maej9brj6j9k6ehbe7rm0k2lng7/
-  name: hivep02ue1
+    server: https://api-backplane.apps.com/backplane/cluster/1f0o1maej9brj6j9k6ehbe7rm0k2lng7/
+  name: dummy_cluster
 contexts:
 - context:
-    cluster: hivep02ue1
+    cluster: dummy_cluster
     namespace: default
     user: example.openshift
-  name: default/hivep02ue1/example.openshift
-current-context: default/hivep02ue1/example.openshift
+  name: default/openshift
+current-context: default/openshift
 kind: Config
 preferences: {}
 users:
@@ -108,8 +108,8 @@ func TestGetBackplaneClusterFromConfig(t *testing.T) {
 		config: loggedInYamlSingle,
 		expect: BackplaneCluster{
 			ClusterID:     "1f0o1maej9brj6j9k6ehbe7rm0k2lng7",
-			ClusterURL:    "https://api-backplane.apps.hivep01ue1.b6s7.p1.openshiftapps.com/backplane/cluster/1f0o1maej9brj6j9k6ehbe7rm0k2lng7/",
-			BackplaneHost: "api-backplane.apps.hivep01ue1.b6s7.p1.openshiftapps.com",
+			ClusterURL:    "https://api-backplane.apps.com/backplane/cluster/1f0o1maej9brj6j9k6ehbe7rm0k2lng7/",
+			BackplaneHost: "api-backplane.apps.com",
 		},
 	}}
 
