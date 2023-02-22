@@ -24,6 +24,7 @@ import (
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/upgrade"
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/script"
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/version"
+	"github.com/openshift/backplane-cli/cmd/ocm-backplane/status"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -85,5 +86,6 @@ func init() {
 	rootCmd.AddCommand(upgrade.UpgradeCmd)
 	rootCmd.AddCommand(cloud.CloudCmd)
 	rootCmd.AddCommand(script.NewScriptCmd())
+	rootCmd.AddCommand(status.StatusCmd)
 	rootCmd.AddCommand(version.VersionCmd)
 }
