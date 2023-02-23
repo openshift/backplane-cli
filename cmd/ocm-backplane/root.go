@@ -21,6 +21,8 @@ import (
 	"strings"
 
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/cloud"
+	"github.com/openshift/backplane-cli/cmd/ocm-backplane/login"
+	"github.com/openshift/backplane-cli/cmd/ocm-backplane/logout"
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/script"
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/status"
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/testJob"
@@ -84,8 +86,10 @@ func init() {
 	logLevelFlag.NoOptDefVal = log.InfoLevel.String()
 
 	// Register sub-commands
+	rootCmd.AddCommand(login.LoginCmd)
 	rootCmd.AddCommand(upgrade.UpgradeCmd)
 	rootCmd.AddCommand(cloud.CloudCmd)
+	rootCmd.AddCommand(logout.LogoutCmd)
 	rootCmd.AddCommand(script.NewScriptCmd())
 	rootCmd.AddCommand(status.StatusCmd)
 	rootCmd.AddCommand(version.VersionCmd)
