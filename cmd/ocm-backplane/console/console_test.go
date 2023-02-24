@@ -64,7 +64,7 @@ var _ = Describe("console command", func() {
 			return exec.Command("true")
 		}
 
-		consoleArgs.containerEngine = DOCKER
+		consoleArgs.containerEngine = PODMAN
 		consoleArgs.port = "12345"
 
 		ConsoleCmd.SetArgs([]string{"console"})
@@ -122,10 +122,10 @@ var _ = Describe("console command", func() {
 		authFile := filepath.Join(home, ".kube/ocm-pull-secret/config.json")
 
 		Expect(capturedCommands[0]).To(Equal([]string{
-			"docker", "pull", "--quiet", "--authfile", authFile, "testrepo.com/test/console:latest",
+			"podman", "pull", "--quiet", "--authfile", authFile, "testrepo.com/test/console:latest",
 		}))
 		Expect(capturedCommands[1]).To(Equal([]string{
-			"docker", "run", "--rm", "--name", "console-cluster123", "-p", "127.0.0.1:12345:12345", "--authfile", authFile, "testrepo.com/test/console:latest",
+			"podman", "run", "--rm", "--name", "console-cluster123", "-p", "127.0.0.1:12345:12345", "--authfile", authFile, "testrepo.com/test/console:latest",
 			"/opt/bridge/bin/bridge", "--public-dir=/opt/bridge/static", "-base-address", "http://127.0.0.1:12345", "-branding", "dedicated",
 			"-documentation-base-url", "https://docs.openshift.com/dedicated/4/", "-user-settings-location", "localstorage", "-user-auth", "disabled", "-k8s-mode",
 			"off-cluster", "-k8s-auth", "bearer-token", "-k8s-mode-off-cluster-endpoint", "https://api-backplane.apps.something.com/backplane/cluster/cluster123",
