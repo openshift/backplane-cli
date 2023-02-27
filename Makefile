@@ -59,12 +59,10 @@ release: ensure-goreleaser
 test:
 	for t in $$(go list ./...); do go test -v $$t ; done
 
-test-cover:
-	go test -cover -coverprofile=coverage.out ./...
-	
-cover-html:
-	go tool cover -html=coverage.out
-	
+.PHONY: coverage
+coverage:
+	hack/codecov.sh
+
 cross-build-darwin-amd64:
 	+@GOOS=darwin GOARCH=amd64 go build $(GO_BUILD_FLAGS_DARWIN) -o $(CROSS_BUILD_BINDIR)/ocm-backplane_darwin_amd64 ./cmd/ocm-backplane
 .PHONY: cross-build-darwin-amd64
