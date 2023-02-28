@@ -3,12 +3,6 @@ GOOS?=linux
 GOARCH?=amd64
 GOENV=GOOS=${GOOS} GOARCH=${GOARCH} CGO_ENABLED=0 GOFLAGS=
 
-# Verbosity
-AT_ = @
-AT = $(AT_$(V))
-# /Verbosity
-
-#eg, -v
 TESTOPTS ?=
 
 IMAGE_REGISTRY?=quay.io
@@ -65,7 +59,7 @@ release: ensure-goreleaser
 	goreleaser release --rm-dist
 
 test:
-	$(AT)go test $(TESTOPTS) $(shell go list -mod=readonly -e ./...)
+	for t in $$(go list ./...); do go test -v $(TESTOPTS) $$t ; done
 
 .PHONY: coverage
 coverage:
