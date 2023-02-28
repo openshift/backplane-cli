@@ -19,6 +19,7 @@ package console
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -57,6 +58,7 @@ var (
 		image           string
 		port            string
 		containerEngine string
+		url             string
 		openBrowser     bool
 		enablePlugins   bool
 	}
@@ -117,6 +119,13 @@ func init() {
 		"",
 		false,
 		"Load enabled dynamic console plugins on the cluster. Default: false",
+	)
+	flags.StringVarP(
+		&consoleArgs.url,
+		"url",
+		"u",
+		"",
+		"The full console url, e.g. from PagerDuty. The hostname will be replaced with that of the locally running console.",
 	)
 }
 
@@ -322,19 +331,25 @@ func runConsole(cmd *cobra.Command, argv []string) (err error) {
 		}
 	}
 
-	fmt.Printf("== Console is available at http://127.0.0.1:%s ==\n\n", consoleArgs.port)
+	// Store the locally running console URL or splice it into a url provided in consoleArgs.url
+	consoleUrl, err := replaceConsoleUrl(fmt.Sprintf("http://127.0.0.1:%s", consoleArgs.port))
+	if err != nil {
+		return fmt.Errorf("failed to replace url: %v", err)
+	}
+
+	fmt.Printf("== Console is available at %s ==\n\n", consoleUrl)
 	logger.WithField("Command", fmt.Sprintf("`%s %s`", containerEngine, strings.Join(containerArgs, " "))).Infoln("Running container")
 
 	if consoleArgs.openBrowser {
 		go func() {
 			err := wait.PollImmediate(time.Second, 5*time.Second, func() (bool, error) {
-				return utils.CheckHealth(fmt.Sprintf("http://127.0.0.1:%s/health", consoleArgs.port)), nil
+				return utils.CheckHealth(fmt.Sprintf("%s/health", consoleUrl)), nil
 			})
 			if err != nil {
 				logger.Warnf("failed waiting for container to become ready: %s", err)
 				return
 			}
-			err = browser.OpenURL(fmt.Sprintf("http://127.0.0.1:%s", consoleArgs.port))
+			err = browser.OpenURL(consoleUrl)
 			if err != nil {
 				logger.Warnf("failed opening a browser: %s", err)
 			}
@@ -352,6 +367,32 @@ func runConsole(cmd *cobra.Command, argv []string) (err error) {
 	err = containerCmd.Run()
 
 	return err
+}
+
+// If a url is provided via consoleArgs.url, then the original url pointing to the homepage of the locally-running
+// console will have its scheme and host inserted into consoleArgs.url.
+// This is commonly used when trying to open a console url provided by PagerDuty or an end-user.
+func replaceConsoleUrl(original string) (string, error) {
+	if consoleArgs.url != "" {
+		o, err := url.Parse(original)
+		if err != nil {
+			return "", err
+		}
+
+		// In PagerDuty, the entire URL is encoded such that it starts with https:/// (three forward slashes).
+		// We need to replace it with two forward slashes so that it can be parsed as a valid URL.
+		u, err := url.Parse(strings.Replace(consoleArgs.url, "///", "//", 1))
+		if err != nil {
+			return "", err
+		}
+
+		u.Scheme = o.Scheme
+		u.Host = o.Host
+
+		return u.String(), nil
+	}
+
+	return original, nil
 }
 
 // getImageFromCluster get the image from the console deployment
