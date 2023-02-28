@@ -131,12 +131,12 @@ var _ = Describe("testJob create command", func() {
 			StatusCode: http.StatusOK,
 		}
 		fakeResp.Header.Add("Content-Type", "json")
-		// Clear config file
-		_ = clientcmd.ModifyConfig(clientcmd.NewDefaultPathOptions(), api.Config{}, true)
 	})
 
 	AfterEach(func() {
 		_ = os.RemoveAll(tempDir)
+		// Clear config file
+		_ = clientcmd.ModifyConfig(clientcmd.NewDefaultPathOptions(), api.Config{}, true)
 		mockCtrl.Finish()
 	})
 
