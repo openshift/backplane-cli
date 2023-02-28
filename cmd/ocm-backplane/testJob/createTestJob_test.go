@@ -76,8 +76,8 @@ var _ = Describe("testJob create command", func() {
 
 		tempDir, _ = os.MkdirTemp("", "createJobTest")
 
-		_ = os.WriteFile(path.Join(tempDir, "metadata.yaml"), []byte(MetadataYaml), 0600)
-		_ = os.WriteFile(path.Join(tempDir, "script.sh"), []byte("echo hello"), 0600)
+		_ = os.WriteFile(path.Join(tempDir, "metadata.yaml"), []byte(MetadataYaml), 0755)
+		_ = os.WriteFile(path.Join(tempDir, "script.sh"), []byte("echo hello"), 0755)
 
 		_ = os.Chdir(tempDir)
 
