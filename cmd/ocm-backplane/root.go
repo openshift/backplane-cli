@@ -22,6 +22,7 @@ import (
 
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/cloud"
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/console"
+	"github.com/openshift/backplane-cli/cmd/ocm-backplane/elevate"
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/login"
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/logout"
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/managedJob"
@@ -89,6 +90,7 @@ func init() {
 	// Register sub-commands
 	rootCmd.AddCommand(login.LoginCmd)
 	rootCmd.AddCommand(upgrade.UpgradeCmd)
+	rootCmd.AddCommand(elevate.ElevateCmd)
 	rootCmd.AddCommand(cloud.CloudCmd)
 	rootCmd.AddCommand(logout.LogoutCmd)
 	rootCmd.AddCommand(script.NewScriptCmd())
