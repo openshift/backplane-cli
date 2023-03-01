@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/cloud"
+	"github.com/openshift/backplane-cli/cmd/ocm-backplane/console"
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/login"
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/logout"
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/managedJob"
@@ -95,4 +96,5 @@ func init() {
 	rootCmd.AddCommand(version.VersionCmd)
 	rootCmd.AddCommand(testJob.NewTestJobCommand())
 	rootCmd.AddCommand(managedJob.NewManagedJobCmd())
+	rootCmd.AddCommand(console.ConsoleCmd)
 }
