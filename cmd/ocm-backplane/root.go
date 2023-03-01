@@ -105,5 +105,4 @@ func init() {
 	rootCmd.AddCommand(managedJob.NewManagedJobCmd())
 
 	rootCmd.AddCommand(console.ConsoleCmd)
-
 }

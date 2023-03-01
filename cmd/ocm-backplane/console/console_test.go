@@ -153,11 +153,7 @@ var _ = Describe("console command", func() {
 	//
 	// In particular this test checks that the name of container started by the 'ocm backplane console'
 	// command is based on the cluster id and not on the supposed cluster name extracted from kube config.
-	//
-	// Indeed 'oc' client is actually connected to the hive cluster which proxy commands to the targeted
-	// OSD cluster.
-	// Issuing a 'oc project <namespace id>' will create a new context with a new cluster in kube config...
-	// but the name of the newly created cluster config will be based on the hive cluster URL:
+	// Issuing a 'oc project <namespace id>' will create a new context with a new cluster in kube config
 	// - Which does not contain any bit of information concerning the OSD cluster name.
 	// - Which contains ':' char which is an invalid char in a container name.
 
