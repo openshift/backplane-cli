@@ -76,8 +76,8 @@ var _ = Describe("testJob create command", func() {
 
 		tempDir, _ = os.MkdirTemp("", "createJobTest")
 
-		_ = os.WriteFile(path.Join(tempDir, "metadata.yaml"), []byte(MetadataYaml), 0600)
-		_ = os.WriteFile(path.Join(tempDir, "script.sh"), []byte("echo hello"), 0600)
+		_ = os.WriteFile(path.Join(tempDir, "metadata.yaml"), []byte(MetadataYaml), 0755)
+		_ = os.WriteFile(path.Join(tempDir, "script.sh"), []byte("echo hello"), 0755)
 
 		_ = os.Chdir(tempDir)
 
@@ -131,12 +131,12 @@ var _ = Describe("testJob create command", func() {
 			StatusCode: http.StatusOK,
 		}
 		fakeResp.Header.Add("Content-Type", "json")
-		// Clear config file
-		_ = clientcmd.ModifyConfig(clientcmd.NewDefaultPathOptions(), api.Config{}, true)
 	})
 
 	AfterEach(func() {
 		_ = os.RemoveAll(tempDir)
+		// Clear config file
+		_ = clientcmd.ModifyConfig(clientcmd.NewDefaultPathOptions(), api.Config{}, true)
 		mockCtrl.Finish()
 	})
 
