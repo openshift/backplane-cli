@@ -103,7 +103,11 @@ func GetFormattedError(rsp *http.Response) error {
 	if err != nil {
 		return err
 	}
-	return fmt.Errorf("error from backplane: \n Status Code: %d\n Message: %s\n", rsp.StatusCode, *data.Message)
+	if data.Message != nil && data.StatusCode != nil {
+		return fmt.Errorf("error from backplane: \n Status Code: %d\n Message: %s\n", *data.StatusCode, *data.Message)
+	} else {
+		return fmt.Errorf("error from backplane: \n Status Code: %d\n Message: %s", rsp.StatusCode, rsp.Status)
+	}
 }
 
 func TryPrintAPIError(rsp *http.Response, rawFlag bool) error {
