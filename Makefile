@@ -59,7 +59,7 @@ release: ensure-goreleaser
 	goreleaser release --rm-dist
 
 test:
-	for t in $$(go list ./...); do go test -v $(TESTOPTS) $$t ; done
+	go test -v $(TESTOPTS) ./...
 
 .PHONY: coverage
 coverage:

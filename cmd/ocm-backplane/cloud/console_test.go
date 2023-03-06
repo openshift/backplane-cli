@@ -57,7 +57,7 @@ var _ = Describe("Cloud console command", func() {
 		// Define fake AWS response
 		fakeAWSResp = &http.Response{
 			Body: MakeIoReader(
-				fmt.Sprintf(`{"proxy_uri":"proxy", "statusCode":200, "message":"msg", "ConsoleLink":"%s"}`, consoleAWSUrl),
+				fmt.Sprintf(`{"proxy_uri":"proxy", "message":"msg", "ConsoleLink":"%s"}`, consoleAWSUrl),
 			),
 			Header:     map[string][]string{},
 			StatusCode: http.StatusOK,
@@ -67,7 +67,7 @@ var _ = Describe("Cloud console command", func() {
 		// Define fake AWS response
 		fakeGCloudResp = &http.Response{
 			Body: MakeIoReader(
-				fmt.Sprintf(`{"proxy_uri":"proxy", "statusCode":200, "message":"msg", "ConsoleLink":"%s"}`, consoleGcloudUrl),
+				fmt.Sprintf(`{"proxy_uri":"proxy", "message":"msg", "ConsoleLink":"%s"}`, consoleGcloudUrl),
 			),
 			Header:     map[string][]string{},
 			StatusCode: http.StatusOK,
