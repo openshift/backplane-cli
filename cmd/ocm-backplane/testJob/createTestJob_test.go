@@ -161,6 +161,7 @@ var _ = Describe("testJob create command", func() {
 		_ = os.RemoveAll(tempDir)
 		// Clear config file
 		_ = clientcmd.ModifyConfig(clientcmd.NewDefaultPathOptions(), api.Config{}, true)
+		clientcmd.UseModifyConfigLock = false
 		mockCtrl.Finish()
 	})
 

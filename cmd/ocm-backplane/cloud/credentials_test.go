@@ -72,15 +72,14 @@ var _ = Describe("Cloud console command", func() {
 		}
 		fakeGCloudResp.Header.Add("Content-Type", "json")
 
-		// Clear config file
-		_ = clientcmd.ModifyConfig(clientcmd.NewDefaultPathOptions(), api.Config{}, true)
-		clientcmd.UseModifyConfigLock = false
-
 		// Disabled log output
 		log.SetOutput(io.Discard)
 	})
 
 	AfterEach(func() {
+		// Clear config file
+		_ = clientcmd.ModifyConfig(clientcmd.NewDefaultPathOptions(), api.Config{}, true)
+		clientcmd.UseModifyConfigLock = false
 		mockCtrl.Finish()
 	})
 

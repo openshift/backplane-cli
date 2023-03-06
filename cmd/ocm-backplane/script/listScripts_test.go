@@ -100,12 +100,13 @@ var _ = Describe("list script command", func() {
 		}
 		fakeResp.Header.Add("Content-Type", "json")
 		// Clear config file
-		clientcmd.UseModifyConfigLock = false
+
 	})
 
 	AfterEach(func() {
 		// Clear config file
 		_ = clientcmd.ModifyConfig(clientcmd.NewDefaultPathOptions(), api.Config{}, true)
+		clientcmd.UseModifyConfigLock = false
 		mockCtrl.Finish()
 	})
 
@@ -143,6 +144,7 @@ var _ = Describe("list script command", func() {
 		It("Should able use the current logged in cluster if non specified and retrieve from config file", func() {
 			pathOptions := clientcmd.NewDefaultPathOptions()
 			err := clientcmd.ModifyConfig(pathOptions, testKubeCfg, true)
+			clientcmd.UseModifyConfigLock = false
 			Expect(err).To(BeNil())
 			mockOcmInterface.EXPECT().GetBackplaneURL().Return(proxyUri, nil).AnyTimes()
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq("configcluster")).Return(false, nil).AnyTimes()
