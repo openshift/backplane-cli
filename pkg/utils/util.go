@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	"os"
 	"reflect"
 	"strings"
 
@@ -18,9 +19,9 @@ import (
 )
 
 const (
-	ClustersPageSize        = 50
+	ClustersPageSize             = 50
 	BackplaneApiUrlRegexp string = `(?mi)^https:\/\/api-backplane\.apps\.(.*)`
-	ClusterIDRegexp  string = "/?backplane/cluster/([a-zA-Z0-9]+)/?"
+	ClusterIDRegexp       string = "/?backplane/cluster/([a-zA-Z0-9]+)/?"
 )
 
 // GetFreePort asks the OS for an available port to listen to.
@@ -104,7 +105,7 @@ func GetFormattedError(rsp *http.Response) error {
 		return err
 	}
 	if data.Message != nil && data.StatusCode != nil {
-		return fmt.Errorf("error from backplane: \n Status Code: %d\n Message: %s\n", *data.StatusCode, *data.Message)
+		return fmt.Errorf("error from backplane: \n Status Code: %d\n Message: %s", *data.StatusCode, *data.Message)
 	} else {
 		return fmt.Errorf("error from backplane: \n Status Code: %d\n Message: %s", rsp.StatusCode, rsp.Status)
 	}
@@ -135,4 +136,29 @@ func ParseParamsFlag(paramsFlag []string) (map[string]string, error) {
 		}
 	}
 	return result, nil
+}
+
+func ModifyKubeConfig(kubeconfig string) error {
+	f, err := os.CreateTemp("", "kubeconfig")
+	if err != nil {
+		return err
+	}
+	_, err = f.WriteString(kubeconfig)
+	if err != nil {
+		return err
+	}
+	err = f.Close()
+	if err != nil {
+		return err
+	}
+	// set kube config file
+	os.Setenv("KUBECONFIG", f.Name())
+	return nil
+}
+
+func RemoveKubeConfig() {
+	path, found := os.LookupEnv("KUBECONFIG")
+	if found {
+		os.Remove(path)
+	}
 }

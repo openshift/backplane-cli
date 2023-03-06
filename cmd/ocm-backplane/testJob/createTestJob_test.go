@@ -11,15 +11,45 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/spf13/cobra"
 
-	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/client-go/tools/clientcmd/api"
-
 	"github.com/openshift/backplane-cli/pkg/client/mocks"
 	"github.com/openshift/backplane-cli/pkg/utils"
 	mocks2 "github.com/openshift/backplane-cli/pkg/utils/mocks"
 )
 
-const MetadataYaml = `
+const (
+	kubeYaml = `
+apiVersion: v1
+clusters:
+- cluster:
+    server: https://api-backplane.apps.something.com/backplane/cluster/configcluster
+  name: testcluster
+contexts:
+- context:
+    cluster: testcluster
+    namespace: default
+    user: example.openshift
+  name: default/openshift
+current-context: default/openshift
+kind: Config
+preferences: {}
+users:
+- name: example.openshift
+  user:
+    exec:
+      apiVersion: client.authentication.k8s.io/v1beta1
+      args:
+      - /bin/echo nothing
+      command: bash
+      env: null
+- name: blue-user
+  user:
+    token: blue-token
+- name: green-user
+  user:
+    client-certificate: path/to/my/client/cert
+    client-key: path/to/my/client/key
+`
+	MetadataYaml = `
 file: script.sh
 name: example
 description: just an example
@@ -49,6 +79,7 @@ rbac:
             - "*"
 language: bash
 `
+)
 
 var _ = Describe("testJob create command", func() {
 
@@ -63,7 +94,7 @@ var _ = Describe("testJob create command", func() {
 		trueClusterId string
 		proxyUri      string
 		tempDir       string
-		testKubeCfg   api.Config
+		//testKubeCfg   api.Config
 
 		fakeResp *http.Response
 
@@ -92,31 +123,6 @@ var _ = Describe("testJob create command", func() {
 		trueClusterId = "trueID123"
 		proxyUri = "https://shard.apps"
 
-		testKubeCfg = api.Config{
-			Kind:        "Config",
-			APIVersion:  "v1",
-			Preferences: api.Preferences{},
-			Clusters: map[string]*api.Cluster{
-				"testcluster": {
-					Server: "https://api-backplane.apps.something.com/backplane/cluster/configcluster",
-				},
-			},
-			AuthInfos: map[string]*api.AuthInfo{
-				"testauth": {
-					Token: "token123",
-				},
-			},
-			Contexts: map[string]*api.Context{
-				"default/testcluster/testauth": {
-					Cluster:   "testcluster",
-					AuthInfo:  "testauth",
-					Namespace: "default",
-				},
-			},
-			CurrentContext: "default/testcluster/testauth",
-			Extensions:     nil,
-		}
-
 		sut = NewTestJobCommand()
 
 		fakeResp = &http.Response{
@@ -135,8 +141,8 @@ var _ = Describe("testJob create command", func() {
 
 	AfterEach(func() {
 		_ = os.RemoveAll(tempDir)
-		// Clear config file
-		_ = clientcmd.ModifyConfig(clientcmd.NewDefaultPathOptions(), api.Config{}, true)
+		// Clear kube config file
+		utils.RemoveKubeConfig()
 		mockCtrl.Finish()
 	})
 
@@ -177,9 +183,7 @@ var _ = Describe("testJob create command", func() {
 
 		It("Should able use the current logged in cluster if non specified and retrieve from config file", func() {
 			mockOcmInterface.EXPECT().IsProduction().Return(false, nil)
-			pathOptions := clientcmd.NewDefaultPathOptions()
-			err := clientcmd.ModifyConfig(pathOptions, testKubeCfg, true)
-			clientcmd.UseModifyConfigLock = false
+			err := utils.ModifyKubeConfig(kubeYaml)
 			Expect(err).To(BeNil())
 			mockOcmInterface.EXPECT().GetBackplaneURL().Return("https://api-backplane.apps.something.com", nil).AnyTimes()
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq("configcluster")).Return(false, nil).AnyTimes()

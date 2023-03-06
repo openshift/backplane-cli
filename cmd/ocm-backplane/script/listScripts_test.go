@@ -7,14 +7,12 @@ import (
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/client-go/tools/clientcmd/api"
 
-	"github.com/spf13/cobra"
 	bpclient "github.com/openshift/backplane-api/pkg/client"
 	"github.com/openshift/backplane-cli/pkg/client/mocks"
 	"github.com/openshift/backplane-cli/pkg/utils"
 	mocks2 "github.com/openshift/backplane-cli/pkg/utils/mocks"
+	"github.com/spf13/cobra"
 )
 
 var _ = Describe("list script command", func() {
@@ -29,8 +27,8 @@ var _ = Describe("list script command", func() {
 		testToken     string
 		trueClusterId string
 		proxyUri      string
-		testKubeCfg   api.Config
-		testJobId     string
+		//testKubeCfg   api.Config
+		testJobId string
 
 		fakeResp *http.Response
 
@@ -53,31 +51,6 @@ var _ = Describe("list script command", func() {
 		proxyUri = "https://shard.apps"
 		testJobId = "jid123"
 
-		testKubeCfg = api.Config{
-			Kind:        "Config",
-			APIVersion:  "v1",
-			Preferences: api.Preferences{},
-			Clusters: map[string]*api.Cluster{
-				"testcluster": {
-					Server: "https://api-backplane.apps.something.com/backplane/cluster/configcluster",
-				},
-			},
-			AuthInfos: map[string]*api.AuthInfo{
-				"testauth": {
-					Token: "token123",
-				},
-			},
-			Contexts: map[string]*api.Context{
-				"default/testcluster/testauth": {
-					Cluster:   "testcluster",
-					AuthInfo:  "testauth",
-					Namespace: "default",
-				},
-			},
-			CurrentContext: "default/testcluster/testauth",
-			Extensions:     nil,
-		}
-
 		sut = NewScriptCmd()
 
 		fakeResp = &http.Response{
@@ -99,12 +72,10 @@ var _ = Describe("list script command", func() {
 			StatusCode: http.StatusOK,
 		}
 		fakeResp.Header.Add("Content-Type", "json")
-		// Clear config file
-		_ = clientcmd.ModifyConfig(clientcmd.NewDefaultPathOptions(), api.Config{}, true)
-		clientcmd.UseModifyConfigLock = false
 	})
 
 	AfterEach(func() {
+		utils.RemoveKubeConfig()
 		mockCtrl.Finish()
 	})
 
@@ -140,8 +111,7 @@ var _ = Describe("list script command", func() {
 		})
 
 		It("Should able use the current logged in cluster if non specified and retrieve from config file", func() {
-			pathOptions := clientcmd.NewDefaultPathOptions()
-			err := clientcmd.ModifyConfig(pathOptions, testKubeCfg, true)
+			err := utils.ModifyKubeConfig(kubeYaml)
 			Expect(err).To(BeNil())
 			mockOcmInterface.EXPECT().GetBackplaneURL().Return(proxyUri, nil).AnyTimes()
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq("configcluster")).Return(false, nil).AnyTimes()
