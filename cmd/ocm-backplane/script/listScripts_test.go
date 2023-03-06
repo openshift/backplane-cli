@@ -10,11 +10,11 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
 
-	"github.com/spf13/cobra"
 	bpclient "github.com/openshift/backplane-api/pkg/client"
 	"github.com/openshift/backplane-cli/pkg/client/mocks"
 	"github.com/openshift/backplane-cli/pkg/utils"
 	mocks2 "github.com/openshift/backplane-cli/pkg/utils/mocks"
+	"github.com/spf13/cobra"
 )
 
 var _ = Describe("list script command", func() {
@@ -100,11 +100,12 @@ var _ = Describe("list script command", func() {
 		}
 		fakeResp.Header.Add("Content-Type", "json")
 		// Clear config file
-		_ = clientcmd.ModifyConfig(clientcmd.NewDefaultPathOptions(), api.Config{}, true)
 		clientcmd.UseModifyConfigLock = false
 	})
 
 	AfterEach(func() {
+		// Clear config file
+		_ = clientcmd.ModifyConfig(clientcmd.NewDefaultPathOptions(), api.Config{}, true)
 		mockCtrl.Finish()
 	})
 

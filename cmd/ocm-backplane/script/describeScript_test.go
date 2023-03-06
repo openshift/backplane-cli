@@ -100,11 +100,11 @@ var _ = Describe("describe script command", func() {
 			StatusCode: http.StatusOK,
 		}
 		fakeResp.Header.Add("Content-Type", "json")
-		// Clear config file
-		_ = clientcmd.ModifyConfig(clientcmd.NewDefaultPathOptions(), api.Config{}, true)
 	})
 
 	AfterEach(func() {
+		// Clear config file
+		_ = clientcmd.ModifyConfig(clientcmd.NewDefaultPathOptions(), api.Config{}, true)
 		mockCtrl.Finish()
 	})
 
@@ -209,7 +209,7 @@ var _ = Describe("describe script command", func() {
 				StatusCode: http.StatusOK,
 			}
 			fakeRespNoEnv.Header.Add("Content-Type", "json")
-			
+
 			mockOcmInterface.EXPECT().GetBackplaneURL().Return(proxyUri, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetTargetCluster(testClusterId).Return(trueClusterId, testClusterId, nil)
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterId)).Return(false, nil).AnyTimes()
