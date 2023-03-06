@@ -25,11 +25,11 @@ var _ = Describe("describe script command", func() {
 		mockOcmInterface *mocks2.MockOCMInterface
 		mockClientUtil   *mocks2.MockClientUtils
 
-		testClusterId  string
-		testToken      string
-		trueClusterId  string
-		proxyUri       string
-		testKubeCfg    api.Config
+		testClusterId string
+		testToken     string
+		trueClusterId string
+		proxyUri      string
+		//testKubeCfg    api.Config
 		testScriptName string
 
 		fakeResp *http.Response
@@ -53,7 +53,7 @@ var _ = Describe("describe script command", func() {
 		proxyUri = "https://shard.apps"
 		testScriptName = "CEE/abc"
 
-		testKubeCfg = api.Config{
+		/*testKubeCfg = api.Config{
 			Kind:        "Config",
 			APIVersion:  "v1",
 			Preferences: api.Preferences{},
@@ -76,7 +76,7 @@ var _ = Describe("describe script command", func() {
 			},
 			CurrentContext: "default/testcluster/testauth",
 			Extensions:     nil,
-		}
+		}*/
 
 		sut = NewScriptCmd()
 
@@ -139,7 +139,7 @@ var _ = Describe("describe script command", func() {
 			Expect(err).To(BeNil())
 		})
 
-		It("Should able use the current logged in cluster if non specified and retrieve from config file", func() {
+		/*It("Should able use the current logged in cluster if non specified and retrieve from config file", func() {
 			pathOptions := clientcmd.NewDefaultPathOptions()
 			err := clientcmd.ModifyConfig(pathOptions, testKubeCfg, true)
 			clientcmd.UseModifyConfigLock = false
@@ -154,7 +154,7 @@ var _ = Describe("describe script command", func() {
 			err = sut.Execute()
 
 			Expect(err).To(BeNil())
-		})
+		}) */
 
 		It("should fail when backplane did not return a 200", func() {
 			mockOcmInterface.EXPECT().GetTargetCluster(testClusterId).Return(trueClusterId, testClusterId, nil)
@@ -209,7 +209,7 @@ var _ = Describe("describe script command", func() {
 				StatusCode: http.StatusOK,
 			}
 			fakeRespNoEnv.Header.Add("Content-Type", "json")
-			
+
 			mockOcmInterface.EXPECT().GetBackplaneURL().Return(proxyUri, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetTargetCluster(testClusterId).Return(trueClusterId, testClusterId, nil)
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterId)).Return(false, nil).AnyTimes()

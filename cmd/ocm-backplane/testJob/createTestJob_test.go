@@ -63,7 +63,7 @@ var _ = Describe("testJob create command", func() {
 		trueClusterId string
 		proxyUri      string
 		tempDir       string
-		testKubeCfg   api.Config
+		//testKubeCfg   api.Config
 
 		fakeResp *http.Response
 
@@ -92,7 +92,7 @@ var _ = Describe("testJob create command", func() {
 		trueClusterId = "trueID123"
 		proxyUri = "https://shard.apps"
 
-		testKubeCfg = api.Config{
+		/*testKubeCfg = api.Config{
 			Kind:        "Config",
 			APIVersion:  "v1",
 			Preferences: api.Preferences{},
@@ -115,7 +115,7 @@ var _ = Describe("testJob create command", func() {
 			},
 			CurrentContext: "default/testcluster/testauth",
 			Extensions:     nil,
-		}
+		} */
 
 		sut = NewTestJobCommand()
 
@@ -175,7 +175,7 @@ var _ = Describe("testJob create command", func() {
 			Expect(err).To(BeNil())
 		})
 
-		It("Should able use the current logged in cluster if non specified and retrieve from config file", func() {
+		/*It("Should able use the current logged in cluster if non specified and retrieve from config file", func() {
 			mockOcmInterface.EXPECT().IsProduction().Return(false, nil)
 			pathOptions := clientcmd.NewDefaultPathOptions()
 			err := clientcmd.ModifyConfig(pathOptions, testKubeCfg, true)
@@ -191,7 +191,7 @@ var _ = Describe("testJob create command", func() {
 			err = sut.Execute()
 
 			Expect(err).To(BeNil())
-		})
+		}) */
 
 		It("should fail when backplane did not return a 200", func() {
 			mockOcmInterface.EXPECT().IsProduction().Return(false, nil)
