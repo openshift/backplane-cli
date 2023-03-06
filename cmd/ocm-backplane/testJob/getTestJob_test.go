@@ -75,11 +75,13 @@ var _ = Describe("testJob get command", func() {
 		}
 		fakeResp.Header.Add("Content-Type", "json")
 		// Clear config file
-		_ = clientcmd.ModifyConfig(clientcmd.NewDefaultPathOptions(), api.Config{}, true)
+
 	})
 
 	AfterEach(func() {
+
 		_ = os.RemoveAll(tempDir)
+		_ = clientcmd.ModifyConfig(clientcmd.NewDefaultPathOptions(), api.Config{}, true)
 		mockCtrl.Finish()
 	})
 

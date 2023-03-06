@@ -63,8 +63,8 @@ var _ = Describe("testJob create command", func() {
 		trueClusterId string
 		proxyUri      string
 		tempDir       string
-		//testKubeCfg   api.Config
-		testKubeCfg = api.Config{
+		testKubeCfg   api.Config
+		/*testKubeCfg = api.Config{
 			Kind:        "Config",
 			APIVersion:  "v1",
 			Preferences: api.Preferences{},
@@ -87,7 +87,7 @@ var _ = Describe("testJob create command", func() {
 			},
 			CurrentContext: "default/testcluster/testauth",
 			Extensions:     nil,
-		}
+		}*/
 
 		fakeResp *http.Response
 
