@@ -2,17 +2,18 @@ package login
 
 import (
 	"errors"
+	"io"
+	"net/http"
+	"strings"
+
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/openshift/backplane-cli/pkg/client/mocks"
 	"github.com/openshift/backplane-cli/pkg/utils"
 	mocks2 "github.com/openshift/backplane-cli/pkg/utils/mocks"
-	"io"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
-	"net/http"
-	"strings"
 )
 
 func MakeIoReader(s string) io.ReadCloser {
@@ -61,12 +62,13 @@ var _ = Describe("Login command", func() {
 			StatusCode: http.StatusOK,
 		}
 		fakeResp.Header.Add("Content-Type", "json")
-		// Clear config file
-		_ = clientcmd.ModifyConfig(clientcmd.NewDefaultPathOptions(), api.Config{}, true)
-		clientcmd.UseModifyConfigLock = false
+
 	})
 
 	AfterEach(func() {
+		// Clear config file
+		_ = clientcmd.ModifyConfig(clientcmd.NewDefaultPathOptions(), api.Config{}, true)
+		clientcmd.UseModifyConfigLock = false
 		args.backplaneURL = ""
 		mockCtrl.Finish()
 	})
