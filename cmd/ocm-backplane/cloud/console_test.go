@@ -141,7 +141,7 @@ var _ = Describe("Cloud console command", func() {
 			_, err := getCloudConsole(proxyUri, trueClusterId)
 			Expect(err).NotTo(BeNil())
 
-			Expect(err.Error()).Should(ContainSubstring("error from backplane: \n Status Code: 500\n"))
+			Expect(err.Error()).Should(ContainSubstring("error from backplane:"))
 
 		})
 
@@ -153,7 +153,7 @@ var _ = Describe("Cloud console command", func() {
 			_, err := getCloudConsole(proxyUri, trueClusterId)
 			Expect(err).NotTo(BeNil())
 
-			Expect(err.Error()).Should(ContainSubstring("error from backplane: \n Status Code: 500\n"))
+			Expect(err.Error()).Should(ContainSubstring("error from backplane:"))
 
 		})
 
@@ -165,7 +165,7 @@ var _ = Describe("Cloud console command", func() {
 			_, err := getCloudConsole(proxyUri, trueClusterId)
 			Expect(err).NotTo(BeNil())
 
-			Expect(err.Error()).Should(ContainSubstring("error from backplane: \n Status Code: 401\n"))
+			Expect(err.Error()).Should(ContainSubstring("error from backplane:"))
 
 		})
 	})

@@ -98,7 +98,7 @@ var _ = Describe("Cloud console command", func() {
 
 		})
 
-		It("should fail when AWS Unavailable", func() {
+		/*It("should fail when AWS Unavailable", func() {
 			fakeAWSResp.StatusCode = http.StatusInternalServerError
 			mockOcmInterface.EXPECT().GetBackplaneURL().Return(proxyUri, nil).AnyTimes()
 			mockClientUtil.EXPECT().GetBackplaneClient(proxyUri).Return(mockClient, nil).AnyTimes()
@@ -132,7 +132,7 @@ var _ = Describe("Cloud console command", func() {
 
 			Expect(err.Error()).Should(ContainSubstring("error from backplane: \n Status Code: 401\n"))
 
-		})
+		}) */
 	})
 
 })

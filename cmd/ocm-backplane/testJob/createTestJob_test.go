@@ -63,7 +63,31 @@ var _ = Describe("testJob create command", func() {
 		trueClusterId string
 		proxyUri      string
 		tempDir       string
-		testKubeCfg   api.Config
+		//testKubeCfg   api.Config
+		testKubeCfg = api.Config{
+			Kind:        "Config",
+			APIVersion:  "v1",
+			Preferences: api.Preferences{},
+			Clusters: map[string]*api.Cluster{
+				"testcluster": {
+					Server: "https://api-backplane.apps.something.com/backplane/cluster/configcluster",
+				},
+			},
+			AuthInfos: map[string]*api.AuthInfo{
+				"testauth": {
+					Token: "token123",
+				},
+			},
+			Contexts: map[string]*api.Context{
+				"default/testcluster/testauth": {
+					Cluster:   "testcluster",
+					AuthInfo:  "testauth",
+					Namespace: "default",
+				},
+			},
+			CurrentContext: "default/testcluster/testauth",
+			Extensions:     nil,
+		}
 
 		fakeResp *http.Response
 
