@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	"os"
 	"reflect"
 	"strings"
 
@@ -14,13 +15,34 @@ import (
 	BackplaneApi "github.com/openshift/backplane-api/pkg/client"
 
 	"k8s.io/cli-runtime/pkg/genericclioptions"
+	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
 )
 
 const (
-	ClustersPageSize        = 50
+	ClustersPageSize             = 50
 	BackplaneApiUrlRegexp string = `(?mi)^https:\/\/api-backplane\.apps\.(.*)`
-	ClusterIDRegexp  string = "/?backplane/cluster/([a-zA-Z0-9]+)/?"
+	ClusterIDRegexp       string = "/?backplane/cluster/([a-zA-Z0-9]+)/?"
+)
+
+var (
+	defaultKubeConfig = api.Config{
+		Kind:        "Config",
+		APIVersion:  "v1",
+		Preferences: api.Preferences{},
+		Clusters: map[string]*api.Cluster{
+			"dummy_cluster": {
+				Server: "https://api-backplane.apps.something.com/backplane/cluster/configcluster",
+			},
+		},
+		Contexts: map[string]*api.Context{
+			"default/test123/anonymous": {
+				Cluster:   "dummy_cluster",
+				Namespace: "default",
+			},
+		},
+		CurrentContext: "default/test123/anonymous",
+	}
 )
 
 // GetFreePort asks the OS for an available port to listen to.
@@ -104,7 +126,7 @@ func GetFormattedError(rsp *http.Response) error {
 		return err
 	}
 	if data.Message != nil && data.StatusCode != nil {
-		return fmt.Errorf("error from backplane: \n Status Code: %d\n Message: %s\n", *data.StatusCode, *data.Message)
+		return fmt.Errorf("error from backplane: \n Status Code: %d\n Message: %s", *data.StatusCode, *data.Message)
 	} else {
 		return fmt.Errorf("error from backplane: \n Status Code: %d\n Message: %s", rsp.StatusCode, rsp.Status)
 	}
@@ -113,7 +135,7 @@ func GetFormattedError(rsp *http.Response) error {
 func TryPrintAPIError(rsp *http.Response, rawFlag bool) error {
 	if rawFlag {
 		if err := TryRenderErrorRaw(rsp); err != nil {
-			return fmt.Errorf("unable to parse error from backplane: \n Status Code: %d\n", rsp.StatusCode)
+			return fmt.Errorf("unable to parse error from backplane: \n Status Code: %d", rsp.StatusCode)
 		} else {
 			return nil
 		}
@@ -135,4 +157,38 @@ func ParseParamsFlag(paramsFlag []string) (map[string]string, error) {
 		}
 	}
 	return result, nil
+}
+
+func CreateTempKubeConfig(kubeConfig *api.Config) error {
+
+	f, err := os.CreateTemp("", "kubeconfig")
+	if err != nil {
+		return err
+	}
+	// set default kube config if values are empty
+	if kubeConfig == nil {
+		kubeConfig = &defaultKubeConfig
+	}
+	err = clientcmd.WriteToFile(*kubeConfig, f.Name())
+
+	if err != nil {
+		return err
+	}
+
+	err = f.Close()
+	if err != nil {
+		return err
+	}
+
+	// set kube config env with temp kube config file
+	os.Setenv("KUBECONFIG", f.Name())
+	return nil
+
+}
+
+func RemoveTempKubeConfig() {
+	path, found := os.LookupEnv("KUBECONFIG")
+	if found {
+		os.Remove(path)
+	}
 }
