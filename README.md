@@ -1,5 +1,9 @@
 # backplane-cli
 
+[![GoDoc](https://godoc.org/github.com/openshift/backplane-cli?status.svg)](https://godoc.org/github.com/openshift/backplane-cli)
+[![codecov](https://codecov.io/gh/openshift/backplane-cli/branch/main/graph/badge.svg)](https://codecov.io/gh/openshift/backplane-cli)
+[![License](https://img.shields.io/:license-apache-blue.svg)](http://www.apache.org/licenses/LICENSE-2.0.html)
+
 backplane-cli is a CLI tool to interact with backplane api.
 
 ## Install
