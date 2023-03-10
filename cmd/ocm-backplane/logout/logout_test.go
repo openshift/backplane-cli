@@ -1,8 +1,6 @@
 package logout
 
 import (
-	"os"
-	"path/filepath"
 	"reflect"
 	"testing"
 
@@ -70,7 +68,7 @@ var tests = []struct {
 			}
 		},
 	},
-	
+
 	{
 		name:     "Test logout empty kubeconfig yaml",
 		yamlFile: "",
@@ -117,32 +115,13 @@ var tests = []struct {
 	},
 }
 
-func writeKubeconfigYaml(s string) error {
-	kubeconfigPath := clientcmd.NewDefaultPathOptions().GlobalFile
-	dirname := filepath.Dir(kubeconfigPath)
-	err := os.MkdirAll(dirname, os.ModePerm)
-	if err != nil {
-		return err
-	}
-	f, err := os.Create(kubeconfigPath)
-	if err != nil {
-		return err
-	}
-	_, err = f.WriteString(s)
-	if err != nil {
-		return err
-	}
-	err = f.Close()
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 func TestLogoutCmd(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := writeKubeconfigYaml(tt.yamlFile)
+
+			config, _ := clientcmd.Load([]byte(tt.yamlFile))
+			err := utils.CreateTempKubeConfig(config)
+
 			if err != nil {
 				t.Error(err)
 				return

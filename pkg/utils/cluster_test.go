@@ -3,8 +3,6 @@ package utils
 import (
 	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
 	"reflect"
 	"testing"
 
@@ -78,28 +76,6 @@ hello: world
 `
 )
 
-func writeKubeconfigYaml(s string) error {
-	kubeconfigPath := clientcmd.NewDefaultPathOptions().GlobalFile
-	dirname := filepath.Dir(kubeconfigPath)
-	err := os.MkdirAll(dirname, 0744)
-	if err != nil {
-		return err
-	}
-	f, err := os.Create(kubeconfigPath)
-	if err != nil {
-		return err
-	}
-	_, err = f.WriteString(s)
-	if err != nil {
-		return err
-	}
-	err = f.Close()
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 func TestGetBackplaneClusterFromConfig(t *testing.T) {
 	tests := []struct {
 		config string
@@ -114,7 +90,8 @@ func TestGetBackplaneClusterFromConfig(t *testing.T) {
 	}}
 
 	for n, tt := range tests {
-		_ = writeKubeconfigYaml(tt.config)
+		config, _ := clientcmd.Load([]byte(tt.config))
+		_ = CreateTempKubeConfig(config)
 		t.Run(fmt.Sprintf("case %d", n), func(t *testing.T) {
 			result, err := GetBackplaneClusterFromConfig()
 			if err != nil {
@@ -138,7 +115,8 @@ func TestGetBackplaneClusterFromConfig(t *testing.T) {
 	}
 
 	for n, tt := range testErr {
-		_ = writeKubeconfigYaml(tt.config)
+		config, _ := clientcmd.Load([]byte(tt.config))
+		_ = CreateTempKubeConfig(config)
 		t.Run(fmt.Sprintf("case %d", n), func(t *testing.T) {
 			_, err := GetBackplaneClusterFromConfig()
 			if err == nil {
@@ -217,7 +195,6 @@ func TestGetClusterIDAndHostFromClusterURL(t *testing.T) {
 
 func TestGetBackplaneClusterFromClusterKey(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
-
 
 	mockOcmInterface := mocks.NewMockOCMInterface(mockCtrl)
 

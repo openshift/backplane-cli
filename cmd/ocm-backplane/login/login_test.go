@@ -2,17 +2,18 @@ package login
 
 import (
 	"errors"
+	"io"
+	"net/http"
+	"strings"
+
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/openshift/backplane-cli/pkg/client/mocks"
 	"github.com/openshift/backplane-cli/pkg/utils"
 	mocks2 "github.com/openshift/backplane-cli/pkg/utils/mocks"
-	"io"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
-	"net/http"
-	"strings"
 )
 
 func MakeIoReader(s string) io.ReadCloser {
@@ -73,6 +74,8 @@ var _ = Describe("Login command", func() {
 
 	Context("runLogin function", func() {
 		It("when running with a simple case should work as expected", func() {
+			err := utils.CreateTempKubeConfig(nil)
+			Expect(err).To(BeNil())
 			mockOcmInterface.EXPECT().GetTargetCluster(testClusterId).Return(trueClusterId, testClusterId, nil)
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterId)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil)
@@ -80,7 +83,7 @@ var _ = Describe("Login command", func() {
 			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken(proxyUri, testToken).Return(mockClient, nil)
 			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(trueClusterId)).Return(fakeResp, nil)
 
-			err := runLogin(nil, []string{testClusterId})
+			err = runLogin(nil, []string{testClusterId})
 
 			Expect(err).To(BeNil())
 
@@ -116,6 +119,8 @@ var _ = Describe("Login command", func() {
 		})
 
 		It("should use the specified backplane url if passed", func() {
+			err := utils.CreateTempKubeConfig(nil)
+			Expect(err).To(BeNil())
 			args.backplaneURL = "https://sadge.app"
 			mockOcmInterface.EXPECT().GetTargetCluster(testClusterId).Return(trueClusterId, testClusterId, nil)
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterId)).Return(false, nil).AnyTimes()
@@ -123,7 +128,7 @@ var _ = Describe("Login command", func() {
 			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken("https://sadge.app", testToken).Return(mockClient, nil)
 			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(trueClusterId)).Return(fakeResp, nil)
 
-			err := runLogin(nil, []string{testClusterId})
+			err = runLogin(nil, []string{testClusterId})
 
 			Expect(err).To(BeNil())
 
