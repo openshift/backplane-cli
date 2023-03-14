@@ -2,6 +2,7 @@ package utils
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -183,6 +184,43 @@ func CreateTempKubeConfig(kubeConfig *api.Config) error {
 	// set kube config env with temp kube config file
 	os.Setenv("KUBECONFIG", f.Name())
 	return nil
+
+}
+
+func CreateClusterKubeConfig(clusterid string, kubeConfig api.Config) (string, error) {
+
+	homedir, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+
+	filename := homedir + "/.kube/" + clusterid
+
+	// Write kube config if file not exist
+	_, err = os.Stat(filename)
+	if errors.Is(err, os.ErrNotExist) {
+		f, err := os.Create(filename)
+		if err != nil {
+			return "", err
+		}
+		err = clientcmd.WriteToFile(kubeConfig, f.Name())
+
+		if err != nil {
+			return "", err
+		}
+		err = f.Close()
+		if err != nil {
+			return "", err
+		}
+	}
+
+	// set kube config env with temp kube config file
+
+	err = os.Setenv("KUBECONFIG", filename)
+	if err != nil {
+		return "", err
+	}
+	return filename, nil
 
 }
 

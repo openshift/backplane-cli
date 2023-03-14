@@ -11,7 +11,6 @@ import (
 	logger "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
-	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
 
 	BackplaneApi "github.com/openshift/backplane-api/pkg/client"
@@ -57,37 +56,37 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 		return err
 	}
 
-		// Get The cluster ID
-		if len(argv) == 1 {
-			// if explicitly one cluster key given, use it to log in.
-			clusterKey = argv[0]
-			logger.WithField("Search Key", clusterKey).Debugln("Finding target cluster")
-		} else if len(argv) == 0 {
-			// if no args given, try to log into the cluster that the user is logged into
-			clusterInfo, err := utils.GetBackplaneClusterFromConfig()
-			if err != nil {
-				return err
-			}
-			clusterKey = clusterInfo.ClusterID
-		}
-
-		clusterId, clusterName, err := utils.DefaultOCMInterface.GetTargetCluster(clusterKey)
+	// Get The cluster ID
+	if len(argv) == 1 {
+		// if explicitly one cluster key given, use it to log in.
+		clusterKey = argv[0]
+		logger.WithField("Search Key", clusterKey).Debugln("Finding target cluster")
+	} else if len(argv) == 0 {
+		// if no args given, try to log into the cluster that the user is logged into
+		clusterInfo, err := utils.GetBackplaneClusterFromConfig()
 		if err != nil {
 			return err
 		}
+		clusterKey = clusterInfo.ClusterID
+	}
 
-		logger.WithFields(logger.Fields{
-			"ID":   clusterId,
-			"Name": clusterName}).Infoln("Target cluster")
+	clusterId, clusterName, err := utils.DefaultOCMInterface.GetTargetCluster(clusterKey)
+	if err != nil {
+		return err
+	}
 
-		// Get Backplane URL
-		if args.backplaneURL == "" {
-			args.backplaneURL, err = utils.DefaultOCMInterface.GetBackplaneURL()
-			if err != nil || args.backplaneURL == "" {
-				return fmt.Errorf("can't find backplane url: %w", err)
-			}
-			logger.Infof("Using backplane URL: %s\n", args.backplaneURL)
+	logger.WithFields(logger.Fields{
+		"ID":   clusterId,
+		"Name": clusterName}).Infoln("Target cluster")
+
+	// Get Backplane URL
+	if args.backplaneURL == "" {
+		args.backplaneURL, err = utils.DefaultOCMInterface.GetBackplaneURL()
+		if err != nil || args.backplaneURL == "" {
+			return fmt.Errorf("can't find backplane url: %w", err)
 		}
+		logger.Infof("Using backplane URL: %s\n", args.backplaneURL)
+	}
 
 	// Get ocm access token
 	logger.Debugln("Finding ocm token")
@@ -167,8 +166,13 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 	rc.CurrentContext = targetContextNickName
 
 	// Save the config.
-	configAccess := clientcmd.NewDefaultPathOptions()
-	err = clientcmd.ModifyConfig(configAccess, rc, true)
+	//configAccess := clientcmd.NewDefaultPathOptions()
+	//err = clientcmd.ModifyConfig(configAccess, rc, true)
+
+	//save config to current session
+	path, _ := utils.CreateClusterKubeConfig(clusterId, rc)
+	logger.Infof("export KUBECONFIG=" + path)
+
 	logger.Debugln("Wrote OCM configuration")
 
 	return err
