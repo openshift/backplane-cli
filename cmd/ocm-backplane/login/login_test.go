@@ -30,10 +30,11 @@ var _ = Describe("Login command", func() {
 		mockOcmInterface   *mocks2.MockOCMInterface
 		mockClientUtil     *mocks2.MockClientUtils
 
-		testClusterId string
-		testToken     string
-		trueClusterId string
-		proxyUri      string
+		testClusterId     string
+		testToken         string
+		trueClusterId     string
+		managingClusterId string
+		proxyUri          string
 
 		fakeResp *http.Response
 	)
@@ -52,6 +53,7 @@ var _ = Describe("Login command", func() {
 		testClusterId = "test123"
 		testToken = "hello123"
 		trueClusterId = "trueID123"
+		managingClusterId = "managingID123"
 		proxyUri = "https://shard.apps"
 
 		mockClientWithResp.EXPECT().LoginClusterWithResponse(gomock.Any(), gomock.Any()).Return(nil, nil).Times(0)
@@ -152,5 +154,19 @@ var _ = Describe("Login command", func() {
 			Expect(err).ToNot(BeNil())
 		})
 
+		It("should return the managing cluster if one is requested", func() {
+			args.manager = true
+			mockOcmInterface.EXPECT().GetTargetCluster(testClusterId).Return(trueClusterId, testClusterId, nil)
+			mockOcmInterface.EXPECT().GetManagingCluster(trueClusterId).Return(managingClusterId, managingClusterId, nil)
+			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(managingClusterId)).Return(false, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil)
+			mockOcmInterface.EXPECT().GetBackplaneURL().Return(proxyUri, nil).AnyTimes()
+			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken(proxyUri, testToken).Return(mockClient, nil)
+			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(managingClusterId)).Return(fakeResp, nil)
+
+			err := runLogin(nil, []string{testClusterId})
+
+			Expect(err).To(BeNil())
+		})
 	})
 })
