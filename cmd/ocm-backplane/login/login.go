@@ -23,6 +23,8 @@ var (
 		backplaneURL string
 	}
 )
+// Environment variable that for setting PS1
+const EnvPs1 = "KUBE_PS1_CLUSTER_FUNCTION"
 
 // LoginCmd represents the login command
 var LoginCmd = &cobra.Command{
@@ -114,7 +116,13 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 	if err != nil {
 		return err
 	}
+	// Check PS1 env is set or not
 
+	EnvPs1 , ok := os.LookupEnv(EnvPs1);
+	if !ok {
+		logger.Warn("Env KUBE_PS1_CLUSTER_FUNCTION is not detected. It is recommended to set PS1 to learn which cluster you are operating on, refer https://github.com/openshift/backplane-cli/blob/main/docs/PS1-setup.md. ", EnvPs1)
+	}
+	
 	// Add a new cluster & context & user
 	logger.Debugln("Writing OCM configuration ")
 
