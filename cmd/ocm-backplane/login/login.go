@@ -21,8 +21,10 @@ import (
 var (
 	args struct {
 		backplaneURL string
+		manager      bool
 	}
 )
+
 // Environment variable that for setting PS1
 const EnvPs1 = "KUBE_PS1_CLUSTER_FUNCTION"
 
@@ -48,6 +50,12 @@ func init() {
 		"",
 		"URL of backplane API",
 	)
+	flags.BoolVar(
+		&args.manager,
+		"manager",
+		false,
+		"Login to management cluster instead of the cluster itself.",
+	)
 }
 
 func runLogin(cmd *cobra.Command, argv []string) (err error) {
@@ -57,37 +65,49 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 		return err
 	}
 
-		// Get The cluster ID
-		if len(argv) == 1 {
-			// if explicitly one cluster key given, use it to log in.
-			clusterKey = argv[0]
-			logger.WithField("Search Key", clusterKey).Debugln("Finding target cluster")
-		} else if len(argv) == 0 {
-			// if no args given, try to log into the cluster that the user is logged into
-			clusterInfo, err := utils.GetBackplaneClusterFromConfig()
-			if err != nil {
-				return err
-			}
-			clusterKey = clusterInfo.ClusterID
+	// Get The cluster ID
+	if len(argv) == 1 {
+		// if explicitly one cluster key given, use it to log in.
+		clusterKey = argv[0]
+		logger.WithField("Search Key", clusterKey).Debugln("Finding target cluster")
+	} else if len(argv) == 0 {
+		// if no args given, try to log into the cluster that the user is logged into
+		clusterInfo, err := utils.GetBackplaneClusterFromConfig()
+		if err != nil {
+			return err
 		}
+		clusterKey = clusterInfo.ClusterID
+	}
 
-		clusterId, clusterName, err := utils.DefaultOCMInterface.GetTargetCluster(clusterKey)
+	clusterId, clusterName, err := utils.DefaultOCMInterface.GetTargetCluster(clusterKey)
+	if err != nil {
+		return err
+	}
+
+	logger.WithFields(logger.Fields{
+		"ID":   clusterId,
+		"Name": clusterName}).Infoln("Target cluster")
+
+	if args.manager {
+		logger.WithField("Cluster ID", clusterId).Debugln("Finding managing cluster")
+		clusterId, clusterName, err = utils.DefaultOCMInterface.GetManagingCluster(clusterId)
 		if err != nil {
 			return err
 		}
 
 		logger.WithFields(logger.Fields{
 			"ID":   clusterId,
-			"Name": clusterName}).Infoln("Target cluster")
+			"Name": clusterName}).Infoln("Management cluster")
+	}
 
-		// Get Backplane URL
-		if args.backplaneURL == "" {
-			args.backplaneURL, err = utils.DefaultOCMInterface.GetBackplaneURL()
-			if err != nil || args.backplaneURL == "" {
-				return fmt.Errorf("can't find backplane url: %w", err)
-			}
-			logger.Infof("Using backplane URL: %s\n", args.backplaneURL)
+	// Get Backplane URL
+	if args.backplaneURL == "" {
+		args.backplaneURL, err = utils.DefaultOCMInterface.GetBackplaneURL()
+		if err != nil || args.backplaneURL == "" {
+			return fmt.Errorf("can't find backplane url: %w", err)
 		}
+		logger.Infof("Using backplane URL: %s\n", args.backplaneURL)
+	}
 
 	// Get ocm access token
 	logger.Debugln("Finding ocm token")
@@ -118,11 +138,11 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 	}
 	// Check PS1 env is set or not
 
-	EnvPs1 , ok := os.LookupEnv(EnvPs1);
+	EnvPs1, ok := os.LookupEnv(EnvPs1)
 	if !ok {
 		logger.Warn("Env KUBE_PS1_CLUSTER_FUNCTION is not detected. It is recommended to set PS1 to learn which cluster you are operating on, refer https://github.com/openshift/backplane-cli/blob/main/docs/PS1-setup.md. ", EnvPs1)
 	}
-	
+
 	// Add a new cluster & context & user
 	logger.Debugln("Writing OCM configuration ")
 
