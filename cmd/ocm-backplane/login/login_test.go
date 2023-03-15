@@ -69,6 +69,7 @@ var _ = Describe("Login command", func() {
 			StatusCode: http.StatusOK,
 		}
 		fakeResp.Header.Add("Content-Type", "json")
+
 		// Clear config file
 		_ = clientcmd.ModifyConfig(clientcmd.NewDefaultPathOptions(), api.Config{}, true)
 		clientcmd.UseModifyConfigLock = false
@@ -285,5 +286,26 @@ var _ = Describe("Login command", func() {
 
 		})
 
+		It("Check KUBECONFIG when logging into multiple clusters.", func() {
+			args.manager = false
+			args.multiCluster = true
+			err := utils.ModifyTempKubeConfigFileName(trueClusterId)
+			Expect(err).To(BeNil())
+
+			err = utils.CreateTempKubeConfig(nil)
+			Expect(err).To(BeNil())
+
+			mockOcmInterface.EXPECT().GetTargetCluster(testClusterId).Return(trueClusterId, testClusterId, nil)
+			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterId)).Return(false, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil)
+			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken(backplaneAPIUri, testToken).Return(mockClient, nil)
+			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(trueClusterId)).Return(fakeResp, nil)
+
+			err = runLogin(nil, []string{testClusterId})
+
+			Expect(os.Getenv("KUBECONFIG")).Should(ContainSubstring(trueClusterId))
+			Expect(err).To(BeNil())
+
+		})
 	})
 })

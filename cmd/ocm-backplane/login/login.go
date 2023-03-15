@@ -26,8 +26,9 @@ const EnvPs1 = "KUBE_PS1_CLUSTER_FUNCTION"
 
 var (
 	args struct {
-		manager bool
-		service bool
+		manager      bool
+		service      bool
+		multiCluster bool
 	}
 
 	globalOpts = &globalflags.GlobalOptions{}
@@ -60,11 +61,22 @@ func init() {
 		false,
 		"Login to management cluster instead of the cluster itself.",
 	)
+
 	flags.BoolVar(
 		&args.service,
 		"service",
 		false,
-		"Login to service cluster for the given hosted cluster or mgmt cluster")
+		"Login to service cluster for the given hosted cluster or mgmt cluster.",
+	)
+
+	flags.BoolVarP(
+		&args.multiCluster,
+		"multi",
+		"m",
+		false,
+		"Enable multi cluster login.",
+	)
+
 }
 
 func runLogin(cmd *cobra.Command, argv []string) (err error) {
@@ -215,11 +227,34 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 	rc.CurrentContext = targetContextNickName
 
 	// Save the config.
-	configAccess := clientcmd.NewDefaultPathOptions()
-	err = clientcmd.ModifyConfig(configAccess, rc, true)
-	logger.Debugln("Wrote OCM configuration")
+	err = saveKubeConfig(clusterId, rc)
 
 	return err
+}
+
+// Save Kube config based on setting
+func saveKubeConfig(clusterId string, config api.Config) error {
+
+	if !args.multiCluster {
+		// Save the config to default path.
+		configAccess := clientcmd.NewDefaultPathOptions()
+		err := clientcmd.ModifyConfig(configAccess, config, true)
+
+		if err != nil {
+			return err
+		}
+	} else {
+		//save config to current session
+		path, err := utils.CreateClusterKubeConfig(clusterId, config)
+		fmt.Printf("Execute the following command to log into the cluster %s \n", clusterId)
+		fmt.Println("export KUBECONFIG=" + path)
+
+		if err != nil {
+			return err
+		}
+	}
+	logger.Debugln("Wrote OCM configuration")
+	return nil
 }
 
 // getContextNickname returns a nickname of a context

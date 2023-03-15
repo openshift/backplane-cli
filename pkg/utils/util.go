@@ -2,6 +2,7 @@ package utils
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -43,6 +44,7 @@ var (
 		},
 		CurrentContext: "default/test123/anonymous",
 	}
+	defaultKubeConfigFileName = "config"
 )
 
 // GetFreePort asks the OS for an available port to listen to.
@@ -161,7 +163,7 @@ func ParseParamsFlag(paramsFlag []string) (map[string]string, error) {
 
 func CreateTempKubeConfig(kubeConfig *api.Config) error {
 
-	f, err := os.CreateTemp("", "kubeconfig")
+	f, err := os.CreateTemp("", defaultKubeConfigFileName)
 	if err != nil {
 		return err
 	}
@@ -184,6 +186,66 @@ func CreateTempKubeConfig(kubeConfig *api.Config) error {
 	os.Setenv("KUBECONFIG", f.Name())
 	return nil
 
+}
+
+// Modify Default temp kube config file name
+func ModifyTempKubeConfigFileName(fileName string) error {
+	defaultKubeConfigFileName = fileName
+
+	return nil
+}
+
+func CreateClusterKubeConfig(clusterId string, kubeConfig api.Config) (string, error) {
+
+	homedir, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+
+	filename := homedir + "/.kube/" + clusterId
+
+	// Write kube config if file not exist
+	_, err = os.Stat(filename)
+	if errors.Is(err, os.ErrNotExist) {
+		f, err := os.Create(filename)
+		if err != nil {
+			return "", err
+		}
+		err = clientcmd.WriteToFile(kubeConfig, f.Name())
+
+		if err != nil {
+			return "", err
+		}
+		err = f.Close()
+		if err != nil {
+			return "", err
+		}
+	}
+
+	// set kube config env with temp kube config file
+
+	err = os.Setenv("KUBECONFIG", filename)
+	if err != nil {
+		return "", err
+	}
+	return filename, nil
+
+}
+
+func RemoveClusterKubeConfig(clusterId string) error {
+
+	homedir, err := os.UserHomeDir()
+	if err != nil {
+		return err
+	}
+
+	filename := homedir + "/.kube/" + clusterId
+
+	_, err = os.Stat(filename)
+	if !errors.Is(err, os.ErrNotExist) {
+		os.Remove(filename)
+	}
+	return nil
 }
 
 func RemoveTempKubeConfig() {
