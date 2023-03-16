@@ -22,6 +22,7 @@ type OCMInterface interface {
 	GetServiceCluster(clusterKey string) (clusterId, clusterName string, err error)
 	GetClusterInfoByID(clusterId string) (*cmv1.Cluster, error)
 	IsProduction() (bool, error)
+	GetPullSecret() (*string, error)
 }
 
 type DefaultOCMInterfaceImpl struct{}
@@ -198,6 +199,27 @@ func (*DefaultOCMInterfaceImpl) GetOCMAccessToken() (*string, error) {
 	accessToken = strings.TrimSuffix(accessToken, "\n")
 
 	return &accessToken, nil
+}
+
+func (*DefaultOCMInterfaceImpl) GetPullSecret() (*string, error) {
+
+// Get ocm access token
+	logger.Debugln("Finding ocm token")
+	connection, err := ocm.NewConnection().Build()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create OCM connection: %v", err)
+	}
+	defer connection.Close()
+	response, err := connection.Post().Path("/api/accounts_mgmt/v1/access_token").Send()
+	if err != nil {
+		return nil ,  fmt.Errorf("failed to get pull secret from ocm: %v", err)
+	}
+
+	logger.Debugln("Found pull secret from ocm")
+	pullSecret := response.String()
+	fmt.Println(pullSecret)
+
+	return &pullSecret, nil	
 }
 
 // GetClusterInfoByID calls the OCM to retrieve the cluster info

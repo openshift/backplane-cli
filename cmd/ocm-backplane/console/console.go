@@ -31,7 +31,7 @@ import (
 
 	"github.com/Masterminds/semver"
 	homedir "github.com/mitchellh/go-homedir"
-	"github.com/openshift-online/ocm-cli/pkg/ocm"
+	//"github.com/openshift-online/ocm-cli/pkg/ocm"
 	consolev1typedclient "github.com/openshift/client-go/console/clientset/versioned/typed/console/v1"
 	consolev1alpha1typedclient "github.com/openshift/client-go/console/clientset/versioned/typed/console/v1alpha1"
 	operatorv1typedclient "github.com/openshift/client-go/operator/clientset/versioned/typed/operator/v1"
@@ -554,19 +554,11 @@ func fetchPullSecretIfNotExist() (string, string, error) {
 		return "", "", err
 	}
 
-	logger.Debugln("Fetching pull secret from OCM")
-	ocmConnection, err := ocm.NewConnection().Build()
-	if err != nil {
-		return "", "", fmt.Errorf("failed to create OCM connection: %v", err)
-	}
-	defer ocmConnection.Close()
-
-	response, err := ocmConnection.Post().Path("/api/accounts_mgmt/v1/access_token").Send()
+    response, err := utils.DefaultOCMInterface.GetPullSecret()
 	if err != nil {
 		return "", "", fmt.Errorf("failed to get pull secret from ocm: %v", err)
 	}
-	authfileContent := response.Bytes()
-	err = os.WriteFile(configFilename, authfileContent, 0600)
+	err = os.WriteFile(configFilename, []byte(*response) , 0600)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to write authfile for pull secret: %v", err)
 	}
@@ -658,6 +650,7 @@ func isRunningHigherThan411() bool {
 		return false
 	}
 	currentCluster, err := utils.DefaultOCMInterface.GetClusterInfoByID(currentClusterInfo.ClusterID)
+	
 	if err != nil {
 		return false
 	}
