@@ -79,6 +79,21 @@ func (mr *MockOCMInterfaceMockRecorder) GetOCMAccessToken() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOCMAccessToken", reflect.TypeOf((*MockOCMInterface)(nil).GetOCMAccessToken))
 }
 
+// GetPullSecret mocks base method.
+func (m *MockOCMInterface) GetPullSecret() (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetPullSecret")
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetPullSecret indicates an expected call of GetPullSecret.
+func (mr *MockOCMInterfaceMockRecorder) GetPullSecret() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPullSecret", reflect.TypeOf((*MockOCMInterface)(nil).GetPullSecret))
+}
+
 // GetTargetCluster mocks base method.
 func (m *MockOCMInterface) GetTargetCluster(arg0 string) (string, string, error) {
 	m.ctrl.T.Helper()
@@ -88,6 +103,8 @@ func (m *MockOCMInterface) GetTargetCluster(arg0 string) (string, string, error)
 	ret2, _ := ret[2].(error)
 	return ret0, ret1, ret2
 }
+
+
 
 // GetTargetCluster indicates an expected call of GetTargetCluster.
 func (mr *MockOCMInterfaceMockRecorder) GetTargetCluster(arg0 interface{}) *gomock.Call {

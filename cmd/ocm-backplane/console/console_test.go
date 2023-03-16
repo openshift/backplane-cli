@@ -1,8 +1,6 @@
 package console
 
-// NOTE : This test will be fixed by OSD-15471
-
-/*import (
+import (
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -149,17 +147,20 @@ var _ = Describe("console command", func() {
 			checkCapturedCommands()
 		})
 	})
-*/
-// This test verifies that the console container is still started the same way after issuing a
-// 'oc project <namespace id>' command.
-//
-// In particular this test checks that the name of container started by the 'ocm backplane console'
-// command is based on the cluster id and not on the supposed cluster name extracted from kube config.
-// Issuing a 'oc project <namespace id>' will create a new context with a new cluster in kube config
-// - Which does not contain any bit of information concerning the OSD cluster name.
-// - Which contains ':' char which is an invalid char in a container name.
 
-/*
+	// This test verifies that the console container is still started the same way after issuing a
+	// 'oc project <namespace id>' command.
+	//
+	// In particular this test checks that the name of container started by the 'ocm backplane console'
+	// command is based on the cluster id and not on the supposed cluster name extracted from kube config.
+	//
+	// Indeed 'oc' client is actually connected to the hive cluster which proxy commands to the targeted
+	// OSD cluster.
+	// Issuing a 'oc project <namespace id>' will create a new context with a new cluster in kube config...
+	// but the name of the newly created cluster config will be based on the hive cluster URL:
+	// - Which does not contain any bit of information concerning the OSD cluster name.
+	// - Which contains ':' char which is an invalid char in a container name.
+
 	Context("when namespace is no more the default one", func() {
 		It("should start console server", func() {
 			testKubeCfg.CurrentContext = "custom-context"
@@ -174,19 +175,19 @@ var _ = Describe("console command", func() {
 			checkCapturedCommands()
 		})
 	})
-*/
-/*	Context("when kube config is invalid", func() {
-	It("should start not console server", func() {
-		testKubeCfg.CurrentContext = "undefined-context"
-		setupConfig()
 
-		mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
+	Context("when kube config is invalid", func() {
+		It("should start not console server", func() {
+			testKubeCfg.CurrentContext = "undefined-context"
+			setupConfig()
 
-		err := ConsoleCmd.Execute()
+			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
 
-		Expect(err).ToNot(BeNil())
-		Expect(err.Error()).To(Equal("invalid configuration: [context was not found for specified context: undefined-context, cluster has no server defined]"))
-		Expect(len(capturedCommands)).To(Equal(0))
+			err := ConsoleCmd.Execute()
+
+			Expect(err).ToNot(BeNil())
+			Expect(err.Error()).To(Equal("invalid configuration: [context was not found for specified context: undefined-context, cluster has no server defined]"))
+			Expect(len(capturedCommands)).To(Equal(0))
+		})
 	})
 })
-})*/
