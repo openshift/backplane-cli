@@ -4,28 +4,32 @@
 [![codecov](https://codecov.io/gh/openshift/backplane-cli/branch/main/graph/badge.svg)](https://codecov.io/gh/openshift/backplane-cli)
 [![License](https://img.shields.io/:license-apache-blue.svg)](http://www.apache.org/licenses/LICENSE-2.0.html)
 
-backplane-cli is a CLI tool to interact with backplane api.
+backplane-cli is a CLI tool to interact with [backplane api](https://github.com/openshift/backplane-api).
+
+The onboarding documentation can be found on [The Source Wiki](https://source.redhat.com/groups/public/openshiftplatformsre/wiki/backplane_user_documentation).
 
 ## Install
 
 ### Option 1: Use `go install`
 
-You need to have `go` installed, if you want to use this method,
-the minimal version required is `go 1.18`. You can check this with `go version`.
+For using this method, you need to have `go` installed.
+
+The minimal version required is `go 1.18`. You can check this with `go version`.
 
 Then run `go install github.com/openshift/backplane-cli/cmd/ocm-backplane@{TAG_VERSION}`
 where `TAG_VERSION` is the version you wish to install.
 
 Example: `go install github.com/openshift/backplane-cli@0.0.8`
 
-`go install` will fetch, build binary and install them to your $GOBIN if set, or $GOPATH/bin,
-you should and move this binary onto your $PATH if desired.
+`go install` will fetch, build the binary and install it to your $GOBIN (if set) or $GOPATH/bin,
 
 ### Option 2: Download binary
 
 Download the latest binary file from the [release page](https://github.com/openshift/backplane-cli/releases).
 
-For Linux, download `backplane-cli_<version>_Linux_x86_64`, rename it to `ocm-backplane` and put it to $PATH. For example:
+For Linux, download `backplane-cli_<version>_Linux_x86_64`, rename it to `ocm-backplane` and put it to $PATH. 
+
+For example:
 
 ```
 $ sudo cp ocm-backplane /usr/bin/ocm-backplane
@@ -43,7 +47,7 @@ To verify, you should see version output from backplane sub-command, like:
 
 ```
 $ ocm backplane version
-0.0.29
+0.0.35
 ```
 
 ### Option 3: Build from source
@@ -62,25 +66,25 @@ $ git clone git@github.com/openshift/backplane-cli.git
 $ make install
 ```
 
-This command will build the backplane-cli binary, named `ocm-backplane`. This binary will be placed in $PATH. As the binary has prefix `ocm-`, it becomes a plugin of `ocm`, and can be invoked by `ocm backplane`.
+This command will build the backplane-cli binary, named `ocm-backplane`. This binary will be placed in $PATH. 
+As the binary has prefix `ocm-`, it becomes a plugin of `ocm`, and can be invoked by `ocm backplane`.
 
-For more information about ocm plugin, please refer https://github.com/openshift-online/ocm-cli#extend-ocm-with-plugins
+For more information about ocm plugins, please refer https://github.com/openshift-online/ocm-cli#extend-ocm-with-plugins
 
 ### Setup bash/zsh prompt
 
-To setup the PS1(prompt) for bash/zsh, please follow [these instructions](./docs/PS1-setup.md). Note that the "build with ocm-container" already has PS1 built-in.
+To setup the PS1(prompt) for bash/zsh, please follow [these instructions](https://github.com/openshift/backplane-cli/blob/main/docs/PS1-setup.md). Note that the "build with ocm-container" already has PS1 built-in.
 
 ## Usage
 
 | Command                                                                     | Description                                                                              |
 | --------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
 | `ocm backplane login <CLUSTERID/EXTERNAL_ID/CLUSTER_NAME>`                  | Login to the target cluster                                                              |
-| `ocm backplane logout <CLUSTERID/EXTERNAL_ID/CLUSTER_NAME>`                 | Logout of the target cluster                                                             |
+| `ocm backplane logout <CLUSTERID/EXTERNAL_ID/CLUSTER_NAME>`                 | Logout from the target cluster                                                             |
 | `ocm backplane console [flags]`                                             | Launch the OpenShift console of the current logged in cluster                            |
 | `ocm backplane cloud console`                                               | Launch the current logged in cluster's cloud provider console                            |
 | `ocm backplane cloud credentials [flags]`                                   | Retrieve a set of temporary cloud credentials for the cluster's cloud provider           |
 | `ocm-backplane monitoring <prometheus/alertmanager/thanos/grafana> [flags]` | Launch the specified monitoring UI (Deprecated following v4.11)                          |
-| `ocm-backplane project <project_name>`                                      | Manipulate the Kubeconfig and set the namespace of the current context to `project_name` |
 | `ocm-backplane script describe <script> [flags]`                            | Describe the given backplane script                                                      |
 | `ocm-backplane script list [flags]`                                         | List available backplane scripts                                                         |
 | `ocm-backplane status`                                                      | Print essential cluster info                                                             |
@@ -96,7 +100,9 @@ To setup the PS1(prompt) for bash/zsh, please follow [these instructions](./docs
 | `ocm-backplane upgrade`                                                     | Upgrade backplane-cli to the latest version                                              |
 | `ocm-backplane version`                                                     | Display the installed backplane-cli version                                              |
 
-### Example
+## Login
+
+#### Example
 
 In this example, we will login to a cluster with id `123456abcdef` in production environment, and we have the OCM client environment setup [like this](https://github.com/openshift-online/ocm-cli#log-in).
 - Run backplane login in another terminal.
@@ -117,9 +123,9 @@ In this example, we will login to a cluster with id `123456abcdef` in production
 - Run the below command and it will launch the console of the current logged in cluster.
   ```
   $ ocm backplane console
-  --> Console will be available at http://127.0.0.1:9000
+  --> Console will be available at http://127.0.x.x:xxxx
   ```
-- Follow the above link `http://127.0.0.1:9000` to access console.
+- Follow the above link `http://127.0.x.x:xxxx` to access console.
 
   #### Open in browser
 
@@ -145,6 +151,34 @@ In this example, we will login to a cluster with id `123456abcdef` in production
   ```
   > Note: Load the console plugin from backplane-cli is not sufficient to access the console plugin,
   backplane-api to expose the console plugin service explicitly is needed.
+
+## Cloud Console
+
+- Login to the target cluster via backplane as the above.
+- Run the below command and it will launch the cloud console of the current logged in cluster.
+  ```
+  $ ocm backplane cloud console
+  Console Link:
+  Link: https://xxxxx
+  ```
+- Follow the above link to access the console.
+
+  #### Open in browser
+
+  You can directly open the console in the browser by adding flag `-b` or setting the environment variable `BACKPLANE_DEFAULT_OPEN_BROWSER=true`.
+  
+  When running this command, it will open the console in the browser automatically.
+
+  ```
+  $ ocm backplane cloud console -b
+  ```
+
+  Or set the environment variable
+
+  ```
+  $ export BACKPLANE_DEFAULT_OPEN_BROWSER=true
+  $ ocm backplane cloud console
+  ```
 
 ## Debugging issues
 
