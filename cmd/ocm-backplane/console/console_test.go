@@ -14,7 +14,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	testclient "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
+	
 	"k8s.io/client-go/tools/clientcmd/api"
 
 	"os/exec"
@@ -109,8 +109,7 @@ var _ = Describe("console command", func() {
 	})
 
 	setupConfig := func() {
-		pathOptions := clientcmd.NewDefaultPathOptions()
-		err := clientcmd.ModifyConfig(pathOptions, testKubeCfg, true)
+	    err := utils.CreateTempKubeConfig(nil)
 		Expect(err).To(BeNil())
 	}
 

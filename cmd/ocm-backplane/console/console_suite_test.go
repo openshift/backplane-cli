@@ -1,6 +1,6 @@
 package console
 
-// NOTE : This test will be fixed by OSD-15471
+
 
 import (
 	"testing"

@@ -115,7 +115,7 @@ func (*DefaultOCMInterfaceImpl) GetPullSecret() (string, error) {
 		return "",  fmt.Errorf("failed to get pull secret from ocm: %v", err)
 	}
 
-	logger.Debugln("Found OCM access token")
+	logger.Debugln("Found pull secret from ocm")
 	pullSecret := response.String()
 
 	return pullSecret, nil	
