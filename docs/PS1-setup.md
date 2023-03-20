@@ -27,6 +27,14 @@ PS1='[\u@\h \W $(kube_ps1)]\$ '
 
 ## Zsh
 
+kube-ps1 is included as a plugin in the oh-my-zsh project. To enable it, edit your `~/.zshrc` and add the plugin:
+
+```
+plugins=(
+  kube-ps1
+)
+```
+
 Save the [kube-ps1](https://raw.githubusercontent.com/jonmosco/kube-ps1/master/kube-ps1.sh) script to local, and append the below to `~/.zshrc`.
 ~~~
 source /path/to/kube-ps1.sh ##<---- replace this to your location
