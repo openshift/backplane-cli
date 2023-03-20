@@ -84,6 +84,7 @@ To setup the PS1(prompt) for bash/zsh, please follow [these instructions](https:
 | `ocm backplane console [flags]`                                             | Launch the OpenShift console of the current logged in cluster                            |
 | `ocm backplane cloud console`                                               | Launch the current logged in cluster's cloud provider console                            |
 | `ocm backplane cloud credentials [flags]`                                   | Retrieve a set of temporary cloud credentials for the cluster's cloud provider           |
+| `ocm backplane elevate <reason> -- <command>`                               | Elevate privileges to backplane-cluster-admin and add a reason to the api request        |
 | `ocm-backplane monitoring <prometheus/alertmanager/thanos/grafana> [flags]` | Launch the specified monitoring UI (Deprecated following v4.11)                          |
 | `ocm-backplane script describe <script> [flags]`                            | Describe the given backplane script                                                      |
 | `ocm-backplane script list [flags]`                                         | List available backplane scripts                                                         |
