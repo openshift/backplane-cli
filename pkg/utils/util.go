@@ -21,7 +21,7 @@ import (
 
 const (
 	ClustersPageSize             = 50
-	BackplaneApiUrlRegexp string = `(?mi)^https:\/\/api-backplane\.apps\.(.*)`
+	BackplaneApiUrlRegexp string = `(?mi)^https:\/\/api\.(.*).backplane\.devshift\.net(.*)`
 	ClusterIDRegexp       string = "/?backplane/cluster/([a-zA-Z0-9]+)/?"
 )
 
