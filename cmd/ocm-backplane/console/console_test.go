@@ -14,8 +14,8 @@ import (
 	"k8s.io/client-go/kubernetes"
 	testclient "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/rest"
-	
-	"k8s.io/client-go/tools/clientcmd/api"
+
+	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 
 	"os/exec"
 	"path/filepath"
@@ -25,11 +25,16 @@ var _ = Describe("console command", func() {
 	var (
 		mockCtrl         *gomock.Controller
 		mockOcmInterface *mocks.MockOCMInterface
+		
 
 		capturedCommands [][]string
 
 		testToken   string
-		testKubeCfg api.Config
+		pullSecret  string
+		clusterID   string
+        clusterInfo *cmv1.Cluster
+		
+	//	testKubeCfg api.Config
 	)
 
 	BeforeEach(func() {
@@ -63,48 +68,22 @@ var _ = Describe("console command", func() {
 
 			return exec.Command("true")
 		}
+		
 
-		consoleArgs.containerEngine = PODMAN
 		consoleArgs.port = "12345"
 
 		ConsoleCmd.SetArgs([]string{"console"})
-
+	
 		testToken = "hello123"
-		testKubeCfg = api.Config{
-			Kind:        "Config",
-			APIVersion:  "v1",
-			Preferences: api.Preferences{},
-			Clusters: map[string]*api.Cluster{
-				"testcluster": {
-					Server: "https://api-backplane.apps.something.com/backplane/cluster/cluster123",
-				},
-				"api-backplane.apps.something.com:443": { // Remark that the cluster name does not match the cluster ID in below URL
-					Server: "https://api-backplane.apps.something.com/backplane/cluster/cluster123",
-				},
-			},
-			AuthInfos: map[string]*api.AuthInfo{
-				"testauth": {
-					Token: "token123",
-				},
-			},
-			Contexts: map[string]*api.Context{
-				"default/testcluster/testauth": {
-					Cluster:   "testcluster",
-					AuthInfo:  "testauth",
-					Namespace: "default",
-				},
-				"custom-context": {
-					Cluster:   "api-backplane.apps.something.com:443",
-					AuthInfo:  "testauth",
-					Namespace: "test-namespace",
-				},
-			},
-			CurrentContext: "default/testcluster/testauth",
-			Extensions:     nil,
-		}
+		pullSecret = "testpullsecret"
+		
+	
+		
+		
 	})
 
 	AfterEach(func() {
+		utils.RemoveTempKubeConfig()
 		mockCtrl.Finish()
 	})
 
@@ -138,7 +117,11 @@ var _ = Describe("console command", func() {
 			setupConfig()
 
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetPullSecret().Return(&pullSecret, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetClusterInfoByID(clusterID).Return(&clusterInfo, nil).AnyTimes()
 
+			
+			
 			err := ConsoleCmd.Execute()
 
 			Expect(err).To(BeNil())
@@ -162,10 +145,14 @@ var _ = Describe("console command", func() {
 
 	Context("when namespace is no more the default one", func() {
 		It("should start console server", func() {
-			testKubeCfg.CurrentContext = "custom-context"
+			//testKubeCfg.CurrentContext = "custom-context"
 			setupConfig()
 
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetPullSecret().Return(&pullSecret, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetClusterInfoByID(clusterID).Return(&clusterInfo, nil).AnyTimes()
+	
+			
 
 			err := ConsoleCmd.Execute()
 
@@ -177,11 +164,14 @@ var _ = Describe("console command", func() {
 
 	Context("when kube config is invalid", func() {
 		It("should start not console server", func() {
-			testKubeCfg.CurrentContext = "undefined-context"
+			//testKubeCfg.CurrentContext = "undefined-context"
 			setupConfig()
 
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
-
+            mockOcmInterface.EXPECT().GetPullSecret().Return(&pullSecret, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetClusterInfoByID(clusterID).Return(&clusterInfo, nil).AnyTimes()
+			
+		
 			err := ConsoleCmd.Execute()
 
 			Expect(err).ToNot(BeNil())

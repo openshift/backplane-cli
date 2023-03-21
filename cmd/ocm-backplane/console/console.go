@@ -439,11 +439,11 @@ func fetchPullSecretIfNotExist() (string, string, error) {
 		return "", "", err
 	}
 
-	response, err := utils.DefaultOCMInterface.GetPullSecret()
+    response, err := utils.DefaultOCMInterface.GetPullSecret()
 	if err != nil {
 		return "", "", fmt.Errorf("failed to get pull secret from ocm: %v", err)
 	}
-	err = os.WriteFile(configFilename, []byte(response), 0600)
+	err = os.WriteFile(configFilename, []byte(*response) , 0600)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to write authfile for pull secret: %v", err)
 	}
