@@ -81,9 +81,14 @@ func newListScriptCmd() *cobra.Command {
 				return fmt.Errorf("unable to parse response body from backplane: Status Code: %d", resp.StatusCode)
 			}
 
+			scriptList := *(*[]bpclient.Script)(listResp.JSON200) 
+			if (len(scriptList) == 0) {
+				return fmt.Errorf("no scripts found")
+			}
+
 			headings := []string{"NAME", "DESCRIPTION"}
 			rows := make([][]string, 0)
-			for _, s := range *(*[]bpclient.Script)(listResp.JSON200) {
+			for _, s := range scriptList {
 				rows = append(rows, []string{*s.CanonicalName, *s.Description})
 			}
 
