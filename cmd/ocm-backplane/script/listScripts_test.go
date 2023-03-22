@@ -153,5 +153,20 @@ var _ = Describe("list script command", func() {
 
 			Expect(err).ToNot(BeNil())
 		})
+
+		It("should handle an empty list of scripts without errors", func() {
+			mockOcmInterface.EXPECT().GetTargetCluster(testClusterId).Return(trueClusterId, testClusterId, nil)
+			mockOcmInterface.EXPECT().GetBackplaneURL().Return(proxyUri, nil).AnyTimes()
+			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterId)).Return(false, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
+			mockClientUtil.EXPECT().MakeRawBackplaneAPIClient(gomock.Any()).Return(mockClient, nil)
+			fakeResp.Body = MakeIoReader("[]")
+			mockClient.EXPECT().GetScripts(gomock.Any(), &bpclient.GetScriptsParams{}).Return(fakeResp, nil)
+
+			sut.SetArgs([]string{"list", testJobId, "--cluster-id", testClusterId})
+			err := sut.Execute()
+
+			Expect(err).ToNot(BeNil())
+		})
 	})
 })
