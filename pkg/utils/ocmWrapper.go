@@ -8,6 +8,7 @@ import (
 
 	"github.com/openshift-online/ocm-cli/pkg/ocm"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	"github.com/openshift/backplane-cli/pkg/cli/config"
 	"github.com/openshift/backplane-cli/pkg/info"
 	logger "github.com/sirupsen/logrus"
 
@@ -25,10 +26,6 @@ type OCMInterface interface {
 	GetClusterInfoByID(clusterId string) (*cmv1.Cluster, error)
 	GetBackplaneURL() (string, error)
 	IsProduction() (bool, error)
-}
-
-type BackplaneConfiguration struct {
-	URL string
 }
 
 type DefaultOCMInterfaceImpl struct{}
@@ -199,7 +196,7 @@ func (*DefaultOCMInterfaceImpl) GetBackplaneURL() (string, error) {
 		}
 	} else {
 		// get backplane URL for user home folder .backplane.json file
-		filePath := getBackplaneConfigFile()
+		filePath := config.GetBackplaneConfigFile()
 		if _, err := os.Stat(filePath); err == nil {
 			file, err := os.Open(filePath)
 
@@ -209,7 +206,7 @@ func (*DefaultOCMInterfaceImpl) GetBackplaneURL() (string, error) {
 
 			defer file.Close()
 			decoder := json.NewDecoder(file)
-			configuration := BackplaneConfiguration{}
+			configuration := config.BackplaneConfiguration{}
 			err = decoder.Decode(&configuration)
 
 			if err != nil {
@@ -220,15 +217,6 @@ func (*DefaultOCMInterfaceImpl) GetBackplaneURL() (string, error) {
 
 	}
 	return "", nil
-}
-
-func getBackplaneConfigFile() string {
-	path, bpConfigFound := os.LookupEnv(info.BACKPLANE_CONFIG_PATH_ENV_NAME)
-	if bpConfigFound {
-		return path
-	}
-
-	return info.BACKPLANE_CONFIG_DEFAULT_PATH
 }
 
 func getClusters(client *cmv1.ClustersClient, clusterKey string) ([]*cmv1.Cluster, error) {
