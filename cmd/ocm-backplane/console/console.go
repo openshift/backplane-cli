@@ -535,6 +535,8 @@ func isRunningHigherThan411() bool {
 		return false
 	}
 	currentCluster, err := utils.DefaultOCMInterface.GetClusterInfoByID(currentClusterInfo.ClusterID)
+	fmt.Println("Reetika")
+	fmt.Println("clusterID:",currentClusterInfo.ClusterID)
 	if err != nil {
 		return false
 	}
