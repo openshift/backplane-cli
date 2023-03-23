@@ -14,8 +14,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	testclient "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd/api"
-//	"k8s.io/client-go/tools/clientcmd"
+
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 
 	"os/exec"
@@ -35,7 +34,7 @@ var _ = Describe("console command", func() {
 		clusterID   string
         clusterInfo *cmv1.Cluster
 		
-		testKubeCfg *api.Config
+
 	)
 
 	BeforeEach(func() {
@@ -77,40 +76,9 @@ var _ = Describe("console command", func() {
 	
 		testToken = "hello123"
 		pullSecret = "testpullsecret"
-		clusterID = "cluster123"
+		clusterID = "configcluster"
 		
-		testKubeCfg = &api.Config{
-			Kind:        "Config",
-			APIVersion:  "v1",
-			Preferences: api.Preferences{},
-			Clusters: map[string]*api.Cluster{
-				"testcluster": {
-					Server: "https://api-backplane.apps.something.com/backplane/cluster/cluster123",
-				},
-				"api-backplane.apps.something.com:443": { // Remark that the cluster name does not match the cluster ID in below URL
-					Server: "https://api-backplane.apps.something.com/backplane/cluster/cluster123",
-				},
-			},
-			AuthInfos: map[string]*api.AuthInfo{
-				"testauth": {
-					Token: "token123",
-				},
-			},
-			Contexts: map[string]*api.Context{
-				"default/testcluster/testauth": {
-					Cluster:   "testcluster",
-					AuthInfo:  "testauth",
-					Namespace: "default",
-				},
-				"custom-context": {
-					Cluster:   "api-backplane.apps.something.com:443",
-					AuthInfo:  "testauth",
-					Namespace: "test-namespace",
-				},
-			},
-			CurrentContext: "default/testcluster/testauth",
-			Extensions:     nil,
-		}
+		
 		
 	})
 
@@ -120,7 +88,7 @@ var _ = Describe("console command", func() {
 	})
 
 	setupConfig := func() {
-        err := utils.CreateTempKubeConfig(testKubeCfg)
+        err := utils.CreateTempKubeConfig(nil)
         Expect(err).To(BeNil())
     }
 
@@ -142,6 +110,11 @@ var _ = Describe("console command", func() {
 			"-k8s-mode-off-cluster-alertmanager", "https://api-backplane.apps.something.com/backplane/alertmanager/cluster123", "-k8s-mode-off-cluster-thanos",
 			"https://api-backplane.apps.something.com/backplane/thanos/cluster123", "-k8s-auth-bearer-token", testToken, "-listen", "http://0.0.0.0:12345",
 		}))
+		clusterInfo, _ = cmv1.NewCluster().
+			CloudProvider(cmv1.NewCloudProvider().ID("aws")).
+			Product(cmv1.NewProduct().ID("dedicated")).
+			AdditionalTrustBundle("REDACTED").
+	        Proxy(cmv1.NewProxy().HTTPProxy("http://my.proxy:80").HTTPSProxy("https://my.proxy:443")).Build()
 	}
 
 	Context("when backplane login has just been done", func() {
@@ -177,7 +150,7 @@ var _ = Describe("console command", func() {
 
 	Context("when namespace is no more the default one", func() {
 		It("should start console server", func() {
-			testKubeCfg.CurrentContext = "custom-context"
+
 			setupConfig()
 
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
@@ -196,7 +169,7 @@ var _ = Describe("console command", func() {
 
 	Context("when kube config is invalid", func() {
 		It("should start not console server", func() {
-			testKubeCfg.CurrentContext = "undefined-context"
+			
 			setupConfig()
 
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
