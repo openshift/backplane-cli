@@ -23,6 +23,7 @@ import (
 	"github.com/spf13/cobra"
 
 	bpclient "github.com/openshift/backplane-api/pkg/client"
+	"github.com/openshift/backplane-cli/pkg/cli/config"
 	"github.com/openshift/backplane-cli/pkg/utils"
 )
 
@@ -51,11 +52,21 @@ func newDescribeScriptCmd() *cobra.Command {
 			// ======== Initialize backplaneURL ========
 			backplaneHost := urlFlag
 			if backplaneHost == "" {
-				bpCluster, err := utils.GetBackplaneCluster(clusterKey, urlFlag)
+				bpConfig, err := config.GetBackplaneConfiguration()
 				if err != nil {
 					return err
 				}
-				backplaneHost = bpCluster.BackplaneHost
+
+				backplaneHost = bpConfig.URL
+
+				if backplaneHost == "" {
+					bpCluster, err := utils.GetBackplaneCluster(clusterKey, urlFlag)
+					if err != nil {
+						return err
+					}
+
+					backplaneHost = bpCluster.BackplaneHost
+				}
 			}
 
 			client, err := utils.DefaultClientUtils.MakeRawBackplaneAPIClient(backplaneHost)

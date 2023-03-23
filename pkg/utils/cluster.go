@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"regexp"
 
+	"github.com/openshift/backplane-cli/pkg/cli/config"
 	logger "github.com/sirupsen/logrus"
 	"k8s.io/client-go/tools/clientcmd"
 )
@@ -63,7 +64,9 @@ func GetBackplaneClusterFromClusterKey(clusterKey string) (BackplaneCluster, err
 		return BackplaneCluster{}, err
 	}
 
-	backplaneURL, err := DefaultOCMInterface.GetBackplaneURL()
+	bpConfig, err := config.GetBackplaneConfiguration()
+
+	backplaneURL := bpConfig.URL
 
 	if err != nil {
 		return BackplaneCluster{}, err

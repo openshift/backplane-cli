@@ -9,8 +9,8 @@ import (
 )
 
 type BackplaneConfiguration struct {
-	URL       string
-	Proxy_URL string
+	URL      string
+	ProxyURL string
 }
 
 func GetBackplaneConfigFile() string {
@@ -34,7 +34,7 @@ func getConfiDefaultPath(fileName string) string {
 }
 
 // Get Backplane ProxyUrl from config
-func GetBackplaneProxyUrl() (proxyUrl string, err error) {
+func GetBackplaneConfiguration() (bpConfig BackplaneConfiguration, err error) {
 
 	// Check proxy url from the config file
 	filePath := GetBackplaneConfigFile()
@@ -42,7 +42,7 @@ func GetBackplaneProxyUrl() (proxyUrl string, err error) {
 		file, err := os.Open(filePath)
 
 		if err != nil {
-			return proxyUrl, fmt.Errorf("failed to read file %s : %v", filePath, err)
+			return bpConfig, fmt.Errorf("failed to read file %s : %v", filePath, err)
 		}
 
 		defer file.Close()
@@ -51,17 +51,30 @@ func GetBackplaneProxyUrl() (proxyUrl string, err error) {
 		err = decoder.Decode(&bpConfig)
 
 		if err != nil {
-			return proxyUrl, fmt.Errorf("failed to decode file %s : %v", filePath, err)
+			return bpConfig, fmt.Errorf("failed to decode file %s : %v", filePath, err)
 		}
-		proxyUrl = bpConfig.Proxy_URL
+
+		return bpConfig, nil
 
 	} else {
 		// check proxy url from user perssitance HTTPS_PROXY env var
 		proxyUrl, hasEnvProxyURL := os.LookupEnv(info.BACKPLANE_PROXY_ENV_NAME)
-		if hasEnvProxyURL {
-			return proxyUrl, nil
+
+		// get backplane URL from BACKPLANE_URL env variables
+		bpURL, hasURL := os.LookupEnv(info.BACKPLANE_URL_ENV_NAME)
+
+		if hasURL {
+			if bpURL == "" {
+				return bpConfig, fmt.Errorf("%s env variable is empty", info.BACKPLANE_URL_ENV_NAME)
+			}
+			bpConfig.URL = bpURL
+			if hasEnvProxyURL {
+				bpConfig.ProxyURL = proxyUrl
+			}
+
+			return bpConfig, nil
 		}
 	}
 
-	return proxyUrl, nil
+	return bpConfig, nil
 }

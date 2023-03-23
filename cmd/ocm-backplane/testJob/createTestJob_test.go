@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/backplane-cli/pkg/client/mocks"
+	"github.com/openshift/backplane-cli/pkg/info"
 	"github.com/openshift/backplane-cli/pkg/utils"
 	mocks2 "github.com/openshift/backplane-cli/pkg/utils/mocks"
 )
@@ -104,9 +105,11 @@ var _ = Describe("testJob create command", func() {
 			StatusCode: http.StatusOK,
 		}
 		fakeResp.Header.Add("Content-Type", "json")
+		os.Setenv(info.BACKPLANE_URL_ENV_NAME, proxyUri)
 	})
 
 	AfterEach(func() {
+		os.Setenv(info.BACKPLANE_URL_ENV_NAME, "")
 		_ = os.RemoveAll(tempDir)
 		// Clear kube config file
 		utils.RemoveTempKubeConfig()
@@ -118,8 +121,6 @@ var _ = Describe("testJob create command", func() {
 			mockOcmInterface.EXPECT().IsProduction().Return(false, nil)
 			// It should query for the internal cluster id first
 			mockOcmInterface.EXPECT().GetTargetCluster(testClusterId).Return(trueClusterId, testClusterId, nil)
-			// Then it will look for the backplane shard
-			mockOcmInterface.EXPECT().GetBackplaneURL().Return(proxyUri, nil).AnyTimes()
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterId)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
 			mockClientUtil.EXPECT().MakeRawBackplaneAPIClient(proxyUri).Return(mockClient, nil)
@@ -135,8 +136,6 @@ var _ = Describe("testJob create command", func() {
 			mockOcmInterface.EXPECT().IsProduction().Return(false, nil)
 			// It should query for the internal cluster id first
 			mockOcmInterface.EXPECT().GetTargetCluster(testClusterId).Return(trueClusterId, testClusterId, nil)
-			// Then it will look for the backplane shard
-			mockOcmInterface.EXPECT().GetBackplaneURL().Return(proxyUri, nil).AnyTimes()
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterId)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
 			mockClientUtil.EXPECT().MakeRawBackplaneAPIClient("https://newbackplane.url").Return(mockClient, nil)
@@ -149,10 +148,10 @@ var _ = Describe("testJob create command", func() {
 		})
 
 		It("Should able use the current logged in cluster if non specified and retrieve from config file", func() {
+			os.Setenv(info.BACKPLANE_URL_ENV_NAME, "https://api-backplane.apps.something.com")
 			mockOcmInterface.EXPECT().IsProduction().Return(false, nil)
 			err := utils.CreateTempKubeConfig(nil)
 			Expect(err).To(BeNil())
-			mockOcmInterface.EXPECT().GetBackplaneURL().Return("https://api-backplane.apps.something.com", nil).AnyTimes()
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq("configcluster")).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
 			mockClientUtil.EXPECT().MakeRawBackplaneAPIClient("https://api-backplane.apps.something.com").Return(mockClient, nil)
@@ -167,7 +166,6 @@ var _ = Describe("testJob create command", func() {
 		It("should fail when backplane did not return a 200", func() {
 			mockOcmInterface.EXPECT().IsProduction().Return(false, nil)
 			mockOcmInterface.EXPECT().GetTargetCluster(testClusterId).Return(trueClusterId, testClusterId, nil)
-			mockOcmInterface.EXPECT().GetBackplaneURL().Return(proxyUri, nil).AnyTimes()
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterId)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
 			mockClientUtil.EXPECT().MakeRawBackplaneAPIClient(proxyUri).Return(mockClient, nil)
@@ -182,7 +180,6 @@ var _ = Describe("testJob create command", func() {
 		It("should fail when backplane returns a non parsable response", func() {
 			mockOcmInterface.EXPECT().IsProduction().Return(false, nil)
 			mockOcmInterface.EXPECT().GetTargetCluster(testClusterId).Return(trueClusterId, testClusterId, nil)
-			mockOcmInterface.EXPECT().GetBackplaneURL().Return(proxyUri, nil).AnyTimes()
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterId)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
 			mockClientUtil.EXPECT().MakeRawBackplaneAPIClient(proxyUri).Return(mockClient, nil)
@@ -198,7 +195,6 @@ var _ = Describe("testJob create command", func() {
 		It("should fail when metadata is not found/invalid", func() {
 			mockOcmInterface.EXPECT().IsProduction().Return(false, nil)
 			mockOcmInterface.EXPECT().GetTargetCluster(testClusterId).Return(trueClusterId, testClusterId, nil)
-			mockOcmInterface.EXPECT().GetBackplaneURL().Return(proxyUri, nil).AnyTimes()
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterId)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
 			mockClientUtil.EXPECT().MakeRawBackplaneAPIClient(proxyUri).Return(mockClient, nil)
@@ -214,7 +210,6 @@ var _ = Describe("testJob create command", func() {
 		It("should fail when script file is not found/invalid", func() {
 			mockOcmInterface.EXPECT().IsProduction().Return(false, nil)
 			mockOcmInterface.EXPECT().GetTargetCluster(testClusterId).Return(trueClusterId, testClusterId, nil)
-			mockOcmInterface.EXPECT().GetBackplaneURL().Return(proxyUri, nil).AnyTimes()
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterId)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
 			mockClientUtil.EXPECT().MakeRawBackplaneAPIClient(proxyUri).Return(mockClient, nil)

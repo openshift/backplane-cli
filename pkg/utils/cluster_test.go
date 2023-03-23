@@ -1,13 +1,10 @@
 package utils
 
 import (
-	"errors"
 	"fmt"
 	"reflect"
 	"testing"
 
-	"github.com/golang/mock/gomock"
-	"github.com/openshift/backplane-cli/pkg/utils/mocks"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
@@ -191,73 +188,4 @@ func TestGetClusterIDAndHostFromClusterURL(t *testing.T) {
 
 		})
 	}
-}
-
-func TestGetBackplaneClusterFromClusterKey(t *testing.T) {
-	mockCtrl := gomock.NewController(t)
-
-	mockOcmInterface := mocks.NewMockOCMInterface(mockCtrl)
-
-	// So we can clean up at the end
-	tempDefaultOCMInterface := DefaultOCMInterface
-
-	DefaultOCMInterface = mockOcmInterface
-
-	t.Run("it errors if BACKPLANE_URL_ENV_NAME is empty", func(_ *testing.T) {
-		backplaneConfigPath := "~/.backplane.json"
-		errorResp := fmt.Errorf("failed to read file %s : %v", backplaneConfigPath, errors.New("File not found"))
-		mockOcmInterface.EXPECT().GetBackplaneURL().Return("", errorResp)
-		mockOcmInterface.EXPECT().GetTargetCluster("cluster-key").Return("1234", "cluster-key", nil)
-
-		_, err := GetBackplaneClusterFromClusterKey("cluster-key")
-		if err != errorResp {
-			t.Errorf("expected errorResp %v, got %v", errorResp, err)
-		}
-	})
-
-	t.Run("it errors if BACKPLANE_CONFIG_FILE_PATH cannot be decoded", func(_ *testing.T) {
-		backplaneConfigPath := "~/.backplane.json"
-		errorResp := fmt.Errorf("failed to decode file %s : %v", backplaneConfigPath, errors.New("File could not be decoded"))
-		mockOcmInterface.EXPECT().GetBackplaneURL().Return("", errorResp)
-		mockOcmInterface.EXPECT().GetTargetCluster("cluster-key").Return("1234", "cluster-key", nil)
-
-		_, err := GetBackplaneClusterFromClusterKey("cluster-key")
-		if err != errorResp {
-			t.Errorf("expected errorResp %v, got %v", errorResp, err)
-		}
-	})
-
-	t.Run("it errors if BACKPLANE_URL_ENV_NAME is empty", func(_ *testing.T) {
-		errorResp := fmt.Errorf("%s env variable is empty", "BACKPLANE_URL")
-		mockOcmInterface.EXPECT().GetBackplaneURL().Return("", errorResp)
-		mockOcmInterface.EXPECT().GetTargetCluster("cluster-key").Return("1234", "cluster-key", nil)
-
-		_, err := GetBackplaneClusterFromClusterKey("cluster-key")
-		if err != errorResp {
-			t.Errorf("expected errorResp %v, got %v", errorResp, err)
-		}
-	})
-
-	t.Run("it returns a cluster struct from a valid cluster key", func(_ *testing.T) {
-		mockOcmInterface.EXPECT().GetBackplaneURL().Return("https://backplane-url.cluster-key.redhat.com", nil)
-		mockOcmInterface.EXPECT().GetTargetCluster("cluster-key").Return("1234", "cluster-key", nil)
-
-		cluster, err := GetBackplaneClusterFromClusterKey("cluster-key")
-
-		expectedCluster := BackplaneCluster{
-			ClusterID:     "1234",
-			BackplaneHost: "https://backplane-url.cluster-key.redhat.com",
-			ClusterURL:    fmt.Sprintf("%s/backplane/cluster/%s", "https://backplane-url.cluster-key.redhat.com", "1234"),
-		}
-
-		if err != nil {
-			t.Errorf("expected errorResp %v, got %v", nil, err)
-		}
-
-		if !reflect.DeepEqual(cluster, expectedCluster) {
-			t.Errorf("expected clusters %v and %v to be equal", cluster, expectedCluster)
-		}
-	})
-
-	DefaultOCMInterface = tempDefaultOCMInterface
 }

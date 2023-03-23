@@ -14,6 +14,7 @@ import (
 	"github.com/spf13/cobra"
 
 	BackplaneApi "github.com/openshift/backplane-api/pkg/client"
+	"github.com/openshift/backplane-cli/pkg/cli/config"
 	"github.com/openshift/backplane-cli/pkg/utils"
 )
 
@@ -110,7 +111,9 @@ func runConsole(cmd *cobra.Command, argv []string) (err error) {
 
 	// ============Get Backplane URl ==========================
 	if consoleArgs.backplaneURL == "" {
-		consoleArgs.backplaneURL, err = utils.DefaultOCMInterface.GetBackplaneURL()
+		// Get Backplane configuration
+		bpConfig, err := config.GetBackplaneConfiguration()
+		consoleArgs.backplaneURL = bpConfig.URL
 		if err != nil || consoleArgs.backplaneURL == "" {
 			return fmt.Errorf("can't find backplane url: %w", err)
 		}
