@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 
 	bpClient "github.com/openshift/backplane-api/pkg/client"
+	"github.com/openshift/backplane-cli/pkg/cli/config"
 	"github.com/openshift/backplane-cli/pkg/utils"
 )
 
@@ -53,6 +54,10 @@ func runGetTestJobLogs(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	// ======== Initialize backplaneURL ========
+	bpConfig, err := config.GetBackplaneConfiguration()
+	if err != nil {
+		return err
+	}
 
 	bpCluster, err := utils.GetBackplaneCluster(clusterKey)
 	if err != nil {
@@ -66,10 +71,8 @@ func runGetTestJobLogs(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("cluster %s is hibernating, not creating ManagedJob", bpCluster.ClusterID)
 	}
 
-	backplaneHost, err := utils.DefaultOCMInterface.GetBackplaneURL()
-	if err != nil {
-		return err
-	}
+	backplaneHost := bpConfig.URL
+
 	clusterID := bpCluster.ClusterID
 
 	if urlFlag != "" {

@@ -23,6 +23,7 @@ import (
 	"github.com/spf13/cobra"
 
 	BackplaneApi "github.com/openshift/backplane-api/pkg/client"
+	"github.com/openshift/backplane-cli/pkg/cli/config"
 	"github.com/openshift/backplane-cli/pkg/utils"
 )
 
@@ -57,14 +58,17 @@ func newGetManagedJobCmd() *cobra.Command {
 			}
 
 			// ======== Initialize backplaneURL ========
+			bpConfig, err := config.GetBackplaneConfiguration()
+			if err != nil {
+				return err
+			}
+
 			bpCluster, err := utils.GetBackplaneCluster(clusterKey)
 			if err != nil {
 				return err
 			}
-			backplaneHost, err := utils.DefaultOCMInterface.GetBackplaneURL()
-			if err != nil {
-				return err
-			}
+			backplaneHost := bpConfig.URL
+
 			clusterID := bpCluster.ClusterID
 
 			if urlFlag != "" {

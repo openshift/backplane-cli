@@ -51,10 +51,11 @@ func newListScriptCmd() *cobra.Command {
 			// ======== Initialize backplaneURL ========
 			backplaneHost := urlFlag
 			if backplaneHost == "" {
-				bpCluster, err := utils.GetBackplaneCluster(clusterKey, "")
+				bpCluster, err := utils.GetBackplaneCluster(clusterKey, urlFlag)
 				if err != nil {
 					return err
 				}
+
 				backplaneHost = bpCluster.BackplaneHost
 			}
 
@@ -81,8 +82,8 @@ func newListScriptCmd() *cobra.Command {
 				return fmt.Errorf("unable to parse response body from backplane: Status Code: %d", resp.StatusCode)
 			}
 
-			scriptList := *(*[]bpclient.Script)(listResp.JSON200) 
-			if (len(scriptList) == 0) {
+			scriptList := *(*[]bpclient.Script)(listResp.JSON200)
+			if len(scriptList) == 0 {
 				return fmt.Errorf("no scripts found")
 			}
 

@@ -62,46 +62,6 @@ func TestGetFreePort(t *testing.T) {
 	}
 }
 
-func TestGetBackplaneURL(t *testing.T) {
-
-	for name, tc := range map[string]struct {
-		envNeedToSet         bool
-		backplaneURLEnvVar   string
-		expectedBackplaneURL string
-		expectedError        bool
-	}{
-		"backplane url set via env vars": {
-			envNeedToSet:         true,
-			backplaneURLEnvVar:   "https://api-backplane.apps.openshiftapps.com",
-			expectedBackplaneURL: "https://api-backplane.apps.openshiftapps.com",
-			expectedError:        false,
-		},
-		"backplane url set empty env vars": {
-			envNeedToSet:         true,
-			backplaneURLEnvVar:   "",
-			expectedBackplaneURL: "",
-			expectedError:        true,
-		},
-	} {
-		tc := tc
-
-		t.Run(name, func(t *testing.T) {
-			if tc.envNeedToSet {
-				t.Setenv("BACKPLANE_URL", tc.backplaneURLEnvVar)
-			}
-
-			backplaneURL, err := DefaultOCMInterface.GetBackplaneURL()
-
-			if tc.expectedError && err == nil {
-				t.Errorf("expected err to be %v", err)
-			}
-			if backplaneURL != tc.expectedBackplaneURL {
-				t.Errorf("expected res to be %s got %s", tc.expectedBackplaneURL, backplaneURL)
-			}
-		})
-	}
-}
-
 func TestMatchBaseDomain(t *testing.T) {
 	tests := []struct {
 		name       string

@@ -77,22 +77,21 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 		clusterKey = clusterInfo.ClusterID
 	}
 
-	// Get Proxy url
-	if globalOpts.ProxyURL == "" {
-		globalOpts.ProxyURL, err = config.GetBackplaneProxyUrl()
-		if err != nil {
-			return err
-		}
+	// Get Backplane configuration
+	bpConfig, err := config.GetBackplaneConfiguration()
+
+	if err != nil {
+		return err
 	}
 
 	// Set proxy url to http client
 	if globalOpts.ProxyURL != "" {
-		logger.Infof("Using backplane Proxy URL: %s\n", globalOpts.ProxyURL)
 		err = utils.DefaultClientUtils.SetClientProxyUrl(globalOpts.ProxyURL)
 
 		if err != nil {
 			return err
 		}
+		logger.Infof("Using backplane Proxy URL: %s\n", globalOpts.ProxyURL)
 	}
 
 	clusterId, clusterName, err := utils.DefaultOCMInterface.GetTargetCluster(clusterKey)
@@ -118,12 +117,14 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 
 	// Get Backplane URL
 	if globalOpts.BackplaneURL == "" {
-		globalOpts.BackplaneURL, err = utils.DefaultOCMInterface.GetBackplaneURL()
-		if err != nil || globalOpts.BackplaneURL == "" {
-			return fmt.Errorf("can't find backplane url: %w", err)
-		}
-		logger.Infof("Using backplane URL: %s\n", globalOpts.BackplaneURL)
+		globalOpts.BackplaneURL = bpConfig.URL
 	}
+
+	if globalOpts.BackplaneURL == "" {
+		return fmt.Errorf("can't find backplane url: %s", bpConfig.URL)
+	}
+
+	logger.Infof("Using backplane URL: %s\n", bpConfig.URL)
 
 	// Get ocm access token
 	logger.Debugln("Finding ocm token")
@@ -169,6 +170,7 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 	targetCluster.Server = bpAPIClusterUrl
 
 	// Add proxy URL to target cluster
+	globalOpts.ProxyURL = bpConfig.ProxyURL
 	if globalOpts.ProxyURL != "" {
 		targetCluster.ProxyURL = globalOpts.ProxyURL
 	}

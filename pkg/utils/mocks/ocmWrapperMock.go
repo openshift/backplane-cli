@@ -34,21 +34,6 @@ func (m *MockOCMInterface) EXPECT() *MockOCMInterfaceMockRecorder {
 	return m.recorder
 }
 
-// GetBackplaneURL mocks base method.
-func (m *MockOCMInterface) GetBackplaneURL() (string, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetBackplaneURL")
-	ret0, _ := ret[0].(string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetBackplaneURL indicates an expected call of GetBackplaneURL.
-func (mr *MockOCMInterfaceMockRecorder) GetBackplaneURL() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBackplaneURL", reflect.TypeOf((*MockOCMInterface)(nil).GetBackplaneURL))
-}
-
 // GetClusterInfoByID mocks base method.
 func (m *MockOCMInterface) GetClusterInfoByID(arg0 string) (*v1.Cluster, error) {
 	m.ctrl.T.Helper()

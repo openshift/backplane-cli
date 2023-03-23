@@ -23,6 +23,7 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/AlecAivazis/survey.v1"
 
+	"github.com/openshift/backplane-cli/pkg/cli/config"
 	"github.com/openshift/backplane-cli/pkg/utils"
 )
 
@@ -60,12 +61,17 @@ func newDeleteManagedJobCmd() *cobra.Command {
 			managedJobName := args[0]
 
 			// ======== Initialize backplaneURL ========
+			bpConfig, err := config.GetBackplaneConfiguration()
+			if err != nil {
+				return err
+			}
+
 			bpCluster, err := utils.GetBackplaneCluster(clusterKey)
 			if err != nil {
 				return err
 			}
 
-			backplaneHost, err := utils.DefaultOCMInterface.GetBackplaneURL()
+			backplaneHost := bpConfig.URL
 			if err != nil {
 				return err
 			}

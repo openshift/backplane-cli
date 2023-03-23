@@ -4,11 +4,13 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/openshift/backplane-cli/pkg/client/mocks"
+	"github.com/openshift/backplane-cli/pkg/info"
 	"github.com/openshift/backplane-cli/pkg/utils"
 	mocks2 "github.com/openshift/backplane-cli/pkg/utils/mocks"
 	log "github.com/sirupsen/logrus"
@@ -80,16 +82,17 @@ var _ = Describe("Cloud console command", func() {
 
 		// Disabled log output
 		log.SetOutput(io.Discard)
+		os.Setenv(info.BACKPLANE_URL_ENV_NAME, proxyUri)
 	})
 
 	AfterEach(func() {
+		os.Setenv(info.BACKPLANE_URL_ENV_NAME, "")
 		mockCtrl.Finish()
 	})
 
 	Context("Execute cloud console command", func() {
 		It("should return AWS cloud console", func() {
 			mockOcmInterface.EXPECT().GetTargetCluster(testClusterId).Return(trueClusterId, testClusterId, nil)
-			mockOcmInterface.EXPECT().GetBackplaneURL().Return(proxyUri, nil).AnyTimes()
 			mockClientUtil.EXPECT().GetBackplaneClient(proxyUri).Return(mockClient, nil).AnyTimes()
 			mockClient.EXPECT().GetCloudConsole(gomock.Any(), trueClusterId).Return(fakeAWSResp, nil)
 
@@ -100,7 +103,6 @@ var _ = Describe("Cloud console command", func() {
 
 		It("should return GCP cloud console", func() {
 			mockOcmInterface.EXPECT().GetTargetCluster(testClusterId).Return(trueClusterId, testClusterId, nil)
-			mockOcmInterface.EXPECT().GetBackplaneURL().Return(proxyUri, nil).AnyTimes()
 			mockClientUtil.EXPECT().GetBackplaneClient(proxyUri).Return(mockClient, nil).AnyTimes()
 			mockClient.EXPECT().GetCloudConsole(gomock.Any(), trueClusterId).Return(fakeGCloudResp, nil)
 			err := runConsole(nil, []string{testClusterId})
@@ -112,7 +114,6 @@ var _ = Describe("Cloud console command", func() {
 
 	Context("get Cloud Console", func() {
 		It("should return AWS cloud URL", func() {
-			mockOcmInterface.EXPECT().GetBackplaneURL().Return(proxyUri, nil).AnyTimes()
 			mockClient.EXPECT().GetCloudConsole(gomock.Any(), trueClusterId).Return(fakeAWSResp, nil)
 			mockClientUtil.EXPECT().GetBackplaneClient(proxyUri).Return(mockClient, nil).AnyTimes()
 			cloudResponse, err := getCloudConsole(proxyUri, trueClusterId)
@@ -123,7 +124,7 @@ var _ = Describe("Cloud console command", func() {
 		})
 
 		It("should return Gcloud cloud URL", func() {
-			mockOcmInterface.EXPECT().GetBackplaneURL().Return(proxyUri, nil).AnyTimes()
+
 			mockClientUtil.EXPECT().GetBackplaneClient(proxyUri).Return(mockClient, nil).AnyTimes()
 			mockClient.EXPECT().GetCloudConsole(gomock.Any(), trueClusterId).Return(fakeGCloudResp, nil)
 			cloudResponse, err := getCloudConsole(proxyUri, trueClusterId)
@@ -135,7 +136,7 @@ var _ = Describe("Cloud console command", func() {
 
 		It("should fail when AWS Unavailable", func() {
 			fakeAWSResp.StatusCode = http.StatusInternalServerError
-			mockOcmInterface.EXPECT().GetBackplaneURL().Return(proxyUri, nil).AnyTimes()
+
 			mockClient.EXPECT().GetCloudConsole(gomock.Any(), trueClusterId).Return(fakeAWSResp, nil)
 			mockClientUtil.EXPECT().GetBackplaneClient(proxyUri).Return(mockClient, nil).AnyTimes()
 			_, err := getCloudConsole(proxyUri, trueClusterId)
@@ -147,7 +148,6 @@ var _ = Describe("Cloud console command", func() {
 
 		It("should fail when GCP Unavailable", func() {
 			fakeGCloudResp.StatusCode = http.StatusInternalServerError
-			mockOcmInterface.EXPECT().GetBackplaneURL().Return(proxyUri, nil).AnyTimes()
 			mockClientUtil.EXPECT().GetBackplaneClient(proxyUri).Return(mockClient, nil).AnyTimes()
 			mockClient.EXPECT().GetCloudConsole(gomock.Any(), trueClusterId).Return(fakeGCloudResp, nil)
 			_, err := getCloudConsole(proxyUri, trueClusterId)
@@ -159,7 +159,6 @@ var _ = Describe("Cloud console command", func() {
 
 		It("should fail for unauthorized BP-API", func() {
 			fakeAWSResp.StatusCode = http.StatusUnauthorized
-			mockOcmInterface.EXPECT().GetBackplaneURL().Return(proxyUri, nil).AnyTimes()
 			mockClientUtil.EXPECT().GetBackplaneClient(proxyUri).Return(mockClient, nil).AnyTimes()
 			mockClient.EXPECT().GetCloudConsole(gomock.Any(), trueClusterId).Return(fakeAWSResp, nil)
 			_, err := getCloudConsole(proxyUri, trueClusterId)
