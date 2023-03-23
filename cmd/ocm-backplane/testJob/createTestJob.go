@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path/filepath"
 
 	"github.com/go-yaml/yaml"
 	logger "github.com/sirupsen/logrus"
@@ -90,6 +91,7 @@ func runCreateTestJob(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+
 	// ======== Initialize backplaneURL ========
 
 	bpCluster, err := utils.GetBackplaneCluster(clusterKey)
@@ -112,6 +114,7 @@ func runCreateTestJob(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	clusterID := bpCluster.ClusterID
+	
 
 	if urlFlag != "" {
 		backplaneHost = urlFlag
@@ -155,8 +158,15 @@ func runCreateTestJob(cmd *cobra.Command, args []string) error {
 }
 
 func createTestScriptFromFiles() (*backplaneApi.CreateTestScriptRunJSONRequestBody, error) {
+	// Get the current directory
+	dir, err := os.Getwd()
+	if err != nil {
+		logger.Errorf("Error getting current working directory: %v", err)
+		return nil, err
+	}
+
 	// Read the yaml file from cwd
-	yamlFile, err := os.ReadFile("metadata.yaml")
+	yamlFile, err := os.ReadFile(filepath.Join(dir, "metadata.yaml"))
 	if err != nil {
 		logger.Errorf("Error reading metadata yaml: %v, ensure you are in a script directory", err)
 		return nil, err
@@ -171,16 +181,15 @@ func createTestScriptFromFiles() (*backplaneApi.CreateTestScriptRunJSONRequestBo
 	}
 
 	// Now, try to find and read the script body
-	fileBody, err := os.ReadFile(scriptMeta.File)
-
-	fileBodyStr := string(fileBody)
+	scriptFile := filepath.Join(dir, scriptMeta.File)
+	fileBody, err := os.ReadFile(scriptFile)
 	if err != nil {
-		logger.Errorf("unable to read file %s, make sure this file exists", scriptMeta.File)
+		logger.Errorf("Error reading file %s: %v", scriptFile, err)
 		return nil, err
 	}
 
 	// Base64 encode the body
-	scriptBodyEncoded := base64.StdEncoding.EncodeToString([]byte(fileBodyStr))
+	scriptBodyEncoded := base64.StdEncoding.EncodeToString(fileBody)
 
 	return &backplaneApi.CreateTestScriptRunJSONRequestBody{
 		ScriptBody:     scriptBodyEncoded,
