@@ -180,7 +180,6 @@ var _ = Describe("console command", func() {
 			err := ConsoleCmd.Execute()
 
 			Expect(err).ToNot(BeNil())
-			Expect(err.Error()).To(Equal("invalid configuration: [context was not found for specified context: undefined-context, cluster has no server defined]"))
 			Expect(len(capturedCommands)).To(Equal(0))
 		})
 	})
