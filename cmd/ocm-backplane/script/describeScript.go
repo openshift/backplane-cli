@@ -49,7 +49,7 @@ func newDescribeScriptCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			// ======== Initialize backplaneURL ========
+			// ======== Initialize backplaneURL == ========
 			backplaneHost := urlFlag
 			if backplaneHost == "" {
 				bpConfig, err := config.GetBackplaneConfiguration()
