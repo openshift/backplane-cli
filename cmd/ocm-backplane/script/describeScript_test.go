@@ -3,6 +3,7 @@ package script
 import (
 	"errors"
 	"net/http"
+	"os"
 
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
@@ -13,6 +14,7 @@ import (
 
 	bpclient "github.com/openshift/backplane-api/pkg/client"
 	"github.com/openshift/backplane-cli/pkg/client/mocks"
+	"github.com/openshift/backplane-cli/pkg/info"
 	"github.com/openshift/backplane-cli/pkg/utils"
 	mocks2 "github.com/openshift/backplane-cli/pkg/utils/mocks"
 )
@@ -28,8 +30,9 @@ var _ = Describe("describe script command", func() {
 		testClusterId  string
 		testToken      string
 		trueClusterId  string
-		proxyUri       string
 		testScriptName string
+
+		proxyUri string
 
 		fakeResp *http.Response
 
@@ -49,8 +52,9 @@ var _ = Describe("describe script command", func() {
 		testClusterId = "test123"
 		testToken = "hello123"
 		trueClusterId = "trueID123"
-		proxyUri = "https://shard.apps"
 		testScriptName = "CEE/abc"
+
+		proxyUri = "https://shard.apps"
 
 		sut = NewScriptCmd()
 
@@ -76,9 +80,12 @@ var _ = Describe("describe script command", func() {
 		fakeResp.Header.Add("Content-Type", "json")
 		// Clear config file
 		_ = clientcmd.ModifyConfig(clientcmd.NewDefaultPathOptions(), api.Config{}, true)
+
+		os.Setenv(info.BACKPLANE_URL_ENV_NAME, proxyUri)
 	})
 
 	AfterEach(func() {
+		os.Setenv(info.BACKPLANE_URL_ENV_NAME, "")
 		mockCtrl.Finish()
 	})
 
@@ -86,7 +93,6 @@ var _ = Describe("describe script command", func() {
 		It("when running with a simple case should work as expected", func() {
 			// It should query for the internal cluster id first
 			mockOcmInterface.EXPECT().GetTargetCluster(testClusterId).Return(trueClusterId, testClusterId, nil)
-			mockOcmInterface.EXPECT().GetBackplaneURL().Return(proxyUri, nil).AnyTimes()
 			// Then it will look for the backplane shard
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterId)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
@@ -100,8 +106,6 @@ var _ = Describe("describe script command", func() {
 		})
 
 		It("should respect url flag", func() {
-			// Then it will look for the backplane shard
-			mockOcmInterface.EXPECT().GetBackplaneURL().Return(proxyUri, nil).AnyTimes()
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterId)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
 			mockClientUtil.EXPECT().MakeRawBackplaneAPIClient("https://newbackplane.url").Return(mockClient, nil)
@@ -116,7 +120,6 @@ var _ = Describe("describe script command", func() {
 		It("Should able use the current logged in cluster if non specified and retrieve from config file", func() {
 			err := utils.CreateTempKubeConfig(nil)
 			Expect(err).To(BeNil())
-			mockOcmInterface.EXPECT().GetBackplaneURL().Return(proxyUri, nil).AnyTimes()
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq("configcluster")).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
 			mockClientUtil.EXPECT().MakeRawBackplaneAPIClient("https://api-backplane.apps.something.com").Return(mockClient, nil)
@@ -130,7 +133,6 @@ var _ = Describe("describe script command", func() {
 
 		It("should fail when backplane did not return a 200", func() {
 			mockOcmInterface.EXPECT().GetTargetCluster(testClusterId).Return(trueClusterId, testClusterId, nil)
-			mockOcmInterface.EXPECT().GetBackplaneURL().Return(proxyUri, nil).AnyTimes()
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterId)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
 			mockClientUtil.EXPECT().MakeRawBackplaneAPIClient(gomock.Any()).Return(mockClient, nil)
@@ -151,7 +153,6 @@ var _ = Describe("describe script command", func() {
 			fakeRespBlank.Header.Add("Content-Type", "json")
 
 			mockOcmInterface.EXPECT().GetTargetCluster(testClusterId).Return(trueClusterId, testClusterId, nil)
-			mockOcmInterface.EXPECT().GetBackplaneURL().Return(proxyUri, nil).AnyTimes()
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterId)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
 			mockClientUtil.EXPECT().MakeRawBackplaneAPIClient(gomock.Any()).Return(mockClient, nil)
@@ -182,7 +183,6 @@ var _ = Describe("describe script command", func() {
 			}
 			fakeRespNoEnv.Header.Add("Content-Type", "json")
 
-			mockOcmInterface.EXPECT().GetBackplaneURL().Return(proxyUri, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetTargetCluster(testClusterId).Return(trueClusterId, testClusterId, nil)
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterId)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
@@ -197,7 +197,6 @@ var _ = Describe("describe script command", func() {
 
 		It("should not work when backplane returns a non parsable response with 200 return", func() {
 			mockOcmInterface.EXPECT().GetTargetCluster(testClusterId).Return(trueClusterId, testClusterId, nil)
-			mockOcmInterface.EXPECT().GetBackplaneURL().Return(proxyUri, nil).AnyTimes()
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterId)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
 			mockClientUtil.EXPECT().MakeRawBackplaneAPIClient(gomock.Any()).Return(mockClient, nil)

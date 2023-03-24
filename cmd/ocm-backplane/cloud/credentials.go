@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 
 	BackplaneApi "github.com/openshift/backplane-api/pkg/client"
+	"github.com/openshift/backplane-cli/pkg/cli/config"
 	"github.com/openshift/backplane-cli/pkg/utils"
 )
 
@@ -140,18 +141,23 @@ func runCredentials(cmd *cobra.Command, argv []string) error {
 		"Name": clusterName}).Infoln("Target cluster")
 
 	// ============Get Backplane URl ==========================
-	if credentialArgs.backplaneURL == "" {
-		credentialArgs.backplaneURL, err = utils.DefaultOCMInterface.GetBackplaneURL()
-		if err != nil || credentialArgs.backplaneURL == "" {
+	bpURL := ""
+	if consoleArgs.backplaneURL != "" {
+		bpURL = credentialArgs.backplaneURL
+	} else {
+		// Get Backplane configuration
+		bpConfig, err := config.GetBackplaneConfiguration()
+		if err != nil || bpConfig.URL == "" {
 			return fmt.Errorf("can't find backplane url: %w", err)
 		}
-		logger.Infof("Using backplane URL: %s\n", credentialArgs.backplaneURL)
+		bpURL = bpConfig.URL
+		logger.Infof("Using backplane URL: %s\n", bpURL)
 	}
 
 	// ======== Call Endpoint ==================================
 	logger.Debugln("Getting Cloud Credentials")
 
-	credsResp, _ := getCloudCredential(credentialArgs.backplaneURL, clusterId)
+	credsResp, _ := getCloudCredential(bpURL, clusterId)
 
 	// ======== Render cloud credentials =======================
 	switch cloudProvider {

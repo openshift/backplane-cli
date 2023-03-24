@@ -15,41 +15,43 @@ import (
 	"k8s.io/client-go/tools/clientcmd/api"
 
 	BackplaneApi "github.com/openshift/backplane-api/pkg/client"
+	"github.com/openshift/backplane-cli/pkg/cli/config"
+	"github.com/openshift/backplane-cli/pkg/cli/globalflags"
 	"github.com/openshift/backplane-cli/pkg/utils"
-)
-
-var (
-	args struct {
-		backplaneURL string
-		manager      bool
-	}
 )
 
 // Environment variable that for setting PS1
 const EnvPs1 = "KUBE_PS1_CLUSTER_FUNCTION"
 
-// LoginCmd represents the login command
-var LoginCmd = &cobra.Command{
-	Use:   "login <CLUSTERID|EXTERNAL_ID|CLUSTER_NAME|CLUSTER_NAME_SEARCH>",
-	Short: "Login to a target cluster",
-	Long: `Running login command will send a request to backplane api
-	using OCM token. The backplane api will return a proxy url for 
-	target cluster. The url will be written to kubeconfig, so we can 
-	run oc command later to operate the target cluster.`,
-	Example:      " backplane login <id>\n backplane login %test%\n backplane login <external_id>",
-	Args:         cobra.ExactArgs(1),
-	RunE:         runLogin,
-	SilenceUsage: true,
-}
+var (
+	args struct {
+		manager bool
+	}
+
+	globalOpts = &globalflags.GlobalOptions{}
+
+	// LoginCmd represents the login command
+	LoginCmd = &cobra.Command{
+		Use:   "login <CLUSTERID|EXTERNAL_ID|CLUSTER_NAME|CLUSTER_NAME_SEARCH>",
+		Short: "Login to a target cluster",
+		Long: `Running login command will send a request to backplane api
+		using OCM token. The backplane api will return a proxy url for 
+		target cluster. The url will be written to kubeconfig, so we can 
+		run oc command later to operate the target cluster.`,
+		Example:      " backplane login <id>\n backplane login %test%\n backplane login <external_id>",
+		Args:         cobra.ExactArgs(1),
+		RunE:         runLogin,
+		SilenceUsage: true,
+	}
+)
 
 func init() {
 	flags := LoginCmd.Flags()
-	flags.StringVar(
-		&args.backplaneURL,
-		"url",
-		"",
-		"URL of backplane API",
-	)
+	// Add global flags
+	//globalflags.AddGlobalFlags(flags, globalOpts)
+	globalflags.AddGlobalFlags(LoginCmd, globalOpts)
+
+	// Add login cmd specific flags
 	flags.BoolVar(
 		&args.manager,
 		"manager",
@@ -60,10 +62,6 @@ func init() {
 
 func runLogin(cmd *cobra.Command, argv []string) (err error) {
 	var clusterKey string
-
-	if err != nil {
-		return err
-	}
 
 	// Get The cluster ID
 	if len(argv) == 1 {
@@ -77,6 +75,23 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 			return err
 		}
 		clusterKey = clusterInfo.ClusterID
+	}
+
+	// Get Backplane configuration
+	bpConfig, err := config.GetBackplaneConfiguration()
+
+	if err != nil {
+		return err
+	}
+
+	// Set proxy url to http client
+	if globalOpts.ProxyURL != "" {
+		err = utils.DefaultClientUtils.SetClientProxyUrl(globalOpts.ProxyURL)
+
+		if err != nil {
+			return err
+		}
+		logger.Infof("Using backplane Proxy URL: %s\n", globalOpts.ProxyURL)
 	}
 
 	clusterId, clusterName, err := utils.DefaultOCMInterface.GetTargetCluster(clusterKey)
@@ -101,13 +116,15 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 	}
 
 	// Get Backplane URL
-	if args.backplaneURL == "" {
-		args.backplaneURL, err = utils.DefaultOCMInterface.GetBackplaneURL()
-		if err != nil || args.backplaneURL == "" {
-			return fmt.Errorf("can't find backplane url: %w", err)
-		}
-		logger.Infof("Using backplane URL: %s\n", args.backplaneURL)
+	if globalOpts.BackplaneURL == "" {
+		globalOpts.BackplaneURL = bpConfig.URL
 	}
+
+	if globalOpts.BackplaneURL == "" {
+		return fmt.Errorf("can't find backplane url: %s", bpConfig.URL)
+	}
+
+	logger.Infof("Using backplane URL: %s\n", bpConfig.URL)
 
 	// Get ocm access token
 	logger.Debugln("Finding ocm token")
@@ -118,7 +135,7 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 	logger.Debugln("Found OCM access token")
 
 	// Query backplane-api for proxy url
-	proxyURL, err := doLogin(clusterId, *accessToken)
+	bpAPIClusterUrl, err := doLogin(clusterId, *accessToken)
 	if err != nil {
 		// If login failed, we try to find out if the cluster is hibernating
 		isHibernating, _ := utils.DefaultOCMInterface.IsClusterHibernating(clusterId)
@@ -129,7 +146,7 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 		// Otherwise, return the failure
 		return fmt.Errorf("can't login to cluster: %v", err)
 	}
-	logger.WithField("URL", proxyURL).Debugln("Proxy")
+	logger.WithField("URL", bpAPIClusterUrl).Debugln("Proxy")
 
 	cf := genericclioptions.NewConfigFlags(true)
 	rc, err := cf.ToRawKubeConfigLoader().RawConfig()
@@ -150,7 +167,13 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 	targetUser := api.NewAuthInfo()
 	targetContext := api.NewContext()
 
-	targetCluster.Server = proxyURL
+	targetCluster.Server = bpAPIClusterUrl
+
+	// Add proxy URL to target cluster
+	globalOpts.ProxyURL = bpConfig.ProxyURL
+	if globalOpts.ProxyURL != "" {
+		targetCluster.ProxyURL = globalOpts.ProxyURL
+	}
 
 	targetUserNickName := getUsernameFromJWT(*accessToken)
 	execConfig := &api.ExecConfig{}
@@ -222,13 +245,14 @@ func getUsernameFromJWT(token string) string {
 
 // doLogin returns the proxy url for the target cluster.
 func doLogin(clusterid, accessToken string) (string, error) {
-	client, err := utils.DefaultClientUtils.MakeRawBackplaneAPIClientWithAccessToken(args.backplaneURL, accessToken)
+
+	client, err := utils.DefaultClientUtils.MakeRawBackplaneAPIClientWithAccessToken(globalOpts.BackplaneURL, accessToken)
 
 	if err != nil {
 		return "", fmt.Errorf("unable to create backplane api client")
 	}
 
-	logger.WithField("URL", args.backplaneURL).Debugln("GetProxyURL")
+	logger.WithField("URL", globalOpts.BackplaneURL).Debugln("GetProxyURL")
 	resp, err := client.LoginCluster(context.TODO(), clusterid)
 
 	// Print the whole response if we can't parse it. Eg. 5xx error from http server.
@@ -249,10 +273,10 @@ func doLogin(clusterid, accessToken string) (string, error) {
 	loginResp, err := BackplaneApi.ParseLoginClusterResponse(resp)
 
 	if err != nil {
-		return "", fmt.Errorf("unable to parse response body from backplane: \n Status Code: %d\n", resp.StatusCode)
+		return "", fmt.Errorf("unable to parse response body from backplane: \n Status Code: %d", resp.StatusCode)
 	}
 
-	return args.backplaneURL + *loginResp.JSON200.ProxyUri, nil
+	return globalOpts.BackplaneURL + *loginResp.JSON200.ProxyUri, nil
 }
 
 // createTokenScriptIfNotExist creates the exec script file for use in kubeconfig,

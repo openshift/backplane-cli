@@ -14,6 +14,7 @@ import (
 	"github.com/spf13/cobra"
 
 	BackplaneApi "github.com/openshift/backplane-api/pkg/client"
+	"github.com/openshift/backplane-cli/pkg/cli/config"
 	"github.com/openshift/backplane-cli/pkg/utils"
 )
 
@@ -109,16 +110,21 @@ func runConsole(cmd *cobra.Command, argv []string) (err error) {
 		"Name": clusterName}).Infoln("Target cluster")
 
 	// ============Get Backplane URl ==========================
-	if consoleArgs.backplaneURL == "" {
-		consoleArgs.backplaneURL, err = utils.DefaultOCMInterface.GetBackplaneURL()
-		if err != nil || consoleArgs.backplaneURL == "" {
+	bpURL := ""
+	if consoleArgs.backplaneURL != "" {
+		bpURL = consoleArgs.backplaneURL
+	} else {
+		// Get Backplane configuration
+		bpConfig, err := config.GetBackplaneConfiguration()
+		if err != nil || bpConfig.URL == "" {
 			return fmt.Errorf("can't find backplane url: %w", err)
 		}
-		logger.Infof("Using backplane URL: %s\n", consoleArgs.backplaneURL)
+		bpURL = bpConfig.URL
+		logger.Infof("Using backplane URL: %s\n", bpURL)
 	}
 
 	// ======== Get cloudconsole from backplane API ============
-	response, err := getCloudConsole(consoleArgs.backplaneURL, clusterId)
+	response, err := getCloudConsole(bpURL, clusterId)
 	if err != nil {
 		return err
 	}

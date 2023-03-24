@@ -1,14 +1,11 @@
 package utils
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/openshift-online/ocm-cli/pkg/ocm"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
-	"github.com/openshift/backplane-cli/pkg/info"
 	logger "github.com/sirupsen/logrus"
 
 	"gopkg.in/AlecAivazis/survey.v1"
@@ -23,12 +20,7 @@ type OCMInterface interface {
 	GetManagingCluster(clusterKey string) (clusterId, clusterName string, err error)
 	GetOCMAccessToken() (*string, error)
 	GetClusterInfoByID(clusterId string) (*cmv1.Cluster, error)
-	GetBackplaneURL() (string, error)
 	IsProduction() (bool, error)
-}
-
-type BackplaneConfiguration struct {
-	URL string
 }
 
 type DefaultOCMInterfaceImpl struct{}
@@ -185,50 +177,6 @@ func (*DefaultOCMInterfaceImpl) IsProduction() (bool, error) {
 	defer connection.Close()
 
 	return connection.URL() == "https://api.openshift.com", nil
-}
-
-// GetBackplaneURL from local settings
-func (*DefaultOCMInterfaceImpl) GetBackplaneURL() (string, error) {
-	// get backplane URL from BACKPLANE_URL env variables
-	bpURL, hasURL := os.LookupEnv(info.BACKPLANE_URL_ENV_NAME)
-	if hasURL {
-		if bpURL != "" {
-			return bpURL, nil
-		} else {
-			return "", fmt.Errorf("%s env variable is empty", info.BACKPLANE_URL_ENV_NAME)
-		}
-	} else {
-		// get backplane URL for user home folder .backplane.json file
-		filePath := getBackplaneConfigFile()
-		if _, err := os.Stat(filePath); err == nil {
-			file, err := os.Open(filePath)
-
-			if err != nil {
-				return "", fmt.Errorf("failed to read file %s : %v", filePath, err)
-			}
-
-			defer file.Close()
-			decoder := json.NewDecoder(file)
-			configuration := BackplaneConfiguration{}
-			err = decoder.Decode(&configuration)
-
-			if err != nil {
-				return "", fmt.Errorf("failed to decode file %s : %v", filePath, err)
-			}
-			return configuration.URL, nil
-		}
-
-	}
-	return "", nil
-}
-
-func getBackplaneConfigFile() string {
-	path, bpConfigFound := os.LookupEnv(info.BACKPLANE_CONFIG_PATH_ENV_NAME)
-	if bpConfigFound {
-		return path
-	}
-
-	return info.BACKPLANE_CONFIG_DEFAULT_PATH
 }
 
 func getClusters(client *cmv1.ClustersClient, clusterKey string) ([]*cmv1.Cluster, error) {

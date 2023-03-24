@@ -2,10 +2,13 @@ package utils
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 
 	BackplaneApi "github.com/openshift/backplane-api/pkg/client"
+	"github.com/openshift/backplane-cli/pkg/cli/config"
 	"github.com/openshift/backplane-cli/pkg/info"
 	logger "github.com/sirupsen/logrus"
 )
@@ -16,13 +19,18 @@ type ClientUtils interface {
 	MakeRawBackplaneAPIClientWithAccessToken(base, accessToken string) (BackplaneApi.ClientInterface, error)
 	MakeRawBackplaneAPIClient(base string) (BackplaneApi.ClientInterface, error)
 	GetBackplaneClient(backplaneURL string) (client BackplaneApi.ClientInterface, err error)
+	SetClientProxyUrl(proxyUrl string) error
 }
 
-type DefaultClientUtilsImpl struct{}
+type DefaultClientUtilsImpl struct {
+	clientProxyUrl string
+}
 
-var DefaultClientUtils ClientUtils = &DefaultClientUtilsImpl{}
+var (
+	DefaultClientUtils ClientUtils = &DefaultClientUtilsImpl{}
+)
 
-func (_ *DefaultClientUtilsImpl) MakeRawBackplaneAPIClientWithAccessToken(base, accessToken string) (BackplaneApi.ClientInterface, error) {
+func (s *DefaultClientUtilsImpl) MakeRawBackplaneAPIClientWithAccessToken(base, accessToken string) (BackplaneApi.ClientInterface, error) {
 	co := func(client *BackplaneApi.Client) error {
 		client.RequestEditors = append(client.RequestEditors, func(ctx context.Context, req *http.Request) error {
 			req.Header.Add("Authorization", "Bearer "+accessToken)
@@ -30,6 +38,26 @@ func (_ *DefaultClientUtilsImpl) MakeRawBackplaneAPIClientWithAccessToken(base, 
 			return nil
 		})
 		return nil
+	}
+
+	// Inject client Proxy Url from config
+	if s.clientProxyUrl == "" {
+		bpConfig, err := config.GetBackplaneConfiguration()
+		if err != nil {
+			return nil, err
+		}
+		s.clientProxyUrl = bpConfig.ProxyURL
+	}
+
+	// Update http proxy transport
+	if s.clientProxyUrl != "" {
+		proxyUrl, err := url.Parse(s.clientProxyUrl)
+		if err != nil {
+			return nil, err
+		}
+		http.DefaultTransport = &http.Transport{Proxy: http.ProxyURL(proxyUrl)}
+
+		logger.Infof("Using backplane Proxy URL: %s\n", s.clientProxyUrl)
 	}
 
 	return BackplaneApi.NewClient(base, co)
@@ -43,7 +71,7 @@ func (s *DefaultClientUtilsImpl) MakeRawBackplaneAPIClient(base string) (Backpla
 	return s.MakeRawBackplaneAPIClientWithAccessToken(base, *token)
 }
 
-func (_ *DefaultClientUtilsImpl) MakeBackplaneAPIClientWithAccessToken(base, accessToken string) (BackplaneApi.ClientWithResponsesInterface, error) {
+func (*DefaultClientUtilsImpl) MakeBackplaneAPIClientWithAccessToken(base, accessToken string) (BackplaneApi.ClientWithResponsesInterface, error) {
 	co := func(client *BackplaneApi.Client) error {
 		client.RequestEditors = append(client.RequestEditors, func(ctx context.Context, req *http.Request) error {
 			req.Header.Add("Authorization", "Bearer "+accessToken)
@@ -67,7 +95,8 @@ func (s *DefaultClientUtilsImpl) MakeBackplaneAPIClient(base string) (BackplaneA
 // getBackplaneClient returns authnicated Backplane API client
 func (s *DefaultClientUtilsImpl) GetBackplaneClient(backplaneURL string) (client BackplaneApi.ClientInterface, err error) {
 	if backplaneURL == "" {
-		backplaneURL, err = DefaultOCMInterface.GetBackplaneURL()
+		bpConfig, err := config.GetBackplaneConfiguration()
+		backplaneURL = bpConfig.URL
 		if err != nil || backplaneURL == "" {
 			return client, fmt.Errorf("can't find backplane url: %w", err)
 		}
@@ -90,4 +119,13 @@ func (s *DefaultClientUtilsImpl) GetBackplaneClient(backplaneURL string) (client
 	logger.Debugln("Got Client")
 
 	return backplaneClient, nil
+}
+
+// Set client proxy url for http transport
+func (s *DefaultClientUtilsImpl) SetClientProxyUrl(proxyUrl string) error {
+	if proxyUrl == "" {
+		return errors.New("proxy Url is empty")
+	}
+	s.clientProxyUrl = proxyUrl
+	return nil
 }
