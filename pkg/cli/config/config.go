@@ -9,8 +9,8 @@ import (
 )
 
 type BackplaneConfiguration struct {
-	URL      string
-	ProxyURL string
+	URL      string `json:"url"`
+	ProxyURL string `json:"proxy-url"`
 }
 
 func GetBackplaneConfigFile() string {

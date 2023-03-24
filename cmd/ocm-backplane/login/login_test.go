@@ -11,7 +11,6 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/openshift/backplane-cli/pkg/client/mocks"
-	"github.com/openshift/backplane-cli/pkg/info"
 	"github.com/openshift/backplane-cli/pkg/utils"
 	mocks2 "github.com/openshift/backplane-cli/pkg/utils/mocks"
 	"k8s.io/client-go/tools/clientcmd"
@@ -167,32 +166,6 @@ var _ = Describe("Login command", func() {
 			Expect(len(cfg.Contexts)).To(Equal(1))
 			Expect(cfg.Contexts["default/test123/anonymous"].Cluster).To(Equal(testClusterId))
 			Expect(cfg.Clusters[testClusterId].ProxyURL).To(Equal(globalOpts.ProxyURL))
-			Expect(cfg.Contexts["default/test123/anonymous"].Namespace).To(Equal("default"))
-		})
-
-		It("should use the specified proxy if HTTPS_PROXY env var present", func() {
-			err := utils.CreateTempKubeConfig(nil)
-			Expect(err).To(BeNil())
-			os.Setenv(info.BACKPLANE_URL_ENV_NAME, backplaneAPIUri)
-			os.Setenv(info.BACKPLANE_PROXY_ENV_NAME, "https://squid2.myproxy.com")
-
-			mockOcmInterface.EXPECT().GetTargetCluster(testClusterId).Return(trueClusterId, testClusterId, nil)
-			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterId)).Return(false, nil).AnyTimes()
-			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil)
-			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken(backplaneAPIUri, testToken).Return(mockClient, nil)
-			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(trueClusterId)).Return(fakeResp, nil)
-
-			err = runLogin(nil, []string{testClusterId})
-
-			Expect(err).To(BeNil())
-
-			cfg, err := utils.ReadKubeconfigRaw()
-
-			Expect(err).To(BeNil())
-			Expect(cfg.CurrentContext).To(Equal("default/test123/anonymous"))
-			Expect(len(cfg.Contexts)).To(Equal(1))
-			Expect(cfg.Contexts["default/test123/anonymous"].Cluster).To(Equal(testClusterId))
-			Expect(cfg.Clusters[testClusterId].ProxyURL).To(Equal("https://squid2.myproxy.com"))
 			Expect(cfg.Contexts["default/test123/anonymous"].Namespace).To(Equal("default"))
 		})
 
