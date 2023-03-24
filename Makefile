@@ -18,6 +18,21 @@ IMAGE_URI_LATEST:=$(IMAGE_REGISTRY)/$(IMAGE_REPOSITORY)/$(IMAGE_NAME):latest
 GOLANGCI_LINT_VERSION=v1.50.1
 
 CONTAINER_ENGINE:=$(shell command -v podman 2>/dev/null || command -v docker 2>/dev/null)
+DOCKER_PRESENT := $(shell basename $$(which docker) 2>/dev/null )
+ifeq ($(DOCKER_PRESENT),docker)
+	DOCKER_TO_INSTALL := docker.io
+endif
+
+PODMAN_PRESENT := $(shell basename $$(which podman) 2>/dev/null  )
+ifeq ($(PODMAN_PRESENT),podman)
+	DOCKER_TO_INSTALL := podman
+endif
+
+ifeq ($(HOST_OS),fedora)
+	DOCKER_TO_INSTALL ?= podman
+	PACKAGE_MANAGER := yum
+endif
+
 RUN_IN_CONTAINER_CMD:=$(CONTAINER_ENGINE) run --platform linux/amd64 --rm -v $(shell pwd):/app -w=/app backplane-cli-builder /bin/bash -c
 
 # These tags make sure we can statically link and avoid shared dependencies
@@ -59,6 +74,7 @@ release: ensure-goreleaser
 	goreleaser release --rm-dist
 
 test:
+
 	go test -v $(TESTOPTS) ./...
 
 .PHONY: coverage

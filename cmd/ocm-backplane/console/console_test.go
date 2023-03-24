@@ -68,7 +68,11 @@ var _ = Describe("console command", func() {
 
 			return exec.Command("true")
 		}
-		
+		clusterInfo, _ = cmv1.NewCluster().
+			CloudProvider(cmv1.NewCloudProvider().ID("aws")).
+			Product(cmv1.NewProduct().ID("dedicated")).
+			AdditionalTrustBundle("REDACTED").
+	        Proxy(cmv1.NewProxy().HTTPProxy("http://my.proxy:80").HTTPSProxy("https://my.proxy:443")).Build()
 
 		consoleArgs.port = "12345"
 
