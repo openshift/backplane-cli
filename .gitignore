@@ -20,3 +20,6 @@ dist/
 # backplane-cli binary
 backplane-cli
 /ocm-backplane
+
+#vscode
+.vscode

@@ -85,13 +85,14 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 	}
 
 	// Set proxy url to http client
-	if globalOpts.ProxyURL != "" {
-		err = utils.DefaultClientUtils.SetClientProxyUrl(globalOpts.ProxyURL)
+	proxyUrl := globalOpts.ProxyURL
+	if proxyUrl != "" {
+		err = utils.DefaultClientUtils.SetClientProxyUrl(proxyUrl)
 
 		if err != nil {
 			return err
 		}
-		logger.Infof("Using backplane Proxy URL: %s\n", globalOpts.ProxyURL)
+		logger.Debugf("Using backplane Proxy URL: %s\n", proxyUrl)
 	}
 
 	clusterId, clusterName, err := utils.DefaultOCMInterface.GetTargetCluster(clusterKey)
@@ -116,15 +117,16 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 	}
 
 	// Get Backplane URL
-	if globalOpts.BackplaneURL == "" {
-		globalOpts.BackplaneURL = bpConfig.URL
+	bpUrl := globalOpts.BackplaneURL
+	if bpUrl == "" {
+		bpUrl = bpConfig.URL
 	}
 
-	if globalOpts.BackplaneURL == "" {
+	if bpUrl == "" {
 		return fmt.Errorf("can't find backplane url: %s", bpConfig.URL)
 	}
 
-	logger.Infof("Using backplane URL: %s\n", bpConfig.URL)
+	logger.Debugf("Using backplane URL: %s\n", bpUrl)
 
 	// Get ocm access token
 	logger.Debugln("Finding ocm token")
@@ -135,7 +137,7 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 	logger.Debugln("Found OCM access token")
 
 	// Query backplane-api for proxy url
-	bpAPIClusterUrl, err := doLogin(clusterId, *accessToken)
+	bpAPIClusterUrl, err := doLogin(bpUrl, clusterId, *accessToken)
 	if err != nil {
 		// If login failed, we try to find out if the cluster is hibernating
 		isHibernating, _ := utils.DefaultOCMInterface.IsClusterHibernating(clusterId)
@@ -170,9 +172,9 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 	targetCluster.Server = bpAPIClusterUrl
 
 	// Add proxy URL to target cluster
-	globalOpts.ProxyURL = bpConfig.ProxyURL
+
 	if globalOpts.ProxyURL != "" {
-		targetCluster.ProxyURL = globalOpts.ProxyURL
+		targetCluster.ProxyURL = proxyUrl
 	}
 
 	targetUserNickName := getUsernameFromJWT(*accessToken)
@@ -244,9 +246,9 @@ func getUsernameFromJWT(token string) string {
 }
 
 // doLogin returns the proxy url for the target cluster.
-func doLogin(clusterid, accessToken string) (string, error) {
+func doLogin(api, clusterid, accessToken string) (string, error) {
 
-	client, err := utils.DefaultClientUtils.MakeRawBackplaneAPIClientWithAccessToken(globalOpts.BackplaneURL, accessToken)
+	client, err := utils.DefaultClientUtils.MakeRawBackplaneAPIClientWithAccessToken(api, accessToken)
 
 	if err != nil {
 		return "", fmt.Errorf("unable to create backplane api client")
@@ -276,7 +278,7 @@ func doLogin(clusterid, accessToken string) (string, error) {
 		return "", fmt.Errorf("unable to parse response body from backplane: \n Status Code: %d", resp.StatusCode)
 	}
 
-	return globalOpts.BackplaneURL + *loginResp.JSON200.ProxyUri, nil
+	return api + *loginResp.JSON200.ProxyUri, nil
 }
 
 // createTokenScriptIfNotExist creates the exec script file for use in kubeconfig,
