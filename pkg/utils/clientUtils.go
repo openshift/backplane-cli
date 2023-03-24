@@ -41,12 +41,15 @@ func (s *DefaultClientUtilsImpl) MakeRawBackplaneAPIClientWithAccessToken(base, 
 	}
 
 	// Inject client Proxy Url from config
-	bpConfig, err := config.GetBackplaneConfiguration()
-
-	if err != nil {
-		return nil, err
+	if s.clientProxyUrl == "" {
+		bpConfig, err := config.GetBackplaneConfiguration()
+		if err != nil {
+			return nil, err
+		}
+		s.clientProxyUrl = bpConfig.ProxyURL
 	}
-	s.clientProxyUrl = bpConfig.ProxyURL
+
+	// Update http proxy transport
 	if s.clientProxyUrl != "" {
 		proxyUrl, err := url.Parse(s.clientProxyUrl)
 		if err != nil {
