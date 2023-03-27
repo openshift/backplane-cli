@@ -30,20 +30,22 @@ git remote add upstream https://github.com/openshift/backplane-cli.git
 
 ### Cutting a new release
 
-Create a tag on the latest master.
+Create a tag on the latest main.
 
 ```bash
 git fetch upstream
-git checkout upstream/master
+git checkout upstream/main
 git tag -a ${VERSION} -m "release ${VERSION}"
 git push upstream $VERSION
 ```
 
+**Note:** We follow [semver](https://semver.org/) for versioning. Release tags are expected to be suffixed with a `v` for consistent naming; For example, `v1.0.0`.
+
 Run goreleaser to build the binaries and create the release page.
 
 ```bash
-git checkout upstream/master
+git checkout upstream/main
 make release
 ```
 
-A new release will show up in the release page.
+A new release will show up in the [releases](https://github.com/openshift/backplane-cli/releases) page.

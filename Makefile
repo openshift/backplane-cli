@@ -1,29 +1,33 @@
 unexport GOFLAGS
+
 GOOS?=linux
 GOARCH?=amd64
 GOENV=GOOS=${GOOS} GOARCH=${GOARCH} CGO_ENABLED=0 GOFLAGS=
 
+# These tags make sure we can statically link and avoid shared dependencies
+GO_BUILD_FLAGS :=-tags 'include_gcs include_oss containers_image_openpgp gssapi'
+GO_BUILD_FLAGS_DARWIN :=-tags 'include_gcs include_oss containers_image_openpgp'
+GO_BUILD_FLAGS_LINUX_CROSS :=-tags 'include_gcs include_oss containers_image_openpgp'
+
+GOLANGCI_LINT_VERSION=v1.52.2
+GORELEASER_VERSION=v1.14.1
+
 TESTOPTS ?=
+
+# Temporary lint cache
+export GOLANGCI_LINT_CACHE=/tmp
 
 IMAGE_REGISTRY?=quay.io
 IMAGE_REPOSITORY?=app-sre
 IMAGE_NAME?=backplane-cli
 VERSION=$(shell git rev-parse --short=7 HEAD)
 UNAME_S := $(shell uname -s)
-HOME=$(shell mktemp -d)
 
 IMAGE_URI_VERSION:=$(IMAGE_REGISTRY)/$(IMAGE_REPOSITORY)/$(IMAGE_NAME):$(VERSION)
 IMAGE_URI_LATEST:=$(IMAGE_REGISTRY)/$(IMAGE_REPOSITORY)/$(IMAGE_NAME):latest
 
-GOLANGCI_LINT_VERSION=v1.50.1
-
 CONTAINER_ENGINE:=$(shell command -v podman 2>/dev/null || command -v docker 2>/dev/null)
 RUN_IN_CONTAINER_CMD:=$(CONTAINER_ENGINE) run --platform linux/amd64 --rm -v $(shell pwd):/app -w=/app backplane-cli-builder /bin/bash -c
-
-# These tags make sure we can statically link and avoid shared dependencies
-GO_BUILD_FLAGS :=-tags 'include_gcs include_oss containers_image_openpgp gssapi'
-GO_BUILD_FLAGS_DARWIN :=-tags 'include_gcs include_oss containers_image_openpgp'
-GO_BUILD_FLAGS_LINUX_CROSS :=-tags 'include_gcs include_oss containers_image_openpgp'
 
 OUTPUT_DIR :=_output
 CROSS_BUILD_BINDIR :=$(OUTPUT_DIR)/bin
@@ -53,7 +57,7 @@ lint: getlint
 	$(GOPATH)/bin/golangci-lint run
 
 ensure-goreleaser:
-	go install github.com/goreleaser/goreleaser@v1.14.1
+	@ls $(GOPATH)/bin/goreleaser 1>/dev/null || go install github.com/goreleaser/goreleaser@${GORELEASER_VERSION}
 
 release: ensure-goreleaser
 	goreleaser release --rm-dist
@@ -80,11 +84,6 @@ clean-cross-build:
 	$(RM) -r '$(CROSS_BUILD_BINDIR)'
 	if [ -d '$(OUTPUT_DIR)' ]; then rmdir --ignore-fail-on-non-empty '$(OUTPUT_DIR)'; fi
 .PHONY: clean-cross-build
-
-build-ocm-container:
-	@if test -z ${CONTAINER_SUBSYS} ; then echo 'CONTAINER_SUBSYS must be set. Hint: `source ~/.config/ocm-container/env.source`' ; exit 1 ; fi
-	pushd ./hack/ocm-container/ ; ${CONTAINER_SUBSYS} build --network host -t ocm-container:latest .
-.PHONY: build-ocm-container
 
 .PHONY: generate
 generate:
