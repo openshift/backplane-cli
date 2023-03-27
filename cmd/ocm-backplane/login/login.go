@@ -112,10 +112,8 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 			return err
 		}
 		logger.Debugf("Using backplane Proxy URL: %s\n", proxyUrl)
-	} else {
-
-		proxyUrl = bpConfig.ProxyURL
 	}
+
 	if len(proxyUrl) == 0 {
 		proxyUrl = bpConfig.ProxyURL
 	}

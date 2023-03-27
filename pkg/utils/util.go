@@ -187,7 +187,12 @@ func CreateTempKubeConfig(kubeConfig *api.Config) error {
 
 }
 
-// Modify Default temp kube config file name
+// GetDefaultKubeConfig return default kube config
+func GetDefaultKubeConfig() api.Config {
+	return defaultKubeConfig
+}
+
+// ModifyTempKubeConfigFileName update default temp kube config file name
 func ModifyTempKubeConfigFileName(fileName string) error {
 	defaultKubeConfigFileName = fileName
 

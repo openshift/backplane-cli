@@ -29,12 +29,19 @@ func runLogout(cmd *cobra.Command, argv []string) error {
 
 	// Logout specific cluster
 	if len(argv) == 1 {
-		err := login.RemoveClusterKubeConfig(argv[0])
+		clusterId, _, err := utils.DefaultOCMInterface.GetTargetCluster(argv[0])
+		if err != nil {
+			return err
+		}
+
+		// Remove cluster specific Kubeconfig file
+		err = login.RemoveClusterKubeConfig(clusterId)
 		if err != nil {
 			return err
 		}
 		fmt.Printf("Logged out from backplane: %s\n", argv[0])
 	} else {
+		// Get raw kubeconfig from the default kubeconfig file
 		rc, err := utils.ReadKubeconfigRaw()
 		if err != nil {
 			return err
@@ -46,7 +53,6 @@ func runLogout(cmd *cobra.Command, argv []string) error {
 
 		// To cleanup, we use `CurrentContext` to obtain the cluster and user
 		// and delete all relevant info
-
 		currentContextObj := rc.Contexts[rc.CurrentContext]
 		if currentContextObj == nil {
 			return fmt.Errorf("current context does not exist, skipping")
@@ -62,7 +68,6 @@ func runLogout(cmd *cobra.Command, argv []string) error {
 		// backplane should only handle `logout` associated context
 		// created with backplane itself, we check this via matching
 		// the cluster server endpoint
-
 		backplaneServerRegex := regexp.MustCompile(utils.BackplaneApiUrlRegexp)
 
 		logger.WithFields(logrus.Fields{
@@ -82,8 +87,8 @@ func runLogout(cmd *cobra.Command, argv []string) error {
 		delete(rc.Contexts, rc.CurrentContext)
 		delete(rc.AuthInfos, currentUser)
 		savedContext := rc.CurrentContext
-		// Setting current-context to empty str will make `oc` command throwing
-		// errors saying that config is incomplete, however, this is inline with
+		// Setting current-context to empty str will make `oc` command return
+		// errors saying that the config is incomplete, however, this is inline with
 		// the behavior of `oc config unset current-context`
 		rc.CurrentContext = ""
 
@@ -92,7 +97,7 @@ func runLogout(cmd *cobra.Command, argv []string) error {
 		if err != nil {
 			return err
 		}
-		logger.Debugln("Wrote kubeconfig")
+		logger.Debugln("Kubeconfig written")
 		fmt.Printf("Logged out from backplane: %s\n", savedContext)
 	}
 

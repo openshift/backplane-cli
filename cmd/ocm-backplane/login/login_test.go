@@ -14,6 +14,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd/api"
 
 	"github.com/openshift/backplane-cli/pkg/client/mocks"
+	"github.com/openshift/backplane-cli/pkg/login"
 	"github.com/openshift/backplane-cli/pkg/utils"
 	mocks2 "github.com/openshift/backplane-cli/pkg/utils/mocks"
 )
@@ -292,7 +293,13 @@ var _ = Describe("Login command", func() {
 			err := utils.ModifyTempKubeConfigFileName(trueClusterId)
 			Expect(err).To(BeNil())
 
-			err = utils.CreateTempKubeConfig(nil)
+			kubePath, err := os.MkdirTemp("", ".kube")
+			Expect(err).To(BeNil())
+
+			err = login.SetKubeConfigBasePath(kubePath)
+			Expect(err).To(BeNil())
+
+			_, err = login.CreateClusterKubeConfig(trueClusterId, utils.GetDefaultKubeConfig())
 			Expect(err).To(BeNil())
 
 			mockOcmInterface.EXPECT().GetTargetCluster(testClusterId).Return(trueClusterId, testClusterId, nil)

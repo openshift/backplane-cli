@@ -103,6 +103,23 @@ In this example, we will login to a cluster with id `123456abcdef` in production
   $ ocm backplane login <cluster> --service
   ```
 
+### Login to multiple clusters 
+
+Logging into multiple clusters via different terminal instances.
+- How to log into the first cluster
+
+  ```
+  $ ocm backplane login <cluster-id-1> --multi
+  $ export KUBECONFIG= <cluster-id-1-kube-config-path>
+  ```
+
+- How to log into the second cluster
+
+  ```
+  $ ocm backplane login <cluster-id-2> --multi
+  $ export KUBECONFIG= <cluster-id-2-kube-config-path>
+  ```
+
 ## Console
 
 - Login to the target cluster via backplane as the above.
@@ -165,6 +182,7 @@ In this example, we will login to a cluster with id `123456abcdef` in production
   $ export BACKPLANE_DEFAULT_OPEN_BROWSER=true
   $ ocm backplane cloud console
   ```
+
 
 ## Debugging issues
 

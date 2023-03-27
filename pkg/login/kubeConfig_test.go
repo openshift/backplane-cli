@@ -14,6 +14,7 @@ var _ = Describe("Login Kube Config test", func() {
 	var (
 		testClusterId string
 		kubeConfig    api.Config
+		kubePath      string
 	)
 
 	BeforeEach(func() {
@@ -30,14 +31,19 @@ var _ = Describe("Login Kube Config test", func() {
 			},
 		}
 
+		dirName, _ := os.MkdirTemp("", ".kube")
+		kubePath = dirName
+
 	})
 
 	Context("save kubeconfig ", func() {
 		It("should save cluster kube config in cluster folder", func() {
+
+			err := SetKubeConfigBasePath(kubePath)
+			Expect(err).To(BeNil())
 			path, err := CreateClusterKubeConfig(testClusterId, kubeConfig)
 
 			Expect(err).To(BeNil())
-			Expect(path).Should(ContainSubstring(".kube"))
 			Expect(path).Should(ContainSubstring(testClusterId))
 
 			//check file is exist
@@ -48,6 +54,10 @@ var _ = Describe("Login Kube Config test", func() {
 
 	Context("Delete kubeconfig ", func() {
 		It("should save cluster kube config in cluster folder", func() {
+
+			err := SetKubeConfigBasePath(kubePath)
+			Expect(err).To(BeNil())
+
 			path, err := CreateClusterKubeConfig(testClusterId, kubeConfig)
 			Expect(err).To(BeNil())
 
