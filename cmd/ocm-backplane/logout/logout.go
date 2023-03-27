@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 	"k8s.io/client-go/tools/clientcmd"
 
+	"github.com/openshift/backplane-cli/pkg/login"
 	"github.com/openshift/backplane-cli/pkg/utils"
 )
 
@@ -28,10 +29,11 @@ func runLogout(cmd *cobra.Command, argv []string) error {
 
 	// Logout specific cluster
 	if len(argv) == 1 {
-		err := utils.RemoveClusterKubeConfig(argv[0])
+		err := login.RemoveClusterKubeConfig(argv[0])
 		if err != nil {
 			return err
 		}
+		fmt.Printf("Logged out from backplane: %s\n", argv[0])
 	} else {
 		rc, err := utils.ReadKubeconfigRaw()
 		if err != nil {

@@ -11,13 +11,13 @@ import (
 	logger "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
-	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
 
 	BackplaneApi "github.com/openshift/backplane-api/pkg/client"
 
 	"github.com/openshift/backplane-cli/pkg/cli/config"
 	"github.com/openshift/backplane-cli/pkg/cli/globalflags"
+	"github.com/openshift/backplane-cli/pkg/login"
 	"github.com/openshift/backplane-cli/pkg/utils"
 )
 
@@ -74,7 +74,7 @@ func init() {
 		"multi",
 		"m",
 		false,
-		"Enable multi cluster login.",
+		"Enable multi-cluster login.",
 	)
 
 }
@@ -112,6 +112,9 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 			return err
 		}
 		logger.Debugf("Using backplane Proxy URL: %s\n", proxyUrl)
+	} else {
+
+		proxyUrl = bpConfig.ProxyURL
 	}
 	if len(proxyUrl) == 0 {
 		proxyUrl = bpConfig.ProxyURL
@@ -227,34 +230,9 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 	rc.CurrentContext = targetContextNickName
 
 	// Save the config.
-	err = saveKubeConfig(clusterId, rc)
+	err = login.SaveKubeConfig(clusterId, rc, args.multiCluster)
 
 	return err
-}
-
-// Save Kube config based on setting
-func saveKubeConfig(clusterId string, config api.Config) error {
-
-	if !args.multiCluster {
-		// Save the config to default path.
-		configAccess := clientcmd.NewDefaultPathOptions()
-		err := clientcmd.ModifyConfig(configAccess, config, true)
-
-		if err != nil {
-			return err
-		}
-	} else {
-		//save config to current session
-		path, err := utils.CreateClusterKubeConfig(clusterId, config)
-		fmt.Printf("Execute the following command to log into the cluster %s \n", clusterId)
-		fmt.Println("export KUBECONFIG=" + path)
-
-		if err != nil {
-			return err
-		}
-	}
-	logger.Debugln("Wrote OCM configuration")
-	return nil
 }
 
 // getContextNickname returns a nickname of a context
