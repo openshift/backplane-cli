@@ -70,9 +70,9 @@ RUN mkdir /ocm
 WORKDIR /ocm
 
 RUN if [[ -n ${GITHUB_TOKEN} ]]; then \
-      echo "Authorization: Bearer ${GITHUB_TOKEN}" > auth.txt; \
+    echo "Authorization: Bearer ${GITHUB_TOKEN}" > auth.txt; \
     else \
-      touch auth.txt; \
+    touch auth.txt; \
     fi
 
 # Download the checksum
