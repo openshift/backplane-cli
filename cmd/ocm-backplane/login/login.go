@@ -94,6 +94,9 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 		}
 		logger.Debugf("Using backplane Proxy URL: %s\n", proxyUrl)
 	}
+	if len(proxyUrl) == 0 {
+		proxyUrl = bpConfig.ProxyURL
+	}
 
 	clusterId, clusterName, err := utils.DefaultOCMInterface.GetTargetCluster(clusterKey)
 	if err != nil {
@@ -173,7 +176,7 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 
 	// Add proxy URL to target cluster
 
-	if globalOpts.ProxyURL != "" {
+	if proxyUrl != "" {
 		targetCluster.ProxyURL = proxyUrl
 	}
 
