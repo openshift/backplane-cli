@@ -130,12 +130,12 @@ func init() {
 	)
 }
 
-func checkAndFindContainerURL(containerName string, containerEngine string) (err error) {
+func checkContainerExists(containerName string, containerEngine string) (exists bool, err error) {
 	existCheckArgs := []string{
 		"container",
 		"ps",
 		"--filter",
-		fmt.Sprintf("\"name=%s\"", containerName),
+		fmt.Sprintf("name=%s", containerName),
 	}
 
 	existCheckCmd, existCheckCmdOutput := createCommand(containerEngine, existCheckArgs...), new(strings.Builder)
@@ -144,45 +144,67 @@ func checkAndFindContainerURL(containerName string, containerEngine string) (err
 
 	err = existCheckCmd.Run()
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	if strings.Contains(existCheckCmdOutput.String(), containerName) {
-		addressCheckArgs := []string{
-			"container",
-			"inspect",
-			"--format",
-			"\"{{json .Config.Cmd}}\"",
-			containerName,
-		}
-		addressCheckCmd, addressCheckOutput := createCommand(containerEngine, addressCheckArgs...), new(strings.Builder)
-		addressCheckCmd.Stderr = os.Stderr
-		addressCheckCmd.Stdout = addressCheckOutput
+		return true, nil
+	}
 
-		err := addressCheckCmd.Run()
+	return false, nil
+}
+
+func findConsoleAddress(containerName string, containerEngine string) (address string, err error) {
+	addressCheckArgs := []string{
+		"container",
+		"inspect",
+		"--format",
+		"\"{{json .Config.Cmd}}\"",
+		containerName,
+	}
+	addressCheckCmd, addressCheckOutput := createCommand(containerEngine, addressCheckArgs...), new(strings.Builder)
+	addressCheckCmd.Stderr = os.Stderr
+	addressCheckCmd.Stdout = addressCheckOutput
+
+	err = addressCheckCmd.Run()
+	if err != nil {
+		return "", err
+	}
+
+	configurationCmdFragments := []string{}
+
+	err = json.Unmarshal([]byte(strings.Trim(addressCheckOutput.String(), "\"\n ")), &configurationCmdFragments)
+	if err != nil {
+		return "", err
+	}
+
+	addressIndex := -1
+	for idx, val := range configurationCmdFragments {
+		if val == "-base-address" {
+			addressIndex = idx + 1
+			break
+		}
+	}
+	if addressIndex == -1 || addressIndex >= len(configurationCmdFragments) {
+		return "", fmt.Errorf("could not find address")
+	}
+
+	return configurationCmdFragments[addressIndex], nil
+}
+
+func checkAndFindContainerURL(containerName string, containerEngine string) (err error) {	
+	exists, err := checkContainerExists(containerName, containerEngine)
+	if err != nil {
+		return err
+	}
+
+	if exists {
+		address, err := findConsoleAddress(containerName, containerEngine)
 		if err != nil {
-			return err
+			return fmt.Errorf("console container is already running: %s", err)
 		}
 
-		configurationCmdFragments := []string{}
-
-		err = json.Unmarshal([]byte(strings.Trim(addressCheckOutput.String(), "\"\n ")), &configurationCmdFragments)
-		if err != nil {
-			return err
-		}
-
-		addressIndex := -1
-		for idx, val := range configurationCmdFragments {
-			if val == "-base-address" {
-				addressIndex = idx + 1
-				break
-			}
-		}
-		if addressIndex == -1 || addressIndex >= len(configurationCmdFragments) {
-			return fmt.Errorf("console container is already running but could not find address")
-		}
-
-		return fmt.Errorf("console container is already running on %s", configurationCmdFragments[addressIndex])
+		return fmt.Errorf("console container is already running on: %s", address)
 	}
 
 	return nil
