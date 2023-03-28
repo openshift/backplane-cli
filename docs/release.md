@@ -42,7 +42,7 @@ git push upstream $VERSION
 Run goreleaser to build the binaries and create the release page.
 
 ```bash
-git checkout upstream/master
+git checkout upstream/main
 make release
 ```
 
