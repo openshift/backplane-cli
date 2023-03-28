@@ -62,7 +62,7 @@ func runCreateManagedJob(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	// ======== Initialize backplaneURL ========
-	bpCluster, err := utils.GetBackplaneCluster(clusterKey)
+	bpCluster, err := utils.DefaultClusterUtils.GetBackplaneCluster(clusterKey)
 	if err != nil {
 		return err
 	}
