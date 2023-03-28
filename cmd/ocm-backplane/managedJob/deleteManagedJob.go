@@ -66,7 +66,7 @@ func newDeleteManagedJobCmd() *cobra.Command {
 				return err
 			}
 
-			bpCluster, err := utils.GetBackplaneCluster(clusterKey)
+			bpCluster, err := utils.DefaultClusterUtils.GetBackplaneCluster(clusterKey)
 			if err != nil {
 				return err
 			}

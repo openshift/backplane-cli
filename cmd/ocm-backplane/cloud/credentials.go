@@ -15,6 +15,10 @@ import (
 	"github.com/openshift/backplane-cli/pkg/utils"
 )
 
+var GetBackplaneClusterFromConfig = utils.DefaultClusterUtils.GetBackplaneClusterFromConfig
+var GetBackplaneConfiguration = config.GetBackplaneConfiguration
+
+
 var credentialArgs struct {
 	backplaneURL string
 	output       string
@@ -115,7 +119,7 @@ func runCredentials(cmd *cobra.Command, argv []string) error {
 		logger.WithField("Search Key", clusterKey).Debugln("Finding target cluster")
 	} else if len(argv) == 0 {
 		// if no args given, try to log into the cluster that the user is logged into
-		clusterInfo, err := utils.GetBackplaneClusterFromConfig()
+		clusterInfo, err := GetBackplaneClusterFromConfig()
 		if err != nil {
 			return err
 		}
@@ -134,7 +138,7 @@ func runCredentials(cmd *cobra.Command, argv []string) error {
 		return fmt.Errorf("failed to get cluster info for %s: %w", clusterId, err)
 	}
 
-	cloudProvider := cluster.CloudProvider().ID()
+	cloudProvider := utils.DefaultClusterUtils.GetCloudProvider(cluster)
 
 	logger.WithFields(logger.Fields{
 		"ID":   clusterId,
@@ -142,11 +146,11 @@ func runCredentials(cmd *cobra.Command, argv []string) error {
 
 	// ============Get Backplane URl ==========================
 	bpURL := ""
-	if consoleArgs.backplaneURL != "" {
+	if credentialArgs.backplaneURL != "" {
 		bpURL = credentialArgs.backplaneURL
 	} else {
 		// Get Backplane configuration
-		bpConfig, err := config.GetBackplaneConfiguration()
+		bpConfig, err := GetBackplaneConfiguration()
 		if err != nil || bpConfig.URL == "" {
 			return fmt.Errorf("can't find backplane url: %w", err)
 		}
@@ -167,13 +171,23 @@ func runCredentials(cmd *cobra.Command, argv []string) error {
 			return fmt.Errorf("unable to unmarshal AWS credentials response from backplane %s: %w", *credsResp.JSON200.Credentials, err)
 		}
 		cliResp.Region = *credsResp.JSON200.Region
-		return renderCloudCredentials(cliResp)
+		creds, err := renderCloudCredentials(credentialArgs.output, cliResp)
+		if err != nil {
+			return err
+		}
+		fmt.Println(creds)
+		return nil
 	case "gcp":
 		cliResp := &GCPCredentialsResponse{}
 		if err := json.Unmarshal([]byte(*credsResp.JSON200.Credentials), cliResp); err != nil {
 			return fmt.Errorf("unable to unmarshal GCP credentials response from backplane %s: %w", *credsResp.JSON200.Credentials, err)
 		}
-		return renderCloudCredentials(cliResp)
+		creds, err := renderCloudCredentials(credentialArgs.output, cliResp)
+		if err != nil {
+			return err
+		}
+		fmt.Println(creds)
+		return nil
 	default:
 		return fmt.Errorf("unsupported cloud provider: %s", cloudProvider)
 	}
@@ -181,13 +195,14 @@ func runCredentials(cmd *cobra.Command, argv []string) error {
 
 // getCloudCredential returns Cloud Credentials Response
 func getCloudCredential(backplaneURL string, clusterId string) (*BackplaneApi.GetCloudCredentialsResponse, error) {
-
 	client, err := utils.DefaultClientUtils.GetBackplaneClient(backplaneURL)
 	if err != nil {
 		return nil, err
 	}
 
+
 	resp, err := client.GetCloudCredentials(context.TODO(), clusterId)
+
 	if err != nil {
 		return nil, err
 	}
@@ -197,6 +212,7 @@ func getCloudCredential(backplaneURL string, clusterId string) (*BackplaneApi.Ge
 	}
 
 	logger.Debugln("Parsing response")
+
 	credsResp, err := BackplaneApi.ParseGetCloudCredentialsResponse(resp)
 	if err != nil {
 		return nil, fmt.Errorf("unable to parse response body from backplane:\n  Status Code: %d : err: %v", resp.StatusCode, err)
@@ -208,29 +224,26 @@ func getCloudCredential(backplaneURL string, clusterId string) (*BackplaneApi.Ge
 	return credsResp, nil
 }
 
+
 // renderCloudCredentials displays the results of `ocm backplane cloud credentials` for AWS clusters
-func renderCloudCredentials(creds CredentialsResponse) error {
-	switch credentialArgs.output {
+func renderCloudCredentials(outputFormat string, creds CredentialsResponse) (string, error) {
+	switch outputFormat {
 	case "env":
-		fmt.Println(creds.fmtExport())
-		return nil
+		return creds.fmtExport(), nil
 	case "yaml":
 		yamlBytes, err := yaml.Marshal(creds)
 		if err != nil {
-			return err
+			return "", err
 		}
-		fmt.Println("---")
-		fmt.Println(string(yamlBytes))
-		return nil
+		return string(yamlBytes), nil
 	case "json":
 		jsonBytes, err := json.Marshal(creds)
 		if err != nil {
-			return err
+			return "", err
 		}
-		fmt.Println(string(jsonBytes))
-		return nil
+
+		return string(jsonBytes), nil
 	default:
-		fmt.Println(creds)
+		return creds.String(), nil
 	}
-	return nil
 }

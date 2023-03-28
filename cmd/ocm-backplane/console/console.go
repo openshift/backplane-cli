@@ -249,7 +249,7 @@ func runConsole(cmd *cobra.Command, argv []string) (err error) {
 	}
 	logger.Infof("Using container engine %s\n", containerEngine)
 
-	currentClusterInfo, err := utils.GetBackplaneClusterFromConfig()
+	currentClusterInfo, err := utils.DefaultClusterUtils.GetBackplaneClusterFromConfig()
 	if err != nil {
 		return err
 	}
@@ -628,7 +628,7 @@ func isConsolePluginEnabled(config *rest.Config, consolePlugin string) (bool, er
 
 // isRunningHigherThan411 checks the running cluster is higher than 411
 func isRunningHigherThan411() bool {
-	currentClusterInfo, err := utils.GetBackplaneClusterFromConfig()
+	currentClusterInfo, err := utils.DefaultClusterUtils.GetBackplaneClusterFromConfig()
 	if err != nil {
 		return false
 	}

@@ -51,7 +51,7 @@ func newDescribeScriptCmd() *cobra.Command {
 			// ======== Initialize backplaneURL == ========
 			backplaneHost := urlFlag
 			if backplaneHost == "" {
-				bpCluster, err := utils.GetBackplaneCluster(clusterKey, urlFlag)
+				bpCluster, err := utils.DefaultClusterUtils.GetBackplaneCluster(clusterKey, urlFlag)
 				if err != nil {
 					return err
 				}
