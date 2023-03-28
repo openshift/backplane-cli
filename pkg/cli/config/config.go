@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/openshift/backplane-cli/pkg/info"
 )
@@ -24,13 +25,14 @@ func GetBackplaneConfigFile() string {
 
 // Get Backplane config default path
 func getConfiDefaultPath(fileName string) string {
-	configDir, err := os.UserConfigDir()
-
+	UserHomeDir, err := os.UserHomeDir()
 	if err != nil {
 		return fileName
 	}
 
-	return configDir + "/" + fileName
+	configFilePath := filepath.Join(UserHomeDir, ".config", fileName)
+
+	return configFilePath
 }
 
 // Get Backplane ProxyUrl from config
