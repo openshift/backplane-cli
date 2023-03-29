@@ -27,6 +27,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"encoding/json"
 
 	"github.com/Masterminds/semver"
 	homedir "github.com/mitchellh/go-homedir"
@@ -129,6 +130,87 @@ func init() {
 	)
 }
 
+func checkContainerExists(containerName string, containerEngine string) (exists bool, err error) {
+	existCheckArgs := []string{
+		"container",
+		"ps",
+		"--filter",
+		fmt.Sprintf("name=%s", containerName),
+	}
+
+	existCheckCmd, existCheckCmdOutput := createCommand(containerEngine, existCheckArgs...), new(strings.Builder)
+	existCheckCmd.Stderr = os.Stderr
+	existCheckCmd.Stdout = existCheckCmdOutput
+
+	err = existCheckCmd.Run()
+	if err != nil {
+		return false, err
+	}
+
+	if strings.Contains(existCheckCmdOutput.String(), containerName) {
+		return true, nil
+	}
+
+	return false, nil
+}
+
+func findConsoleAddress(containerName string, containerEngine string) (address string, err error) {
+	addressCheckArgs := []string{
+		"container",
+		"inspect",
+		"--format",
+		"\"{{json .Config.Cmd}}\"",
+		containerName,
+	}
+	addressCheckCmd, addressCheckOutput := createCommand(containerEngine, addressCheckArgs...), new(strings.Builder)
+	addressCheckCmd.Stderr = os.Stderr
+	addressCheckCmd.Stdout = addressCheckOutput
+
+	err = addressCheckCmd.Run()
+	if err != nil {
+		return "", err
+	}
+
+	configurationCmdFragments := []string{}
+
+	err = json.Unmarshal([]byte(strings.Trim(addressCheckOutput.String(), "\"\n ")), &configurationCmdFragments)
+	if err != nil {
+		return "", err
+	}
+
+	addressIndex := -1
+	for idx, val := range configurationCmdFragments {
+		if val == "-base-address" {
+			addressIndex = idx + 1
+			break
+		}
+	}
+	if addressIndex == -1 || addressIndex >= len(configurationCmdFragments) {
+		return "", fmt.Errorf("could not find address")
+	}
+
+	return configurationCmdFragments[addressIndex], nil
+}
+
+func checkAndFindContainerURL(containerName string, containerEngine string) (err error) {	
+	exists, err := checkContainerExists(containerName, containerEngine)
+	if err != nil {
+		return err
+	}
+
+	if exists {
+		address, err := findConsoleAddress(containerName, containerEngine)
+		if err != nil {
+			return fmt.Errorf("console container is already running: %s", err)
+		}
+
+		return fmt.Errorf("console container is already running on: %s", address)
+	}
+
+	return nil
+}
+
+
 func runConsole(cmd *cobra.Command, argv []string) (err error) {
 	// Check if env variable 'BACKPLANE_DEFAULT_OPEN_BROWSER' is set
 	if env, ok := os.LookupEnv(EnvBrowserDefault); ok {
@@ -172,6 +254,14 @@ func runConsole(cmd *cobra.Command, argv []string) (err error) {
 		return err
 	}
 	clusterId := currentClusterInfo.ClusterID
+
+	consoleContainerName := fmt.Sprintf("console-%s", clusterId)
+
+	err = checkAndFindContainerURL(consoleContainerName, containerEngine)
+	if err != nil {
+		return err
+	}
+
 	fmt.Printf("Starting console for cluster %s\n", clusterId)
 
 	// Get the RESTconfig from the current kubeconfig context.
@@ -236,7 +326,7 @@ func runConsole(cmd *cobra.Command, argv []string) (err error) {
 	engRunArgs := []string{
 		"run",
 		"--rm",
-		"--name", fmt.Sprintf("console-%s", clusterId),
+		"--name", consoleContainerName,
 		"-p", fmt.Sprintf("127.0.0.1:%s:%s", consoleArgs.port, consoleArgs.port),
 	}
 
