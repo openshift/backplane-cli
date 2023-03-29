@@ -16,14 +16,16 @@ builds:
     goarch:
       - amd64
       - arm64
+    ldflags:
+      # The "-X" go flag sets the Version
+      - -X github.com/openshift/backplane-cli/pkg/info.Version={{.Version}}
+      - "-extldflags=-zrelro" # Hardening ELF binaries: https://www.redhat.com/en/blog/hardening-elf-binaries-using-relocation-read-only-relro
+      - "-extldflags=-znow"
     main: ./cmd/ocm-backplane/
     binary: ocm-backplane
 
 archives:
-  - replacements:
-      darwin: Darwin
-      linux: Linux
-      amd64: x86_64
+  - name_template: '{{ .ProjectName }}_{{- .Version }}_{{- title .Os }}_{{- if eq .Arch "amd64" }}x86_64{{- else }}{{ .Arch }}{{ end}}'
 
 checksum:
   name_template: "checksums.txt"

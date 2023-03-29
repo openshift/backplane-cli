@@ -7,9 +7,6 @@ import (
 )
 
 const (
-	// Version of the backplane-cli
-	Version = "0.0.0"
-
 	BACKPLANE_URL_ENV_NAME             = "BACKPLANE_URL"
 	BACKPLANE_PROXY_ENV_NAME           = "HTTPS_PROXY"
 	BACKPLANE_CONFIG_PATH_ENV_NAME     = "BACKPLANE_CONFIG"
@@ -28,4 +25,10 @@ const (
 	GitHubHost = "github.com"
 )
 
-var UpstreamREADMETagged = fmt.Sprintf(UpstreamREADMETemplate, Version)
+var (
+	// Version of the backplane-cli
+	// This will be set via Goreleaser during the build process
+	Version string
+
+	UpstreamREADMETagged = fmt.Sprintf(UpstreamREADMETemplate, Version)
+)

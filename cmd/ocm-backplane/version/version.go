@@ -13,7 +13,7 @@ import (
 var VersionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Prints the version",
-	Long:  `Prints the version number of the client.`,
+	Long:  `Prints the version number of Backplane CLI`,
 	RunE:  runVersion,
 }
 

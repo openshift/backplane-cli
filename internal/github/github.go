@@ -22,7 +22,7 @@ var (
 
 const (
 	gitHubApiEndPoint = "https://api.github.com/repos/openshift/backplane-cli"
-	assetTemplateName = "backplane-cli_%s_%s_%s.tar.gz" // version, GOOS, GOARCH
+	assetTemplateName = "ocm-backplane_%s_%s_%s.tar.gz" // version, GOOS, GOARCH
 )
 
 func NewClient(opts ...ClientOption) *Client {
@@ -194,6 +194,8 @@ func mapArch(goarch string) string {
 	switch goarch {
 	case "amd64":
 		return "x86_64"
+	case "arm64":
+		return "arm64"
 	default:
 		return goarch
 	}
