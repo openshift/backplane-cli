@@ -87,8 +87,8 @@ func TestFindAssetURL(t *testing.T) {
 				TagName: "v0.0.1",
 				Assets: []upgrade.ReleaseAsset{
 					{
-						Name:        "backplane-cli_0.0.1_Darwin_arm64.tar.gz",
-						DownloadUrl: "https://github.com/openshift/backplane-cli/releases/download/v0.0.1/backplane-cli_0.0.1_Darwin_arm64.tar.gz",
+						Name:        "ocm-backplane_0.0.1_Darwin_arm64.tar.gz",
+						DownloadUrl: "https://github.com/openshift/backplane-cli/releases/download/v0.0.1/ocm-backplane_0.0.1_Darwin_arm64.tar.gz",
 					},
 				},
 			},
@@ -97,15 +97,15 @@ func TestFindAssetURL(t *testing.T) {
 				OSArch: "arm64",
 			},
 			match:         true,
-			ExpectedAsert: "https://github.com/openshift/backplane-cli/releases/download/v0.0.1/backplane-cli_0.0.1_Darwin_arm64.tar.gz",
+			ExpectedAsert: "https://github.com/openshift/backplane-cli/releases/download/v0.0.1/ocm-backplane_0.0.1_Darwin_arm64.tar.gz",
 		},
 		"check matching asert for Linux": {
 			LatestRelease: upgrade.Release{
 				TagName: "v0.0.1",
 				Assets: []upgrade.ReleaseAsset{
 					{
-						Name:        "backplane-cli_0.0.1_Linux_arm64.tar.gz",
-						DownloadUrl: "https://github.com/openshift/backplane-cli/releases/download/v0.0.1/backplane-cli_0.0.1_Linux_arm64.tar.gz",
+						Name:        "ocm-backplane_0.0.1_Linux_arm64.tar.gz",
+						DownloadUrl: "https://github.com/openshift/backplane-cli/releases/download/v0.0.1/ocm-backplane_0.0.1_Linux_arm64.tar.gz",
 					},
 				},
 			},
@@ -114,19 +114,19 @@ func TestFindAssetURL(t *testing.T) {
 				OSArch: "arm64",
 			},
 			match:         true,
-			ExpectedAsert: "https://github.com/openshift/backplane-cli/releases/download/v0.0.1/backplane-cli_0.0.1_Linux_arm64.tar.gz",
+			ExpectedAsert: "https://github.com/openshift/backplane-cli/releases/download/v0.0.1/ocm-backplane_0.0.1_Linux_arm64.tar.gz",
 		},
 		"check asert for unsupported OS ": {
 			LatestRelease: upgrade.Release{
 				TagName: "v0.0.1",
 				Assets: []upgrade.ReleaseAsset{
 					{
-						Name:        "backplane-cli_0.0.1_Linux_arm64.tar.gz",
-						DownloadUrl: "https://github.com/openshift/backplane-cli/releases/download/v0.0.1/backplane-cli_0.0.1_Linux_arm64.tar.gz",
+						Name:        "ocm-backplane_0.0.1_Linux_arm64.tar.gz",
+						DownloadUrl: "https://github.com/openshift/backplane-cli/releases/download/v0.0.1/ocm-backplane_0.0.1_Linux_arm64.tar.gz",
 					},
 					{
-						Name:        "backplane-cli_0.0.1_Darwin_arm64.tar.gz",
-						DownloadUrl: "https://github.com/openshift/backplane-cli/releases/download/v0.0.1/backplane-cli_0.0.1_Darwin_arm64.tar.gz",
+						Name:        "ocm-backplane_0.0.1_Darwin_arm64.tar.gz",
+						DownloadUrl: "https://github.com/openshift/backplane-cli/releases/download/v0.0.1/ocm-backplane_0.0.1_Darwin_arm64.tar.gz",
 					},
 				},
 			},
