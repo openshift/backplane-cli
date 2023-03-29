@@ -19,8 +19,6 @@ builds:
     ldflags:
       # The "-X" go flag sets the Version
       - -X github.com/openshift/backplane-cli/pkg/info.Version={{.Version}}
-      - "-extldflags=-zrelro" # Hardening ELF binaries: https://www.redhat.com/en/blog/hardening-elf-binaries-using-relocation-read-only-relro
-      - "-extldflags=-znow"
     main: ./cmd/ocm-backplane/
     binary: ocm-backplane
 
