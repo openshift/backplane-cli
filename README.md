@@ -197,4 +197,4 @@ See [design.md](docs/design.md).
 Please help us to improve. To contact the backplane team:
 
 - @backplane-team in slack channel #sd-ims-backplane (CoreOS workspace)
-- Or reach out [OWNERS](https://github.com/openshift/backplane-cli/-/blob/master/OWNERS)
+- Or reach out [OWNERS](https://github.com/openshift/backplane-cli/blob/main/OWNERS)
