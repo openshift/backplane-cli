@@ -182,16 +182,6 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 
 	targetUserNickName := getUsernameFromJWT(*accessToken)
 	execConfig := &api.ExecConfig{}
-	scriptName, err := createTokenScriptIfNotExist()
-	if err != nil {
-		return err
-	}
-	if len(scriptName) == 0 {
-		return fmt.Errorf("failed to create token script")
-	}
-	execConfig.Command = "bash"
-	execConfig.Args = []string{scriptName}
-	execConfig.APIVersion = "client.authentication.k8s.io/v1beta1"
 
 	ocmEnv := &api.ExecEnvVar{}
 	ocmConfigVal, hasOcmEnv := os.LookupEnv("OCM_CONFIG")
@@ -201,7 +191,7 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 		execConfig.Env = []api.ExecEnvVar{*ocmEnv}
 	}
 
-	targetUser.Exec = execConfig
+	targetUser.Token = *accessToken
 
 	targetContext.AuthInfo = targetUserNickName
 	targetContext.Cluster = clusterName
@@ -282,54 +272,4 @@ func doLogin(api, clusterid, accessToken string) (string, error) {
 	}
 
 	return api + *loginResp.JSON200.ProxyUri, nil
-}
-
-// createTokenScriptIfNotExist creates the exec script file for use in kubeconfig,
-// so there's no need to login everytime the access token expires.
-func createTokenScriptIfNotExist() (string, error) {
-	homedir, err := os.UserHomeDir()
-	if err != nil {
-		return "", fmt.Errorf("can't get user homedir. Error: %s", err.Error())
-	}
-
-	filename := homedir + "/.kube/ocm-token"
-	_, err = os.Stat(filename)
-
-	if !os.IsNotExist(err) {
-		return filename, nil
-	}
-
-	if err := os.MkdirAll(homedir+"/.kube/", 0750); err != nil {
-		return "", err
-	}
-
-	file, err := os.Create(filename)
-	if err != nil {
-		return "", err
-	}
-
-	defer func() {
-		err = file.Close()
-	}()
-
-	script :=
-		`#!/bin/bash
-token="$(ocm token)"
-cat <<TOKEN
-{
-  "apiVersion": "client.authentication.k8s.io/v1beta1",
-  "kind": "ExecCredential",
-  "status": {
-    "token": "$token"
-  }
-}
-TOKEN`
-
-	fmt.Fprint(file, script)
-	err = os.Chmod(filename, 0600)
-	if err != nil {
-		return "", err
-	}
-
-	return filename, err
 }
