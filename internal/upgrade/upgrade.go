@@ -203,7 +203,7 @@ func (c *CmdConfig) Default() {
 	}
 
 	if c.BinaryName == "" {
-		c.BinaryName = "backplane-cli"
+		c.BinaryName = "ocm-backplane"
 	}
 
 	if c.Org == "" {
