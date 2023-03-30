@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/openshift/backplane-cli/pkg/info"
 )
@@ -13,31 +14,41 @@ type BackplaneConfiguration struct {
 	ProxyURL string `json:"proxy-url"`
 }
 
-func GetBackplaneConfigFile() string {
+func GetBackplaneConfigFile() (string, error) {
 	path, bpConfigFound := os.LookupEnv(info.BACKPLANE_CONFIG_PATH_ENV_NAME)
 	if bpConfigFound {
-		return path
+		return path, nil
 	}
 
-	return getConfiDefaultPath(info.BACKPLANE_CONFIG_DEFAULT_FILE_NAME)
+	configFile, err := getDefaultConfigPath()
+	if err != nil {
+		return "", err
+	}
+
+	return configFile, nil
 }
 
 // Get Backplane config default path
-func getConfiDefaultPath(fileName string) string {
-	configDir, err := os.UserConfigDir()
-
+func getDefaultConfigPath() (string, error) {
+	UserHomeDir, err := os.UserHomeDir()
 	if err != nil {
-		return fileName
+		return "", err
 	}
 
-	return configDir + "/" + fileName
+	configFilePath := filepath.Join(UserHomeDir, info.BACKPLANE_CONFIG_DEFAULT_FILE_PATH, info.BACKPLANE_CONFIG_DEFAULT_FILE_NAME)
+
+	return configFilePath, nil
 }
 
 // Get Backplane ProxyUrl from config
 func GetBackplaneConfiguration() (bpConfig BackplaneConfiguration, err error) {
 
 	// Check proxy url from the config file
-	filePath := GetBackplaneConfigFile()
+	filePath, err := GetBackplaneConfigFile()
+	if err != nil {
+		return bpConfig, err
+	}
+
 	if _, err := os.Stat(filePath); err == nil {
 		file, err := os.Open(filePath)
 
