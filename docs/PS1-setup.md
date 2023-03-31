@@ -13,8 +13,7 @@ Save the [kube-ps1](https://raw.githubusercontent.com/jonmosco/kube-ps1/master/k
 ~~~
 source /path/to/kube-ps1.sh ##<---- replace this to the kube-ps1 location
 function cluster_function() {
-  ocm_config="$(oc config view --minify -o jsonpath='{.users[0].user.exec.env[?(@.name == "OCM_CONFIG")].value}' 2> /dev/null)"
-  info="$(OCM_CONFIG=$ocm_config ocm backplane status 2> /dev/null)"
+  info="$(ocm backplane status 2> /dev/null)"
   if [ $? -ne 0 ]; then return; fi
   clustername=$(grep "Cluster Name" <<< $info | awk '{print $3}')
   baseid=$(grep "Cluster Basedomain" <<< $info | awk '{print $3}' | cut -d'.' -f1,2)
@@ -39,8 +38,7 @@ Save the [kube-ps1](https://raw.githubusercontent.com/jonmosco/kube-ps1/master/k
 ~~~
 source /path/to/kube-ps1.sh ##<---- replace this to your location
 function cluster_function() {
-  ocm_config="$(oc config view --minify -o jsonpath='{.users[0].user.exec.env[?(@.name == "OCM_CONFIG")].value}' 2> /dev/null)"
-  info="$(OCM_CONFIG=$ocm_config ocm backplane status 2> /dev/null)"
+  info="$(ocm backplane status 2> /dev/null)"
   if [ $? -ne 0 ]; then return; fi
   clustername=$(grep "Cluster Name" <<< $info | awk '{print $3}')
   baseid=$(grep "Cluster Basedomain" <<< $info | awk '{print $3}' | cut -d'.' -f1,2)

@@ -73,6 +73,7 @@ var _ = Describe("Login command", func() {
 	})
 
 	AfterEach(func() {
+		args.manager = false
 		globalOpts.BackplaneURL = ""
 		globalOpts.ProxyURL = ""
 		os.Setenv("HTTPS_PROXY", "")
@@ -192,6 +193,27 @@ var _ = Describe("Login command", func() {
 			err := runLogin(nil, []string{testClusterId})
 
 			Expect(err).To(BeNil())
+		})
+
+		It("should save ocm token to kube config", func() {
+			err := utils.CreateTempKubeConfig(nil)
+			Expect(err).To(BeNil())
+			globalOpts.ProxyURL = "https://squid.myproxy.com"
+			mockClientUtil.EXPECT().SetClientProxyUrl(globalOpts.ProxyURL).Return(nil)
+			mockOcmInterface.EXPECT().GetTargetCluster(testClusterId).Return(trueClusterId, testClusterId, nil)
+			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterId)).Return(false, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil)
+			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken(backplaneAPIUri, testToken).Return(mockClient, nil)
+			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(trueClusterId)).Return(fakeResp, nil)
+
+			err = runLogin(nil, []string{testClusterId})
+
+			Expect(err).To(BeNil())
+
+			cfg, err := utils.ReadKubeconfigRaw()
+
+			Expect(err).To(BeNil())
+			Expect(cfg.AuthInfos["anonymous"].Token).To(Equal(testToken))
 		})
 	})
 })
