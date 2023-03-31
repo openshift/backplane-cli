@@ -7,8 +7,6 @@
 
 backplane-cli is a CLI tool to interact with [backplane api](https://github.com/openshift/backplane-api).
 
-The onboarding documentation can be found on [The Source Wiki](https://source.redhat.com/groups/public/openshiftplatformsre/wiki/backplane_user_documentation).
-
 ## Installation
 
 ### Option 1: Download from release
@@ -48,8 +46,6 @@ For more information about ocm plugins, please refer https://github.com/openshif
 ## Configuration
 
 The configuration file of backplane-cli is expected to be located at `$HOME/.config/backplane/config.json`.
-
-Please refer to the [Source Wiki](https://source.redhat.com/groups/public/openshiftplatformsre/wiki/backplane_user_documentation) for more details.
 
 ## Setup bash/zsh prompt
 
