@@ -1,58 +1,30 @@
 # backplane-cli
 
-[![GoDoc](https://godoc.org/github.com/openshift/backplane-cli?status.svg)](https://godoc.org/github.com/openshift/backplane-cli)
+[![Go Report Card](https://goreportcard.com/badge/github.com/openshift/backplane-cli)](https://goreportcard.com/report/github.com/openshift/backplane-cli)
 [![codecov](https://codecov.io/gh/openshift/backplane-cli/branch/main/graph/badge.svg)](https://codecov.io/gh/openshift/backplane-cli)
+[![GoDoc](https://godoc.org/github.com/openshift/backplane-cli?status.svg)](https://godoc.org/github.com/openshift/backplane-cli)
 [![License](https://img.shields.io/:license-apache-blue.svg)](http://www.apache.org/licenses/LICENSE-2.0.html)
 
 backplane-cli is a CLI tool to interact with [backplane api](https://github.com/openshift/backplane-api).
 
-The onboarding documentation can be found on [The Source Wiki](https://source.redhat.com/groups/public/openshiftplatformsre/wiki/backplane_user_documentation).
+## Installation
 
-## Install
+### Option 1: Download from release
 
-### Option 1: Use `go install`
+Download the latest binary from the GitHub [releases](https://github.com/openshift/backplane-cli/releases) page.
 
-For using this method, you need to have `go` installed.
-
-The minimal version required is `go 1.18`. You can check this with `go version`.
-
-Then run `go install github.com/openshift/backplane-cli/cmd/ocm-backplane@{TAG_VERSION}`
-where `TAG_VERSION` is the version you wish to install.
-
-Example: `go install github.com/openshift/backplane-cli@0.0.8`
-
-`go install` will fetch, build the binary and install it to your $GOBIN (if set) or $GOPATH/bin,
-
-### Option 2: Download binary
-
-Download the latest binary file from the [release page](https://github.com/openshift/backplane-cli/releases).
-
-For Linux, download `backplane-cli_<version>_Linux_x86_64`, rename it to `ocm-backplane` and put it to $PATH. 
-
-For example:
+For example, to download the binary on Linux:
 
 ```
-$ sudo cp ocm-backplane /usr/bin/ocm-backplane
-$ sudo chmod 0755 /usr/bin/ocm-backplane
+$ wget https://github.com/openshift/backplane-cli/releases/download/v0.1.1/ocm-backplane_0.1.1_Linux_x86_64.tar.gz
+$ tar -xvzf ocm-backplane_0.1.1_Linux_x86_64.tar.gz
+$ chmod +x ocm-backplane
+$ mv ocm-backplane $GOBIN
 ```
 
-For MacOS, download `ocm-backplane_darwin_amd64`, rename it to `ocm-backplane` and put it to $PATH. For example:
+### Option 2: Build from source
 
-```
-$ sudo cp ocm-backplane_darwin_amd64 /usr/local/bin/ocm-backplane
-$ sudo chmod 0755 /usr/local/bin/ocm-backplane
-```
-
-To verify, you should see version output from backplane sub-command, like:
-
-```
-$ ocm backplane version
-0.0.35
-```
-
-### Option 3: Build from source
-
-First clone the repository somewhere in your $PATH. A common place would be within your $GOPATH.
+First clone the repository somewhere in your `$PATH`. A common place would be within your `$GOPATH`.
 
 Example:
 
@@ -63,17 +35,21 @@ $ git clone git@github.com/openshift/backplane-cli.git
 ```
 
 ```
-$ make install
+$ make build
 ```
 
-This command will build the backplane-cli binary, named `ocm-backplane`. This binary will be placed in $PATH. 
+This command will build the backplane-cli binary, named `ocm-backplane`. This binary will be placed in $PATH.
 As the binary has prefix `ocm-`, it becomes a plugin of `ocm`, and can be invoked by `ocm backplane`.
 
 For more information about ocm plugins, please refer https://github.com/openshift-online/ocm-cli#extend-ocm-with-plugins
 
-### Setup bash/zsh prompt
+## Configuration
 
-To setup the PS1(prompt) for bash/zsh, please follow [these instructions](https://github.com/openshift/backplane-cli/blob/main/docs/PS1-setup.md). Note that the "build with ocm-container" already has PS1 built-in.
+The configuration file of backplane-cli is expected to be located at `$HOME/.config/backplane/config.json`.
+
+## Setup bash/zsh prompt
+
+To setup the PS1(prompt) for bash/zsh, please follow [these instructions](https://github.com/openshift/backplane-cli/blob/main/docs/PS1-setup.md).
 
 ## Usage
 
