@@ -20,7 +20,7 @@ function cluster_function() {
   echo $clustername.$baseid
 }
 KUBE_PS1_BINARY=oc
-KUBE_PS1_CLUSTER_FUNCTION=cluster_function
+export KUBE_PS1_CLUSTER_FUNCTION=cluster_function
 PS1='[\u@\h \W $(kube_ps1)]\$ '
 ~~~
 
