@@ -93,7 +93,7 @@ func runConsole(cmd *cobra.Command, argv []string) (err error) {
 		logger.WithField("Search Key", clusterKey).Debugln("Finding target cluster")
 	} else if len(argv) == 0 {
 		// if no args given, try to log into the cluster that the user is logged into
-		clusterInfo, err := utils.GetBackplaneClusterFromConfig()
+		clusterInfo, err := utils.DefaultClusterUtils.GetBackplaneClusterFromConfig()
 		if err != nil {
 			return err
 		}

@@ -1,4 +1,5 @@
-package utils
+// to avoid import cycles
+package utils_test
 
 import (
 	"fmt"
@@ -8,6 +9,7 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/openshift/backplane-cli/pkg/info"
+	"github.com/openshift/backplane-cli/pkg/utils"
 	"github.com/openshift/backplane-cli/pkg/utils/mocks"
 	"k8s.io/client-go/tools/clientcmd"
 )
@@ -80,10 +82,10 @@ hello: world
 func TestGetBackplaneClusterFromConfig(t *testing.T) {
 	tests := []struct {
 		config string
-		expect BackplaneCluster
+		expect utils.BackplaneCluster
 	}{{
 		config: loggedInYamlSingle,
-		expect: BackplaneCluster{
+		expect: utils.BackplaneCluster{
 			ClusterID:     "1f0o1maej9brj6j9k6ehbe7rm0k2lng7",
 			ClusterURL:    "https://api-backplane.apps.com/backplane/cluster/1f0o1maej9brj6j9k6ehbe7rm0k2lng7/",
 			BackplaneHost: "api-backplane.apps.com",
@@ -92,9 +94,9 @@ func TestGetBackplaneClusterFromConfig(t *testing.T) {
 
 	for n, tt := range tests {
 		config, _ := clientcmd.Load([]byte(tt.config))
-		_ = CreateTempKubeConfig(config)
+		_ = utils.CreateTempKubeConfig(config)
 		t.Run(fmt.Sprintf("case %d", n), func(t *testing.T) {
-			result, err := GetBackplaneClusterFromConfig()
+			result, err := utils.DefaultClusterUtils.GetBackplaneClusterFromConfig()
 			if err != nil {
 				t.Errorf("%e", err)
 			}
@@ -117,9 +119,9 @@ func TestGetBackplaneClusterFromConfig(t *testing.T) {
 
 	for n, tt := range testErr {
 		config, _ := clientcmd.Load([]byte(tt.config))
-		_ = CreateTempKubeConfig(config)
+		_ = utils.CreateTempKubeConfig(config)
 		t.Run(fmt.Sprintf("case %d", n), func(t *testing.T) {
-			_, err := GetBackplaneClusterFromConfig()
+			_, err := utils.DefaultClusterUtils.GetBackplaneClusterFromConfig()
 			if err == nil {
 				t.Errorf("Expected error")
 			}
@@ -152,7 +154,7 @@ func TestGetClusterIDAndHostFromClusterURL(t *testing.T) {
 
 	for n, tt := range tests {
 		t.Run(fmt.Sprintf("case %d", n), func(t *testing.T) {
-			o0, o1, err := GetClusterIDAndHostFromClusterURL(tt.inp)
+			o0, o1, err := utils.DefaultClusterUtils.GetClusterIDAndHostFromClusterURL(tt.inp)
 			if err != nil {
 				t.Errorf("%e", err)
 			}
@@ -185,7 +187,7 @@ func TestGetClusterIDAndHostFromClusterURL(t *testing.T) {
 
 	for n, tt := range testsErr {
 		t.Run(fmt.Sprintf("case %d", n), func(t *testing.T) {
-			_, _, err := GetClusterIDAndHostFromClusterURL(tt.inp)
+			_, _, err := utils.DefaultClusterUtils.GetClusterIDAndHostFromClusterURL(tt.inp)
 			if err == nil {
 				t.Errorf("expecting error for %s", tt.inp)
 			}
@@ -200,17 +202,17 @@ func TestGetBackplaneClusterFromClusterKey(t *testing.T) {
 	mockOcmInterface := mocks.NewMockOCMInterface(mockCtrl)
 
 	// So we can clean up at the end
-	tempDefaultOCMInterface := DefaultOCMInterface
+	tempDefaultOCMInterface := utils.DefaultOCMInterface
 
-	DefaultOCMInterface = mockOcmInterface
+	utils.DefaultOCMInterface = mockOcmInterface
 
 	t.Run("it returns a cluster struct from a valid cluster key", func(_ *testing.T) {
 		os.Setenv(info.BACKPLANE_URL_ENV_NAME, "https://backplane-url.cluster-key.redhat.com")
 		mockOcmInterface.EXPECT().GetTargetCluster("cluster-key").Return("1234", "cluster-key", nil)
 
-		cluster, err := GetBackplaneClusterFromClusterKey("cluster-key")
+		cluster, err := utils.DefaultClusterUtils.GetBackplaneClusterFromClusterKey("cluster-key")
 
-		expectedCluster := BackplaneCluster{
+		expectedCluster := utils.BackplaneCluster{
 			ClusterID:     "1234",
 			BackplaneHost: "https://backplane-url.cluster-key.redhat.com",
 			ClusterURL:    fmt.Sprintf("%s/backplane/cluster/%s", "https://backplane-url.cluster-key.redhat.com", "1234"),
@@ -225,5 +227,5 @@ func TestGetBackplaneClusterFromClusterKey(t *testing.T) {
 		}
 	})
 
-	DefaultOCMInterface = tempDefaultOCMInterface
+	utils.DefaultOCMInterface = tempDefaultOCMInterface
 }

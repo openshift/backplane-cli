@@ -36,7 +36,7 @@ var StatusCmd = &cobra.Command{
 
 func runStatus(cmd *cobra.Command, argv []string) error {
 
-	clusterInfo, err := utils.GetBackplaneClusterFromConfig()
+	clusterInfo, err := utils.DefaultClusterUtils.GetBackplaneClusterFromConfig()
 	if err != nil {
 		return err
 	}
