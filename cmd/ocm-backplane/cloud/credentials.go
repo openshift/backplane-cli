@@ -10,14 +10,16 @@ import (
 	logger "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
 	BackplaneApi "github.com/openshift/backplane-api/pkg/client"
-	"github.com/openshift/backplane-cli/pkg/cli/config"
+	bpconfig "github.com/openshift/backplane-cli/pkg/cli/config"
 	"github.com/openshift/backplane-cli/pkg/utils"
 )
 
 var GetBackplaneClusterFromConfig = utils.DefaultClusterUtils.GetBackplaneClusterFromConfig
-var GetBackplaneConfiguration = config.GetBackplaneConfiguration
-
+var GetBackplaneConfiguration = bpconfig.GetBackplaneConfiguration
 
 var credentialArgs struct {
 	backplaneURL string
@@ -69,6 +71,14 @@ func (r *AWSCredentialsResponse) String() string {
 
 func (r *AWSCredentialsResponse) fmtExport() string {
 	return fmt.Sprintf(awsExportFormat, r.AccessKeyId, r.SecretAccessKey, r.SessionToken, r.Region)
+}
+
+// AWSV2Config returns an aws-sdk-go-v2 config that can be used to programmatically access the AWS API
+func (r *AWSCredentialsResponse) AWSV2Config() (aws.Config, error) {
+	return config.LoadDefaultConfig(context.TODO(),
+		config.WithRegion(r.Region),
+		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(r.AccessKeyId, r.SecretAccessKey, r.SessionToken)),
+	)
 }
 
 func (r *GCPCredentialsResponse) String() string {
@@ -193,13 +203,38 @@ func runCredentials(cmd *cobra.Command, argv []string) error {
 	}
 }
 
+// GetAWSV2Config allows consumers to get an aws-sdk-go-v2 Config to programmatically access the AWS API
+func GetAWSV2Config(backplaneURL string, clusterId string) (aws.Config, error) {
+	cluster, err := utils.DefaultOCMInterface.GetClusterInfoByID(clusterId)
+	if err != nil {
+		return aws.Config{}, err
+	}
+
+	cloudProvider := utils.DefaultClusterUtils.GetCloudProvider(cluster)
+	if cloudProvider != "aws" {
+		return aws.Config{}, fmt.Errorf("only supported for the aws cloud provider, this cluster has: %s", cloudProvider)
+	}
+
+	resp, err := getCloudCredential(backplaneURL, clusterId)
+	if err != nil {
+		return aws.Config{}, err
+	}
+
+	credsResp := &AWSCredentialsResponse{}
+	if err := json.Unmarshal([]byte(*resp.JSON200.Credentials), credsResp); err != nil {
+		return aws.Config{}, fmt.Errorf("unable to unmarshal AWS credentials response from backplane %s: %w", *resp.JSON200.Credentials, err)
+	}
+	credsResp.Region = *resp.JSON200.Region
+
+	return credsResp.AWSV2Config()
+}
+
 // getCloudCredential returns Cloud Credentials Response
 func getCloudCredential(backplaneURL string, clusterId string) (*BackplaneApi.GetCloudCredentialsResponse, error) {
 	client, err := utils.DefaultClientUtils.GetBackplaneClient(backplaneURL)
 	if err != nil {
 		return nil, err
 	}
-
 
 	resp, err := client.GetCloudCredentials(context.TODO(), clusterId)
 
@@ -223,7 +258,6 @@ func getCloudCredential(backplaneURL string, clusterId string) (*BackplaneApi.Ge
 	}
 	return credsResp, nil
 }
-
 
 // renderCloudCredentials displays the results of `ocm backplane cloud credentials` for AWS clusters
 func renderCloudCredentials(outputFormat string, creds CredentialsResponse) (string, error) {

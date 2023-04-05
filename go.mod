@@ -3,6 +3,11 @@ module github.com/openshift/backplane-cli
 go 1.18
 
 require (
+	github.com/Masterminds/semver v1.5.0
+	github.com/aws/aws-sdk-go-v2 v1.17.7
+	github.com/aws/aws-sdk-go-v2/config v1.18.19
+	github.com/aws/aws-sdk-go-v2/credentials v1.13.18
+	github.com/go-yaml/yaml v2.1.0+incompatible
 	github.com/golang-jwt/jwt/v4 v4.4.2
 	github.com/golang/mock v1.6.0
 	github.com/mitchellh/go-homedir v1.1.0
@@ -14,6 +19,7 @@ require (
 	github.com/openshift/backplane-api v0.0.0-20230203044845-10f2b341bf54
 	github.com/openshift/client-go v0.0.0-20221019143426-16aed247da5c
 	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8
+	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.9.0
 	github.com/spf13/cobra v1.6.1
 	golang.org/x/term v0.3.0
@@ -25,6 +31,15 @@ require (
 
 require (
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
+	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.13.1 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/configsources v1.1.31 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.4.25 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/ini v1.3.32 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.9.25 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sso v1.12.6 // indirect
+	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.14.6 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sts v1.18.7 // indirect
+	github.com/aws/smithy-go v1.13.5 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cenkalti/backoff/v4 v4.1.3 // indirect
@@ -52,6 +67,7 @@ require (
 	github.com/gorilla/css v1.0.0 // indirect
 	github.com/gregjones/httpcache v0.0.0-20180305231024-9cad4c3443a7 // indirect
 	github.com/imdario/mergo v0.3.6 // indirect
+	github.com/inconshreveable/mousetrap v1.0.1 // indirect
 	github.com/invopop/yaml v0.1.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
@@ -100,11 +116,4 @@ require (
 	sigs.k8s.io/kustomize/kyaml v0.13.9 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
 	sigs.k8s.io/yaml v1.3.0 // indirect
-)
-
-require (
-	github.com/Masterminds/semver v1.5.0
-	github.com/go-yaml/yaml v2.1.0+incompatible
-	github.com/inconshreveable/mousetrap v1.1.0 // indirect
-	github.com/pkg/errors v0.9.1
 )
