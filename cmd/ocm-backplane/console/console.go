@@ -18,6 +18,7 @@ package console
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"os"
@@ -27,7 +28,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"encoding/json"
 
 	"github.com/Masterminds/semver"
 	homedir "github.com/mitchellh/go-homedir"
@@ -44,6 +44,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
+	"github.com/openshift/backplane-cli/pkg/cli/config"
 	"github.com/openshift/backplane-cli/pkg/utils"
 )
 
@@ -192,7 +193,7 @@ func findConsoleAddress(containerName string, containerEngine string) (address s
 	return configurationCmdFragments[addressIndex], nil
 }
 
-func checkAndFindContainerURL(containerName string, containerEngine string) (err error) {	
+func checkAndFindContainerURL(containerName string, containerEngine string) (err error) {
 	exists, err := checkContainerExists(containerName, containerEngine)
 	if err != nil {
 		return err
@@ -209,7 +210,6 @@ func checkAndFindContainerURL(containerName string, containerEngine string) (err
 
 	return nil
 }
-
 
 func runConsole(cmd *cobra.Command, argv []string) (err error) {
 	// Check if env variable 'BACKPLANE_DEFAULT_OPEN_BROWSER' is set
@@ -351,6 +351,18 @@ func runConsole(cmd *cobra.Command, argv []string) (err error) {
 		)
 	}
 
+	// Set proxy URL to the container
+	proxyUrl, err := getProxyUrl()
+	if err != nil {
+		return err
+	}
+
+	if proxyUrl != "" {
+		engRunArgs = append(engRunArgs,
+			"--env", fmt.Sprintf("HTTPS_PROXY=%s", proxyUrl),
+		)
+	}
+
 	// For docker on linux, we need to use host network,
 	// otherwise it won't go through the sshuttle.
 	if runtime.GOOS == "linux" && containerEngine == DOCKER {
@@ -483,6 +495,19 @@ func replaceConsoleUrl(original string) (string, error) {
 	}
 
 	return original, nil
+}
+
+// Get the proxy url
+func getProxyUrl() (proxyUrl string, err error) {
+	bpConfig, err := config.GetBackplaneConfiguration()
+
+	if err != nil {
+		return "", err
+	}
+
+	proxyUrl = bpConfig.ProxyURL
+
+	return proxyUrl, nil
 }
 
 // getImageFromCluster get the image from the console deployment
