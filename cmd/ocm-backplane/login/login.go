@@ -181,15 +181,6 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 	}
 
 	targetUserNickName := getUsernameFromJWT(*accessToken)
-	execConfig := &api.ExecConfig{}
-
-	ocmEnv := &api.ExecEnvVar{}
-	ocmConfigVal, hasOcmEnv := os.LookupEnv("OCM_CONFIG")
-	if hasOcmEnv {
-		ocmEnv.Name = "OCM_CONFIG"
-		ocmEnv.Value = ocmConfigVal
-		execConfig.Env = []api.ExecEnvVar{*ocmEnv}
-	}
 
 	targetUser.Token = *accessToken
 

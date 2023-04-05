@@ -1,148 +1,191 @@
 package logout
 
 import (
-	"reflect"
-	"testing"
+	"io"
+	"net/http"
+	"os"
+	"strings"
 
+	"github.com/golang/mock/gomock"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+	"github.com/openshift/backplane-cli/cmd/ocm-backplane/login"
+	"github.com/openshift/backplane-cli/pkg/client/mocks"
+	"github.com/openshift/backplane-cli/pkg/info"
+	"github.com/openshift/backplane-cli/pkg/utils"
+	mocks2 "github.com/openshift/backplane-cli/pkg/utils/mocks"
+	"github.com/spf13/cobra"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
-
-	"github.com/openshift/backplane-cli/pkg/utils"
 )
 
-const (
-	loggedInNotBackplane = `
-apiVersion: v1
-clusters:
-- cluster:
-    server: https://myopenshiftcluster.openshiftapps.com
-  name: myopenshiftcluster
-contexts:
-- context:
-    cluster: myopenshiftcluster
-    namespace: default
-    user: example.openshift
-  name: default/myopenshiftcluster/example.openshift
-current-context: default/myopenshiftcluster/example.openshift
-kind: Config
-preferences: {}
-users:
-- name: example.openshift
-  user:
-    exec:
-      apiVersion: client.authentication.k8s.io/v1beta1
-      args:
-      - /bin/echo nothing
-      command: bash
-      env: null
-`
-
-	invalidYaml = `
-hello: world
-`
-)
-
-type VerifyFunc func(api.Config, api.Config, *testing.T, []error)
-
-func defaultTestFunc(t *testing.T) []error {
-	err := runLogout(nil, make([]string, 0))
-	return []error{err}
+func MakeIoReader(s string) io.ReadCloser {
+	r := io.NopCloser(strings.NewReader(s)) // r type is io.ReadCloser
+	return r
 }
 
-var tests = []struct {
-	name       string
-	yamlFile   string
-	testFunc   func(*testing.T) []error
-	verifyFunc VerifyFunc
-}{
-	{
-		name:     "Test logout do not alter non backplane login",
-		yamlFile: loggedInNotBackplane,
-		testFunc: defaultTestFunc,
-		verifyFunc: func(initial api.Config, after api.Config, t *testing.T, errs []error) {
-			if !reflect.DeepEqual(after, initial) {
-				t.Error("logout cmd altered non-backplane clusters")
-			}
-			if len(errs) != 1 && errs[0].Error() != "you're not logged in using backplane, skipping" {
-				t.Errorf("Unexpected errors: %v", errs)
-			}
-		},
-	},
+var _ = Describe("Logout command", func() {
 
-	{
-		name:     "Test logout empty kubeconfig yaml",
-		yamlFile: "",
-		testFunc: defaultTestFunc,
-		verifyFunc: func(initial api.Config, after api.Config, t *testing.T, errs []error) {
-			if len(after.Contexts) != 0 {
-				t.Error("Resulting context length unexpected")
-			}
+	var (
+		mockCtrl           *gomock.Controller
+		mockClient         *mocks.MockClientInterface
+		mockClientWithResp *mocks.MockClientWithResponsesInterface
+		mockOcmInterface   *mocks2.MockOCMInterface
+		mockClientUtil     *mocks2.MockClientUtils
 
-			if after.CurrentContext != "" {
-				t.Error("current-context unexpected")
-			}
+		testClusterId   string
+		testToken       string
+		trueClusterId   string
+		backplaneAPIUri string
 
-			if len(after.AuthInfos) != 0 {
-				t.Errorf("User info is wrong")
-			}
+		fakeResp *http.Response
 
-			if len(errs) != 1 && errs[0] != nil {
-				t.Errorf("Unexpected error %v", errs[0].Error())
-			}
-		},
-	},
-	{
-		name:     "Test logout invalid kubeconfig yaml",
-		yamlFile: invalidYaml,
-		testFunc: defaultTestFunc,
-		verifyFunc: func(initial api.Config, after api.Config, t *testing.T, errs []error) {
-			if len(after.Contexts) != 0 {
-				t.Error("Resulting context length unexpected")
-			}
+		loginCmd *cobra.Command
 
-			if after.CurrentContext != "" {
-				t.Error("current-context unexpected")
-			}
+		kubeConfig                 api.Config
+		loggedInNotBackplaneConfig api.Config
+	)
 
-			if len(after.AuthInfos) != 0 {
-				t.Errorf("User info is wrong")
-			}
+	BeforeEach(func() {
+		mockCtrl = gomock.NewController(GinkgoT())
+		mockClient = mocks.NewMockClientInterface(mockCtrl)
+		mockClientWithResp = mocks.NewMockClientWithResponsesInterface(mockCtrl)
 
-			if len(errs) != 1 && errs[0] != nil {
-				t.Errorf("Unexpected error %v", errs[0].Error())
-			}
-		},
-	},
-}
+		mockOcmInterface = mocks2.NewMockOCMInterface(mockCtrl)
+		utils.DefaultOCMInterface = mockOcmInterface
 
-func TestLogoutCmd(t *testing.T) {
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		mockClientUtil = mocks2.NewMockClientUtils(mockCtrl)
+		utils.DefaultClientUtils = mockClientUtil
 
-			config, _ := clientcmd.Load([]byte(tt.yamlFile))
-			err := utils.CreateTempKubeConfig(config)
+		mockClientWithResp.EXPECT().LoginClusterWithResponse(gomock.Any(), gomock.Any()).Return(nil, nil).Times(0)
 
-			if err != nil {
-				t.Error(err)
-				return
-			}
+		testClusterId = "test123"
+		testToken = "hello123"
+		trueClusterId = "trueID123"
+		backplaneAPIUri = "https://api.integration.backplane.example.com"
+
+		fakeResp = &http.Response{
+			Body:       MakeIoReader(`{"proxy_uri":"proxy", "statusCode":200, "message":"msg"}`),
+			Header:     map[string][]string{},
+			StatusCode: http.StatusOK,
+		}
+		fakeResp.Header.Add("Content-Type", "json")
+
+		loginCmd = login.LoginCmd
+
+		kubeConfig = api.Config{
+			Kind:        "Config",
+			APIVersion:  "v1",
+			Preferences: api.Preferences{},
+			Clusters: map[string]*api.Cluster{
+				"dummy_cluster": {
+					Server: "https://api.backplane.apps.something3.com/backplane/cluster/configcluster",
+				},
+			},
+			Contexts: map[string]*api.Context{
+				"default/test123/anonymous": {
+					Cluster:   "dummy_cluster",
+					Namespace: "default",
+				},
+			},
+			CurrentContext: "default/test123/anonymous",
+		}
+
+		loggedInNotBackplaneConfig = api.Config{
+			Kind:        "Config",
+			APIVersion:  "v1",
+			Preferences: api.Preferences{},
+			Clusters: map[string]*api.Cluster{
+				"myopenshiftcluster": {
+					Server: "https://myopenshiftcluster.openshiftapps.com",
+				},
+			},
+			Contexts: map[string]*api.Context{
+				"default/myopenshiftcluster/example.openshift": {
+					Cluster:   "myopenshiftcluster",
+					Namespace: "default",
+				},
+			},
+			CurrentContext: "default/myopenshiftcluster/example.openshift",
+		}
+
+		os.Setenv(info.BACKPLANE_URL_ENV_NAME, backplaneAPIUri)
+	})
+
+	AfterEach(func() {
+		utils.RemoveTempKubeConfig()
+		os.Setenv(info.BACKPLANE_URL_ENV_NAME, "")
+		mockCtrl.Finish()
+	})
+
+	Context("Test logout", func() {
+
+		It("should be able to logout after login ", func() {
+
+			err := utils.CreateTempKubeConfig(&kubeConfig)
+			Expect(err).To(BeNil())
+			mockOcmInterface.EXPECT().GetTargetCluster(testClusterId).Return(trueClusterId, testClusterId, nil).AnyTimes()
+			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterId)).Return(false, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
+			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken(backplaneAPIUri, testToken).Return(mockClient, nil).AnyTimes()
+			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(trueClusterId)).Return(fakeResp, nil).AnyTimes()
+
+			loginCmd.SetArgs([]string{testClusterId})
+			err = loginCmd.Execute()
+
+			Expect(err).To(BeNil())
+
+			err = runLogout(nil, make([]string, 0))
+
+			Expect(err).To(BeNil())
+
+		})
+
+		It("should not alter non backplane login", func() {
+
+			err := utils.CreateTempKubeConfig(&loggedInNotBackplaneConfig)
+
+			Expect(err).To(BeNil())
 
 			initial, err := utils.ReadKubeconfigRaw()
-			if err != nil {
-				t.Error(err)
-				return
-			}
+			Expect(err).To(BeNil())
 
-			errs := tt.testFunc(t)
+			err = runLogout(nil, make([]string, 0))
+
+			Expect(err).NotTo(BeNil())
+			Expect(err.Error()).Should(ContainSubstring("you're not logged in using backplane"))
 
 			after, err := utils.ReadKubeconfigRaw()
-			if err != nil {
-				t.Error(err)
-				return
-			}
+			Expect(err).To(BeNil())
 
-			tt.verifyFunc(initial, after, t, errs)
-		},
-		)
-	}
-}
+			Expect(initial).To(Equal(after))
+		})
+
+		It("should fail for empty kubeconfig yaml", func() {
+			config, err := clientcmd.Load([]byte(""))
+			Expect(err).To(BeNil())
+			err = utils.CreateTempKubeConfig(config)
+
+			Expect(err).To(BeNil())
+
+			err = runLogout(nil, make([]string, 0))
+			Expect(err).NotTo(BeNil())
+
+			Expect(err.Error()).Should(ContainSubstring("current context does not exist"))
+		})
+
+		It("should fail for invalid kubeconfig yaml", func() {
+			config, err := clientcmd.Load([]byte("hello: world"))
+			Expect(err).To(BeNil())
+			err = utils.CreateTempKubeConfig(config)
+
+			Expect(err).To(BeNil())
+
+			err = runLogout(nil, make([]string, 0))
+			Expect(err).NotTo(BeNil())
+
+			Expect(err.Error()).Should(ContainSubstring("current context does not exist"))
+
+		})
+	})
+})
