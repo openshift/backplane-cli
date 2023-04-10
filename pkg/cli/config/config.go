@@ -1,35 +1,23 @@
 package config
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 
+	"github.com/openshift-online/ocm-cli/pkg/ocm"
 	"github.com/openshift/backplane-cli/pkg/info"
+	logger "github.com/sirupsen/logrus"
+	"github.com/spf13/viper"
 )
 
 type BackplaneConfiguration struct {
-	URL      string `json:"url"`
-	ProxyURL string `json:"proxy-url"`
+	URL      string
+	ProxyURL string `mapstructure:"proxy-url"`
 }
 
-func GetBackplaneConfigFile() (string, error) {
-	path, bpConfigFound := os.LookupEnv(info.BACKPLANE_CONFIG_PATH_ENV_NAME)
-	if bpConfigFound {
-		return path, nil
-	}
-
-	configFile, err := getDefaultConfigPath()
-	if err != nil {
-		return "", err
-	}
-
-	return configFile, nil
-}
-
-// Get Backplane config default path
-func getDefaultConfigPath() (string, error) {
+// getConfigFilePath returns the default config path
+func getConfigFilePath() (string, error) {
 	UserHomeDir, err := os.UserHomeDir()
 	if err != nil {
 		return "", err
@@ -40,51 +28,105 @@ func getDefaultConfigPath() (string, error) {
 	return configFilePath, nil
 }
 
-// Get Backplane ProxyUrl from config
-func GetBackplaneConfiguration() (bpConfig BackplaneConfiguration, err error) {
+// getOCMUrl returns the current OCM environment URL
+func getOCMUrl() (string, error) {
+	connection, err := ocm.NewConnection().Build()
+	if err != nil {
+		return "", fmt.Errorf("failed to create OCM connection: %v", err)
+	}
+	defer connection.Close()
 
-	// Check proxy url from the config file
-	filePath, err := GetBackplaneConfigFile()
+	return connection.URL(), nil
+}
+
+// getEnvConfig fetches environment variables if defined
+func getEnvConfig() (bpConfig BackplaneConfiguration, err error) {
+	// Check if user has explicitly defined backplane URL
+	bpURL, hasURL := os.LookupEnv(info.BACKPLANE_URL_ENV_NAME)
+
+	if hasURL {
+		if bpURL == "" {
+			return bpConfig, fmt.Errorf("%s environment variable is empty", info.BACKPLANE_URL_ENV_NAME)
+		}
+		bpConfig.URL = bpURL
+	}
+
+	// Check if user has explicitly defined proxy
+	proxyUrl, hasEnvProxyURL := os.LookupEnv(info.BACKPLANE_PROXY_ENV_NAME)
+
+	if hasEnvProxyURL {
+		// We do not check if the proxy URL has been specified here
+		// The error handling on an empty proxy is done during login due to client proxy
+		bpConfig.ProxyURL = proxyUrl
+	}
+
+	return bpConfig, nil
+}
+
+// GetBackplaneConfiguration reads configuration from the provided config file
+func GetBackplaneConfiguration() (bpConfig BackplaneConfiguration, err error) {
+	var filepath string
+
+	// Check if user has explicitly defined backplane config path
+	path, bpConfigFound := os.LookupEnv(info.BACKPLANE_CONFIG_PATH_ENV_NAME)
+
+	if bpConfigFound {
+		filepath = path
+	} else {
+		filepath, err = getConfigFilePath()
+		if err != nil {
+			return bpConfig, err
+		}
+	}
+
+	// Check if the config file exists
+	// If not, look for any defined env variables
+	if _, err = os.Stat(filepath); err != nil {
+		logger.Warnf(
+			"Configuration file not found, searching for environment variables: %s, %s",
+			info.BACKPLANE_PROXY_ENV_NAME,
+			info.BACKPLANE_URL_ENV_NAME,
+		)
+		bpConfig, err = getEnvConfig()
+		if err != nil {
+			return bpConfig, err
+		}
+
+		return bpConfig, nil
+	}
+
+	// Load config file
+	viper.SetConfigFile(filepath)
+
+	err = viper.ReadInConfig()
 	if err != nil {
 		return bpConfig, err
 	}
 
-	if _, err := os.Stat(filePath); err == nil {
-		file, err := os.Open(filePath)
+	err = viper.Unmarshal(&bpConfig)
+	if err != nil {
+		return bpConfig, err
+	}
 
-		if err != nil {
-			return bpConfig, fmt.Errorf("failed to read file %s : %v", filePath, err)
-		}
+	ocmURL, err := getOCMUrl()
+	if err != nil {
+		return bpConfig, err
+	}
 
-		defer file.Close()
-		decoder := json.NewDecoder(file)
-		bpConfig := BackplaneConfiguration{}
-		err = decoder.Decode(&bpConfig)
+	// Dynamically set Backplane URL based on OCM env
+	switch ocmURL {
+	case viper.GetString("ocm-prod"):
+		bpConfig.URL = viper.GetString("bp-url-prod")
+	case viper.GetString("ocm-stg"):
+		bpConfig.URL = viper.GetString("bp-url-stg")
+	case viper.GetString("ocm-int"):
+		bpConfig.URL = viper.GetString("bp-url-int")
+	default:
+		bpConfig.URL = ""
+	}
 
-		if err != nil {
-			return bpConfig, fmt.Errorf("failed to decode file %s : %v", filePath, err)
-		}
-
-		return bpConfig, nil
-
-	} else {
-		// check proxy url from user perssitance HTTPS_PROXY env var
-		proxyUrl, hasEnvProxyURL := os.LookupEnv(info.BACKPLANE_PROXY_ENV_NAME)
-
-		// get backplane URL from BACKPLANE_URL env variables
-		bpURL, hasURL := os.LookupEnv(info.BACKPLANE_URL_ENV_NAME)
-
-		if hasURL {
-			if bpURL == "" {
-				return bpConfig, fmt.Errorf("%s env variable is empty", info.BACKPLANE_URL_ENV_NAME)
-			}
-			bpConfig.URL = bpURL
-			if hasEnvProxyURL {
-				bpConfig.ProxyURL = proxyUrl
-			}
-
-			return bpConfig, nil
-		}
+	if bpConfig.URL == "" {
+		return bpConfig, fmt.Errorf("cannot specify Backplane URL, please make sure you are logged into OCM")
 	}
 
 	return bpConfig, nil

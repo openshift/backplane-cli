@@ -25,7 +25,7 @@ type ClusterUtils interface {
 	GetBackplaneCluster(params ...string) (BackplaneCluster, error)
 }
 
-type DefaultClusterUtilsImpl struct {}
+type DefaultClusterUtilsImpl struct{}
 
 var (
 	DefaultClusterUtils ClusterUtils = &DefaultClusterUtilsImpl{}

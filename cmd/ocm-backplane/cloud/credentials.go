@@ -18,7 +18,6 @@ import (
 var GetBackplaneClusterFromConfig = utils.DefaultClusterUtils.GetBackplaneClusterFromConfig
 var GetBackplaneConfiguration = config.GetBackplaneConfiguration
 
-
 var credentialArgs struct {
 	backplaneURL string
 	output       string
@@ -200,7 +199,6 @@ func getCloudCredential(backplaneURL string, clusterId string) (*BackplaneApi.Ge
 		return nil, err
 	}
 
-
 	resp, err := client.GetCloudCredentials(context.TODO(), clusterId)
 
 	if err != nil {
@@ -223,7 +221,6 @@ func getCloudCredential(backplaneURL string, clusterId string) (*BackplaneApi.Ge
 	}
 	return credsResp, nil
 }
-
 
 // renderCloudCredentials displays the results of `ocm backplane cloud credentials` for AWS clusters
 func renderCloudCredentials(outputFormat string, creds CredentialsResponse) (string, error) {

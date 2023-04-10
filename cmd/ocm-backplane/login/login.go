@@ -79,7 +79,6 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 
 	// Get Backplane configuration
 	bpConfig, err := config.GetBackplaneConfiguration()
-
 	if err != nil {
 		return err
 	}

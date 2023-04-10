@@ -45,7 +45,7 @@ For more information about ocm plugins, please refer https://github.com/openshif
 
 ## Configuration
 
-The configuration file of backplane-cli is expected to be located at `$HOME/.config/backplane/config.json`.
+The configuration file of backplane-cli is expected to be located at `$HOME/.config/backplane/config.env`.
 
 ## Setup bash/zsh prompt
 
