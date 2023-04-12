@@ -2,34 +2,32 @@ package config
 
 import (
 	"testing"
-
-	"github.com/openshift/backplane-cli/pkg/info"
 )
 
-func TestGetBackplaneConfigFile(t *testing.T) {
-	t.Run("it returns the Backplane configuration file path if it exists in the user's env", func(t *testing.T) {
-		t.Setenv(info.BACKPLANE_CONFIG_PATH_ENV_NAME, "~/.backplane.stg.env.json")
-		path, err := GetBackplaneConfigFile()
+func TestGetBackplaneConfig(t *testing.T) {
+	t.Run("it returns the user defined proxy instead of the configuration variable", func(t *testing.T) {
+		userDefinedProxy := "example-proxy"
+		t.Setenv("HTTPS_PROXY", userDefinedProxy)
+		config, err := GetBackplaneConfiguration()
 		if err != nil {
 			t.Error(err)
 		}
-		if path != "~/.backplane.stg.env.json" {
-			t.Errorf("expected path to be %v, got %v", "~/.backplane.stg.env.json", path)
+
+		if config.ProxyURL != userDefinedProxy {
+			t.Errorf("expected to return the explicitly defined proxy %v instead of the default one %v", userDefinedProxy, config.ProxyURL)
 		}
 	})
 
-	t.Run("it returns the default configuration file path if it does not exist in the user's env", func(t *testing.T) {
-		path, err := GetBackplaneConfigFile()
+	t.Run("it returns the user defined backplane URL instead of the configuration variable", func(t *testing.T) {
+		userDefinedURL := "example-url"
+		t.Setenv("BACKPLANE_URL", userDefinedURL)
+		config, err := GetBackplaneConfiguration()
 		if err != nil {
 			t.Error(err)
 		}
 
-		expectedPath, err := getDefaultConfigPath()
-		if err != nil {
-			t.Error(err)
-		}
-		if path != expectedPath {
-			t.Errorf("expected path to be %v, got %v", expectedPath, path)
+		if config.URL != userDefinedURL {
+			t.Errorf("expected to return the explicitly defined url %v instead of the default one %v", userDefinedURL, config.URL)
 		}
 	})
 }
@@ -49,13 +47,6 @@ func TestGetBackplaneConfiguration(t *testing.T) {
 			proxyUrl:             "http://squid.myproxy.com",
 			expectedBackplaneURL: "https://api-backplane.apps.openshiftapps.com",
 			expectedError:        false,
-		},
-		"backplane url set empty env vars": {
-			envNeedToSet:         true,
-			proxyUrl:             "",
-			backplaneURLEnvVar:   "",
-			expectedBackplaneURL: "",
-			expectedError:        true,
 		},
 	} {
 		tc := tc

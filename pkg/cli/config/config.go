@@ -1,35 +1,20 @@
 package config
 
 import (
-	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
 
 	"github.com/openshift/backplane-cli/pkg/info"
+	"github.com/spf13/viper"
 )
 
 type BackplaneConfiguration struct {
-	URL      string `json:"url"`
-	ProxyURL string `json:"proxy-url"`
+	URL      string
+	ProxyURL string
 }
 
-func GetBackplaneConfigFile() (string, error) {
-	path, bpConfigFound := os.LookupEnv(info.BACKPLANE_CONFIG_PATH_ENV_NAME)
-	if bpConfigFound {
-		return path, nil
-	}
-
-	configFile, err := getDefaultConfigPath()
-	if err != nil {
-		return "", err
-	}
-
-	return configFile, nil
-}
-
-// Get Backplane config default path
-func getDefaultConfigPath() (string, error) {
+// getConfigFilePath returns the default config path
+func getConfigFilePath() (string, error) {
 	UserHomeDir, err := os.UserHomeDir()
 	if err != nil {
 		return "", err
@@ -40,52 +25,49 @@ func getDefaultConfigPath() (string, error) {
 	return configFilePath, nil
 }
 
-// Get Backplane ProxyUrl from config
+// GetBackplaneConfiguration parses and returns the given backplane configuration
 func GetBackplaneConfiguration() (bpConfig BackplaneConfiguration, err error) {
+	var filepath string
 
-	// Check proxy url from the config file
-	filePath, err := GetBackplaneConfigFile()
+	// Check if user has explicitly defined backplane config path
+	path, bpConfigFound := os.LookupEnv(info.BACKPLANE_CONFIG_PATH_ENV_NAME)
+
+	if bpConfigFound {
+		filepath = path
+	} else {
+		filepath, err = getConfigFilePath()
+		if err != nil {
+			return bpConfig, err
+		}
+	}
+
+	viper.AutomaticEnv()
+
+	// Check if the config file exists
+	if _, err = os.Stat(filepath); err == nil {
+		// Load config file
+		viper.SetConfigFile(filepath)
+		viper.SetConfigType("json")
+
+		if err := viper.ReadInConfig(); err != nil {
+			return bpConfig, err
+		}
+	}
+
+	// Check if user has explicitly defined backplane URL; it has higher precedence over the config file
+	err = viper.BindEnv("url", info.BACKPLANE_URL_ENV_NAME)
 	if err != nil {
 		return bpConfig, err
 	}
 
-	if _, err := os.Stat(filePath); err == nil {
-		file, err := os.Open(filePath)
-
-		if err != nil {
-			return bpConfig, fmt.Errorf("failed to read file %s : %v", filePath, err)
-		}
-
-		defer file.Close()
-		decoder := json.NewDecoder(file)
-		bpConfig := BackplaneConfiguration{}
-		err = decoder.Decode(&bpConfig)
-
-		if err != nil {
-			return bpConfig, fmt.Errorf("failed to decode file %s : %v", filePath, err)
-		}
-
-		return bpConfig, nil
-
-	} else {
-		// check proxy url from user perssitance HTTPS_PROXY env var
-		proxyUrl, hasEnvProxyURL := os.LookupEnv(info.BACKPLANE_PROXY_ENV_NAME)
-
-		// get backplane URL from BACKPLANE_URL env variables
-		bpURL, hasURL := os.LookupEnv(info.BACKPLANE_URL_ENV_NAME)
-
-		if hasURL {
-			if bpURL == "" {
-				return bpConfig, fmt.Errorf("%s env variable is empty", info.BACKPLANE_URL_ENV_NAME)
-			}
-			bpConfig.URL = bpURL
-			if hasEnvProxyURL {
-				bpConfig.ProxyURL = proxyUrl
-			}
-
-			return bpConfig, nil
-		}
+	// Check if user has explicitly defined proxy; it has higher precedence over the config file
+	err = viper.BindEnv("proxy-url", info.BACKPLANE_PROXY_ENV_NAME)
+	if err != nil {
+		return bpConfig, err
 	}
+
+	bpConfig.URL = viper.GetString("url")
+	bpConfig.ProxyURL = viper.GetString("proxy-url")
 
 	return bpConfig, nil
 }

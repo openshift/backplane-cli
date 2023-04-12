@@ -57,7 +57,7 @@ func (s *DefaultClientUtilsImpl) MakeRawBackplaneAPIClientWithAccessToken(base, 
 		}
 		http.DefaultTransport = &http.Transport{Proxy: http.ProxyURL(proxyUrl)}
 
-		logger.Infof("Using backplane Proxy URL: %s\n", s.clientProxyUrl)
+		logger.Debugf("Using backplane Proxy URL: %s\n", s.clientProxyUrl)
 	}
 
 	return BackplaneApi.NewClient(base, co)
