@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/go-yaml/yaml"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -24,6 +23,7 @@ import (
 	"github.com/spf13/cobra"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
+	"sigs.k8s.io/yaml"
 )
 
 var _ = Describe("Cloud console command", func() {
@@ -34,17 +34,17 @@ var _ = Describe("Cloud console command", func() {
 		mockClientWithResp *mocks.MockClientWithResponsesInterface
 		mockOcmInterface   *mocks2.MockOCMInterface
 		mockClientUtil     *mocks2.MockClientUtils
-		mockClusterUtils         *mocks2.MockClusterUtils
+		mockClusterUtils   *mocks2.MockClusterUtils
 
 		trueClusterId string
 		proxyUri      string
 		credentialAWS string
 		credentialGcp string
 
-		fakeAWSResp       *http.Response
-		fakeGCloudResp    *http.Response
-		fakeBrokenAWSResp *http.Response
-		fakeBrokenGCPResp *http.Response
+		fakeAWSResp           *http.Response
+		fakeGCloudResp        *http.Response
+		fakeBrokenAWSResp     *http.Response
+		fakeBrokenGCPResp     *http.Response
 		fakeMalformedJsonResp *http.Response
 	)
 
@@ -103,7 +103,7 @@ var _ = Describe("Cloud console command", func() {
 		// https://stackoverflow.com/questions/32708717/go-when-will-json-unmarshal-to-struct-return-error
 		resp, _ := json.Marshal(map[string]string{"credentials": "foo", "clusterID": "bar"})
 		fakeBrokenAWSResp = &http.Response{
-			Body: io.NopCloser(bytes.NewReader(resp)),
+			Body:       io.NopCloser(bytes.NewReader(resp)),
 			Header:     map[string][]string{},
 			StatusCode: http.StatusOK,
 		}
@@ -114,7 +114,7 @@ var _ = Describe("Cloud console command", func() {
 		// Define fake AWS response
 		resp, _ = json.Marshal(map[string]string{"credentials": "foo", "clusterID": "bar"})
 		fakeBrokenGCPResp = &http.Response{
-			Body: io.NopCloser(bytes.NewReader(resp)),
+			Body:       io.NopCloser(bytes.NewReader(resp)),
 			Header:     map[string][]string{},
 			StatusCode: http.StatusOK,
 		}
@@ -122,12 +122,11 @@ var _ = Describe("Cloud console command", func() {
 
 		resp, _ = json.Marshal(map[string]string{"credentials": "foo", "clusterID": "bar"})
 		fakeBrokenGCPResp = &http.Response{
-			Body: io.NopCloser(bytes.NewReader(resp)),
+			Body:       io.NopCloser(bytes.NewReader(resp)),
 			Header:     map[string][]string{},
 			StatusCode: http.StatusOK,
 		}
 		fakeBrokenGCPResp.Header.Add("Content-Type", "json")
-
 
 		// Clear config file
 		_ = clientcmd.ModifyConfig(clientcmd.NewDefaultPathOptions(), api.Config{}, true)
@@ -241,7 +240,7 @@ var _ = Describe("Cloud console command", func() {
 					}, nil
 				}
 
-					mockOcmInterface.EXPECT().GetTargetCluster(gomock.Any()).Return("foo", "bar", nil).AnyTimes()
+				mockOcmInterface.EXPECT().GetTargetCluster(gomock.Any()).Return("foo", "bar", nil).AnyTimes()
 				mockClusterUtils.EXPECT().GetCloudProvider(gomock.Any()).Return("aws").AnyTimes()
 				mockClientUtil.EXPECT().GetBackplaneClient("https://foo.bar").Return(mockClient, nil).Times(1)
 
@@ -257,7 +256,7 @@ var _ = Describe("Cloud console command", func() {
 					}, nil
 				}
 
-					mockOcmInterface.EXPECT().GetTargetCluster(gomock.Any()).Return("foo", "bar", nil).AnyTimes()
+				mockOcmInterface.EXPECT().GetTargetCluster(gomock.Any()).Return("foo", "bar", nil).AnyTimes()
 				mockClusterUtils.EXPECT().GetCloudProvider(gomock.Any()).Return("gcp").AnyTimes()
 				mockClientUtil.EXPECT().GetBackplaneClient("https://foo.bar").Return(mockClient, nil).Times(1)
 
