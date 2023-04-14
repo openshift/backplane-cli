@@ -19,8 +19,8 @@ package status
 import (
 	"fmt"
 
-	"github.com/spf13/cobra"
 	"github.com/openshift/backplane-cli/pkg/utils"
+	"github.com/spf13/cobra"
 )
 
 var StatusCmd = &cobra.Command{

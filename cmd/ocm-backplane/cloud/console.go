@@ -8,10 +8,10 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/go-yaml/yaml"
 	"github.com/pkg/browser"
 	logger "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"sigs.k8s.io/yaml"
 
 	BackplaneApi "github.com/openshift/backplane-api/pkg/client"
 	"github.com/openshift/backplane-cli/pkg/cli/config"
