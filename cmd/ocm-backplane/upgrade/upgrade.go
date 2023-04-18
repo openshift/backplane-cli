@@ -40,11 +40,30 @@ func runUpgrade(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("checking connection to the git server: %w", err)
 	}
 
-	latest, err := info.GetLatestVersion()
-	if err != nil && info.Version != latest {
-		fmt.Print("You are using the old version of backplane-cli, please upgrade to latest vesrion using 'ocm-backplane upgrade' .")
+	// Get the latest version from the GitHub API
+	latestVersion, err := git.GetLatestVersion(ctx)
+	if err != nil {
+		return err
 	}
+
+	// Check if the local version is already up-to-date
+	if latestVersion.TagName == info.Version {
+		fmt.Printf("Already up-to-date. Current version: %s\n", info.Version)
+		return nil
+	}
+
+	// Print the latest version number and ask for confirmation before upgrading
+	fmt.Printf("Latest version: %s\n", latestVersion.TagName)
+	fmt.Printf("Do you want to upgrade to the latest version? (y/n): ")
+	var answer string
+	_, _ = fmt.Scanln(&answer)
+	answer = strings.ToLower(strings.TrimSpace(answer))
+	if answer != "y" && answer != "yes" {
+		fmt.Println("Upgrade cancelled.")
+		return nil
+	}
+
 	upgrade := upgrade.NewCmd(git)
 
-	return upgrade.UpgradePlugin(ctx, info.Version)
+	return upgrade.UpgradePlugin(ctx, latestVersion.TagName)
 }
