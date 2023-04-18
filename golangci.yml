@@ -2,7 +2,7 @@ run:
   # Our CI expects a vendor directory, hence we have to use -mod=readonly here as well.
   modules-download-mode: readonly
   deadline: 30m
-  concurrency: 1
+  timeout: 5m
 
 # default linters are enabled `golangci-lint help linters`
 linters:
