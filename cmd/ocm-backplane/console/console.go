@@ -31,7 +31,6 @@ import (
 
 	"github.com/Masterminds/semver"
 	homedir "github.com/mitchellh/go-homedir"
-	//"github.com/openshift-online/ocm-cli/pkg/ocm"
 	consolev1typedclient "github.com/openshift/client-go/console/clientset/versioned/typed/console/v1"
 	consolev1alpha1typedclient "github.com/openshift/client-go/console/clientset/versioned/typed/console/v1alpha1"
 	operatorv1typedclient "github.com/openshift/client-go/operator/clientset/versioned/typed/operator/v1"
@@ -68,6 +67,8 @@ var (
 	// For mocking
 	createClientSet = func(c *rest.Config) (kubernetes.Interface, error) { return kubernetes.NewForConfig(c) }
 	createCommand   = exec.Command
+
+	configDirectory string
 )
 
 // Environment variable that indicates if open by browser is set as default
@@ -237,15 +238,25 @@ func runConsole(cmd *cobra.Command, argv []string) (err error) {
 			return fmt.Errorf("can't find %s in PATH", containerEngine)
 		}
 	} else {
-		for _, ce := range validContainerEngines {
-			if _, err := exec.LookPath(ce); err == nil {
-				containerEngine = ce
-				break
+		// Get the container engine via env vars
+		engine, hasEngine := os.LookupEnv("CONTAINER_ENGINE")
+
+		if hasEngine {
+			containerEngine = engine
+
+		} else {
+			// Fetch container engine via path
+			for _, ce := range validContainerEngines {
+				if _, err := exec.LookPath(ce); err == nil {
+					containerEngine = ce
+					break
+				}
+			}
+			if len(containerEngine) == 0 {
+				return fmt.Errorf("can't find %s in PATH, please install one of them", strings.Join(validContainerEngines, "|"))
 			}
 		}
-		if len(containerEngine) == 0 {
-			return fmt.Errorf("can't find %s in PATH, please install one of them", strings.Join(validContainerEngines, "|"))
-		}
+
 	}
 	logger.Infof("Using container engine %s\n", containerEngine)
 
@@ -535,13 +546,12 @@ func getImageFromCluster(config *rest.Config) (string, error) {
 // and store it to the file.
 // Return dir-name, file-name, error
 func fetchPullSecretIfNotExist() (string, string, error) {
-	home, err := homedir.Dir()
+
+	configDirectory, err := GetConfigDirectory()
 	if err != nil {
-		return "", "", fmt.Errorf("can't get user homedir. Error: %s", err.Error())
+		return "", "", err
 	}
 
-	// Define directory and filename for config
-	configDirectory := filepath.Join(home, ".kube/ocm-pull-secret")
 	configFilename := filepath.Join(configDirectory, "config.json")
 
 	// Check if file already exists
@@ -554,11 +564,11 @@ func fetchPullSecretIfNotExist() (string, string, error) {
 		return "", "", err
 	}
 
-    response, err := utils.DefaultOCMInterface.GetPullSecret()
+	response, err := utils.DefaultOCMInterface.GetPullSecret()
 	if err != nil {
 		return "", "", fmt.Errorf("failed to get pull secret from ocm: %v", err)
 	}
-	err = os.WriteFile(configFilename, []byte(*response) , 0600)
+	err = os.WriteFile(configFilename, []byte(*response), 0600)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to write authfile for pull secret: %v", err)
 	}
@@ -650,7 +660,7 @@ func isRunningHigherThan411() bool {
 		return false
 	}
 	currentCluster, err := utils.DefaultOCMInterface.GetClusterInfoByID(currentClusterInfo.ClusterID)
-	
+
 	if err != nil {
 		return false
 	}
@@ -685,4 +695,27 @@ func loadConsolePlugins(config *rest.Config) (string, error) {
 	}
 
 	return consolePlugins, nil
+}
+
+// Get pull secret file saving path, default to ~/.kube/ocm-pull-secret folder
+func GetConfigDirectory() (string, error) {
+	if configDirectory == "" {
+		home, err := homedir.Dir()
+		if err != nil {
+			return "", fmt.Errorf("can't get user homedir. Error: %s", err.Error())
+		}
+
+		// Define directory and filename for config
+		configDirectory := filepath.Join(home, ".kube/ocm-pull-secret")
+
+		return configDirectory, nil
+	}
+
+	return configDirectory, nil
+}
+
+// Modify pull secret file saving path
+func ModifyConfigDirectory(basePath string) error {
+	configDirectory = basePath
+	return nil
 }

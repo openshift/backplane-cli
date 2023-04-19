@@ -1,14 +1,14 @@
 package console
 
 import (
-	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/golang/mock/gomock"
-	homedir "github.com/mitchellh/go-homedir"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	"github.com/openshift/backplane-cli/pkg/info"
 	"github.com/openshift/backplane-cli/pkg/utils"
 	mocks "github.com/openshift/backplane-cli/pkg/utils/mocks"
 	appsv1 "k8s.io/api/apps/v1"
@@ -17,6 +17,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	testclient "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd/api"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 
@@ -33,13 +34,17 @@ var _ = Describe("console command", func() {
 		testToken   string
 		pullSecret  string
 		clusterID   string
+		proxyURL    string
 		clusterInfo *cmv1.Cluster
+		testKubeCfg api.Config
 	)
 
 	BeforeEach(func() {
 		mockCtrl = gomock.NewController(GinkgoT())
 		mockOcmInterface = mocks.NewMockOCMInterface(mockCtrl)
 		utils.DefaultOCMInterface = mockOcmInterface
+
+		os.Setenv("CONTAINER_ENGINE", PODMAN)
 
 		createClientSet = func(c *rest.Config) (kubernetes.Interface, error) {
 			return testclient.NewSimpleClientset(&appsv1.DeploymentList{Items: []appsv1.Deployment{{
@@ -73,67 +78,89 @@ var _ = Describe("console command", func() {
 			AdditionalTrustBundle("REDACTED").
 			Proxy(cmv1.NewProxy().HTTPProxy("http://my.proxy:80").HTTPSProxy("https://my.proxy:443")).Build()
 
-		consoleArgs.containerEngine = PODMAN
-
 		consoleArgs.port = "12345"
 
 		ConsoleCmd.SetArgs([]string{"console"})
 
 		testToken = "hello123"
 		pullSecret = "testpullsecret"
-		clusterID = "configcluster"
+		clusterID = "cluster123"
+		proxyURL = "https://my.proxy:443"
+
+		testKubeCfg = api.Config{
+			Kind:        "Config",
+			APIVersion:  "v1",
+			Preferences: api.Preferences{},
+			Clusters: map[string]*api.Cluster{
+				"testcluster": {
+					Server: "https://api-backplane.apps.something.com/backplane/cluster/cluster123",
+				},
+				"api-backplane.apps.something.com:443": { // Remark that the cluster name does not match the cluster ID in below URL
+					Server: "https://api-backplane.apps.something.com/backplane/cluster/cluster123",
+				},
+			},
+			AuthInfos: map[string]*api.AuthInfo{
+				"testauth": {
+					Token: "token123",
+				},
+			},
+			Contexts: map[string]*api.Context{
+				"default/testcluster/testauth": {
+					Cluster:   "testcluster",
+					AuthInfo:  "testauth",
+					Namespace: "default",
+				},
+				"custom-context": {
+					Cluster:   "api-backplane.apps.something.com:443",
+					AuthInfo:  "testauth",
+					Namespace: "test-namespace",
+				},
+			},
+			CurrentContext: "default/testcluster/testauth",
+			Extensions:     nil,
+		}
+
+		dirName, _ := os.MkdirTemp("", ".kube")
+
+		err := ModifyConfigDirectory(dirName)
+		Expect(err).To(BeNil())
 
 	})
 
 	AfterEach(func() {
-
+		os.Setenv("HTTPS_PROXY", "")
 		mockCtrl.Finish()
+		utils.RemoveTempKubeConfig()
 	})
 
 	setupConfig := func() {
-		err := utils.CreateTempKubeConfig(nil)
+		err := os.Setenv(info.BACKPLANE_PROXY_ENV_NAME, proxyURL)
+		Expect(err).To(BeNil())
+
+		err = utils.CreateTempKubeConfig(&testKubeCfg)
 		Expect(err).To(BeNil())
 	}
 
 	checkCapturedCommands := func() {
 		Expect(len(capturedCommands)).To(Equal(3))
 
-		home, err := homedir.Dir()
+		configDir, err := GetConfigDirectory()
 		Expect(err).To(BeNil())
-		authFile := filepath.Join(home, ".kube/ocm-pull-secret/config.json")
+		authFile := filepath.Join(configDir, "config.json")
 
-		fmt.Println(capturedCommands[0])
-		fmt.Println(capturedCommands[1])
 		Expect(capturedCommands[1]).To(Equal([]string{
 			"podman", "pull", "--quiet", "--authfile", authFile, "testrepo.com/test/console:latest",
 		}))
-		/*Expect(capturedCommands[2]).To(Equal([]string{
-			"podman", "run", "--rm", "--name", "console-cluster123", "-p", "127.0.0.1:12345:12345", "--authfile", authFile, "testrepo.com/test/console:latest",
-			"/opt/bridge/bin/bridge", "--public-dir=/opt/bridge/static", "-base-address", "http://127.0.0.1:12345", "-branding", "dedicated",
+		Expect(capturedCommands[2]).To(Equal([]string{
+			"podman", "run", "--rm", "--name", "console-cluster123", "-p", "127.0.0.1:12345:12345", "--authfile", authFile,
+			"--env", "HTTPS_PROXY=" + proxyURL, "testrepo.com/test/console:latest", "/opt/bridge/bin/bridge", "--public-dir=/opt/bridge/static", "-base-address", "http://127.0.0.1:12345", "-branding", "dedicated",
 			"-documentation-base-url", "https://docs.openshift.com/dedicated/4/", "-user-settings-location", "localstorage", "-user-auth", "disabled", "-k8s-mode",
 			"off-cluster", "-k8s-auth", "bearer-token", "-k8s-mode-off-cluster-endpoint", "https://api-backplane.apps.something.com/backplane/cluster/cluster123",
 			"-k8s-mode-off-cluster-alertmanager", "https://api-backplane.apps.something.com/backplane/alertmanager/cluster123", "-k8s-mode-off-cluster-thanos",
 			"https://api-backplane.apps.something.com/backplane/thanos/cluster123", "-k8s-auth-bearer-token", testToken, "-listen", "http://0.0.0.0:12345",
-		}))*/
+		}))
 
 	}
-
-	Context("when backplane login has just been done", func() {
-		It("should start console server", func() {
-
-			setupConfig()
-
-			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
-			mockOcmInterface.EXPECT().GetPullSecret().Return(&pullSecret, nil).AnyTimes()
-			mockOcmInterface.EXPECT().GetClusterInfoByID(clusterID).Return(clusterInfo, nil).AnyTimes()
-
-			err := ConsoleCmd.Execute()
-
-			Expect(err).To(BeNil())
-
-			checkCapturedCommands()
-		})
-	})
 
 	// This test verifies that the console container is still started the same way after issuing a
 	// 'oc project <namespace id>' command.
@@ -147,37 +174,54 @@ var _ = Describe("console command", func() {
 	// but the name of the newly created cluster config will be based on the hive cluster URL:
 	// - Which does not contain any bit of information concerning the OSD cluster name.
 	// - Which contains ':' char which is an invalid char in a container name.
-
-	Context("when namespace is no more the default one", func() {
+	Context("when backplane login has just been done", func() {
 		It("should start console server", func() {
-
 			setupConfig()
 
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetPullSecret().Return(&pullSecret, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetClusterInfoByID(clusterID).Return(clusterInfo, nil).AnyTimes()
 
-			err := ConsoleCmd.Execute()
+			err := runConsole(nil, []string{clusterID})
 
 			Expect(err).To(BeNil())
 
-			//checkCapturedCommands()
+			checkCapturedCommands()
+		})
+	})
+
+	Context("when namespace is no more the default one", func() {
+		It("should start console server", func() {
+
+			testKubeCfg.CurrentContext = "custom-context"
+			setupConfig()
+
+			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetPullSecret().Return(&pullSecret, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetClusterInfoByID(clusterID).Return(clusterInfo, nil).AnyTimes()
+
+			err := runConsole(nil, []string{clusterID})
+
+			Expect(err).To(BeNil())
+			Expect(len(capturedCommands)).To(Equal(3))
 		})
 	})
 
 	Context("when kube config is invalid", func() {
 		It("should not start console server", func() {
 
+			testKubeCfg.CurrentContext = "undefined-context"
 			setupConfig()
 
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetPullSecret().Return(&pullSecret, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetClusterInfoByID(clusterID).Return(clusterInfo, nil).AnyTimes()
 
-			err := ConsoleCmd.Execute()
+			err := runConsole(nil, []string{clusterID})
 
-			Expect(err).To(BeNil())
-			Expect(len(capturedCommands)).To(Equal(3))
+			Expect(err).ToNot(BeNil())
+			Expect(err.Error()).To(Equal("invalid configuration: [context was not found for specified context: undefined-context, cluster has no server defined]"))
+			Expect(len(capturedCommands)).To(Equal(0))
 		})
 	})
 })
