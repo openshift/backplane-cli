@@ -80,6 +80,22 @@ func (mr *MockOCMInterfaceMockRecorder) GetOCMAccessToken() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOCMAccessToken", reflect.TypeOf((*MockOCMInterface)(nil).GetOCMAccessToken))
 }
 
+// GetServiceCluster mocks base method.
+func (m *MockOCMInterface) GetServiceCluster(arg0 string) (string, string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetServiceCluster", arg0)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(string)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// GetServiceCluster indicates an expected call of GetServiceCluster.
+func (mr *MockOCMInterfaceMockRecorder) GetServiceCluster(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetServiceCluster", reflect.TypeOf((*MockOCMInterface)(nil).GetServiceCluster), arg0)
+}
+
 // GetTargetCluster mocks base method.
 func (m *MockOCMInterface) GetTargetCluster(arg0 string) (string, string, error) {
 	m.ctrl.T.Helper()

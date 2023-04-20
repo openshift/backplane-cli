@@ -93,6 +93,15 @@ In this example, we will login to a cluster with id `123456abcdef` in production
   $ oc whoami
   system:serviceaccount:openshift-backplane-srep:1234567
   ```
+  
+- To login to the Management cluster for HyperShift (or) the managing Hive shard of normal OSD/ROSA cluster
+  ```
+  $ ocm backplane login <cluster> --manager
+  ```
+- To login to the Service Cluster of a HyperShift hosted cluster or the Management Cluster
+  ```
+  $ ocm backplane login <cluster> --service
+  ```
 
 ## Console
 

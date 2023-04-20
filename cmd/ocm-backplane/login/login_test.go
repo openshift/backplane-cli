@@ -10,11 +10,12 @@ import (
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/tools/clientcmd/api"
+
 	"github.com/openshift/backplane-cli/pkg/client/mocks"
 	"github.com/openshift/backplane-cli/pkg/utils"
 	mocks2 "github.com/openshift/backplane-cli/pkg/utils/mocks"
-	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/client-go/tools/clientcmd/api"
 )
 
 func MakeIoReader(s string) io.ReadCloser {
@@ -31,13 +32,14 @@ var _ = Describe("Login command", func() {
 		mockOcmInterface   *mocks2.MockOCMInterface
 		mockClientUtil     *mocks2.MockClientUtils
 
-		testClusterId     string
-		testToken         string
-		trueClusterId     string
-		managingClusterId string
-		backplaneAPIUri   string
-
-		fakeResp *http.Response
+		testClusterId      string
+		testToken          string
+		trueClusterId      string
+		managingClusterId  string
+		backplaneAPIUri    string
+		serviceClusterId   string
+		serviceClusterName string
+		fakeResp           *http.Response
 	)
 
 	BeforeEach(func() {
@@ -55,6 +57,8 @@ var _ = Describe("Login command", func() {
 		testToken = "hello123"
 		trueClusterId = "trueID123"
 		managingClusterId = "managingID123"
+		serviceClusterId = "hs-sc-123456"
+		serviceClusterName = "hs-sc-654321"
 		backplaneAPIUri = "https://shard.apps"
 
 		mockClientWithResp.EXPECT().LoginClusterWithResponse(gomock.Any(), gomock.Any()).Return(nil, nil).Times(0)
@@ -178,7 +182,10 @@ var _ = Describe("Login command", func() {
 	})
 
 	Context("check cluster login", func() {
-
+		BeforeEach(func() {
+			args.manager = false
+			args.service = false
+		})
 		It("when running with a simple case should work as expected", func() {
 			err := utils.CreateTempKubeConfig(nil)
 			Expect(err).To(BeNil())
@@ -219,6 +226,20 @@ var _ = Describe("Login command", func() {
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil)
 			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken(backplaneAPIUri, testToken).Return(mockClient, nil)
 			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(managingClusterId)).Return(fakeResp, nil)
+
+			err := runLogin(nil, []string{testClusterId})
+
+			Expect(err).To(BeNil())
+		})
+
+		It("should return the service cluster if hosted cluster is given", func() {
+			args.service = true
+			mockOcmInterface.EXPECT().GetTargetCluster(testClusterId).Return(trueClusterId, testClusterId, nil)
+			mockOcmInterface.EXPECT().GetServiceCluster(trueClusterId).Return(serviceClusterId, serviceClusterName, nil)
+			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(serviceClusterId)).Return(false, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil)
+			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken(backplaneAPIUri, testToken).Return(mockClient, nil)
+			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(serviceClusterId)).Return(fakeResp, nil)
 
 			err := runLogin(nil, []string{testClusterId})
 
