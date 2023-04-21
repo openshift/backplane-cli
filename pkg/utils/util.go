@@ -43,6 +43,7 @@ var (
 		},
 		CurrentContext: "default/test123/anonymous",
 	}
+	defaultKubeConfigFileName = "config"
 )
 
 // GetFreePort asks the OS for an available port to listen to.
@@ -161,7 +162,7 @@ func ParseParamsFlag(paramsFlag []string) (map[string]string, error) {
 
 func CreateTempKubeConfig(kubeConfig *api.Config) error {
 
-	f, err := os.CreateTemp("", "kubeconfig")
+	f, err := os.CreateTemp("", defaultKubeConfigFileName)
 	if err != nil {
 		return err
 	}
@@ -184,6 +185,18 @@ func CreateTempKubeConfig(kubeConfig *api.Config) error {
 	os.Setenv("KUBECONFIG", f.Name())
 	return nil
 
+}
+
+// GetDefaultKubeConfig return default kube config
+func GetDefaultKubeConfig() api.Config {
+	return defaultKubeConfig
+}
+
+// ModifyTempKubeConfigFileName update default temp kube config file name
+func ModifyTempKubeConfigFileName(fileName string) error {
+	defaultKubeConfigFileName = fileName
+
+	return nil
 }
 
 func RemoveTempKubeConfig() {

@@ -14,6 +14,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd/api"
 
 	"github.com/openshift/backplane-cli/pkg/client/mocks"
+	"github.com/openshift/backplane-cli/pkg/login"
 	"github.com/openshift/backplane-cli/pkg/utils"
 	mocks2 "github.com/openshift/backplane-cli/pkg/utils/mocks"
 )
@@ -69,6 +70,7 @@ var _ = Describe("Login command", func() {
 			StatusCode: http.StatusOK,
 		}
 		fakeResp.Header.Add("Content-Type", "json")
+
 		// Clear config file
 		_ = clientcmd.ModifyConfig(clientcmd.NewDefaultPathOptions(), api.Config{}, true)
 		clientcmd.UseModifyConfigLock = false
@@ -285,5 +287,32 @@ var _ = Describe("Login command", func() {
 
 		})
 
+		It("Check KUBECONFIG when logging into multiple clusters.", func() {
+			args.manager = false
+			args.multiCluster = true
+			err := utils.ModifyTempKubeConfigFileName(trueClusterId)
+			Expect(err).To(BeNil())
+
+			kubePath, err := os.MkdirTemp("", ".kube")
+			Expect(err).To(BeNil())
+
+			err = login.SetKubeConfigBasePath(kubePath)
+			Expect(err).To(BeNil())
+
+			_, err = login.CreateClusterKubeConfig(trueClusterId, utils.GetDefaultKubeConfig())
+			Expect(err).To(BeNil())
+
+			mockOcmInterface.EXPECT().GetTargetCluster(testClusterId).Return(trueClusterId, testClusterId, nil)
+			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterId)).Return(false, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil)
+			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken(backplaneAPIUri, testToken).Return(mockClient, nil)
+			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(trueClusterId)).Return(fakeResp, nil)
+
+			err = runLogin(nil, []string{testClusterId})
+
+			Expect(os.Getenv("KUBECONFIG")).Should(ContainSubstring(trueClusterId))
+			Expect(err).To(BeNil())
+
+		})
 	})
 })
