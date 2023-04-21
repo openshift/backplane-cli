@@ -1,0 +1,20 @@
+#!/bin/bash -e
+
+if [ -z $1 ]
+then
+  echo "First parameter must be a cluster"
+  exit 1
+fi
+
+# Login to OCM first
+echo "Logging into OCM"
+if [ "$OCM_URL" == "" ];
+then
+  OCM_URL="https://api.openshift.com"
+fi
+ocm login --token=$OFFLINE_ACCESS_TOKEN --url=$OCM_URL
+
+echo "Logging into cluster $1"
+
+# Login to the Cluster
+ocm backplane login "$1"

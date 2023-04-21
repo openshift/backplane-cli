@@ -118,3 +118,10 @@ skopeo-push: image
 		--dest-creds "${QUAY_USER}:${QUAY_TOKEN}" \
 		"docker-daemon:${IMAGE_URI_LATEST}" \
 		"docker://${IMAGE_URI_LATEST}"
+
+build-ocm-container:
+	@if test -z ${HOME}/.config/backplane/config.json ; then echo 'no backplane config file found at $HOME/.config/backplane/config.json - needed for building onto ocm-container' ; exit 1 ; fi
+	cp ~/.config/backplane/config.json ./hack/ocm-container/backplane.config.temp
+	@if test -z ${CONTAINER_SUBSYS} ; then echo 'CONTAINER_SUBSYS must be set. Hint: `source ~/.config/ocm-container/env.source`' ; exit 1 ; fi
+	pushd ./hack/ocm-container/ ; ${CONTAINER_SUBSYS} build --network host -t ocm-container:latest .
+	rm ./hack/ocm-container/backplane.config.temp || true
