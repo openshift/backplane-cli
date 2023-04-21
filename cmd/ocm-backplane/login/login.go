@@ -15,6 +15,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd/api"
 
 	BackplaneApi "github.com/openshift/backplane-api/pkg/client"
+
 	"github.com/openshift/backplane-cli/pkg/cli/config"
 	"github.com/openshift/backplane-cli/pkg/cli/globalflags"
 	"github.com/openshift/backplane-cli/pkg/utils"
@@ -26,6 +27,7 @@ const EnvPs1 = "KUBE_PS1_CLUSTER_FUNCTION"
 var (
 	args struct {
 		manager bool
+		service bool
 	}
 
 	globalOpts = &globalflags.GlobalOptions{}
@@ -58,6 +60,11 @@ func init() {
 		false,
 		"Login to management cluster instead of the cluster itself.",
 	)
+	flags.BoolVar(
+		&args.service,
+		"service",
+		false,
+		"Login to service cluster for the given hosted cluster or mgmt cluster")
 }
 
 func runLogin(cmd *cobra.Command, argv []string) (err error) {
@@ -117,6 +124,18 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 		logger.WithFields(logger.Fields{
 			"ID":   clusterId,
 			"Name": clusterName}).Infoln("Management cluster")
+	}
+
+	if args.service {
+		logger.WithField("Cluster ID", clusterId).Debugln("Finding service cluster")
+		clusterId, clusterName, err = utils.DefaultOCMInterface.GetServiceCluster(clusterId)
+		if err != nil {
+			return err
+		}
+
+		logger.WithFields(logger.Fields{
+			"ID":   clusterId,
+			"Name": clusterName}).Infoln("Service cluster")
 	}
 
 	// Get Backplane URL

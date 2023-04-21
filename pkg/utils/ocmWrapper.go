@@ -19,6 +19,7 @@ type OCMInterface interface {
 	GetTargetCluster(clusterKey string) (clusterId, clusterName string, err error)
 	GetManagingCluster(clusterKey string) (clusterId, clusterName string, err error)
 	GetOCMAccessToken() (*string, error)
+	GetServiceCluster(clusterKey string) (clusterId, clusterName string, err error)
 	GetClusterInfoByID(clusterId string) (*cmv1.Cluster, error)
 	IsProduction() (bool, error)
 }
@@ -124,6 +125,60 @@ func (o *DefaultOCMInterfaceImpl) GetManagingCluster(targetClusterId string) (cl
 		return "", "", fmt.Errorf("failed to lookup managing cluster %s: %v", managingCluster, err)
 	}
 	return mcid, managingCluster, nil
+}
+
+// GetServiceCluster gets the service cluster for a given hpyershift hosted cluster
+func (*DefaultOCMInterfaceImpl) GetServiceCluster(targetClusterId string) (clusterId, clusterName string, err error) {
+	// Create the client for the OCM API
+	connection, err := ocm.NewConnection().Build()
+	if err != nil {
+		return "", "", fmt.Errorf("failed to create OCM connection: %v", err)
+	}
+	defer connection.Close()
+
+	var svcClusterId, svcClusterName, mgmtCluster string
+	// If given cluster is hypershift hosted cluster
+	hypershiftResp, err := connection.ClustersMgmt().V1().Clusters().
+		Cluster(targetClusterId).
+		Hypershift().
+		Get().
+		Send()
+	if err == nil && hypershiftResp != nil {
+		mgmtCluster = hypershiftResp.Body().ManagementCluster()
+	} else {
+		// If given cluster is management cluster
+		mgmtClusterResp, err := connection.OSDFleetMgmt().V1().ManagementClusters().List().
+			Parameter("search", fmt.Sprintf("cluster_id='%s'", targetClusterId)).
+			Send()
+		if err == nil && mgmtClusterResp.Size() > 0 {
+			mgmtCluster = mgmtClusterResp.Items().Get(0).Name()
+		}
+	}
+
+	if mgmtCluster == "" {
+		return "", "", fmt.Errorf("failed to lookup managing cluster for cluster %s", targetClusterId)
+	}
+
+	// Get the osd_fleet_mgmt reference for the given mgmt_cluster
+	ofmResp, err := connection.OSDFleetMgmt().V1().ManagementClusters().
+		List().
+		Parameter("search", fmt.Sprintf("name='%s'", mgmtCluster)).
+		Send()
+	if err != nil {
+		return "", "", fmt.Errorf("failed to get the fleet manager information for management cluster %s", mgmtCluster)
+	}
+
+	if kind := ofmResp.Items().Get(0).Parent().Kind(); kind == "ServiceCluster" {
+		svcClusterName = ofmResp.Items().Get(0).Parent().Name()
+		svcClusterResp, err := connection.ClustersMgmt().V1().Clusters().List().
+			Parameter("search", fmt.Sprintf("name='%s'", svcClusterName)).Send()
+		if err != nil {
+			return "", "", fmt.Errorf("failed to get the service cluster id")
+		}
+		svcClusterId = svcClusterResp.Items().Get(0).ID()
+	}
+
+	return svcClusterId, svcClusterName, nil
 }
 
 func (*DefaultOCMInterfaceImpl) GetOCMAccessToken() (*string, error) {
