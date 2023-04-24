@@ -5,6 +5,7 @@ reviewers:
   - supreeth7
   - MitaliBhalla
   - Tafhim
+  - bmeng
 
 approvers:
   - wanghaoran1988
@@ -12,6 +13,7 @@ approvers:
   - jharrington22
   - feichashao
   - supreeth7
+  - bmeng
 
 maintainers:
   - wanghaoran1988
@@ -19,3 +21,4 @@ maintainers:
   - reetika-vyas
   - supreeth7
   - MitaliBhalla
+  - bmeng
