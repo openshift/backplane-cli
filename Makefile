@@ -78,7 +78,6 @@ release: ensure-goreleaser
 	goreleaser release --rm-dist
 
 test:
-
 	go test -v $(TESTOPTS) ./...
 
 .PHONY: coverage

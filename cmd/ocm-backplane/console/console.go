@@ -243,7 +243,6 @@ func runConsole(cmd *cobra.Command, argv []string) (err error) {
 
 		if hasEngine {
 			containerEngine = engine
-
 		} else {
 			// Fetch container engine via path
 			for _, ce := range validContainerEngines {
@@ -256,7 +255,6 @@ func runConsole(cmd *cobra.Command, argv []string) (err error) {
 				return fmt.Errorf("can't find %s in PATH, please install one of them", strings.Join(validContainerEngines, "|"))
 			}
 		}
-
 	}
 	logger.Infof("Using container engine %s\n", containerEngine)
 
