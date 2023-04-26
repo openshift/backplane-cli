@@ -122,9 +122,7 @@ var _ = Describe("console command", func() {
 
 		dirName, _ := os.MkdirTemp("", ".kube")
 
-		err := ModifyConfigDirectory(dirName)
-		Expect(err).To(BeNil())
-
+		configDirectory = dirName
 	})
 
 	AfterEach(func() {
@@ -179,7 +177,7 @@ var _ = Describe("console command", func() {
 			setupConfig()
 
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
-			mockOcmInterface.EXPECT().GetPullSecret().Return(&pullSecret, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetPullSecret().Return(pullSecret, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetClusterInfoByID(clusterID).Return(clusterInfo, nil).AnyTimes()
 
 			err := runConsole(nil, []string{clusterID})
@@ -197,7 +195,7 @@ var _ = Describe("console command", func() {
 			setupConfig()
 
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
-			mockOcmInterface.EXPECT().GetPullSecret().Return(&pullSecret, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetPullSecret().Return(pullSecret, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetClusterInfoByID(clusterID).Return(clusterInfo, nil).AnyTimes()
 
 			err := runConsole(nil, []string{clusterID})
@@ -214,7 +212,7 @@ var _ = Describe("console command", func() {
 			setupConfig()
 
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
-			mockOcmInterface.EXPECT().GetPullSecret().Return(&pullSecret, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetPullSecret().Return(pullSecret, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetClusterInfoByID(clusterID).Return(clusterInfo, nil).AnyTimes()
 
 			err := runConsole(nil, []string{clusterID})

@@ -252,7 +252,7 @@ func runConsole(cmd *cobra.Command, argv []string) (err error) {
 				}
 			}
 			if len(containerEngine) == 0 {
-				return fmt.Errorf("can't find %s in PATH, please install one of them", strings.Join(validContainerEngines, "|"))
+				return fmt.Errorf("can't find %s in PATH, please install one of the container engines", strings.Join(validContainerEngines, "|"))
 			}
 		}
 	}
@@ -541,8 +541,7 @@ func getImageFromCluster(config *rest.Config) (string, error) {
 
 // fetchPullSecretIfNotExist will check if there's a pull secrect file
 // under $HOME/.kube/, if not, it will ask OCM for the pull secrect
-// and store it to the file.
-// Return dir-name, file-name, error
+// The pull secret is written to a file
 func fetchPullSecretIfNotExist() (string, string, error) {
 
 	configDirectory, err := GetConfigDirectory()
@@ -566,7 +565,7 @@ func fetchPullSecretIfNotExist() (string, string, error) {
 	if err != nil {
 		return "", "", fmt.Errorf("failed to get pull secret from ocm: %v", err)
 	}
-	err = os.WriteFile(configFilename, []byte(*response), 0600)
+	err = os.WriteFile(configFilename, []byte(response), 0600)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to write authfile for pull secret: %v", err)
 	}
@@ -695,7 +694,7 @@ func loadConsolePlugins(config *rest.Config) (string, error) {
 	return consolePlugins, nil
 }
 
-// Get pull secret file saving path, default to ~/.kube/ocm-pull-secret folder
+// GetConfigDirectory returns pull secret file saving path, default to ~/.kube/ocm-pull-secret folder
 func GetConfigDirectory() (string, error) {
 	if configDirectory == "" {
 		home, err := homedir.Dir()
@@ -703,17 +702,12 @@ func GetConfigDirectory() (string, error) {
 			return "", fmt.Errorf("can't get user homedir. Error: %s", err.Error())
 		}
 
-		// Define directory and filename for config
-		configDirectory := filepath.Join(home, ".kube/ocm-pull-secret")
-
-		return configDirectory, nil
+		// Update config directory default path
+		configDirectory = filepath.Join(home, ".kube/ocm-pull-secret")
+		if err != nil {
+			return "", fmt.Errorf("can't modify config directory. Error: %s", err.Error())
+		}
 	}
 
 	return configDirectory, nil
-}
-
-// Modify pull secret file saving path
-func ModifyConfigDirectory(basePath string) error {
-	configDirectory = basePath
-	return nil
 }
