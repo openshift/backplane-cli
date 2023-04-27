@@ -9,8 +9,9 @@ import (
 )
 
 type BackplaneConfiguration struct {
-	URL      string
-	ProxyURL string
+	URL              string
+	ProxyURL         string
+	SessionDirectory string
 }
 
 // getConfigFilePath returns the default config path
@@ -68,6 +69,7 @@ func GetBackplaneConfiguration() (bpConfig BackplaneConfiguration, err error) {
 
 	bpConfig.URL = viper.GetString("url")
 	bpConfig.ProxyURL = viper.GetString("proxy-url")
+	bpConfig.SessionDirectory = viper.GetString("session-dir")
 
 	return bpConfig, nil
 }
