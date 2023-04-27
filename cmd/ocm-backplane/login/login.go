@@ -2,6 +2,7 @@ package login
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -126,7 +127,7 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 	}
 
 	if bpUrl == "" {
-		return fmt.Errorf("can't find backplane url: %s", bpConfig.URL)
+		return errors.New("empty backplane url - check your backplane-cli configuration")
 	}
 
 	logger.Debugf("Using backplane URL: %s\n", bpUrl)
