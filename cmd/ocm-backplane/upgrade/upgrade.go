@@ -51,18 +51,10 @@ func runUpgrade(cmd *cobra.Command, _ []string) error {
 		fmt.Printf("Already up-to-date. Current version: %s\n", info.Version)
 		return nil
 	}
-
-	// Print the latest version number and ask for confirmation before upgrading
-	fmt.Printf("Latest version: %s\n", latestVersion.TagName)
-	fmt.Printf("Do you want to upgrade to the latest version? (y/n): ")
-	var answer string
-	_, _ = fmt.Scanln(&answer)
-	answer = strings.ToLower(strings.TrimSpace(answer))
-	if answer != "y" && answer != "yes" {
-		fmt.Println("Upgrade cancelled.")
-		return nil
-	}
-
+	
+	fmt.Printf("A new version (%s) of Backplane CLI is available.\n", latestVersion.TagName)
+	fmt.Println("Please run the command 'ocm backplane upgrade' to upgrade to the latest version.")
+	
 	upgrade := upgrade.NewCmd(git)
 
 	return upgrade.UpgradePlugin(ctx, latestVersion.TagName)

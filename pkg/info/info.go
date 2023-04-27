@@ -36,4 +36,3 @@ var (
 
 	UpstreamREADMETagged = fmt.Sprintf(UpstreamREADMETemplate, Version)
 )
-
