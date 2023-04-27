@@ -103,6 +103,17 @@ func (s *DefaultClientUtilsImpl) GetBackplaneClient(backplaneURL string) (client
 		logger.Infof("Using backplane URL: %s\n", backplaneURL)
 	}
 
+	// Inject client Proxy Url from config
+	if s.clientProxyUrl == "" {
+		bpConfig, err := config.GetBackplaneConfiguration()
+		if err != nil {
+			return nil, err
+		}
+		s.clientProxyUrl = bpConfig.ProxyURL
+
+		logger.Infof("Using Proxy URL: %s\n", s.clientProxyUrl)
+	}
+
 	// Get backplane API client
 	logger.Debugln("Finding ocm token")
 	accessToken, err := DefaultOCMInterface.GetOCMAccessToken()
