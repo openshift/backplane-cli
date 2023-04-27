@@ -3,6 +3,7 @@ package cloud
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -116,8 +117,12 @@ func runConsole(cmd *cobra.Command, argv []string) (err error) {
 	} else {
 		// Get Backplane configuration
 		bpConfig, err := config.GetBackplaneConfiguration()
-		if err != nil || bpConfig.URL == "" {
+		if err != nil {
 			return fmt.Errorf("can't find backplane url: %w", err)
+		}
+
+		if bpConfig.URL == "" {
+			return errors.New("empty backplane url - check your backplane-cli configuration")
 		}
 		bpURL = bpConfig.URL
 		logger.Infof("Using backplane URL: %s\n", bpURL)

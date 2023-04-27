@@ -3,6 +3,7 @@ package github
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -12,7 +13,6 @@ import (
 	"strings"
 
 	"github.com/openshift/backplane-cli/internal/upgrade"
-	"github.com/pkg/errors"
 )
 
 var (
