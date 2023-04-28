@@ -254,7 +254,7 @@ var _ = Describe("Login command", func() {
 			globalOpts.ProxyURL = "https://squid.myproxy.com"
 			mockClientUtil.EXPECT().SetClientProxyUrl(globalOpts.ProxyURL).Return(nil)
 			mockOcmInterface.EXPECT().GetTargetCluster("configcluster").Return(testClusterId, "dummy_cluster", nil)
-			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterId)).Return(false, nil).AnyTimes()
+			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(testClusterId)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil)
 			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken(backplaneAPIUri, testToken).Return(mockClient, nil)
 			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(testClusterId)).Return(fakeResp, nil)

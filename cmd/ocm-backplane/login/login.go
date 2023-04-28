@@ -99,7 +99,6 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 
 	// Get Backplane configuration
 	bpConfig, err := config.GetBackplaneConfiguration()
-
 	if err != nil {
 		return err
 	}
@@ -171,6 +170,12 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 		return err
 	}
 	logger.Debugln("Found OCM access token")
+
+	// Not great if there's an error checking if the cluster is hibernating, but ignore it for now and continue
+	if isHibernating, _ := utils.DefaultOCMInterface.IsClusterHibernating(clusterId); isHibernating {
+		// If it is hibernating, don't try to connect as it will fail
+		return fmt.Errorf("cluster %s is hibernating, login failed", clusterKey)
+	}
 
 	// Query backplane-api for proxy url
 	bpAPIClusterUrl, err := doLogin(bpUrl, clusterId, *accessToken)
