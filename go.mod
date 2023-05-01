@@ -13,7 +13,7 @@ require (
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/onsi/ginkgo v1.16.4
 	github.com/onsi/gomega v1.27.6
-	github.com/openshift-online/ocm-cli v0.1.65
+	github.com/openshift-online/ocm-cli v0.1.66
 	github.com/openshift-online/ocm-sdk-go v0.1.335
 	github.com/openshift/backplane-api v0.0.0-20230203044845-10f2b341bf54
 	github.com/openshift/client-go v0.0.0-20221019143426-16aed247da5c
