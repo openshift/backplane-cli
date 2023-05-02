@@ -68,7 +68,8 @@ var (
 	createClientSet = func(c *rest.Config) (kubernetes.Interface, error) { return kubernetes.NewForConfig(c) }
 	createCommand   = exec.Command
 
-	configDirectory string
+	// Pull Secret saving directory
+	pullSecreConfigDirectory string
 )
 
 // Environment variable that indicates if open by browser is set as default
@@ -694,20 +695,21 @@ func loadConsolePlugins(config *rest.Config) (string, error) {
 	return consolePlugins, nil
 }
 
-// GetConfigDirectory returns pull secret file saving path, default to ~/.kube/ocm-pull-secret folder
+// GetConfigDirectory returns pull secret file saving path
+// Defaults to ~/.kube/ocm-pull-secret
 func GetConfigDirectory() (string, error) {
-	if configDirectory == "" {
+	if pullSecreConfigDirectory == "" {
 		home, err := homedir.Dir()
 		if err != nil {
 			return "", fmt.Errorf("can't get user homedir. Error: %s", err.Error())
 		}
 
 		// Update config directory default path
-		configDirectory = filepath.Join(home, ".kube/ocm-pull-secret")
+		pullSecreConfigDirectory = filepath.Join(home, ".kube/ocm-pull-secret")
 		if err != nil {
 			return "", fmt.Errorf("can't modify config directory. Error: %s", err.Error())
 		}
 	}
 
-	return configDirectory, nil
+	return pullSecreConfigDirectory, nil
 }

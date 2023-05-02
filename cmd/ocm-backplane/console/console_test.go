@@ -122,7 +122,7 @@ var _ = Describe("console command", func() {
 
 		dirName, _ := os.MkdirTemp("", ".kube")
 
-		configDirectory = dirName
+		pullSecreConfigDirectory = dirName
 	})
 
 	AfterEach(func() {
