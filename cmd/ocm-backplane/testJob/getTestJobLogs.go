@@ -104,6 +104,5 @@ func runGetTestJobLogs(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	cmd.PersistentFlags().BoolP("follow", "f", false, "Specify if logs should be streamed")
 	return nil
 }

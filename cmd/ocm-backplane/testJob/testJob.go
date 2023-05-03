@@ -28,6 +28,8 @@ func NewTestJobCommand() *cobra.Command {
 	// raw Flag
 	cmd.PersistentFlags().Bool("raw", false, "Prints the raw response returned by the backplane API")
 
+	cmd.PersistentFlags().BoolP("follow", "f", false, "Specify if logs should be streamed")
+
 	cmd.AddCommand(
 		newCreateTestJobCommand(),
 		newGetTestJobCommand(),

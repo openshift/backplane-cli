@@ -1,11 +1,16 @@
 package testJob
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"fmt"
 	"net/http"
 	"os"
+	"os/exec"
+	"path/filepath"
+	"regexp"
+	"strings"
 
 	logger "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -15,6 +20,8 @@ import (
 	"github.com/openshift/backplane-cli/pkg/cli/config"
 	"github.com/openshift/backplane-cli/pkg/utils"
 )
+
+var GetGitRepoPath = exec.Command("git", "rev-parse", "--show-toplevel")
 
 func newCreateTestJobCommand() *cobra.Command {
 
@@ -26,14 +33,16 @@ Create a test job on a non-production cluster
 
 ** NOTE: For testing scripts only **
 
-This command will assume that you are already in a managed-script directory, 
+This command will assume that you are already in a managed-scripts directory,
 eg: https://github.com/openshift/managed-scripts/tree/main/scripts/SREP/example
 
-When running this command, it will attempt to read "metadata.yaml" and the script file specified and create a 
+When running this command, it will attempt to read "metadata.yaml" and the script file specified and create a
 test job run without having to commit to the upstream managed-script repository
 
 By default, the container image used to run your script will be the latest image built via the managed-script
 github repository
+
+To use with bash libraries, make sure the libraries are in the scripts directory of your managed scripts repository, in the format: source /managed-scripts/<path-from-managed-scripts-scripts-dir>.
 
 Example usage:
   cd scripts/SREP/example && ocm backplane testjob create -p var1=val1
@@ -49,6 +58,13 @@ Example usage:
 		"p",
 		[]string{},
 		"Params to be passed to managedjob execution in json format. For e.g. -p 'VAR1=VAL1' -p VAR2=VAL2 ")
+
+	cmd.Flags().StringP(
+		"library-file-path",
+		"l",
+		"",
+		"Optional library file to be passed in (must live in managed-scripts/scripts directory)",
+	)
 
 	return cmd
 }
@@ -174,13 +190,18 @@ func createTestScriptFromFiles() (*backplaneApi.CreateTestScriptRunJSONRequestBo
 		logger.Errorf("Error reading metadata: %v", err)
 		return nil, err
 	}
-
-	// Now, try to find and read the script body
 	fileBody, err := os.ReadFile(scriptMeta.File)
 
 	fileBodyStr := string(fileBody)
+
+	// if something like bin/bash or bin/sh at start, read
 	if err != nil {
 		logger.Errorf("unable to read file %s, make sure this file exists", scriptMeta.File)
+		return nil, err
+	}
+
+	fileBodyStr, err = inlineLibrarySourceFiles(fileBodyStr, scriptMeta.File)
+	if err != nil {
 		return nil, err
 	}
 
@@ -191,4 +212,78 @@ func createTestScriptFromFiles() (*backplaneApi.CreateTestScriptRunJSONRequestBo
 		ScriptBody:     scriptBodyEncoded,
 		ScriptMetadata: scriptMeta,
 	}, nil
+}
+
+// For a managed script example.sh:
+// ---
+// #!/bin/bash
+// source /managed-scripts/libs/lib.sh
+//
+// echo_foo "Hello"
+// ---
+//
+// And function /managed-scripts/libs/lib.sh
+// ---
+// #!/bin/bash
+//
+//	function echo_foo () {
+//		echo $1
+//	}
+//
+// ---
+//
+// Inline into function before source definition of example.sh
+// #!/bin/bash
+// cat << EOF > lib.sh
+// #!/bin/bash
+//
+//	function echo_foo () {
+//		echo $1
+//	}
+//
+// EOF
+// source lib.sh
+//
+// echo_foo "Hello"
+func inlineLibrarySourceFiles(script string, scriptPath string) (string, error) {
+	re, err := regexp.Compile("source /managed-scripts/(.*)\n")
+	if err != nil {
+		return "", err
+	}
+
+	match := re.FindString(script)
+
+	if match == "" {
+		return script, nil
+	}
+
+	// i.e. /lib/foo.bash
+	libraryPath := re.FindStringSubmatch(script)[1]
+
+	// Assuming the script is inside the managed scripts directory
+	scriptDir := filepath.Dir(scriptPath)
+
+	getManagedScriptsDir := GetGitRepoPath
+	getManagedScriptsDir.Dir = scriptDir
+
+	var out bytes.Buffer
+	getManagedScriptsDir.Stdout = &out
+
+	if err = getManagedScriptsDir.Run(); err != nil {
+		return "", err
+	}
+
+	managedScriptsDir := strings.TrimSpace(out.String())
+
+	fileBody, err := os.ReadFile(managedScriptsDir + "/scripts/" + libraryPath)
+	if err != nil {
+		return "", err
+	}
+	library := string(fileBody)
+
+	inlinedFunction := "cat << EOF > ./lib.sh\n" + library + "\nEOF\n" + "source ./lib.sh\n"
+
+	inlinedScript := strings.Replace(script, match, inlinedFunction, 1)
+
+	return inlinedScript, err
 }
