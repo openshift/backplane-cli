@@ -2,8 +2,10 @@ package testJob
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
+	"os/exec"
 	"path"
 
 	"github.com/golang/mock/gomock"
@@ -231,6 +233,49 @@ var _ = Describe("testJob create command", func() {
 			err := sut.Execute()
 
 			Expect(err).ToNot(BeNil())
+		})
+
+		It("should not run in production environment", func() {
+			mockOcmInterface.EXPECT().IsProduction().Return(true, nil)
+
+			_ = os.Remove(path.Join(tempDir, "script.sh"))
+
+			sut.SetArgs([]string{"create", "--cluster-id", testClusterId})
+			err := sut.Execute()
+
+			Expect(err).ToNot(BeNil())
+		})
+
+		It("should import and inline a library file in the same directory", func() {
+			script := `#!/bin/bash
+set -eo pipefail
+
+source /managed-scripts/lib.sh
+
+echo_touch "Hello"
+`
+			lib := fmt.Sprintf(`function echo_touch () {
+    echo $1 > %s/ran_function
+}
+`, tempDir)
+
+			GetGitRepoPath = exec.Command("echo", tempDir)
+			// tmp/createJobTest3397561583
+			_ = os.WriteFile(path.Join(tempDir, "script.sh"), []byte(script), 0755)
+			_ = os.Mkdir(path.Join(tempDir, "scripts"), 0755)
+			_ = os.WriteFile(path.Join(tempDir, "scripts", "lib.sh"), []byte(lib), 0755)
+			mockOcmInterface.EXPECT().IsProduction().Return(false, nil)
+			// It should query for the internal cluster id first
+			mockOcmInterface.EXPECT().GetTargetCluster(testClusterId).Return(trueClusterId, testClusterId, nil)
+			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterId)).Return(false, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
+			mockClientUtil.EXPECT().MakeRawBackplaneAPIClient(proxyUri).Return(mockClient, nil)
+			mockClient.EXPECT().CreateTestScriptRun(gomock.Any(), trueClusterId, gomock.Any()).Return(fakeResp, nil)
+
+			sut.SetArgs([]string{"create", "--cluster-id", testClusterId})
+			err := sut.Execute()
+
+			Expect(err).To(BeNil())
 		})
 	})
 })

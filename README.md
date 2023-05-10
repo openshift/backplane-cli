@@ -70,7 +70,7 @@ To setup the PS1(prompt) for bash/zsh, please follow [these instructions](https:
 | `ocm-backplane managedJob list [flags]`                                     | Retrieve a list of backplane managed job resources                                       |
 | `ocm-backplane managedJob logs <job_name> [flags]`                          | Retrieve logs of the specified managed job resource                                      |
 | `ocm-backplane managedJob delete <job_name> [flags]`                        | Delete the specified managed job resource                                                |
-| `ocm-backplane testJob create <script> [flags]`                             | Create a backplane test job on a non-production cluster for testing                      |
+| `ocm-backplane testJob create <script> [flags]`                             | Create a backplane test managed job on a non-production cluster for testing. To use with bash libraries, make sure the libraries are in the scripts directory in the format `source /managed-scripts/<path-from-managed-scripts-scripts-dir>`                      |
 | `ocm-backplane testJob get <job_name> [flags]`                              | Retrieve a backplane test job resource                                                   |
 | `ocm-backplane testJob list [flags]`                                        | Retrieve a list of backplane test job resources                                          |
 | `ocm-backplane testJob logs <job_name> [flags]`                             | Retrieve logs of the specified test job resource                                         |
