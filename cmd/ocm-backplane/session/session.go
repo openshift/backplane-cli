@@ -18,7 +18,7 @@ func NewCmdSession() *cobra.Command {
 	}
 	sessionCmd := &cobra.Command{
 		Use:               "session [flags] [session-alias]",
-		Short:             "Create an environment to interact with a cluster",
+		Short:             "Create an isolated environment to interact with a cluster in its own directory.",
 		Args:              cobra.MaximumNArgs(1),
 		DisableAutoGenTag: true,
 		RunE:              session.RunCommand,

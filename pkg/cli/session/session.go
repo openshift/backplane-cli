@@ -176,7 +176,10 @@ func (e *BackplaneSession) Start() error {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Dir = e.Path
-	_ = cmd.Run() // add error checking
+	err = cmd.Run()
+	if err != nil {
+		return fmt.Errorf("error while running cmd. error %v", err)
+	}
 
 	err = e.killChildren()
 	if err != nil {
@@ -199,7 +202,6 @@ func (e *BackplaneSession) killChildren() error {
 			if errors.Is(err, os.ErrNotExist) {
 				fmt.Println("Nothing to kill")
 			}
-			//return fmt.Errorf("failed to read file .killpids: %v", err)
 		}
 		defer func(file *os.File) {
 			err := file.Close()
