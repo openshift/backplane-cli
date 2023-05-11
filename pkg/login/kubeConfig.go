@@ -81,13 +81,24 @@ func RemoveClusterKubeConfig(clusterId string) error {
 }
 
 // SaveKubeConfig modify Kube config based on user setting
-func SaveKubeConfig(clusterId string, config api.Config, isMulti bool) error {
+func SaveKubeConfig(clusterId string, config api.Config, isMulti bool, kubePath string) error {
 
 	if isMulti {
+		//update path
+		if kubePath != "" {
+			err := SetKubeConfigBasePath(kubePath)
+			if err != nil {
+				return err
+			}
+		}
 		//save config to current session
 		path, err := CreateClusterKubeConfig(clusterId, config)
-		fmt.Printf("Execute the following command to log into the cluster %s \n", clusterId)
-		fmt.Println("export " + info.BACKPLANE_KUBECONFIG_ENV_NAME + "=" + path)
+
+		if kubePath == "" {
+			// Inform how to setup kube config
+			fmt.Printf("Execute the following command to log into the cluster %s \n", clusterId)
+			fmt.Println("export " + info.BACKPLANE_KUBECONFIG_ENV_NAME + "=" + path)
+		}
 
 		if err != nil {
 			return err

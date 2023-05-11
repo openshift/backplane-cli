@@ -27,9 +27,10 @@ const EnvPs1 = "KUBE_PS1_CLUSTER_FUNCTION"
 
 var (
 	args struct {
-		manager      bool
-		service      bool
-		multiCluster bool
+		manager        bool
+		service        bool
+		multiCluster   bool
+		kubeConfigPath string
 	}
 
 	globalOpts = &globalflags.GlobalOptions{}
@@ -76,6 +77,13 @@ func init() {
 		"m",
 		false,
 		"Enable multi-cluster login.",
+	)
+
+	flags.StringVar(
+		&args.kubeConfigPath,
+		"kube-path",
+		"",
+		"Save kube configuration in the specific path when login to multi clusters.",
 	)
 
 }
@@ -149,6 +157,16 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 		logger.WithFields(logger.Fields{
 			"ID":   clusterId,
 			"Name": clusterName}).Infoln("Service cluster")
+	}
+
+	// validate kubeconfig save path when login into multi clusters
+	if args.kubeConfigPath != "" {
+		if !args.multiCluster {
+			return fmt.Errorf("can't save the kube config into a specific location if multi-cluster is not enabled. Please specify --multi flag")
+		}
+		if _, err := os.Stat(args.kubeConfigPath); errors.Is(err, os.ErrNotExist) {
+			return fmt.Errorf("kube config save path is not exist")
+		}
 	}
 
 	// Get Backplane URL
@@ -234,7 +252,7 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 	rc.CurrentContext = targetContextNickName
 
 	// Save the config.
-	err = login.SaveKubeConfig(clusterId, rc, args.multiCluster)
+	err = login.SaveKubeConfig(clusterId, rc, args.multiCluster, args.kubeConfigPath)
 
 	return err
 }

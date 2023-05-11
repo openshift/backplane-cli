@@ -181,7 +181,53 @@ Logging into multiple clusters via different terminal instances.
   ```
   $ export BACKPLANE_DEFAULT_OPEN_BROWSER=true
   $ ocm backplane cloud console
-  ```
+  `
+
+## Backplane Session 
+Backplane session command will create an isolated environment to interact with a cluster in its own directory. 
+The default location for this is ~/backplane. 
+
+The default session save path can be configured via the backplane config file. 
+```
+{
+   "url": "your-bp-url"
+   "proxy-url": "your-proxy-url"
+   "session-dir":"your-session-dir"
+}
+```
+### How to create new session?
+The following command will create a new session and log in to the cluster.
+```
+## with intractive session name 
+ocm backplane session <session-name> -c <cluster-id>
+
+## only with cluster id
+ocm backplane session <cluster-id> 
+```
+
+Backplane session keeps the session history commands in <your-path>/session-name/.history file.
+
+```
+[ <session-name> (<cluster-info-PS1>)]$ history 
+    1  2023-05-08 15:06:05 oc get nodes
+    2  2023-05-08 15:06:13 oc get co
+    3  2023-05-08 15:06:40 history 
+```
+
+Backpalane session setup following environment variables.
+```
+HISTFILE    = <your-session-path>/<session-name>/.history
+PATH        = <your-os-path>
+KUBECONFIG  = <your-session-path>/<session-name>/<cluster-id>/config
+CLUSTERID   = <cluster-id>
+CLUSTERNAME = <cluster-name>
+```
+
+### How to delete the session?
+Folowing command delete the session
+```
+ocm backplane session --delete <session-name>
+```
 
 
 ## Debugging issues

@@ -17,6 +17,9 @@ const (
 	BACKPLANE_CONFIG_DEFAULT_FILE_PATH = ".config/backplane"
 	BACKPLANE_CONFIG_DEFAULT_FILE_NAME = "config.json"
 
+	// Session
+	BACKPLANE_DEFAULT_SESSION_DIRECTORY = "backplane"
+
 	// GitHub API get fetch the latest tag
 	UpstreamReleaseAPI = "https://api.github.com/repos/openshift/backplane-cli/releases/latest"
 
