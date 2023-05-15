@@ -8,8 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
-	"syscall"
+	"strings"
 
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/login"
 	"github.com/openshift/backplane-cli/pkg/cli/config"
@@ -53,10 +52,6 @@ func (e *BackplaneSession) RunCommand(cmd *cobra.Command, args []string) error {
 		e.Options.Alias = args[0]
 	}
 	if e.Options.ClusterId == "" && e.Options.Alias == "" {
-		err := cmd.Help()
-		if err != nil {
-			return fmt.Errorf("could not print help")
-		}
 		return fmt.Errorf("ClusterId or Alias required")
 	}
 
@@ -65,11 +60,26 @@ func (e *BackplaneSession) RunCommand(cmd *cobra.Command, args []string) error {
 		e.Options.Alias = e.Options.ClusterId
 	}
 
-	sessionPath, err := e.sessionPath()
+	// Verify validity of the ClusterID
+	clusterKey := e.Options.Alias
+	if e.Options.ClusterId != "" {
+		clusterKey = e.Options.ClusterId
+	}
+
+	clusterId, clusterName, err := utils.DefaultOCMInterface.GetTargetCluster(clusterKey)
+
+	if err != nil {
+		return fmt.Errorf("invalid cluster Id %s", clusterKey)
+	}
+
+	// set cluster options
+	e.Options.ClusterName = clusterName
+	e.Options.ClusterId = clusterId
+
+	err = e.initSessionPath()
 	if err != nil {
 		return fmt.Errorf("could not init session path")
 	}
-	e.Path = sessionPath
 
 	if e.Options.DeleteSession {
 		fmt.Printf("Cleaning up Backplane session %s\n", e.Options.Alias)
@@ -106,26 +116,12 @@ func (e *BackplaneSession) Setup() error {
 		return fmt.Errorf("error deleting session. error: %v", err)
 	}
 
-	// Setup clusterID and clusterName
-	clusterKey := e.Options.Alias
-	if e.Options.ClusterId != "" {
-		clusterKey = e.Options.ClusterId
-	}
-
-	clusterId, clusterName, err := utils.DefaultOCMInterface.GetTargetCluster(clusterKey)
-
-	if err == nil {
-		// set cluster options
-		e.Options.ClusterName = clusterName
-		e.Options.ClusterId = clusterId
-	}
-
 	err = e.ensureEnvDir()
 	if err != nil {
 		return fmt.Errorf("error validating env directory. error: %v", err)
 	}
 
-	e.printSesionHeader()
+	e.printSessionHeader()
 
 	// Create session Bins
 	err = e.createBins()
@@ -152,90 +148,37 @@ func (e *BackplaneSession) Setup() error {
 func (e *BackplaneSession) Start() error {
 	shell := os.Getenv("SHELL")
 
-	fmt.Print("Switching to Backplane session " + e.Options.Alias + "\n")
-	cmd := exec.Command(shell)
+	if shell != "" {
+		fmt.Print("Switching to Backplane session " + e.Options.Alias + "\n")
+		cmd := exec.Command(shell)
 
-	path := filepath.Clean(e.Path + "/.ocenv")
-	file, err := os.Open(path)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if err := file.Close(); err != nil {
-			fmt.Println("Error closing file: ", path)
-			return
-		}
-	}()
-	scanner := bufio.NewScanner(file)
-	cmd.Env = os.Environ()
-	for scanner.Scan() {
-		line := scanner.Text()
-		cmd.Env = append(cmd.Env, line)
-	}
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.Dir = e.Path
-	err = cmd.Run()
-	if err != nil {
-		return fmt.Errorf("error while running cmd. error %v", err)
-	}
-
-	err = e.killChildren()
-	if err != nil {
-		return err
-	}
-
-	fmt.Printf("Exited Backplane session \n")
-
-	return nil
-}
-
-// killChildren delete all pds in .killpds file
-func (e *BackplaneSession) killChildren() error {
-	path := filepath.Join(e.Path, "/.killpds")
-
-	if _, err := os.Stat(path); err == nil {
+		path := filepath.Clean(e.Path + "/.ocenv")
 		file, err := os.Open(path)
-
 		if err != nil {
-			if errors.Is(err, os.ErrNotExist) {
-				fmt.Println("Nothing to kill")
-			}
+			return err
 		}
-		defer func(file *os.File) {
-			err := file.Close()
-			if err != nil {
-				fmt.Println("Error while closing file: ", path)
+		defer func() {
+			if err := file.Close(); err != nil {
+				fmt.Println("Error closing file: ", path)
 				return
 			}
-		}(file)
-
+		}()
 		scanner := bufio.NewScanner(file)
-
-		scanner.Split(bufio.ScanLines)
-		var text []string
-
+		cmd.Env = os.Environ()
 		for scanner.Scan() {
-			text = append(text, scanner.Text())
+			line := scanner.Text()
+			cmd.Env = append(cmd.Env, line)
 		}
-
-		for _, pid := range text {
-			fmt.Printf("Stopping process %s\n", pid)
-			pidNum, err := strconv.Atoi(pid)
-			if err != nil {
-				return fmt.Errorf("failed to read PID %s, you may need to clean up manually: %v", pid, err)
-			}
-			err = syscall.Kill(pidNum, syscall.SIGTERM)
-			if err != nil {
-				return fmt.Errorf("failed to stop child processes %s, you may need to clean up manually: %v", pid, err)
-			}
-		}
-
-		err = os.Remove(path)
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		cmd.Dir = e.Path
+		err = cmd.Run()
 		if err != nil {
-			return fmt.Errorf("failed to delete .killpids, you may need to clean it up manually: %v", err)
+			return fmt.Errorf("error while running cmd. %v", err)
 		}
+
+		fmt.Printf("Exited Backplane session \n")
 	}
 
 	return nil
@@ -306,9 +249,10 @@ PATH=` + e.Path + `/bin:` + os.Getenv("PATH") + `
 	return nil
 }
 
+// createHistoryFile create .history file inside the session folder
 func (e *BackplaneSession) createHistoryFile() error {
 	historyFile := filepath.Join(e.Path, "/.history")
-	scriptfile, err := e.ensureFile(historyFile)
+	scriptFile, err := e.ensureFile(historyFile)
 	if err != nil {
 		return err
 	}
@@ -318,7 +262,7 @@ func (e *BackplaneSession) createHistoryFile() error {
 			fmt.Println("Error closing file: ", historyFile)
 			return
 		}
-	}(scriptfile)
+	}(scriptFile)
 	return nil
 }
 
@@ -389,26 +333,35 @@ func (e *BackplaneSession) binPath() string {
 	return e.Path + "/bin"
 }
 
-// sessionPath returns the session saving path
-func (e *BackplaneSession) sessionPath() (string, error) {
-	bpConfig, err := config.GetBackplaneConfiguration()
-	if err != nil {
-		return "", err
-	}
-	sessionDir := info.BACKPLANE_DEFAULT_SESSION_DIRECTORY
+// initSessionPath initialise the session saving path based on the user config
+func (e *BackplaneSession) initSessionPath() error {
 
-	// Get the session directory name via config
-	if bpConfig.SessionDirectory != "" {
-		sessionDir = bpConfig.SessionDirectory
+	if e.Path == "" {
+		bpConfig, err := config.GetBackplaneConfiguration()
+		if err != nil {
+			return err
+		}
+		sessionDir := info.BACKPLANE_DEFAULT_SESSION_DIRECTORY
+
+		// Get the session directory name via config
+		if bpConfig.SessionDirectory != "" {
+			sessionDir = bpConfig.SessionDirectory
+		}
+
+		userHomeDir, err := os.UserHomeDir()
+		if err != nil {
+			return err
+		}
+
+		e.Path = filepath.Join(userHomeDir, sessionDir, e.Options.Alias)
 	}
 
-	UserHomeDir, err := os.UserHomeDir()
-	if err != nil {
-		return "", err
+	// Add Alias to the path
+	if !strings.Contains(e.Path, e.Options.Alias) {
+		e.Path = filepath.Join(e.Path, e.Options.Alias)
 	}
 
-	configFilePath := filepath.Join(UserHomeDir, sessionDir, e.Options.Alias)
-	return configFilePath, nil
+	return nil
 }
 
 // initCluster login to cluster and save kube config into session for valid clusters
@@ -436,12 +389,16 @@ func (e *BackplaneSession) initClusterLogin(cmd *cobra.Command) error {
 	return nil
 }
 
-func (e *BackplaneSession) printSesionHeader() {
-	fmt.Println("====================================================")
-	fmt.Println("*          Backplane Session                       *")
-	fmt.Println("*                                                  *")
-	fmt.Println("*Help:                                             *")
-	fmt.Println("* exit will terminate this session                 *")
-	fmt.Println("* You can use oc commands to interact with cluster *")
-	fmt.Println("====================================================")
+// printSessionHeader prints backplane session title and help
+func (e *BackplaneSession) printSessionHeader() {
+	fmt.Println("========================================================================")
+	fmt.Println("*          Backplane Session                                           *")
+	fmt.Println("*                                                                      *")
+	fmt.Println("*Help:                                                                 *")
+	fmt.Println("* type \"exit\" to terminate the current session                         *")
+	fmt.Println("* You can use oc commands to interact with cluster                     *")
+	fmt.Println("*                                                                      *")
+	fmt.Println("* If the session is not initialized in the cluster env automatically   *")
+	fmt.Println("* then executes \"source .ocenv\" enable it manually                     *")
+	fmt.Println("========================================================================")
 }
