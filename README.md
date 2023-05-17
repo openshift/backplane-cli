@@ -56,7 +56,9 @@ To setup the PS1(prompt) for bash/zsh, please follow [these instructions](https:
 | Command                                                                     | Description                                                                              |
 | --------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
 | `ocm backplane login <CLUSTERID/EXTERNAL_ID/CLUSTER_NAME>`                  | Login to the target cluster                                                              |
-| `ocm backplane logout <CLUSTERID/EXTERNAL_ID/CLUSTER_NAME>`                 | Logout from the target cluster                                                             |
+| `ocm backplane logout <CLUSTERID/EXTERNAL_ID/CLUSTER_NAME>`                 | Logout from the target cluster                                                           |
+| `ocm backplane config get [flags]`                                          | Retrieve Backplane CLI configuration variables                                           |
+| `ocm backplane config set [flags]`                                          | Set Backplane CLI configuration variables                                                |
 | `ocm backplane console [flags]`                                             | Launch the OpenShift console of the current logged in cluster                            |
 | `ocm backplane cloud console`                                               | Launch the current logged in cluster's cloud provider console                            |
 | `ocm backplane cloud credentials [flags]`                                   | Retrieve a set of temporary cloud credentials for the cluster's cloud provider           |

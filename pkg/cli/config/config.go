@@ -15,7 +15,7 @@ type BackplaneConfiguration struct {
 }
 
 // getConfigFilePath returns the default config path
-func getConfigFilePath() (string, error) {
+func GetConfigFilePath() (string, error) {
 	UserHomeDir, err := os.UserHomeDir()
 	if err != nil {
 		return "", err
@@ -36,7 +36,7 @@ func GetBackplaneConfiguration() (bpConfig BackplaneConfiguration, err error) {
 	if bpConfigFound {
 		filepath = path
 	} else {
-		filepath, err = getConfigFilePath()
+		filepath, err = GetConfigFilePath()
 		if err != nil {
 			return bpConfig, err
 		}
