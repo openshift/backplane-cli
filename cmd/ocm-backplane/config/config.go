@@ -7,6 +7,7 @@ import (
 const (
 	ProxyURLConfigVar = "proxy-url"
 	URLConfigVar      = "url"
+	SessionConfigVar  = "session-dir"
 )
 
 func NewConfigCmd() *cobra.Command {
@@ -19,6 +20,7 @@ The location of the configuration file is gleaned from ~/.config/backplane/confi
 The following variables are supported:
 url         Backplane API URL
 proxy-url   Squid proxy URL
+session-dir Backplane CLI session directory
 `,
 		SilenceUsage: true,
 	}

@@ -14,8 +14,14 @@ type BackplaneConfiguration struct {
 	SessionDirectory string
 }
 
-// getConfigFilePath returns the default config path
+// GetConfigFilePath returns the Backplane CLI configuration filepath
 func GetConfigFilePath() (string, error) {
+	// Check if user has explicitly defined backplane config path
+	path, found := os.LookupEnv(info.BACKPLANE_CONFIG_PATH_ENV_NAME)
+	if found {
+		return path, nil
+	}
+
 	UserHomeDir, err := os.UserHomeDir()
 	if err != nil {
 		return "", err
@@ -28,18 +34,9 @@ func GetConfigFilePath() (string, error) {
 
 // GetBackplaneConfiguration parses and returns the given backplane configuration
 func GetBackplaneConfiguration() (bpConfig BackplaneConfiguration, err error) {
-	var filepath string
-
-	// Check if user has explicitly defined backplane config path
-	path, bpConfigFound := os.LookupEnv(info.BACKPLANE_CONFIG_PATH_ENV_NAME)
-
-	if bpConfigFound {
-		filepath = path
-	} else {
-		filepath, err = GetConfigFilePath()
-		if err != nil {
-			return bpConfig, err
-		}
+	filepath, err := GetConfigFilePath()
+	if err != nil {
+		return bpConfig, err
 	}
 
 	viper.AutomaticEnv()
