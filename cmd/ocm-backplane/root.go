@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/cloud"
+	"github.com/openshift/backplane-cli/cmd/ocm-backplane/config"
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/console"
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/elevate"
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/login"
@@ -89,17 +90,17 @@ func init() {
 	logLevelFlag.NoOptDefVal = log.InfoLevel.String()
 
 	// Register sub-commands
-	rootCmd.AddCommand(login.LoginCmd)
-	rootCmd.AddCommand(upgrade.UpgradeCmd)
-	rootCmd.AddCommand(elevate.ElevateCmd)
+	rootCmd.AddCommand(console.ConsoleCmd)
+	rootCmd.AddCommand(config.NewConfigCmd())
 	rootCmd.AddCommand(cloud.CloudCmd)
+	rootCmd.AddCommand(elevate.ElevateCmd)
+	rootCmd.AddCommand(login.LoginCmd)
 	rootCmd.AddCommand(logout.LogoutCmd)
+	rootCmd.AddCommand(managedJob.NewManagedJobCmd())
 	rootCmd.AddCommand(script.NewScriptCmd())
 	rootCmd.AddCommand(status.StatusCmd)
-	rootCmd.AddCommand(version.VersionCmd)
-	rootCmd.AddCommand(testJob.NewTestJobCommand())
-	rootCmd.AddCommand(managedJob.NewManagedJobCmd())
-	rootCmd.AddCommand(console.ConsoleCmd)
 	rootCmd.AddCommand(session.NewCmdSession())
-
+	rootCmd.AddCommand(testJob.NewTestJobCommand())
+	rootCmd.AddCommand(upgrade.UpgradeCmd)
+	rootCmd.AddCommand(version.VersionCmd)
 }
