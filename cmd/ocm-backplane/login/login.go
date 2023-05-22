@@ -8,7 +8,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/golang-jwt/jwt/v4"
 	logger "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
@@ -236,7 +235,10 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 		targetCluster.ProxyURL = proxyUrl
 	}
 
-	targetUserNickName := getUsernameFromJWT(*accessToken)
+	targetUserNickName, err := utils.GetFieldFromJWT(*accessToken, "username")
+	if err != nil {
+		targetUserNickName = "anonymous"
+	}
 
 	targetUser.Token = *accessToken
 
@@ -261,26 +263,6 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 func getContextNickname(namespace, clusterNick, userNick string) string {
 	tokens := strings.SplitN(userNick, "/", 2)
 	return namespace + "/" + clusterNick + "/" + tokens[0]
-}
-
-// getUsernameFromJWT returns the username extracted from JWT token
-func getUsernameFromJWT(token string) string {
-	var jwtToken *jwt.Token
-	var err error
-	parser := new(jwt.Parser)
-	jwtToken, _, err = parser.ParseUnverified(token, jwt.MapClaims{})
-	if err != nil {
-		return "anonymous"
-	}
-	claims, ok := jwtToken.Claims.(jwt.MapClaims)
-	if !ok {
-		return "anonymous"
-	}
-	claim, ok := claims["username"]
-	if !ok {
-		return "anonymous"
-	}
-	return claim.(string)
 }
 
 // doLogin returns the proxy url for the target cluster.
