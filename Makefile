@@ -111,6 +111,7 @@ mock-gen:
 	mockgen -destination=./pkg/utils/mocks/ClusterMock.go -package=mocks github.com/openshift/backplane-cli/pkg/utils ClusterUtils
 	mockgen -destination=./pkg/utils/mocks/ocmWrapperMock.go -package=mocks github.com/openshift/backplane-cli/pkg/utils OCMInterface
 	mockgen -destination=./pkg/utils/mocks/clientUtilsMock.go -package=mocks github.com/openshift/backplane-cli/pkg/utils ClientUtils
+	mockgen -destination=./pkg/cli/session/mocks/sessionMock.go -package=mocks github.com/openshift/backplane-cli/pkg/cli/session BackplaneSessionInterface
 
 .PHONY: build-image
 build-image:
