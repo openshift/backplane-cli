@@ -176,6 +176,26 @@ func (mr *MockClientWithResponsesInterfaceMockRecorder) GetAllJobsWithResponse(a
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAllJobsWithResponse", reflect.TypeOf((*MockClientWithResponsesInterface)(nil).GetAllJobsWithResponse), varargs...)
 }
 
+// GetAssumeRoleSequenceWithResponse mocks base method.
+func (m *MockClientWithResponsesInterface) GetAssumeRoleSequenceWithResponse(arg0 context.Context, arg1 string, arg2 ...Openapi.RequestEditorFn) (*Openapi.GetAssumeRoleSequenceResponse, error) {
+	m.ctrl.T.Helper()
+	varargs := []interface{}{arg0, arg1}
+	for _, a := range arg2 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "GetAssumeRoleSequenceWithResponse", varargs...)
+	ret0, _ := ret[0].(*Openapi.GetAssumeRoleSequenceResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetAssumeRoleSequenceWithResponse indicates an expected call of GetAssumeRoleSequenceWithResponse.
+func (mr *MockClientWithResponsesInterfaceMockRecorder) GetAssumeRoleSequenceWithResponse(arg0, arg1 interface{}, arg2 ...interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]interface{}{arg0, arg1}, arg2...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAssumeRoleSequenceWithResponse", reflect.TypeOf((*MockClientWithResponsesInterface)(nil).GetAssumeRoleSequenceWithResponse), varargs...)
+}
+
 // GetBackplaneClusterClusterIdWithResponse mocks base method.
 func (m *MockClientWithResponsesInterface) GetBackplaneClusterClusterIdWithResponse(arg0 context.Context, arg1 string, arg2 ...Openapi.RequestEditorFn) (*Openapi.GetBackplaneClusterClusterIdResponse, error) {
 	m.ctrl.T.Helper()
@@ -274,6 +294,26 @@ func (mr *MockClientWithResponsesInterfaceMockRecorder) GetRunWithResponse(arg0,
 	mr.mock.ctrl.T.Helper()
 	varargs := append([]interface{}{arg0, arg1, arg2}, arg3...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRunWithResponse", reflect.TypeOf((*MockClientWithResponsesInterface)(nil).GetRunWithResponse), varargs...)
+}
+
+// GetScriptsByClusterWithResponse mocks base method.
+func (m *MockClientWithResponsesInterface) GetScriptsByClusterWithResponse(arg0 context.Context, arg1 string, arg2 *Openapi.GetScriptsByClusterParams, arg3 ...Openapi.RequestEditorFn) (*Openapi.GetScriptsByClusterResponse, error) {
+	m.ctrl.T.Helper()
+	varargs := []interface{}{arg0, arg1, arg2}
+	for _, a := range arg3 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "GetScriptsByClusterWithResponse", varargs...)
+	ret0, _ := ret[0].(*Openapi.GetScriptsByClusterResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetScriptsByClusterWithResponse indicates an expected call of GetScriptsByClusterWithResponse.
+func (mr *MockClientWithResponsesInterfaceMockRecorder) GetScriptsByClusterWithResponse(arg0, arg1, arg2 interface{}, arg3 ...interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]interface{}{arg0, arg1, arg2}, arg3...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetScriptsByClusterWithResponse", reflect.TypeOf((*MockClientWithResponsesInterface)(nil).GetScriptsByClusterWithResponse), varargs...)
 }
 
 // GetScriptsWithResponse mocks base method.

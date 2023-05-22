@@ -177,6 +177,26 @@ func (mr *MockClientInterfaceMockRecorder) GetAllJobs(arg0, arg1 interface{}, ar
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAllJobs", reflect.TypeOf((*MockClientInterface)(nil).GetAllJobs), varargs...)
 }
 
+// GetAssumeRoleSequence mocks base method.
+func (m *MockClientInterface) GetAssumeRoleSequence(arg0 context.Context, arg1 string, arg2 ...Openapi.RequestEditorFn) (*http.Response, error) {
+	m.ctrl.T.Helper()
+	varargs := []interface{}{arg0, arg1}
+	for _, a := range arg2 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "GetAssumeRoleSequence", varargs...)
+	ret0, _ := ret[0].(*http.Response)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetAssumeRoleSequence indicates an expected call of GetAssumeRoleSequence.
+func (mr *MockClientInterfaceMockRecorder) GetAssumeRoleSequence(arg0, arg1 interface{}, arg2 ...interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]interface{}{arg0, arg1}, arg2...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAssumeRoleSequence", reflect.TypeOf((*MockClientInterface)(nil).GetAssumeRoleSequence), varargs...)
+}
+
 // GetBackplaneClusterClusterId mocks base method.
 func (m *MockClientInterface) GetBackplaneClusterClusterId(arg0 context.Context, arg1 string, arg2 ...Openapi.RequestEditorFn) (*http.Response, error) {
 	m.ctrl.T.Helper()
@@ -295,6 +315,26 @@ func (mr *MockClientInterfaceMockRecorder) GetScripts(arg0, arg1 interface{}, ar
 	mr.mock.ctrl.T.Helper()
 	varargs := append([]interface{}{arg0, arg1}, arg2...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetScripts", reflect.TypeOf((*MockClientInterface)(nil).GetScripts), varargs...)
+}
+
+// GetScriptsByCluster mocks base method.
+func (m *MockClientInterface) GetScriptsByCluster(arg0 context.Context, arg1 string, arg2 *Openapi.GetScriptsByClusterParams, arg3 ...Openapi.RequestEditorFn) (*http.Response, error) {
+	m.ctrl.T.Helper()
+	varargs := []interface{}{arg0, arg1, arg2}
+	for _, a := range arg3 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "GetScriptsByCluster", varargs...)
+	ret0, _ := ret[0].(*http.Response)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetScriptsByCluster indicates an expected call of GetScriptsByCluster.
+func (mr *MockClientInterfaceMockRecorder) GetScriptsByCluster(arg0, arg1, arg2 interface{}, arg3 ...interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]interface{}{arg0, arg1, arg2}, arg3...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetScriptsByCluster", reflect.TypeOf((*MockClientInterface)(nil).GetScriptsByCluster), varargs...)
 }
 
 // GetTestScriptRun mocks base method.
