@@ -10,10 +10,14 @@ import (
 	"reflect"
 	"strings"
 
+	logger "github.com/sirupsen/logrus"
 	netUrl "net/url"
 
 	BackplaneApi "github.com/openshift/backplane-api/pkg/client"
 
+	"github.com/openshift/backplane-cli/internal/github"
+	"github.com/openshift/backplane-cli/pkg/info"
+	"github.com/spf13/cobra"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
@@ -204,4 +208,43 @@ func RemoveTempKubeConfig() {
 	if found {
 		os.Remove(path)
 	}
+}
+
+// checkBackplaneVersion checks the backplane version and aims to only
+// report any errors encountered in the process in order to
+// avoid calling functions act as usual
+func CheckBackplaneVersion(cmd *cobra.Command) {
+	if cmd == nil {
+		logger.Debugln("Command object is nil")
+		return
+	}
+
+	ctx := cmd.Context()
+	if ctx == nil {
+		logger.Debugln("Context object is nil")
+		return
+	}
+
+	git := github.NewClient()
+	if err := git.CheckConnection(); err != nil {
+		logger.WithField("Connection error", err).Warn("Could not connect to GitHub")
+		return
+	}
+
+	// Get the latest version from the GitHub API
+	latestVersionTag, err := git.GetLatestVersion(ctx)
+	if err != nil {
+		logger.WithField("Fetch error", err).Warn("Could not fetch latest version from GitHub")
+		return
+	}
+	// GitHub API keeps the v prefix in front which causes mismatch with info.Version
+	latestVersion := strings.TrimLeft(latestVersionTag.TagName, "v")
+
+	// Check if the local version is already up-to-date
+	if latestVersion == info.Version {
+		logger.WithField("Current version", info.Version).Info("Already up-to-date")
+		return
+	}
+
+	logger.WithField("Current version", info.Version).WithField("Latest version", latestVersion).Warn("Your Backplane CLI is not up to date. Please run the command 'ocm backplane upgrade' to upgrade to the latest version")
 }
