@@ -91,6 +91,8 @@ func init() {
 func runLogin(cmd *cobra.Command, argv []string) (err error) {
 	var clusterKey string
 
+	utils.CheckBackplaneVersion(cmd)
+
 	// Get The cluster ID
 	if len(argv) == 1 {
 		// if explicitly one cluster key given, use it to log in.

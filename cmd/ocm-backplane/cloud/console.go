@@ -81,6 +81,8 @@ func init() {
 func runConsole(cmd *cobra.Command, argv []string) (err error) {
 	var clusterKey string
 
+	utils.CheckBackplaneVersion(cmd)
+
 	err = validateParams(argv)
 
 	if err != nil {
