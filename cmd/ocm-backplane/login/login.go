@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 
@@ -12,10 +13,10 @@ import (
 	logger "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd/api"
 
 	BackplaneApi "github.com/openshift/backplane-api/pkg/client"
-
 	"github.com/openshift/backplane-cli/pkg/cli/config"
 	"github.com/openshift/backplane-cli/pkg/cli/globalflags"
 	"github.com/openshift/backplane-cli/pkg/login"
@@ -257,6 +258,51 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 	err = login.SaveKubeConfig(clusterId, rc, args.multiCluster, args.kubeConfigPath)
 
 	return err
+}
+
+// GetRestConfig returns a client-go *rest.Config which can be used to programmatically interact with the
+// Kubernetes API of a provided clusterId
+func GetRestConfig(bp config.BackplaneConfiguration, clusterId string) (*rest.Config, error) {
+	cluster, err := utils.DefaultOCMInterface.GetClusterInfoByID(clusterId)
+	if err != nil {
+		return nil, err
+	}
+
+	accessToken, err := utils.DefaultOCMInterface.GetOCMAccessToken()
+	if err != nil {
+		return nil, err
+	}
+
+	bpAPIClusterUrl, err := doLogin(bp.URL, clusterId, *accessToken)
+	if err != nil {
+		return nil, fmt.Errorf("failed to backplane login to cluster %s: %v", cluster.Name(), err)
+	}
+
+	cfg := &rest.Config{
+		Host:        bpAPIClusterUrl,
+		BearerToken: *accessToken,
+	}
+
+	if bp.ProxyURL != "" {
+		cfg.Proxy = func(*http.Request) (*url.URL, error) {
+			return url.Parse(bp.ProxyURL)
+		}
+	}
+
+	return cfg, nil
+}
+
+// GetRestConfigAsUser returns a client-go *rest.Config like GetRestConfig, but supports configuring an
+// impersonation username. Commonly, this is "backplane-cluster-admin"
+func GetRestConfigAsUser(bp config.BackplaneConfiguration, clusterId, username string) (*rest.Config, error) {
+	cfg, err := GetRestConfig(bp, clusterId)
+	if err != nil {
+		return nil, err
+	}
+
+	cfg.Impersonate = rest.ImpersonationConfig{UserName: username}
+
+	return cfg, nil
 }
 
 // getContextNickname returns a nickname of a context
