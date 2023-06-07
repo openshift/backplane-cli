@@ -63,21 +63,21 @@ To setup the PS1(prompt) for bash/zsh, please follow [these instructions](https:
 | `ocm backplane cloud console`                                               | Launch the current logged in cluster's cloud provider console                            |
 | `ocm backplane cloud credentials [flags]`                                   | Retrieve a set of temporary cloud credentials for the cluster's cloud provider           |
 | `ocm backplane elevate <reason> -- <command>`                               | Elevate privileges to backplane-cluster-admin and add a reason to the api request        |
-| `ocm-backplane monitoring <prometheus/alertmanager/thanos/grafana> [flags]` | Launch the specified monitoring UI (Deprecated following v4.11)                          |
-| `ocm-backplane script describe <script> [flags]`                            | Describe the given backplane script                                                      |
-| `ocm-backplane script list [flags]`                                         | List available backplane scripts                                                         |
-| `ocm-backplane status`                                                      | Print essential cluster info                                                             |
-| `ocm-backplane managedJob create <script> [flags]`                          | Create a backplane managed job resource                                                  |
-| `ocm-backplane managedJob get <job_name> [flags]`                           | Retrieve a backplane managed job resource                                                |
-| `ocm-backplane managedJob list [flags]`                                     | Retrieve a list of backplane managed job resources                                       |
-| `ocm-backplane managedJob logs <job_name> [flags]`                          | Retrieve logs of the specified managed job resource                                      |
-| `ocm-backplane managedJob delete <job_name> [flags]`                        | Delete the specified managed job resource                                                |
-| `ocm-backplane testJob create <script> [flags]`                             | Create a backplane test managed job on a non-production cluster for testing. To use with bash libraries, make sure the libraries are in the scripts directory in the format `source /managed-scripts/<path-from-managed-scripts-scripts-dir>`                      |
-| `ocm-backplane testJob get <job_name> [flags]`                              | Retrieve a backplane test job resource                                                   |
-| `ocm-backplane testJob list [flags]`                                        | Retrieve a list of backplane test job resources                                          |
-| `ocm-backplane testJob logs <job_name> [flags]`                             | Retrieve logs of the specified test job resource                                         |
-| `ocm-backplane upgrade`                                                     | Upgrade backplane-cli to the latest version                                              |
-| `ocm-backplane version`                                                     | Display the installed backplane-cli version                                              |
+| `ocm backplane monitoring <prometheus/alertmanager/thanos/grafana> [flags]` | Launch the specified monitoring UI (Deprecated following v4.11 for cluster monitoring  stack)                          |
+| `ocm backplane script describe <script> [flags]`                            | Describe the given backplane script                                                      |
+| `ocm backplane script list [flags]`                                         | List available backplane scripts                                                         |
+| `ocm backplane status`                                                      | Print essential cluster info                                                             |
+| `ocm backplane managedJob create <script> [flags]`                          | Create a backplane managed job resource                                                  |
+| `ocm backplane managedJob get <job_name> [flags]`                           | Retrieve a backplane managed job resource                                                |
+| `ocm backplane managedJob list [flags]`                                     | Retrieve a list of backplane managed job resources                                       |
+| `ocm backplane managedJob logs <job_name> [flags]`                          | Retrieve logs of the specified managed job resource                                      |
+| `ocm backplane managedJob delete <job_name> [flags]`                        | Delete the specified managed job resource                                                |
+| `ocm backplane testJob create <script> [flags]`                             | Create a backplane test managed job on a non-production cluster for testing. To use with bash libraries, make sure the libraries are in the scripts directory in the format `source /managed-scripts/<path-from-managed-scripts-scripts-dir>`                      |
+| `ocm backplane testJob get <job_name> [flags]`                              | Retrieve a backplane test job resource                                                   |
+| `ocm backplane testJob list [flags]`                                        | Retrieve a list of backplane test job resources                                          |
+| `ocm backplane testJob logs <job_name> [flags]`                             | Retrieve logs of the specified test job resource                                         |
+| `ocm backplane upgrade`                                                     | Upgrade backplane-cli to the latest version                                              |
+| `ocm backplane version`                                                     | Display the installed backplane-cli version                                              |
 
 ## Login
 
@@ -184,7 +184,16 @@ Logging into multiple clusters via different terminal instances.
   $ export BACKPLANE_DEFAULT_OPEN_BROWSER=true
   $ ocm backplane cloud console
   `
+## Monitoring
+Monitoring command can be used to launch the specified monitoring UI.
 
+Run this command from within a cluster :
+
+```
+ocm backplane monitoring <prometheus/alertmanager/thanos/grafana> [flags]
+```
+
+>Note: Following version 4.11, Prometheus, AlertManager and Grafana monitoring UIs are deprecated for openshift-monitoring stack, please use 'ocm backplane console' and use the observe tab for the same. Other monitoring stacks remain unaffected.
 ## Backplane Session 
 Backplane session command will create an isolated environment to interact with a cluster in its own directory. 
 The default location for this is ~/backplane. 
