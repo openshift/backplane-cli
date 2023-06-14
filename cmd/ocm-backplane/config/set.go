@@ -3,9 +3,12 @@ package config
 import (
 	"fmt"
 	"os"
+	"path"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"golang.org/x/term"
+	"gopkg.in/AlecAivazis/survey.v1"
 
 	"github.com/openshift/backplane-cli/pkg/cli/config"
 )
@@ -41,6 +44,32 @@ func setConfig(cmd *cobra.Command, args []string) error {
 		bpConfig.URL = viper.GetString("url")
 		bpConfig.ProxyURL = viper.GetString("proxy-url")
 		bpConfig.SessionDirectory = viper.GetString("session-dir")
+	}
+
+	// create config directory if it doesn't exist
+	if dir, err := os.Stat(path.Dir(configPath)); os.IsNotExist(err) || !dir.IsDir() {
+		// check if stdout is a terminal. if so, prompt user to create config directory
+		if term.IsTerminal(int(os.Stdout.Fd())) {
+			confirm := false
+			prompt := &survey.Confirm{
+				Message: fmt.Sprintf("Config directory \"%s\" does not exist. Create it?", path.Dir(configPath)),
+				Default: true,
+			}
+			if err := survey.AskOne(prompt, &confirm, nil); err != nil {
+				return err
+			}
+			if confirm {
+				if err := os.MkdirAll(path.Dir(configPath), 0750); err != nil {
+					return err
+				}
+			} else {
+				fmt.Println("Aborted")
+				return nil
+			}
+		} else {
+			// if we aren't in a terminal, just return an error
+			return fmt.Errorf("config directory does not exist: %s", path.Dir(configPath))
+		}
 	}
 
 	switch args[0] {
