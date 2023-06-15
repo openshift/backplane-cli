@@ -15,12 +15,13 @@ import (
 
 	BackplaneApi "github.com/openshift/backplane-api/pkg/client"
 
-	"github.com/openshift/backplane-cli/internal/github"
-	"github.com/openshift/backplane-cli/pkg/info"
 	"github.com/spf13/cobra"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
+
+	"github.com/openshift/backplane-cli/internal/github"
+	"github.com/openshift/backplane-cli/pkg/info"
 )
 
 const (
@@ -210,7 +211,7 @@ func RemoveTempKubeConfig() {
 	}
 }
 
-// checkBackplaneVersion checks the backplane version and aims to only
+// CheckBackplaneVersion checks the backplane version and aims to only
 // report any errors encountered in the process in order to
 // avoid calling functions act as usual
 func CheckBackplaneVersion(cmd *cobra.Command) {

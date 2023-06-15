@@ -8,9 +8,10 @@ import (
 	"net/url"
 
 	BackplaneApi "github.com/openshift/backplane-api/pkg/client"
+	logger "github.com/sirupsen/logrus"
+
 	"github.com/openshift/backplane-cli/pkg/cli/config"
 	"github.com/openshift/backplane-cli/pkg/info"
-	logger "github.com/sirupsen/logrus"
 )
 
 type ClientUtils interface {
@@ -92,7 +93,7 @@ func (s *DefaultClientUtilsImpl) MakeBackplaneAPIClient(base string) (BackplaneA
 	return s.MakeBackplaneAPIClientWithAccessToken(base, *token)
 }
 
-// getBackplaneClient returns authnicated Backplane API client
+// GetBackplaneClient returns authenticated Backplane API client
 func (s *DefaultClientUtilsImpl) GetBackplaneClient(backplaneURL string) (client BackplaneApi.ClientInterface, err error) {
 	if backplaneURL == "" {
 		bpConfig, err := config.GetBackplaneConfiguration()
@@ -121,7 +122,7 @@ func (s *DefaultClientUtilsImpl) GetBackplaneClient(backplaneURL string) (client
 	return backplaneClient, nil
 }
 
-// Set client proxy url for http transport
+// SetClientProxyUrl Set client proxy url for http transport
 func (s *DefaultClientUtilsImpl) SetClientProxyUrl(proxyUrl string) error {
 	if proxyUrl == "" {
 		return errors.New("proxy Url is empty")

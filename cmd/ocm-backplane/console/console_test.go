@@ -8,9 +8,6 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"github.com/openshift/backplane-cli/pkg/info"
-	"github.com/openshift/backplane-cli/pkg/utils"
-	mocks "github.com/openshift/backplane-cli/pkg/utils/mocks"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -18,6 +15,10 @@ import (
 	testclient "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd/api"
+
+	"github.com/openshift/backplane-cli/pkg/info"
+	"github.com/openshift/backplane-cli/pkg/utils"
+	mocks "github.com/openshift/backplane-cli/pkg/utils/mocks"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 
@@ -122,7 +123,7 @@ var _ = Describe("console command", func() {
 
 		dirName, _ := os.MkdirTemp("", ".kube")
 
-		pullSecreConfigDirectory = dirName
+		pullSecretConfigDirectory = dirName
 	})
 
 	AfterEach(func() {

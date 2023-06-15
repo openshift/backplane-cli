@@ -69,7 +69,7 @@ var (
 	createCommand   = exec.Command
 
 	// Pull Secret saving directory
-	pullSecreConfigDirectory string
+	pullSecretConfigDirectory string
 )
 
 // Environment variable that indicates if open by browser is set as default
@@ -522,12 +522,12 @@ func getProxyUrl() (proxyUrl string, err error) {
 
 // getImageFromCluster get the image from the console deployment
 func getImageFromCluster(config *rest.Config) (string, error) {
-	clientset, err := createClientSet(config)
+	clientSet, err := createClientSet(config)
 	if err != nil {
 		return "", err
 	}
 
-	deploymentsClient := clientset.AppsV1().Deployments("openshift-console")
+	deploymentsClient := clientSet.AppsV1().Deployments("openshift-console")
 	result, getErr := deploymentsClient.Get(context.TODO(), "console", metav1.GetOptions{})
 	if getErr != nil {
 		return "", fmt.Errorf("failed to get console deployment: %v", getErr)
@@ -698,18 +698,18 @@ func loadConsolePlugins(config *rest.Config) (string, error) {
 // GetConfigDirectory returns pull secret file saving path
 // Defaults to ~/.kube/ocm-pull-secret
 func GetConfigDirectory() (string, error) {
-	if pullSecreConfigDirectory == "" {
+	if pullSecretConfigDirectory == "" {
 		home, err := homedir.Dir()
 		if err != nil {
 			return "", fmt.Errorf("can't get user homedir. Error: %s", err.Error())
 		}
 
 		// Update config directory default path
-		pullSecreConfigDirectory = filepath.Join(home, ".kube/ocm-pull-secret")
+		pullSecretConfigDirectory = filepath.Join(home, ".kube/ocm-pull-secret")
 		if err != nil {
 			return "", fmt.Errorf("can't modify config directory. Error: %s", err.Error())
 		}
 	}
 
-	return pullSecreConfigDirectory, nil
+	return pullSecretConfigDirectory, nil
 }
