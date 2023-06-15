@@ -4,8 +4,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/openshift/backplane-cli/pkg/info"
 	"github.com/spf13/viper"
+
+	"github.com/openshift/backplane-cli/pkg/info"
 )
 
 type BackplaneConfiguration struct {
@@ -34,7 +35,7 @@ func GetConfigFilePath() (string, error) {
 
 // GetBackplaneConfiguration parses and returns the given backplane configuration
 func GetBackplaneConfiguration() (bpConfig BackplaneConfiguration, err error) {
-	filepath, err := GetConfigFilePath()
+	filePath, err := GetConfigFilePath()
 	if err != nil {
 		return bpConfig, err
 	}
@@ -42,9 +43,9 @@ func GetBackplaneConfiguration() (bpConfig BackplaneConfiguration, err error) {
 	viper.AutomaticEnv()
 
 	// Check if the config file exists
-	if _, err = os.Stat(filepath); err == nil {
+	if _, err = os.Stat(filePath); err == nil {
 		// Load config file
-		viper.SetConfigFile(filepath)
+		viper.SetConfigFile(filePath)
 		viper.SetConfigType("json")
 
 		if err := viper.ReadInConfig(); err != nil {

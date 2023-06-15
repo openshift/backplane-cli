@@ -97,7 +97,7 @@ func RenderTable(headers []string, data [][]string) {
 	table.Render()
 }
 
-// RenderJson is an effectful function that renders the reader as JSON
+// RenderJson is an effectual function that renders the reader as JSON
 // returns err if render fails
 func RenderJson(reader io.Reader) error {
 	body, err := ioutil.ReadAll(reader)
@@ -112,7 +112,7 @@ func RenderJson(reader io.Reader) error {
 	return nil
 }
 
-// RenderJsonBytes is an effectful function that renders the reader as JSON
+// RenderJsonBytes is an effectual function that renders the reader as JSON
 // returns err if render fails
 func RenderJsonBytes(i interface{}) error {
 	resString, err := json.MarshalIndent(i, "", "  ")

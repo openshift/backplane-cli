@@ -17,6 +17,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd/api"
 
 	BackplaneApi "github.com/openshift/backplane-api/pkg/client"
+
 	"github.com/openshift/backplane-cli/pkg/cli/config"
 	"github.com/openshift/backplane-cli/pkg/cli/globalflags"
 	"github.com/openshift/backplane-cli/pkg/login"
@@ -332,7 +333,7 @@ func getUsernameFromJWT(token string) string {
 }
 
 // doLogin returns the proxy url for the target cluster.
-func doLogin(api, clusterid, accessToken string) (string, error) {
+func doLogin(api, clusterId, accessToken string) (string, error) {
 
 	client, err := utils.DefaultClientUtils.MakeRawBackplaneAPIClientWithAccessToken(api, accessToken)
 
@@ -341,7 +342,7 @@ func doLogin(api, clusterid, accessToken string) (string, error) {
 	}
 
 	logger.WithField("URL", globalOpts.BackplaneURL).Debugln("GetProxyURL")
-	resp, err := client.LoginCluster(context.TODO(), clusterid)
+	resp, err := client.LoginCluster(context.TODO(), clusterId)
 
 	// Print the whole response if we can't parse it. Eg. 5xx error from http server.
 	if err != nil {

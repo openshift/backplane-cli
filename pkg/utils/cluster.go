@@ -6,9 +6,10 @@ import (
 	"regexp"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
-	"github.com/openshift/backplane-cli/pkg/cli/config"
 	logger "github.com/sirupsen/logrus"
 	"k8s.io/client-go/tools/clientcmd"
+
+	"github.com/openshift/backplane-cli/pkg/cli/config"
 )
 
 type BackplaneCluster struct {
@@ -31,7 +32,7 @@ var (
 	DefaultClusterUtils ClusterUtils = &DefaultClusterUtilsImpl{}
 )
 
-// Cluster URL format: https://api-backplane.apps.com/backplane/cluster/<cluster-id>/
+// GetClusterIDAndHostFromClusterURL with Cluster URL format: https://api-backplane.apps.com/backplane/cluster/<cluster-id>/
 func (s *DefaultClusterUtilsImpl) GetClusterIDAndHostFromClusterURL(clusterURL string) (string, string, error) {
 	parsedURL, err := url.Parse(clusterURL)
 	if err != nil {
@@ -48,6 +49,7 @@ func (s *DefaultClusterUtilsImpl) GetClusterIDAndHostFromClusterURL(clusterURL s
 	return clusterID, backplaneHost, nil
 }
 
+// GetBackplaneClusterFromConfig get the backplane cluster from config file
 func (s *DefaultClusterUtilsImpl) GetBackplaneClusterFromConfig() (BackplaneCluster, error) {
 	logger.Debugln("Finding target cluster from kube config")
 	cfg, err := clientcmd.BuildConfigFromFlags("", clientcmd.NewDefaultPathOptions().GetDefaultFilename())
@@ -71,6 +73,7 @@ func (s *DefaultClusterUtilsImpl) GetBackplaneClusterFromConfig() (BackplaneClus
 	return cluster, nil
 }
 
+// GetBackplaneClusterFromClusterKey get the backplane cluster from the given cluster
 func (s *DefaultClusterUtilsImpl) GetBackplaneClusterFromClusterKey(clusterKey string) (BackplaneCluster, error) {
 	logger.WithField("SearchKey", clusterKey).Debugln("Finding target cluster")
 	clusterID, clusterName, err := DefaultOCMInterface.GetTargetCluster(clusterKey)
@@ -107,6 +110,7 @@ func (s *DefaultClusterUtilsImpl) GetBackplaneCluster(params ...string) (Backpla
 	return s.GetBackplaneClusterFromConfig()
 }
 
+// GetCloudProvider gets the cluster's cloud provider
 func (s *DefaultClusterUtilsImpl) GetCloudProvider(cluster *cmv1.Cluster) string {
 	return cluster.CloudProvider().ID()
 }

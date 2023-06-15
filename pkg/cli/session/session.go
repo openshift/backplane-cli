@@ -10,11 +10,12 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/spf13/cobra"
+
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/login"
 	"github.com/openshift/backplane-cli/pkg/cli/config"
 	"github.com/openshift/backplane-cli/pkg/info"
 	"github.com/openshift/backplane-cli/pkg/utils"
-	"github.com/spf13/cobra"
 )
 
 // BackplaneSessionInterface abstract backplane session functions
@@ -32,7 +33,7 @@ type BackplaneSession struct {
 	Options *Options
 }
 
-// Options define deafult backplane session options
+// Options define default backplane session options
 type Options struct {
 	DeleteSession bool
 
@@ -108,7 +109,7 @@ func (e *BackplaneSession) RunCommand(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// Setup intitate the sessoion environment
+// Setup initialize the session environment
 func (e *BackplaneSession) Setup() error {
 	// Delete session if exist
 	err := e.Delete()
@@ -135,7 +136,7 @@ func (e *BackplaneSession) Setup() error {
 		return fmt.Errorf("error creating history files. error: %v", err)
 	}
 
-	// Validaing env variables
+	// Validating env variables
 	err = e.ensureEnvVariables()
 	if err != nil {
 		return fmt.Errorf("error setting env vars. error: %v", err)
@@ -206,7 +207,7 @@ func (e *BackplaneSession) ensureEnvDir() error {
 	return nil
 }
 
-// ensureEnvDir intiate session env vars
+// ensureEnvDir initialize session env vars
 func (e *BackplaneSession) ensureEnvVariables() error {
 	envContent := `
 HISTFILE=` + e.Path + `/.history
@@ -219,33 +220,33 @@ PATH=` + e.Path + `/bin:` + os.Getenv("PATH") + `
 		clusterEnvContent = clusterEnvContent + "CLUSTERNAME=" + e.Options.ClusterName + "\n"
 		envContent = envContent + clusterEnvContent
 	}
-	direnvfile, err := e.ensureFile(e.Path + "/.ocenv")
+	dirEnvFile, err := e.ensureFile(e.Path + "/.ocenv")
 	if err != nil {
 		return err
 	}
-	_, err = direnvfile.WriteString(envContent)
+	_, err = dirEnvFile.WriteString(envContent)
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer func(direnvfile *os.File) {
-		direnvfile.Close()
-	}(direnvfile)
+	defer func(dirEnvFile *os.File) {
+		dirEnvFile.Close()
+	}(dirEnvFile)
 
-	zshenvfile, err := e.ensureFile(e.Path + "/.zshenv")
+	zshEnvFile, err := e.ensureFile(e.Path + "/.zshenv")
 	if err != nil {
 		return err
 	}
-	_, err = zshenvfile.WriteString("source .ocenv")
+	_, err = zshEnvFile.WriteString("source .ocenv")
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer func(direnvfile *os.File) {
-		err := direnvfile.Close()
+	defer func(dirEnvFile *os.File) {
+		err := dirEnvFile.Close()
 		if err != nil {
-			fmt.Println("Error while calling direnvFile.Close(): ", err.Error())
+			fmt.Println("Error while calling dirEnvFile.Close(): ", err.Error())
 			return
 		}
-	}(direnvfile)
+	}(dirEnvFile)
 	return nil
 }
 
@@ -256,8 +257,8 @@ func (e *BackplaneSession) createHistoryFile() error {
 	if err != nil {
 		return err
 	}
-	defer func(scriptfile *os.File) {
-		err := scriptfile.Close()
+	defer func(scriptFile *os.File) {
+		err := scriptFile.Close()
 		if err != nil {
 			fmt.Println("Error closing file: ", historyFile)
 			return
@@ -294,18 +295,18 @@ set -euo pipefail
 // createBin create bin file with given content
 func (e *BackplaneSession) createBin(cmd string, content string) error {
 	path := filepath.Join(e.binPath(), cmd)
-	scriptfile, err := e.ensureFile(path)
+	scriptFile, err := e.ensureFile(path)
 	if err != nil {
 		return err
 	}
-	defer func(scriptfile *os.File) {
-		err := scriptfile.Close()
+	defer func(scriptFile *os.File) {
+		err := scriptFile.Close()
 		if err != nil {
 			fmt.Println("Error closing file: ", path)
 			return
 		}
-	}(scriptfile)
-	_, err = scriptfile.WriteString(content)
+	}(scriptFile)
+	_, err = scriptFile.WriteString(content)
 	if err != nil {
 		return fmt.Errorf("error writing to file %s: %v", path, err)
 	}
@@ -316,7 +317,7 @@ func (e *BackplaneSession) createBin(cmd string, content string) error {
 	return nil
 }
 
-// ensureFile check the existance of file in session path
+// ensureFile check the existence of file in session path
 func (e *BackplaneSession) ensureFile(filename string) (file *os.File, err error) {
 	filename = filepath.Clean(filename)
 	if _, err := os.Stat(filename); errors.Is(err, os.ErrNotExist) {
@@ -364,7 +365,7 @@ func (e *BackplaneSession) initSessionPath() error {
 	return nil
 }
 
-// initCluster login to cluster and save kube config into session for valid clusters
+// initClusterLogin login to cluster and save kube config into session for valid clusters
 func (e *BackplaneSession) initClusterLogin(cmd *cobra.Command) error {
 
 	if e.Options.ClusterId != "" {
