@@ -6,10 +6,13 @@ run:
 
 # default linters are enabled `golangci-lint help linters`
 linters:
+  disable-all: true
   enable:
-    - gosec
-  disable:
-    - depguard
-    - gochecknoglobals
-    - gochecknoinits
-    - lll
+  - errcheck
+  - gosec
+  - gosimple
+  - govet
+  - ineffassign
+  - staticcheck
+  - typecheck
+  - unused

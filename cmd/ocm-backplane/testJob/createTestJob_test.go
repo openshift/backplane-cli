@@ -77,8 +77,8 @@ var _ = Describe("testJob create command", func() {
 
 		tempDir, _ = os.MkdirTemp("", "createJobTest")
 
-		_ = os.WriteFile(path.Join(tempDir, "metadata.yaml"), []byte(MetadataYaml), 0755)
-		_ = os.WriteFile(path.Join(tempDir, "script.sh"), []byte("echo hello"), 0755)
+		_ = os.WriteFile(path.Join(tempDir, "metadata.yaml"), []byte(MetadataYaml), 0600)
+		_ = os.WriteFile(path.Join(tempDir, "script.sh"), []byte("echo hello"), 0600)
 
 		_ = os.Chdir(tempDir)
 
@@ -261,9 +261,9 @@ echo_touch "Hello"
 
 			GetGitRepoPath = exec.Command("echo", tempDir)
 			// tmp/createJobTest3397561583
-			_ = os.WriteFile(path.Join(tempDir, "script.sh"), []byte(script), 0755)
+			_ = os.WriteFile(path.Join(tempDir, "script.sh"), []byte(script), 0600)
 			_ = os.Mkdir(path.Join(tempDir, "scripts"), 0755)
-			_ = os.WriteFile(path.Join(tempDir, "scripts", "lib.sh"), []byte(lib), 0755)
+			_ = os.WriteFile(path.Join(tempDir, "scripts", "lib.sh"), []byte(lib), 0600)
 			mockOcmInterface.EXPECT().IsProduction().Return(false, nil)
 			// It should query for the internal cluster id first
 			mockOcmInterface.EXPECT().GetTargetCluster(testClusterId).Return(trueClusterId, testClusterId, nil)

@@ -14,18 +14,20 @@ import (
 	. "github.com/onsi/gomega"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
-	"github.com/openshift/backplane-cli/pkg/cli/config"
-	"github.com/openshift/backplane-cli/pkg/client/mocks"
-	"github.com/openshift/backplane-cli/pkg/info"
-	"github.com/openshift/backplane-cli/pkg/utils"
-	mocks2 "github.com/openshift/backplane-cli/pkg/utils/mocks"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
 	"sigs.k8s.io/yaml"
+
+	"github.com/openshift/backplane-cli/pkg/cli/config"
+	"github.com/openshift/backplane-cli/pkg/client/mocks"
+	"github.com/openshift/backplane-cli/pkg/info"
+	"github.com/openshift/backplane-cli/pkg/utils"
+	mocks2 "github.com/openshift/backplane-cli/pkg/utils/mocks"
 )
 
+//nolint:gosec
 var _ = Describe("Cloud console command", func() {
 
 	var (
