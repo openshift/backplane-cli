@@ -283,7 +283,24 @@ var _ = Describe("Login command", func() {
 			err = runLogin(nil, []string{testClusterId})
 
 			Expect(err).NotTo(BeNil())
-			Expect(err.Error()).Should(ContainSubstring("unable to connect to backplane api"))
+			Expect(err.Error()).Should(ContainSubstring("cannot connect to backplane API URL"))
+
+		})
+
+		It("should fail when proxy not avaliable", func() {
+
+			err := utils.CreateTempKubeConfig(nil)
+			Expect(err).To(BeNil())
+			mockOcmInterface.EXPECT().GetTargetCluster(testClusterId).Return(trueClusterId, testClusterId, nil)
+			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterId)).Return(false, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil)
+			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken(backplaneAPIUri, testToken).Return(mockClient, nil)
+			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(trueClusterId)).Return(fakeResp, errors.New("proxyconnect tcp: dial tcp: lookup yourproxy.com: no such host "))
+
+			err = runLogin(nil, []string{testClusterId})
+
+			Expect(err).NotTo(BeNil())
+			Expect(err.Error()).Should(ContainSubstring("Check if you need to use a proxy/VPN to access backplane"))
 
 		})
 
