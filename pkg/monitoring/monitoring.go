@@ -3,7 +3,15 @@ package monitoring
 import (
 	"context"
 	"fmt"
+	"github.com/Masterminds/semver"
+	routev1typedclient "github.com/openshift/client-go/route/clientset/versioned/typed/route/v1"
+	userv1typedclient "github.com/openshift/client-go/user/clientset/versioned/typed/user/v1"
+	"github.com/pkg/browser"
+	logger "github.com/sirupsen/logrus"
 	"io"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	restclient "k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 	"log"
 	"net"
 	"net/http"
@@ -11,16 +19,8 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/Masterminds/semver"
 	"github.com/openshift/backplane-cli/pkg/cli/config"
 	"github.com/openshift/backplane-cli/pkg/utils"
-	routev1typedclient "github.com/openshift/client-go/route/clientset/versioned/typed/route/v1"
-	userv1typedclient "github.com/openshift/client-go/user/clientset/versioned/typed/user/v1"
-	"github.com/pkg/browser"
-	logger "github.com/sirupsen/logrus"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	restclient "k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
 )
 
 const (
@@ -138,7 +138,9 @@ func (c Client) RunMonitoring(monitoringType string) error {
 		if err != nil {
 			return err
 		}
-		http.DefaultTransport = &http.Transport{Proxy: http.ProxyURL(proxyUrl)}
+		http.DefaultTransport = &http.Transport{
+			Proxy: http.ProxyURL(proxyUrl),
+		}
 
 		logger.Debugf("Using backplane Proxy URL: %s\n", proxyUrl)
 	}
@@ -195,7 +197,7 @@ func (c Client) RunMonitoring(monitoringType string) error {
 		if !MonitoringOpts.Browser {
 			fmt.Printf("Serving %s at %s\n", monitoringType, serveUrl.String())
 		}
-		return http.Serve(l, proxy)
+		return http.Serve(l, proxy) //#nosec: G114
 	} else {
 		return nil
 	}
