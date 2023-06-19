@@ -225,7 +225,7 @@ Backplane session keeps the session history commands in <your-path>/session-name
     3  2023-05-08 15:06:40 history 
 ```
 
-Backpalane session setup following environment variables.
+Backplane session setup following environment variables.
 ```
 HISTFILE    = <your-session-path>/<session-name>/.history
 PATH        = <your-os-path>
