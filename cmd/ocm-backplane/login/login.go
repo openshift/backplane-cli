@@ -208,6 +208,12 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 			// Hibernating, print an error
 			return fmt.Errorf("cluster %s is hibernating, login failed", clusterKey)
 		}
+		// Check API connection with configured proxy
+		err = bpConfig.CheckAPIConnection()
+		if err != nil {
+			return fmt.Errorf("cannot connect to backplane API URL,Check if you need to use a proxy/VPN to access backplane. error: %v", err)
+		}
+
 		// Otherwise, return the failure
 		return fmt.Errorf("can't login to cluster: %v", err)
 	}

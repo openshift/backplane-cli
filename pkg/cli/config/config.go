@@ -1,8 +1,12 @@
 package config
 
 import (
+	"errors"
+	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/spf13/viper"
 
@@ -70,4 +74,52 @@ func GetBackplaneConfiguration() (bpConfig BackplaneConfiguration, err error) {
 	bpConfig.SessionDirectory = viper.GetString("session-dir")
 
 	return bpConfig, nil
+}
+
+// CheckAPIConnection validate API connection via configured proxy and VPN
+func (config BackplaneConfiguration) CheckAPIConnection() error {
+
+	// Check backplane Proxy URL
+	if config.ProxyURL == "" {
+		path, err := GetConfigFilePath()
+		if err != nil {
+			return err
+		}
+		return errors.New("empty proxy url - check your backplane-cli configuration in " + path)
+	}
+
+	// make test api connection
+	connectionOk, err := config.testHttpRequestToBackplaneAPI()
+
+	if !connectionOk {
+		return err
+	}
+
+	return nil
+}
+
+// testHttpRequestToBackplaneAPI returns status of the the API connection
+func (config BackplaneConfiguration) testHttpRequestToBackplaneAPI() (bool, error) {
+	client := http.Client{
+		Timeout: 5 * time.Second,
+	}
+
+	if config.ProxyURL != "" {
+		proxyUrl, err := url.Parse(config.ProxyURL)
+		if err != nil {
+			return false, err
+		}
+		http.DefaultTransport = &http.Transport{Proxy: http.ProxyURL(proxyUrl)}
+	}
+
+	req, err := http.NewRequest("HEAD", config.URL, nil)
+	if err != nil {
+		return false, err
+	}
+	_, err = client.Do(req)
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
 }

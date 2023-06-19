@@ -1,6 +1,8 @@
 package config
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"testing"
 )
 
@@ -67,4 +69,36 @@ func TestGetBackplaneConfiguration(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestGetBackplaneConnection(t *testing.T) {
+	t.Run("should fail if backplane API return connection errors", func(t *testing.T) {
+
+		svr := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			_, _ = w.Write([]byte("dummy data"))
+		}))
+
+		proxyUrl := "http://squid.myproxy.com"
+		t.Setenv("BACKPLANE_URL", svr.URL)
+		t.Setenv("HTTPS_PROXY", proxyUrl)
+		config, err := GetBackplaneConfiguration()
+		if err != nil {
+			t.Error(err)
+		}
+
+		err = config.CheckAPIConnection()
+		if err != nil {
+			t.Failed()
+		}
+
+	})
+
+	t.Run("should fail for empty proxy url", func(t *testing.T) {
+		config := BackplaneConfiguration{URL: "https://api-backplane.apps.openshiftapps.com", ProxyURL: ""}
+		err := config.CheckAPIConnection()
+
+		if err != nil {
+			t.Failed()
+		}
+	})
 }
