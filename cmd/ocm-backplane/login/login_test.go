@@ -300,7 +300,7 @@ var _ = Describe("Login command", func() {
 			err = runLogin(nil, []string{testClusterId})
 
 			Expect(err).NotTo(BeNil())
-			Expect(err.Error()).Should(ContainSubstring("Check if you need to use a proxy/VPN to access backplane"))
+			Expect(err.Error()).Should(ContainSubstring("check if you need to use a proxy/VPN to access backplane"))
 
 		})
 

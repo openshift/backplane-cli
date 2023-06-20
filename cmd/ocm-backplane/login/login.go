@@ -42,8 +42,8 @@ var (
 		Use:   "login <CLUSTERID|EXTERNAL_ID|CLUSTER_NAME|CLUSTER_NAME_SEARCH>",
 		Short: "Login to a target cluster",
 		Long: `Running login command will send a request to backplane api
-		using OCM token. The backplane api will return a proxy url for 
-		target cluster. The url will be written to kubeconfig, so we can 
+		using OCM token. The backplane api will return a proxy url for
+		target cluster. The url will be written to kubeconfig, so we can
 		run oc command later to operate the target cluster.`,
 		Example:      " backplane login <id>\n backplane login %test%\n backplane login <external_id>",
 		Args:         cobra.ExactArgs(1),
@@ -211,7 +211,7 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 		// Check API connection with configured proxy
 		err = bpConfig.CheckAPIConnection()
 		if err != nil {
-			return fmt.Errorf("cannot connect to backplane API URL,Check if you need to use a proxy/VPN to access backplane. error: %v", err)
+			return fmt.Errorf("cannot connect to backplane API URL, check if you need to use a proxy/VPN to access backplane: %v", err)
 		}
 
 		// Otherwise, return the failure
@@ -228,7 +228,7 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 
 	EnvPs1, ok := os.LookupEnv(EnvPs1)
 	if !ok {
-		logger.Warn("Env KUBE_PS1_CLUSTER_FUNCTION is not detected. It is recommended to set PS1 to learn which cluster you are operating on, refer https://github.com/openshift/backplane-cli/blob/main/docs/PS1-setup.md. ", EnvPs1)
+		logger.Warn("Env KUBE_PS1_CLUSTER_FUNCTION is not detected. It is recommended to set PS1 to learn which cluster you are operating on, refer https://github.com/openshift/backplane-cli/blob/main/docs/PS1-setup.md", EnvPs1)
 	}
 
 	// Add a new cluster & context & user
