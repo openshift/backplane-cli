@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/aws/retry"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
@@ -12,6 +13,7 @@ import (
 	"github.com/openshift/backplane-cli/pkg/utils"
 	"net/http"
 	"net/url"
+	"time"
 )
 
 func StsClientWithProxy(proxyUrl string) (*sts.Client, error) {
@@ -106,6 +108,15 @@ func AssumeRoleSequence(roleSessionName string, seedClient STSRoleAssumer, roleA
 							return url.Parse(proxyUrl)
 						},
 					},
+				}),
+				config.WithRetryer(func() aws.Retryer {
+					return retry.NewStandard(func(options *retry.StandardOptions) {
+						options.Retryables = append(options.Retryables, retry.RetryableHTTPStatusCode{
+							Codes: map[int]struct{}{401: {}, 403: {}, 404: {}}, // Handle IAM eventual consistency because backplane api modifies trust policy
+						})
+						options.MaxAttempts = 5
+						options.MaxBackoff = 20 * time.Second
+					})
 				}),
 				config.WithRegion("us-east-1"), // We don't care about region here, but the API still wants to see one set
 			)
