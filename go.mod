@@ -7,6 +7,7 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.18.1
 	github.com/aws/aws-sdk-go-v2/config v1.18.27
 	github.com/aws/aws-sdk-go-v2/credentials v1.13.26
+	github.com/aws/aws-sdk-go-v2/service/sts v1.19.2
 	github.com/golang-jwt/jwt/v4 v4.5.0
 	github.com/golang/mock v1.6.0
 	github.com/mitchellh/go-homedir v1.1.0
@@ -15,7 +16,7 @@ require (
 	github.com/onsi/gomega v1.27.8
 	github.com/openshift-online/ocm-cli v0.1.66
 	github.com/openshift-online/ocm-sdk-go v0.1.348
-	github.com/openshift/backplane-api v0.0.0-20230203044845-10f2b341bf54
+	github.com/openshift/backplane-api v0.0.0-20230615010608-391cd2c4bbd8
 	github.com/openshift/client-go v0.0.0-20221019143426-16aed247da5c
 	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8
 	github.com/sirupsen/logrus v1.9.3
@@ -39,7 +40,6 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.9.28 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sso v1.12.12 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.14.12 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sts v1.19.2 // indirect
 	github.com/aws/smithy-go v1.13.5 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect

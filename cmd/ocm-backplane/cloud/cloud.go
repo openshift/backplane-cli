@@ -4,7 +4,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var CloudCmd *cobra.Command = &cobra.Command{
+var CloudCmd = &cobra.Command{
 	Use:               "cloud",
 	Short:             "Cloud Access and Subcommands",
 	Args:              cobra.NoArgs,
@@ -15,6 +15,8 @@ var CloudCmd *cobra.Command = &cobra.Command{
 func init() {
 	CloudCmd.AddCommand(CredentialsCmd)
 	CloudCmd.AddCommand(ConsoleCmd)
+	CloudCmd.AddCommand(TokenCmd)
+	CloudCmd.AddCommand(AssumeCmd)
 }
 
 func help(cmd *cobra.Command, _ []string) {
