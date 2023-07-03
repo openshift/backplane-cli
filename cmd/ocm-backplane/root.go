@@ -18,7 +18,6 @@ package main
 
 import (
 	"os"
-	"strings"
 
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/cloud"
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/config"
@@ -34,34 +33,9 @@ import (
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/testJob"
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/upgrade"
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/version"
+	"github.com/openshift/backplane-cli/pkg/cli/globalflags"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-)
-
-// Created so that multiple inputs can be accepted
-type levelFlag log.Level
-
-func (l *levelFlag) String() string {
-	// change this, this is just can example to satisfy the interface
-	return log.Level(*l).String()
-}
-
-func (l *levelFlag) Set(value string) error {
-	lvl, err := log.ParseLevel(strings.TrimSpace(value))
-	if err == nil {
-		*l = levelFlag(lvl)
-	}
-	return err
-}
-
-func (l *levelFlag) Type() string {
-	return "string"
-}
-
-var (
-	// some defaults for configuration
-	defaultLogLevel = log.WarnLevel.String()
-	logLevel        levelFlag
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -85,10 +59,8 @@ func Execute() {
 }
 
 func init() {
-	// Set default log level
-	_ = logLevel.Set(defaultLogLevel)
-	logLevelFlag := rootCmd.PersistentFlags().VarPF(&logLevel, "verbosity", "v", "Verbosity level: panic, fatal, error, warn, info, debug. Providing no level string will select info.")
-	logLevelFlag.NoOptDefVal = log.InfoLevel.String()
+	// Add Verbosity flag for all commands
+	globalflags.AddVerbosityFlag(rootCmd)
 
 	// Register sub-commands
 	rootCmd.AddCommand(console.ConsoleCmd)
