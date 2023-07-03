@@ -2,6 +2,7 @@ package login
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -232,6 +233,26 @@ var _ = Describe("Login command", func() {
 			err := runLogin(nil, []string{testClusterId})
 
 			Expect(err).To(BeNil())
+		})
+
+		It("should failed if managing cluster not exist in same env", func() {
+			args.manager = true
+			mockOcmInterface.EXPECT().GetTargetCluster(testClusterId).Return(trueClusterId, testClusterId, nil)
+			mockOcmInterface.EXPECT().GetManagingCluster(trueClusterId).Return(
+				managingClusterId,
+				managingClusterId,
+				fmt.Errorf("failed to find management cluster for cluster %s in %s env", testClusterId, "http://test.env"),
+			)
+			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(managingClusterId)).Return(false, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
+			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken(backplaneAPIUri, testToken).Return(mockClient, nil).AnyTimes()
+			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(managingClusterId)).Return(fakeResp, nil).AnyTimes()
+
+			err := runLogin(nil, []string{testClusterId})
+
+			Expect(err).NotTo(BeNil())
+
+			Expect(err.Error()).Should(ContainSubstring("failed to find management cluster for cluster test123 in http://test.env env"))
 		})
 
 		It("should return the service cluster if hosted cluster is given", func() {

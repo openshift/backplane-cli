@@ -111,8 +111,12 @@ func (o *DefaultOCMInterfaceImpl) GetManagingCluster(targetClusterId string) (cl
 			List().
 			Parameter("search", fmt.Sprintf("api.url='%s'", hiveAPI)).
 			Send()
-		if err != nil || mcResp.Items().Len() == 0 {
-			return "", "", fmt.Errorf("failed to find find management cluster for cluster %s: %v", targetClusterId, err)
+
+		if err != nil {
+			return "", "", fmt.Errorf("failed to find management cluster for cluster %s: %v", targetClusterId, err)
+		}
+		if mcResp.Items().Len() == 0 {
+			return "", "", fmt.Errorf("failed to find management cluster for cluster %s in %s env", targetClusterId, connection.URL())
 		}
 		managingCluster = mcResp.Items().Get(0).Name()
 	}
