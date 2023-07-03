@@ -64,8 +64,23 @@ func newDescribeScriptCmd() *cobra.Command {
 				return err
 			}
 
+			// ======== Initialize cluster ID from config ========
+			if clusterKey == "" {
+				configCluster, err := utils.DefaultClusterUtils.GetBackplaneClusterFromConfig()
+				if err != nil {
+					return err
+				}
+				clusterKey = configCluster.ClusterID
+			}
+
+			// ======== Transform clusterKey to clusterID (clusterKey can be name, ID external ID) ========
+			clusterId, _, err := utils.DefaultOCMInterface.GetTargetCluster(clusterKey)
+			if err != nil {
+				return err
+			}
+
 			// ======== Call Endpoint ========
-			resp, err := client.GetScripts(context.TODO(), &bpclient.GetScriptsParams{Scriptname: &args[0]})
+			resp, err := client.GetScriptsByCluster(context.TODO(), clusterId, &bpclient.GetScriptsByClusterParams{Scriptname: &args[0]})
 
 			if err != nil {
 				return err
@@ -76,7 +91,7 @@ func newDescribeScriptCmd() *cobra.Command {
 			}
 
 			// ======== Print script info ========
-			describeResp, err := bpclient.ParseGetScriptsResponse(resp)
+			describeResp, err := bpclient.ParseGetScriptsByClusterResponse(resp)
 
 			if err != nil {
 				return fmt.Errorf("unable to parse response body from backplane: Status Code: %d", resp.StatusCode)
