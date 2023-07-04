@@ -8,7 +8,7 @@ func NewManagedJobCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:          "managedjob",
 		Aliases:      []string{"managedJob", "managedjob", "managedjobs"},
-		Short:        "Represents a backplane managedjob.",
+		Short:        "Backplane managedjob resource which is an instance of Backplane script",
 		SilenceUsage: true,
 	}
 

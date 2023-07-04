@@ -23,7 +23,7 @@ func NewScriptCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:          "script",
 		Aliases:      []string{"scripts"},
-		Short:        "Represents a backplane script resource.",
+		Short:        "Backplane script resource to run pre-defined scripts",
 		SilenceUsage: true,
 	}
 

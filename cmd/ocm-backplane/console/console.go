@@ -78,7 +78,7 @@ const EnvBrowserDefault = "BACKPLANE_DEFAULT_OPEN_BROWSER"
 // ConsoleCmd represents the console command
 var ConsoleCmd = &cobra.Command{
 	Use:   "console",
-	Short: "Launch Openshift console for the current cluster",
+	Short: "Launch OpenShift web console for the current cluster",
 	Long: `console will start the Openshift console application locally for the currently logged in cluster.
 Default behaviour is to run the same console image as the cluster.
 Clusters below 4.8 will not display metrics, alerts, or dashboards. If you need to view metrics, alerts, or dashboards use the latest console image
