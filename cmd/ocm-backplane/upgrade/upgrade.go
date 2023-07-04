@@ -20,7 +20,7 @@ func long() string {
 
 var UpgradeCmd = &cobra.Command{
 	Use:   "upgrade",
-	Short: "Upgrades the current backplane-cli to the latest version",
+	Short: "Upgrade the current backplane-cli to the latest version",
 	Long:  long(),
 
 	RunE: runUpgrade,

@@ -6,7 +6,7 @@ import (
 
 var CloudCmd = &cobra.Command{
 	Use:               "cloud",
-	Short:             "Cloud Access and Subcommands",
+	Short:             "Cluster cloud provider access",
 	Args:              cobra.NoArgs,
 	DisableAutoGenTag: true,
 	Run:               help,
