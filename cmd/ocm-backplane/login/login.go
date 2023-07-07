@@ -50,6 +50,8 @@ var (
 		RunE:         runLogin,
 		SilenceUsage: true,
 	}
+
+	ErrLoginConnection = errors.New("unable to connect to backplane api")
 )
 
 func init() {
@@ -208,9 +210,7 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 			// Hibernating, print an error
 			return fmt.Errorf("cluster %s is hibernating, login failed", clusterKey)
 		}
-		// Check API connection with configured proxy
-		err = bpConfig.CheckAPIConnection()
-		if err != nil {
+		if errors.Is(err, ErrLoginConnection) {
 			return fmt.Errorf("cannot connect to backplane API URL, check if you need to use a proxy/VPN to access backplane: %v", err)
 		}
 
@@ -354,8 +354,8 @@ func doLogin(api, clusterId, accessToken string) (string, error) {
 	if err != nil {
 		// trying to determine the error
 		errBody := err.Error()
-		if strings.Contains(errBody, "dial tcp") && strings.Contains(errBody, "i/o timeout") {
-			return "", fmt.Errorf("unable to connect to backplane api")
+		if strings.Contains(errBody, "dial tcp") || strings.Contains(errBody, "i/o timeout") {
+			return "", fmt.Errorf("%w: %w", ErrLoginConnection, err)
 		}
 
 		return "", err
