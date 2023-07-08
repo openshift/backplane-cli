@@ -37,6 +37,22 @@ func NewCmdSession() *cobra.Command {
 			return validEnvs, cobra.ShellCompDirectiveNoFileComp
 		},
 	}
+
+	// Add login cmd specific flags
+	sessionCmd.Flags().BoolVar(
+		&options.Manager,
+		"manager",
+		false,
+		"Login to management cluster instead of the cluster itself.",
+	)
+
+	sessionCmd.Flags().BoolVar(
+		&options.Service,
+		"service",
+		false,
+		"Login to service cluster for the given hosted cluster or mgmt cluster.",
+	)
+
 	sessionCmd.Flags().BoolVarP(
 		&options.DeleteSession,
 		"delete",
