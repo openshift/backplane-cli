@@ -41,6 +41,9 @@ type Options struct {
 
 	ClusterId   string
 	ClusterName string
+
+	Manager bool
+	Service bool
 }
 
 var (
@@ -71,6 +74,26 @@ func (e *BackplaneSession) RunCommand(cmd *cobra.Command, args []string) error {
 
 	if err != nil {
 		return fmt.Errorf("invalid cluster Id %s", clusterKey)
+	}
+
+	if e.Options.Manager {
+		clusterId, clusterName, err = utils.DefaultOCMInterface.GetManagingCluster(clusterId)
+		e.Options.Alias = clusterId
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("Switching to management cluster ID: %v, Name: %v\n", clusterId, clusterName)
+	}
+
+	if e.Options.Service {
+		clusterId, clusterName, err = utils.DefaultOCMInterface.GetServiceCluster(clusterId)
+		e.Options.Alias = clusterId
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("Switching to service cluster ID: %v, Name: %v\n", clusterId, clusterName)
 	}
 
 	// set cluster options
@@ -373,17 +396,17 @@ func (e *BackplaneSession) initClusterLogin(cmd *cobra.Command) error {
 		// Setting up the flags
 		err := login.LoginCmd.Flags().Set("multi", "true")
 		if err != nil {
-			return fmt.Errorf("error occered when setting multi flag %v", err)
+			return fmt.Errorf("error occurred when setting multi flag %v", err)
 		}
 		err = login.LoginCmd.Flags().Set("kube-path", e.Path)
 		if err != nil {
-			return fmt.Errorf("error occered when kube-path flag %v", err)
+			return fmt.Errorf("error occurred when kube-path flag %v", err)
 		}
 
 		// Execute login command
 		err = login.LoginCmd.RunE(cmd, []string{e.Options.ClusterId})
 		if err != nil {
-			return fmt.Errorf("error occered when login to the cluster %v", err)
+			return fmt.Errorf("error occurred when login to the cluster %v", err)
 		}
 	}
 
