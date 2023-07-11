@@ -5,10 +5,13 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/openshift/backplane-cli/pkg/cli/globalflags"
 	"github.com/openshift/backplane-cli/pkg/cli/session"
 	"github.com/openshift/backplane-cli/pkg/info"
 	"github.com/spf13/cobra"
 )
+
+var globalOpts = &globalflags.GlobalOptions{}
 
 func NewCmdSession() *cobra.Command {
 	options := session.Options{}
@@ -38,20 +41,11 @@ func NewCmdSession() *cobra.Command {
 		},
 	}
 
-	// Add login cmd specific flags
-	sessionCmd.Flags().BoolVar(
-		&options.Manager,
-		"manager",
-		false,
-		"Login to management cluster instead of the cluster itself.",
-	)
+	// Initialize global flags
+	globalflags.AddGlobalFlags(sessionCmd, globalOpts)
 
-	sessionCmd.Flags().BoolVar(
-		&options.Service,
-		"service",
-		false,
-		"Login to service cluster for the given hosted cluster or mgmt cluster.",
-	)
+	options.Manager = globalOpts.Manager
+	options.Service = globalOpts.Service
 
 	sessionCmd.Flags().BoolVarP(
 		&options.DeleteSession,

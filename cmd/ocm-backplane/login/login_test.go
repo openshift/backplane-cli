@@ -80,7 +80,8 @@ var _ = Describe("Login command", func() {
 	})
 
 	AfterEach(func() {
-		args.manager = false
+		globalOpts.Manager = false
+		globalOpts.Service = false
 		globalOpts.BackplaneURL = ""
 		globalOpts.ProxyURL = ""
 		os.Setenv("HTTPS_PROXY", "")
@@ -186,8 +187,8 @@ var _ = Describe("Login command", func() {
 
 	Context("check cluster login", func() {
 		BeforeEach(func() {
-			args.manager = false
-			args.service = false
+			globalOpts.Manager = false
+			globalOpts.Service = false
 		})
 		It("when running with a simple case should work as expected", func() {
 			err := utils.CreateTempKubeConfig(nil)
@@ -222,7 +223,7 @@ var _ = Describe("Login command", func() {
 		})
 
 		It("should return the managing cluster if one is requested", func() {
-			args.manager = true
+			globalOpts.Manager = true
 			mockOcmInterface.EXPECT().GetTargetCluster(testClusterId).Return(trueClusterId, testClusterId, nil)
 			mockOcmInterface.EXPECT().GetManagingCluster(trueClusterId).Return(managingClusterId, managingClusterId, nil)
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(managingClusterId)).Return(false, nil).AnyTimes()
@@ -236,7 +237,7 @@ var _ = Describe("Login command", func() {
 		})
 
 		It("should failed if managing cluster not exist in same env", func() {
-			args.manager = true
+			globalOpts.Manager = true
 			mockOcmInterface.EXPECT().GetTargetCluster(testClusterId).Return(trueClusterId, testClusterId, nil)
 			mockOcmInterface.EXPECT().GetManagingCluster(trueClusterId).Return(
 				managingClusterId,
@@ -256,7 +257,7 @@ var _ = Describe("Login command", func() {
 		})
 
 		It("should return the service cluster if hosted cluster is given", func() {
-			args.service = true
+			globalOpts.Service = true
 			mockOcmInterface.EXPECT().GetTargetCluster(testClusterId).Return(trueClusterId, testClusterId, nil)
 			mockOcmInterface.EXPECT().GetServiceCluster(trueClusterId).Return(serviceClusterId, serviceClusterName, nil)
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(serviceClusterId)).Return(false, nil).AnyTimes()
@@ -326,7 +327,7 @@ var _ = Describe("Login command", func() {
 		})
 
 		It("Check KUBECONFIG when logging into multiple clusters.", func() {
-			args.manager = false
+			globalOpts.Manager = false
 			args.multiCluster = true
 			err := utils.ModifyTempKubeConfigFileName(trueClusterId)
 			Expect(err).To(BeNil())
