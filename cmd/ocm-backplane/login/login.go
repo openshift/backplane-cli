@@ -209,9 +209,8 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 			return fmt.Errorf("cluster %s is hibernating, login failed", clusterKey)
 		}
 		// Check API connection with configured proxy
-		err = bpConfig.CheckAPIConnection()
-		if err != nil {
-			return fmt.Errorf("cannot connect to backplane API URL, check if you need to use a proxy/VPN to access backplane: %v", err)
+		if connErr := bpConfig.CheckAPIConnection(); connErr != nil {
+			return fmt.Errorf("cannot connect to backplane API URL, check if you need to use a proxy/VPN to access backplane: %v", connErr)
 		}
 
 		// Otherwise, return the failure
@@ -347,9 +346,7 @@ func doLogin(api, clusterId, accessToken string) (string, error) {
 		return "", fmt.Errorf("unable to create backplane api client")
 	}
 
-	logger.WithField("URL", globalOpts.BackplaneURL).Debugln("GetProxyURL")
 	resp, err := client.LoginCluster(context.TODO(), clusterId)
-
 	// Print the whole response if we can't parse it. Eg. 5xx error from http server.
 	if err != nil {
 		// trying to determine the error
