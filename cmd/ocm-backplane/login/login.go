@@ -29,8 +29,6 @@ const EnvPs1 = "KUBE_PS1_CLUSTER_FUNCTION"
 
 var (
 	args struct {
-		manager        bool
-		service        bool
 		multiCluster   bool
 		kubeConfigPath string
 	}
@@ -55,23 +53,7 @@ var (
 func init() {
 	flags := LoginCmd.Flags()
 	// Add global flags
-	//globalflags.AddGlobalFlags(flags, globalOpts)
 	globalflags.AddGlobalFlags(LoginCmd, globalOpts)
-
-	// Add login cmd specific flags
-	flags.BoolVar(
-		&args.manager,
-		"manager",
-		false,
-		"Login to management cluster instead of the cluster itself.",
-	)
-
-	flags.BoolVar(
-		&args.service,
-		"service",
-		false,
-		"Login to service cluster for the given hosted cluster or mgmt cluster.",
-	)
 
 	flags.BoolVarP(
 		&args.multiCluster,
@@ -139,7 +121,7 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 		"ID":   clusterId,
 		"Name": clusterName}).Infoln("Target cluster")
 
-	if args.manager {
+	if globalOpts.Manager {
 		logger.WithField("Cluster ID", clusterId).Debugln("Finding managing cluster")
 		clusterId, clusterName, err = utils.DefaultOCMInterface.GetManagingCluster(clusterId)
 		if err != nil {
@@ -151,7 +133,7 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 			"Name": clusterName}).Infoln("Management cluster")
 	}
 
-	if args.service {
+	if globalOpts.Service {
 		logger.WithField("Cluster ID", clusterId).Debugln("Finding service cluster")
 		clusterId, clusterName, err = utils.DefaultOCMInterface.GetServiceCluster(clusterId)
 		if err != nil {
