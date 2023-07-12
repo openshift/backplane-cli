@@ -1,7 +1,6 @@
 package config
 
 import (
-	"errors"
 	"net/http"
 	"net/url"
 	"os"
@@ -78,15 +77,6 @@ func GetBackplaneConfiguration() (bpConfig BackplaneConfiguration, err error) {
 
 // CheckAPIConnection validate API connection via configured proxy and VPN
 func (config BackplaneConfiguration) CheckAPIConnection() error {
-
-	// Check backplane Proxy URL
-	if config.ProxyURL == "" {
-		path, err := GetConfigFilePath()
-		if err != nil {
-			return err
-		}
-		return errors.New("empty proxy url - check your backplane-cli configuration in " + path)
-	}
 
 	// make test api connection
 	connectionOk, err := config.testHttpRequestToBackplaneAPI()

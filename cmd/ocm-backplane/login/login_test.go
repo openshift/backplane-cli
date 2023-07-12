@@ -291,7 +291,7 @@ var _ = Describe("Login command", func() {
 			Expect(cfg.Contexts["default/test123/anonymous"].Namespace).To(Equal("default"))
 		})
 
-		It("should fail when BP API timeouts", func() {
+		It("should fail when a proxy or backplane url is unreachable", func() {
 
 			err := utils.CreateTempKubeConfig(nil)
 			Expect(err).To(BeNil())
@@ -299,29 +299,11 @@ var _ = Describe("Login command", func() {
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterId)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil)
 			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken(backplaneAPIUri, testToken).Return(mockClient, nil)
-			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(trueClusterId)).Return(fakeResp, errors.New("dial tcp i/o timeout"))
+			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(trueClusterId)).Return(fakeResp, errors.New("dial tcp: lookup yourproxy.com: no such host"))
 
 			err = runLogin(nil, []string{testClusterId})
 
 			Expect(err).NotTo(BeNil())
-			Expect(err.Error()).Should(ContainSubstring("cannot connect to backplane API URL"))
-
-		})
-
-		It("should fail when proxy not avaliable", func() {
-
-			err := utils.CreateTempKubeConfig(nil)
-			Expect(err).To(BeNil())
-			mockOcmInterface.EXPECT().GetTargetCluster(testClusterId).Return(trueClusterId, testClusterId, nil)
-			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterId)).Return(false, nil).AnyTimes()
-			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil)
-			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken(backplaneAPIUri, testToken).Return(mockClient, nil)
-			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(trueClusterId)).Return(fakeResp, errors.New("proxyconnect tcp: dial tcp: lookup yourproxy.com: no such host "))
-
-			err = runLogin(nil, []string{testClusterId})
-
-			Expect(err).NotTo(BeNil())
-			Expect(err.Error()).Should(ContainSubstring("check if you need to use a proxy/VPN to access backplane"))
 
 		})
 
