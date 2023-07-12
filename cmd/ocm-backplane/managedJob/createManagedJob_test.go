@@ -1,7 +1,10 @@
 package managedJob
 
 import (
+	"bytes"
 	"errors"
+	"fmt"
+	"io/ioutil"
 	"net/http"
 	"os"
 
@@ -30,7 +33,9 @@ var _ = Describe("managedJob create command", func() {
 		trueClusterId string
 		proxyUri      string
 
-		fakeResp *http.Response
+		fakeResp        *http.Response
+		fakeJobResp     *http.Response
+		jobResponseBody string
 
 		sut *cobra.Command
 	)
@@ -58,6 +63,31 @@ var _ = Describe("managedJob create command", func() {
 			StatusCode: http.StatusOK,
 		}
 		fakeResp.Header.Add("Content-Type", "json")
+
+		// fake job response
+		jobResponseBody = `
+{
+	"jobId": "jid123",
+	"message": "msg",
+	"userMD5": "md5",
+	"jobStatus": {
+		"envs": [],
+		"namespace": "ns",
+		"script": {
+		"canonicalName": "SREP/example"
+	},
+		"start": "2012-12-11T00:00:00+00:00",
+		"status": "%s"
+	}
+}
+		`
+		fakeJobResp = &http.Response{
+			Body:       MakeIoReader(fmt.Sprintf(jobResponseBody, "Succeeded")),
+			Header:     map[string][]string{},
+			StatusCode: http.StatusOK,
+		}
+		fakeJobResp.Header.Add("Content-Type", "json")
+
 		// Clear config file
 		_ = clientcmd.ModifyConfig(clientcmd.NewDefaultPathOptions(), api.Config{}, true)
 
@@ -125,6 +155,74 @@ var _ = Describe("managedJob create command", func() {
 			err := sut.Execute()
 
 			Expect(err).ToNot(BeNil())
+		})
+
+		It("should wait for job to be finished", func() {
+			mockOcmInterface.EXPECT().GetTargetCluster(testClusterId).Return(trueClusterId, testClusterId, nil)
+			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterId)).Return(false, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
+			mockClientUtil.EXPECT().MakeRawBackplaneAPIClient("https://newbackplane.url").Return(mockClient, nil)
+			mockClient.EXPECT().CreateJob(gomock.Any(), trueClusterId, gomock.Any()).Return(fakeResp, nil)
+			mockClient.EXPECT().GetRun(gomock.Any(), trueClusterId, gomock.Eq("jid")).Return(fakeJobResp, nil)
+
+			sut.SetArgs([]string{"create", "SREP/something", "--cluster-id", testClusterId, "--url", "https://newbackplane.url", "--wait"})
+
+			outPuts := bytes.NewBufferString("")
+			sut.SetOut(outPuts)
+			err := sut.Execute()
+
+			Expect(err).To(BeNil())
+
+			outPutText, _ := ioutil.ReadAll(outPuts)
+			Expect(string(outPutText)).Should(ContainSubstring("Job Succeeded"))
+		})
+
+		It("should timeout if job waiting in pending status for long time", func() {
+			fakeJobResp = &http.Response{
+				Body:       MakeIoReader(fmt.Sprintf(jobResponseBody, "Pending")),
+				Header:     map[string][]string{},
+				StatusCode: http.StatusOK,
+			}
+			fakeJobResp.Header.Add("Content-Type", "json")
+
+			mockOcmInterface.EXPECT().GetTargetCluster(testClusterId).Return(trueClusterId, testClusterId, nil)
+			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterId)).Return(false, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
+			mockClientUtil.EXPECT().MakeRawBackplaneAPIClient("https://newbackplane.url").Return(mockClient, nil)
+			mockClient.EXPECT().CreateJob(gomock.Any(), trueClusterId, gomock.Any()).Return(fakeResp, nil).AnyTimes()
+			mockClient.EXPECT().GetRun(gomock.Any(), trueClusterId, gomock.Eq("jid")).Return(fakeJobResp, nil).AnyTimes()
+
+			sut.SetArgs([]string{"create", "SREP/something", "--cluster-id", testClusterId, "--url", "https://newbackplane.url", "--wait"})
+			err := sut.Execute()
+
+			Expect(err).NotTo(BeNil())
+		})
+
+		It("should show a job failed message if job stuck in Failed status", func() {
+			fakeJobResp = &http.Response{
+				Body:       MakeIoReader(fmt.Sprintf(jobResponseBody, "Failed")),
+				Header:     map[string][]string{},
+				StatusCode: http.StatusOK,
+			}
+			fakeJobResp.Header.Add("Content-Type", "json")
+
+			mockOcmInterface.EXPECT().GetTargetCluster(testClusterId).Return(trueClusterId, testClusterId, nil)
+			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterId)).Return(false, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
+			mockClientUtil.EXPECT().MakeRawBackplaneAPIClient("https://newbackplane.url").Return(mockClient, nil)
+			mockClient.EXPECT().CreateJob(gomock.Any(), trueClusterId, gomock.Any()).Return(fakeResp, nil).AnyTimes()
+			mockClient.EXPECT().GetRun(gomock.Any(), trueClusterId, gomock.Eq("jid")).Return(fakeJobResp, nil).AnyTimes()
+
+			sut.SetArgs([]string{"create", "SREP/something", "--cluster-id", testClusterId, "--url", "https://newbackplane.url", "--wait"})
+
+			outPuts := bytes.NewBufferString("")
+			sut.SetOut(outPuts)
+			err := sut.Execute()
+
+			Expect(err).To(BeNil())
+
+			outPutText, _ := ioutil.ReadAll(outPuts)
+			Expect(string(outPutText)).Should(ContainSubstring("Job Failed"))
 		})
 	})
 })
