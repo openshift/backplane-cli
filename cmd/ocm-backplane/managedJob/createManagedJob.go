@@ -3,14 +3,16 @@ package managedJob
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
+	"os"
 	"time"
 
-	"github.com/spf13/cobra"
-
 	BackplaneApi "github.com/openshift/backplane-api/pkg/client"
-	"github.com/openshift/backplane-cli/pkg/utils"
+	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/util/wait"
+
+	"github.com/openshift/backplane-cli/pkg/utils"
 )
 
 var (
@@ -21,6 +23,7 @@ var (
 		clusterId     string
 		url           string
 		raw           bool
+		logs          bool
 	}
 )
 
@@ -49,6 +52,13 @@ func newCreateManagedJobCmd() *cobra.Command {
 		"w",
 		false,
 		"Wait until command execution is finished")
+
+	cmd.Flags().BoolVarP(
+		&options.logs,
+		"logs",
+		"",
+		false,
+		"Fetch logs from the pod for the running job")
 
 	return cmd
 }
@@ -106,6 +116,16 @@ func runCreateManagedJob(cmd *cobra.Command, args []string) (err error) {
 			return err
 		}
 		fmt.Fprintf(cmd.OutOrStdout(), "\n%s\n.", statusMessage)
+	}
+
+	// stream logs if flag set
+	if options.logs {
+		fmt.Fprintf(cmd.OutOrStdout(), "fetching logs for job %s", *job.JobId)
+		err := fetchJobLogs(client, job)
+		if err != nil {
+			return err
+		}
+		fmt.Fprintf(cmd.OutOrStdout(), "")
 	}
 
 	return nil
@@ -193,31 +213,94 @@ func waitForCreateJob(client BackplaneApi.ClientInterface, job *BackplaneApi.Job
 	pollErr := wait.PollImmediate(10*time.Second, time.Duration(600)*time.Second, func() (bool, error) {
 		fmt.Printf(".")
 
-		// ========= Get the current job ============
-		jobResp, err := client.GetRun(context.TODO(), options.clusterId, *job.JobId)
-
+		// Get the current job
+		status, err := getJobStatus(client, job)
 		if err != nil {
 			return false, err
 		}
 
-		formatJobResp, err := BackplaneApi.ParseGetRunResponse(jobResp)
-
-		if err != nil {
-			return false, err
-		}
-
-		if *formatJobResp.JSON200.JobStatus.Status == BackplaneApi.JobStatusStatusSucceeded {
+		// Check if the job is in the expected status
+		if status == BackplaneApi.JobStatusStatusSucceeded {
 			statusMessage = "Job Succeeded"
 			return true, nil
 		}
-
-		if *formatJobResp.JSON200.JobStatus.Status == BackplaneApi.JobStatusStatusFailed {
+		if status == BackplaneApi.JobStatusStatusFailed {
 			statusMessage = "Job Failed"
 			return true, nil
 		}
 
-		return false, err
+		return false, nil
 	})
 
 	return statusMessage, pollErr
+}
+
+// fetchJobLogs stream the log of the job to the console output when the job status is Running, Succeeded or Failed
+func fetchJobLogs(client BackplaneApi.ClientInterface, job *BackplaneApi.Job) error {
+
+	pollErr := wait.PollImmediate(5*time.Second, 1*time.Minute, func() (bool, error) {
+		fmt.Printf(".")
+
+		// Get the current job
+		status, err := getJobStatus(client, job)
+		if err != nil {
+			return false, err
+		}
+
+		// Check if the job is in the expected status
+		switch status {
+		case BackplaneApi.JobStatusStatusPending:
+			return false, nil
+		case BackplaneApi.JobStatusStatusRunning:
+			fmt.Println("")
+			return true, nil
+		case BackplaneApi.JobStatusStatusSucceeded:
+			fmt.Println("")
+			return true, nil
+		case BackplaneApi.JobStatusStatusFailed:
+			fmt.Println("")
+			return true, nil
+		default:
+			return false, fmt.Errorf("job is not ready with logs")
+		}
+
+	})
+
+	if pollErr != nil {
+		return pollErr
+	}
+
+	version := "v2"
+	follow := true
+
+	resp, err := client.GetJobLogs(context.TODO(), options.clusterId, *job.JobId, &BackplaneApi.GetJobLogsParams{Version: &version, Follow: &follow})
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return utils.TryPrintAPIError(resp, true)
+	}
+
+	_, err = io.Copy(os.Stdout, resp.Body)
+	if err != nil {
+		return err
+	}
+
+	return err
+}
+
+func getJobStatus(client BackplaneApi.ClientInterface, job *BackplaneApi.Job) (BackplaneApi.JobStatusStatus, error) {
+	jobResp, err := client.GetRun(context.TODO(), options.clusterId, *job.JobId)
+
+	if err != nil {
+		return "", err
+	}
+
+	formatJobResp, err := BackplaneApi.ParseGetRunResponse(jobResp)
+
+	if err != nil {
+		return "", err
+	}
+
+	return *formatJobResp.JSON200.JobStatus.Status, nil
 }
