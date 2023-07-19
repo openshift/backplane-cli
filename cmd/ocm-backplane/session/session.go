@@ -43,10 +43,9 @@ func NewCmdSession() *cobra.Command {
 
 	// Initialize global flags
 	globalflags.AddGlobalFlags(sessionCmd, globalOpts)
+	options.GlobalOpts = globalOpts
 
-	options.Manager = globalOpts.Manager
-	options.Service = globalOpts.Service
-
+	//
 	sessionCmd.Flags().BoolVarP(
 		&options.DeleteSession,
 		"delete",

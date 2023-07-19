@@ -14,6 +14,7 @@ import (
 
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/login"
 	"github.com/openshift/backplane-cli/pkg/cli/config"
+	"github.com/openshift/backplane-cli/pkg/cli/globalflags"
 	"github.com/openshift/backplane-cli/pkg/info"
 	"github.com/openshift/backplane-cli/pkg/utils"
 )
@@ -42,8 +43,7 @@ type Options struct {
 	ClusterId   string
 	ClusterName string
 
-	Manager bool
-	Service bool
+	GlobalOpts *globalflags.GlobalOptions
 }
 
 var (
@@ -76,7 +76,7 @@ func (e *BackplaneSession) RunCommand(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("invalid cluster Id %s", clusterKey)
 	}
 
-	if e.Options.Manager {
+	if e.Options.GlobalOpts.Manager {
 		clusterId, clusterName, err = utils.DefaultOCMInterface.GetManagingCluster(clusterId)
 		e.Options.Alias = clusterId
 		if err != nil {
@@ -86,7 +86,7 @@ func (e *BackplaneSession) RunCommand(cmd *cobra.Command, args []string) error {
 		fmt.Printf("Switching to management cluster ID: %v, Name: %v\n", clusterId, clusterName)
 	}
 
-	if e.Options.Service {
+	if e.Options.GlobalOpts.Service {
 		clusterId, clusterName, err = utils.DefaultOCMInterface.GetServiceCluster(clusterId)
 		e.Options.Alias = clusterId
 		if err != nil {
