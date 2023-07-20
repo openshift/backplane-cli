@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/openshift/backplane-cli/internal/github"
 	"github.com/openshift/backplane-cli/internal/upgrade"
@@ -17,6 +18,7 @@ func TestGetLatestVersion(t *testing.T) {
 		Actual          upgrade.Release
 		ExpectedVersion string
 		ExpectedAssets  []upgrade.ReleaseAsset
+		Time            time.Duration
 	}{
 		"no releases versions": {
 			Actual: upgrade.Release{
@@ -25,6 +27,7 @@ func TestGetLatestVersion(t *testing.T) {
 			},
 			ExpectedVersion: "",
 			ExpectedAssets:  []upgrade.ReleaseAsset{},
+			Time:            0 * time.Second,
 		},
 		"latest releases versions": {
 			Actual: upgrade.Release{
@@ -33,6 +36,25 @@ func TestGetLatestVersion(t *testing.T) {
 			},
 			ExpectedVersion: "v0.0.1",
 			ExpectedAssets:  []upgrade.ReleaseAsset{},
+			Time:            0 * time.Second,
+		},
+		"check timeout for less than 10 sec": {
+			Actual: upgrade.Release{
+				TagName: "v0.0.1",
+				Assets:  []upgrade.ReleaseAsset{},
+			},
+			ExpectedVersion: "v0.0.1",
+			ExpectedAssets:  []upgrade.ReleaseAsset{},
+			Time:            5 * time.Second,
+		},
+		"check timeout for greater than 10 sec": {
+			Actual: upgrade.Release{
+				TagName: "",
+				Assets:  []upgrade.ReleaseAsset{},
+			},
+			ExpectedVersion: context.DeadlineExceeded.Error(),
+			ExpectedAssets:  []upgrade.ReleaseAsset{},
+			Time:            15 * time.Second,
 		},
 	} {
 		tc := tc
@@ -44,6 +66,8 @@ func TestGetLatestVersion(t *testing.T) {
 			expected := tc.Actual
 			data, _ := json.Marshal(tc.Actual)
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				time.Sleep(tc.Time)
+				//http.DefaultTransport.(*http.Transport).ResponseHeaderTimeout = tc.Time
 				_, _ = w.Write(data)
 			}))
 
@@ -54,6 +78,7 @@ func TestGetLatestVersion(t *testing.T) {
 				github.WithClient(*srv.Client()),
 			)
 			res, err := client.GetLatestVersion(context.Background())
+
 			if err != nil {
 				t.Errorf("expected err to be nil got %v", err)
 			}
