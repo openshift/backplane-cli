@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -19,6 +20,8 @@ func TestGetLatestVersion(t *testing.T) {
 		ExpectedVersion string
 		ExpectedAssets  []upgrade.ReleaseAsset
 		Time            time.Duration
+		ErrorExpected   bool
+		ExpectedError   string
 	}{
 		"no releases versions": {
 			Actual: upgrade.Release{
@@ -28,6 +31,8 @@ func TestGetLatestVersion(t *testing.T) {
 			ExpectedVersion: "",
 			ExpectedAssets:  []upgrade.ReleaseAsset{},
 			Time:            0 * time.Second,
+			ErrorExpected:   false,
+			ExpectedError:   "",
 		},
 		"latest releases versions": {
 			Actual: upgrade.Release{
@@ -37,6 +42,8 @@ func TestGetLatestVersion(t *testing.T) {
 			ExpectedVersion: "v0.0.1",
 			ExpectedAssets:  []upgrade.ReleaseAsset{},
 			Time:            0 * time.Second,
+			ErrorExpected:   false,
+			ExpectedError:   "",
 		},
 		"check timeout for less than 10 sec": {
 			Actual: upgrade.Release{
@@ -46,6 +53,8 @@ func TestGetLatestVersion(t *testing.T) {
 			ExpectedVersion: "v0.0.1",
 			ExpectedAssets:  []upgrade.ReleaseAsset{},
 			Time:            5 * time.Second,
+			ErrorExpected:   false,
+			ExpectedError:   "",
 		},
 		"check timeout for greater than 10 sec": {
 			Actual: upgrade.Release{
@@ -55,6 +64,8 @@ func TestGetLatestVersion(t *testing.T) {
 			ExpectedVersion: context.DeadlineExceeded.Error(),
 			ExpectedAssets:  []upgrade.ReleaseAsset{},
 			Time:            15 * time.Second,
+			ErrorExpected:   true,
+			ExpectedError:   "context deadline exceeded",
 		},
 	} {
 		tc := tc
@@ -67,7 +78,6 @@ func TestGetLatestVersion(t *testing.T) {
 			data, _ := json.Marshal(tc.Actual)
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				time.Sleep(tc.Time)
-				//http.DefaultTransport.(*http.Transport).ResponseHeaderTimeout = tc.Time
 				_, _ = w.Write(data)
 			}))
 
@@ -79,11 +89,17 @@ func TestGetLatestVersion(t *testing.T) {
 			)
 			res, err := client.GetLatestVersion(context.Background())
 
-			if err != nil {
-				t.Errorf("expected err to be nil got %v", err)
-			}
-			if res.TagName != tc.ExpectedVersion {
-				t.Errorf("expected res to be %s got %s", expected, res)
+			if !tc.ErrorExpected {
+				if err != nil {
+					t.Errorf("expected err to be nil got %v", err)
+				}
+				if res.TagName != tc.ExpectedVersion {
+					t.Errorf("expected res to be %s got %s", expected, res)
+				}
+			} else {
+				if !strings.Contains(err.Error(), tc.ExpectedError) {
+					t.Errorf("expected err contains %s got %v", tc.ExpectedError, err)
+				}
 			}
 
 		})
