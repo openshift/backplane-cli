@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/openshift/backplane-cli/internal/upgrade"
 )
@@ -23,6 +24,7 @@ var (
 const (
 	gitHubApiEndPoint = "https://api.github.com/repos/openshift/backplane-cli"
 	assetTemplateName = "ocm-backplane_%s_%s_%s.tar.gz" // version, GOOS, GOARCH
+	timeout           = 10 * time.Second
 )
 
 func NewClient(opts ...ClientOption) *Client {
@@ -38,7 +40,7 @@ func NewClient(opts ...ClientOption) *Client {
 
 // GetLatestVersion returns latest version from the github API
 func (c *Client) GetLatestVersion(ctx context.Context) (latest upgrade.Release, err error) {
-	ctx, cancel := context.WithCancel(ctx)
+	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
 	data, err := c.get(
