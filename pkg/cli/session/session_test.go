@@ -11,6 +11,7 @@ import (
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/openshift/backplane-cli/pkg/cli/globalflags"
 	"github.com/openshift/backplane-cli/pkg/client/mocks"
 	"github.com/openshift/backplane-cli/pkg/info"
 	"github.com/openshift/backplane-cli/pkg/utils"
@@ -49,7 +50,9 @@ var _ = Describe("Backplane Session Unit test", func() {
 		mockClientUtil = mocks2.NewMockClientUtils(mockCtrl)
 		utils.DefaultClientUtils = mockClientUtil
 
-		options = Options{}
+		options = Options{
+			GlobalOpts: &globalflags.GlobalOptions{},
+		}
 
 		// create temp session
 		sessionPath, err := os.MkdirTemp("", "bp-session")
