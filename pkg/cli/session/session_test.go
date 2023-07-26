@@ -11,12 +11,13 @@ import (
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/spf13/cobra"
+
 	"github.com/openshift/backplane-cli/pkg/cli/globalflags"
 	"github.com/openshift/backplane-cli/pkg/client/mocks"
 	"github.com/openshift/backplane-cli/pkg/info"
 	"github.com/openshift/backplane-cli/pkg/utils"
 	mocks2 "github.com/openshift/backplane-cli/pkg/utils/mocks"
-	"github.com/spf13/cobra"
 )
 
 var _ = Describe("Backplane Session Unit test", func() {
@@ -31,9 +32,9 @@ var _ = Describe("Backplane Session Unit test", func() {
 		bpSession BackplaneSession
 		cmd       *cobra.Command
 
-		testClusterId   string
+		testClusterID   string
 		testToken       string
-		trueClusterId   string
+		trueClusterID   string
 		backplaneAPIUri string
 
 		fakeResp *http.Response
@@ -67,9 +68,9 @@ var _ = Describe("Backplane Session Unit test", func() {
 			Use: "session",
 		}
 
-		testClusterId = "test123"
+		testClusterID = "test123"
 		testToken = "hello123"
-		trueClusterId = "trueID123"
+		trueClusterID = "trueID123"
 		backplaneAPIUri = "https://api.integration.backplane.example.com"
 
 		fakeResp = &http.Response{
@@ -79,7 +80,7 @@ var _ = Describe("Backplane Session Unit test", func() {
 		}
 		fakeResp.Header.Add("Content-Type", "json")
 
-		os.Setenv(info.BACKPLANE_URL_ENV_NAME, backplaneAPIUri)
+		os.Setenv(info.BackplaneURLEnvName, backplaneAPIUri)
 	})
 
 	AfterEach(func() {
@@ -141,41 +142,41 @@ var _ = Describe("Backplane Session Unit test", func() {
 
 		It("should fail for empty session name ", func() {
 			options.Alias = ""
-			options.ClusterId = ""
+			options.ClusterID = ""
 
 			err := bpSession.RunCommand(cmd, []string{})
 			Expect(err).NotTo(BeNil())
-			Expect(err.Error()).Should(ContainSubstring("ClusterId or Alias required"))
+			Expect(err.Error()).Should(ContainSubstring("ClusterID or Alias required"))
 		})
 
 		It("should use clusterID when alias is empty ", func() {
 			options.Alias = ""
-			options.ClusterId = testClusterId
+			options.ClusterID = testClusterID
 
 			mockClientWithResp.EXPECT().LoginClusterWithResponse(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
-			mockOcmInterface.EXPECT().GetTargetCluster(options.ClusterId).Return(trueClusterId, testClusterId, nil).AnyTimes()
-			mockOcmInterface.EXPECT().GetTargetCluster(trueClusterId).Return(trueClusterId, testClusterId, nil).AnyTimes()
-			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterId)).Return(false, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetTargetCluster(options.ClusterID).Return(trueClusterID, testClusterID, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetTargetCluster(trueClusterID).Return(trueClusterID, testClusterID, nil).AnyTimes()
+			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
 			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken(backplaneAPIUri, testToken).Return(mockClient, nil).AnyTimes()
-			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(trueClusterId)).Return(fakeResp, nil).AnyTimes()
+			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(trueClusterID)).Return(fakeResp, nil).AnyTimes()
 
 			err := bpSession.RunCommand(cmd, []string{})
 			Expect(err).To(BeNil())
-			Expect(bpSession.Path).Should(ContainSubstring(testClusterId))
+			Expect(bpSession.Path).Should(ContainSubstring(testClusterID))
 		})
 
 		It("should contains cluster env vars ", func() {
 			options.Alias = "test-env"
-			options.ClusterId = testClusterId
+			options.ClusterID = testClusterID
 
 			mockClientWithResp.EXPECT().LoginClusterWithResponse(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
-			mockOcmInterface.EXPECT().GetTargetCluster(options.ClusterId).Return(trueClusterId, testClusterId, nil).AnyTimes()
-			mockOcmInterface.EXPECT().GetTargetCluster(trueClusterId).Return(trueClusterId, testClusterId, nil).AnyTimes()
-			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterId)).Return(false, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetTargetCluster(options.ClusterID).Return(trueClusterID, testClusterID, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetTargetCluster(trueClusterID).Return(trueClusterID, testClusterID, nil).AnyTimes()
+			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
 			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken(backplaneAPIUri, testToken).Return(mockClient, nil).AnyTimes()
-			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(trueClusterId)).Return(fakeResp, nil).AnyTimes()
+			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(trueClusterID)).Return(fakeResp, nil).AnyTimes()
 
 			err := bpSession.RunCommand(cmd, []string{})
 			Expect(err).To(BeNil())
@@ -187,17 +188,17 @@ var _ = Describe("Backplane Session Unit test", func() {
 			for scanner.Scan() {
 				// check osEnv file contains KUBECONFIG and value contains session name and cluster-id
 				if strings.Contains(scanner.Text(), "KUBECONFIG") {
-					Expect(scanner.Text()).Should(ContainSubstring("test-env/" + trueClusterId))
+					Expect(scanner.Text()).Should(ContainSubstring("test-env/" + trueClusterID))
 				}
 
 				// check osEnv file contains CLUSTERID and value contains cluster-id
 				if strings.Contains(scanner.Text(), "CLUSTERID") {
-					Expect(scanner.Text()).Should(ContainSubstring(trueClusterId))
+					Expect(scanner.Text()).Should(ContainSubstring(trueClusterID))
 				}
 
 				// check osEnv file contains CLUSTERNAME and value contains cluster-name
 				if strings.Contains(scanner.Text(), "CLUSTERNAME") {
-					Expect(scanner.Text()).Should(ContainSubstring(testClusterId))
+					Expect(scanner.Text()).Should(ContainSubstring(testClusterID))
 				}
 			}
 		})
@@ -206,15 +207,15 @@ var _ = Describe("Backplane Session Unit test", func() {
 	Context("check Backplane session delete", func() {
 		It("Session should delete ", func() {
 			options.Alias = "my-session"
-			options.ClusterId = testClusterId
+			options.ClusterID = testClusterID
 
 			mockClientWithResp.EXPECT().LoginClusterWithResponse(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
-			mockOcmInterface.EXPECT().GetTargetCluster(options.ClusterId).Return(trueClusterId, testClusterId, nil).AnyTimes()
-			mockOcmInterface.EXPECT().GetTargetCluster(trueClusterId).Return(trueClusterId, testClusterId, nil).AnyTimes()
-			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterId)).Return(false, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetTargetCluster(options.ClusterID).Return(trueClusterID, testClusterID, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetTargetCluster(trueClusterID).Return(trueClusterID, testClusterID, nil).AnyTimes()
+			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
 			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken(backplaneAPIUri, testToken).Return(mockClient, nil).AnyTimes()
-			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(trueClusterId)).Return(fakeResp, nil).AnyTimes()
+			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(trueClusterID)).Return(fakeResp, nil).AnyTimes()
 
 			// Create the session
 			err := bpSession.RunCommand(cmd, []string{})

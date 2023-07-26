@@ -6,9 +6,10 @@ import (
 	"os"
 	"os/exec"
 
-	"github.com/openshift/backplane-cli/pkg/utils"
 	logger "github.com/sirupsen/logrus"
 	"k8s.io/client-go/tools/clientcmd/api"
+
+	"github.com/openshift/backplane-cli/pkg/utils"
 )
 
 var (
@@ -21,13 +22,13 @@ var (
 func AddElevationReasonToRawKubeconfig(config api.Config, elevationReason string) error {
 	logger.Debugln("Adding reason for backplane-cluster-admin elevation")
 	if config.Contexts[config.CurrentContext] == nil {
-		return errors.New("No current kubeconfig context")
+		return errors.New("no current kubeconfig context")
 	}
 
 	currentCtxUsername := config.Contexts[config.CurrentContext].AuthInfo
 
 	if config.AuthInfos[currentCtxUsername] == nil {
-		return errors.New("No current user information")
+		return errors.New("no current user information")
 	}
 
 	if config.AuthInfos[currentCtxUsername].ImpersonateUserExtra == nil {

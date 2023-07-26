@@ -5,8 +5,9 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/openshift/backplane-cli/pkg/monitoring"
 	"github.com/spf13/cobra"
+
+	"github.com/openshift/backplane-cli/pkg/monitoring"
 )
 
 var MonitoringCmd = &cobra.Command{
@@ -50,7 +51,7 @@ func init() {
 		"The port the remote application listens on. (Default will be picked by server based on application's conventional port.)",
 	)
 	flags.StringVarP(
-		&monitoring.MonitoringOpts.OriginUrl,
+		&monitoring.MonitoringOpts.OriginURL,
 		"origin",
 		"u",
 		"",

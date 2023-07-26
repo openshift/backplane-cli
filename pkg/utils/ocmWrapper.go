@@ -15,12 +15,12 @@ import (
 // Provides a minimal interface for backplane-cli to function
 
 type OCMInterface interface {
-	IsClusterHibernating(clusterId string) (bool, error)
-	GetTargetCluster(clusterKey string) (clusterId, clusterName string, err error)
-	GetManagingCluster(clusterKey string) (clusterId, clusterName string, err error)
+	IsClusterHibernating(clusterID string) (bool, error)
+	GetTargetCluster(clusterKey string) (clusterID, clusterName string, err error)
+	GetManagingCluster(clusterKey string) (clusterID, clusterName string, err error)
 	GetOCMAccessToken() (*string, error)
-	GetServiceCluster(clusterKey string) (clusterId, clusterName string, err error)
-	GetClusterInfoByID(clusterId string) (*cmv1.Cluster, error)
+	GetServiceCluster(clusterKey string) (clusterID, clusterName string, err error)
+	GetClusterInfoByID(clusterID string) (*cmv1.Cluster, error)
 	IsProduction() (bool, error)
 	GetPullSecret() (string, error)
 }
@@ -30,13 +30,13 @@ type DefaultOCMInterfaceImpl struct{}
 var DefaultOCMInterface OCMInterface = &DefaultOCMInterfaceImpl{}
 
 // IsClusterHibernating returns a boolean to indicate whether the cluster is hibernating
-func (*DefaultOCMInterfaceImpl) IsClusterHibernating(clusterId string) (bool, error) {
+func (*DefaultOCMInterfaceImpl) IsClusterHibernating(clusterID string) (bool, error) {
 	connection, err := ocm.NewConnection().Build()
 	if err != nil {
 		return false, fmt.Errorf("failed to create OCM connection: %v", err)
 	}
 	defer connection.Close()
-	res, err := connection.ClustersMgmt().V1().Clusters().Cluster(clusterId).Get().Send()
+	res, err := connection.ClustersMgmt().V1().Clusters().Cluster(clusterID).Get().Send()
 	if err != nil {
 		return false, fmt.Errorf("unable get get cluster status: %v", err)
 	}
@@ -46,7 +46,7 @@ func (*DefaultOCMInterfaceImpl) IsClusterHibernating(clusterId string) (bool, er
 }
 
 // GetTargetCluster returns one single cluster based on the search key and survery.
-func (*DefaultOCMInterfaceImpl) GetTargetCluster(clusterKey string) (clusterId, clusterName string, err error) {
+func (*DefaultOCMInterfaceImpl) GetTargetCluster(clusterKey string) (clusterID, clusterName string, err error) {
 	// Create the client for the OCM API:
 	connection, err := ocm.NewConnection().Build()
 	if err != nil {
@@ -62,7 +62,7 @@ func (*DefaultOCMInterfaceImpl) GetTargetCluster(clusterKey string) (clusterId, 
 
 	if len(clusters) == 1 {
 		for _, v := range clusters {
-			clusterId = v.ID()
+			clusterID = v.ID()
 			clusterName = v.Name()
 		}
 	} else {
@@ -70,15 +70,15 @@ func (*DefaultOCMInterfaceImpl) GetTargetCluster(clusterKey string) (clusterId, 
 		if err != nil {
 			return "", "", fmt.Errorf("can't find cluster: %v", err)
 		}
-		clusterId = cluster.ID()
+		clusterID = cluster.ID()
 		clusterName = cluster.Name()
 	}
-	return clusterId, clusterName, nil
+	return clusterID, clusterName, nil
 }
 
 // GetManagingCluster returns the managing cluster (hive shard or hypershift management cluster)
-// for the given clusterId
-func (o *DefaultOCMInterfaceImpl) GetManagingCluster(targetClusterId string) (clusterId, clusterName string, err error) {
+// for the given clusterID
+func (o *DefaultOCMInterfaceImpl) GetManagingCluster(targetClusterID string) (clusterID, clusterName string, err error) {
 	// Create the client for the OCM API:
 	connection, err := ocm.NewConnection().Build()
 	if err != nil {
@@ -89,7 +89,7 @@ func (o *DefaultOCMInterfaceImpl) GetManagingCluster(targetClusterId string) (cl
 	var managingCluster string
 	// Check if cluster has hypershift enabled
 	hypershiftResp, err := connection.ClustersMgmt().V1().Clusters().
-		Cluster(targetClusterId).
+		Cluster(targetClusterID).
 		Hypershift().
 		Get().
 		Send()
@@ -98,10 +98,10 @@ func (o *DefaultOCMInterfaceImpl) GetManagingCluster(targetClusterId string) (cl
 	} else {
 		// Get the client for the resource that manages the collection of clusters:
 		clusterCollection := connection.ClustersMgmt().V1().Clusters()
-		resource := clusterCollection.Cluster(targetClusterId).ProvisionShard()
+		resource := clusterCollection.Cluster(targetClusterID).ProvisionShard()
 		response, err := resource.Get().Send()
 		if err != nil {
-			return "", "", fmt.Errorf("failed to find management cluster for cluster %s: %v", targetClusterId, err)
+			return "", "", fmt.Errorf("failed to find management cluster for cluster %s: %v", targetClusterID, err)
 		}
 		shard := response.Body()
 		hiveAPI := shard.HiveConfig().Server()
@@ -113,16 +113,16 @@ func (o *DefaultOCMInterfaceImpl) GetManagingCluster(targetClusterId string) (cl
 			Send()
 
 		if err != nil {
-			return "", "", fmt.Errorf("failed to find management cluster for cluster %s: %v", targetClusterId, err)
+			return "", "", fmt.Errorf("failed to find management cluster for cluster %s: %v", targetClusterID, err)
 		}
 		if mcResp.Items().Len() == 0 {
-			return "", "", fmt.Errorf("failed to find management cluster for cluster %s in %s env", targetClusterId, connection.URL())
+			return "", "", fmt.Errorf("failed to find management cluster for cluster %s in %s env", targetClusterID, connection.URL())
 		}
 		managingCluster = mcResp.Items().Get(0).Name()
 	}
 
 	if managingCluster == "" {
-		return "", "", fmt.Errorf("failed to lookup managing cluster for cluster %s", targetClusterId)
+		return "", "", fmt.Errorf("failed to lookup managing cluster for cluster %s", targetClusterID)
 	}
 
 	mcid, _, err := o.GetTargetCluster(managingCluster)
@@ -133,7 +133,7 @@ func (o *DefaultOCMInterfaceImpl) GetManagingCluster(targetClusterId string) (cl
 }
 
 // GetServiceCluster gets the service cluster for a given hpyershift hosted cluster
-func (*DefaultOCMInterfaceImpl) GetServiceCluster(targetClusterId string) (clusterId, clusterName string, err error) {
+func (*DefaultOCMInterfaceImpl) GetServiceCluster(targetClusterID string) (clusterID, clusterName string, err error) {
 	// Create the client for the OCM API
 	connection, err := ocm.NewConnection().Build()
 	if err != nil {
@@ -141,10 +141,10 @@ func (*DefaultOCMInterfaceImpl) GetServiceCluster(targetClusterId string) (clust
 	}
 	defer connection.Close()
 
-	var svcClusterId, svcClusterName, mgmtCluster string
+	var svcClusterID, svcClusterName, mgmtCluster string
 	// If given cluster is hypershift hosted cluster
 	hypershiftResp, err := connection.ClustersMgmt().V1().Clusters().
-		Cluster(targetClusterId).
+		Cluster(targetClusterID).
 		Hypershift().
 		Get().
 		Send()
@@ -153,7 +153,7 @@ func (*DefaultOCMInterfaceImpl) GetServiceCluster(targetClusterId string) (clust
 	} else {
 		// If given cluster is management cluster
 		mgmtClusterResp, err := connection.OSDFleetMgmt().V1().ManagementClusters().List().
-			Parameter("search", fmt.Sprintf("cluster_id='%s'", targetClusterId)).
+			Parameter("search", fmt.Sprintf("cluster_id='%s'", targetClusterID)).
 			Send()
 		if err == nil && mgmtClusterResp.Size() > 0 {
 			mgmtCluster = mgmtClusterResp.Items().Get(0).Name()
@@ -161,7 +161,7 @@ func (*DefaultOCMInterfaceImpl) GetServiceCluster(targetClusterId string) (clust
 	}
 
 	if mgmtCluster == "" {
-		return "", "", fmt.Errorf("failed to lookup managing cluster for cluster %s", targetClusterId)
+		return "", "", fmt.Errorf("failed to lookup managing cluster for cluster %s", targetClusterID)
 	}
 
 	// Get the osd_fleet_mgmt reference for the given mgmt_cluster
@@ -180,10 +180,10 @@ func (*DefaultOCMInterfaceImpl) GetServiceCluster(targetClusterId string) (clust
 		if err != nil {
 			return "", "", fmt.Errorf("failed to get the service cluster id")
 		}
-		svcClusterId = svcClusterResp.Items().Get(0).ID()
+		svcClusterID = svcClusterResp.Items().Get(0).ID()
 	}
 
-	return svcClusterId, svcClusterName, nil
+	return svcClusterID, svcClusterName, nil
 }
 
 // GetOCMAccessToken initiates the OCM connection and returns the access token
@@ -229,7 +229,7 @@ func (*DefaultOCMInterfaceImpl) GetPullSecret() (string, error) {
 
 // GetClusterInfoByID calls the OCM to retrieve the cluster info
 // for a given internal cluster id.
-func (*DefaultOCMInterfaceImpl) GetClusterInfoByID(clusterId string) (*cmv1.Cluster, error) {
+func (*DefaultOCMInterfaceImpl) GetClusterInfoByID(clusterID string) (*cmv1.Cluster, error) {
 	// Create the client for the OCM API:
 	connection, err := ocm.NewConnection().Build()
 	if err != nil {
@@ -238,13 +238,13 @@ func (*DefaultOCMInterfaceImpl) GetClusterInfoByID(clusterId string) (*cmv1.Clus
 	defer connection.Close()
 
 	// Get the cluster info based on the cluster id
-	response, err := connection.ClustersMgmt().V1().Clusters().Cluster(clusterId).Get().Send()
+	response, err := connection.ClustersMgmt().V1().Clusters().Cluster(clusterID).Get().Send()
 	if err != nil {
-		return nil, fmt.Errorf("can't retrieve cluster for id '%s': %v", clusterId, err)
+		return nil, fmt.Errorf("can't retrieve cluster for id '%s': %v", clusterID, err)
 	}
 	cluster, ok := response.GetBody()
 	if !ok {
-		return nil, fmt.Errorf("can't retrieve cluster for id '%s', nil value", clusterId)
+		return nil, fmt.Errorf("can't retrieve cluster for id '%s', nil value", clusterID)
 	}
 	return cluster, nil
 }

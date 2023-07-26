@@ -39,14 +39,14 @@ func TestGetBackplaneConfiguration(t *testing.T) {
 	for name, tc := range map[string]struct {
 		envNeedToSet         bool
 		backplaneURLEnvVar   string
-		proxyUrl             string
+		proxyURL             string
 		expectedBackplaneURL string
 		expectedError        bool
 	}{
 		"backplane url set via env vars": {
 			envNeedToSet:         true,
 			backplaneURLEnvVar:   "https://api-backplane.apps.openshiftapps.com",
-			proxyUrl:             "http://squid.myproxy.com",
+			proxyURL:             "http://squid.myproxy.com",
 			expectedBackplaneURL: "https://api-backplane.apps.openshiftapps.com",
 			expectedError:        false,
 		},
@@ -56,7 +56,7 @@ func TestGetBackplaneConfiguration(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			if tc.envNeedToSet {
 				t.Setenv("BACKPLANE_URL", tc.backplaneURLEnvVar)
-				t.Setenv("HTTPS_PROXY", tc.proxyUrl)
+				t.Setenv("HTTPS_PROXY", tc.proxyURL)
 			}
 
 			bpConfig, err := GetBackplaneConfiguration()
@@ -78,9 +78,9 @@ func TestGetBackplaneConnection(t *testing.T) {
 			_, _ = w.Write([]byte("dummy data"))
 		}))
 
-		proxyUrl := "http://squid.myproxy.com"
+		proxyURL := "http://squid.myproxy.com"
 		t.Setenv("BACKPLANE_URL", svr.URL)
-		t.Setenv("HTTPS_PROXY", proxyUrl)
+		t.Setenv("HTTPS_PROXY", proxyURL)
 		config, err := GetBackplaneConfiguration()
 		if err != nil {
 			t.Error(err)

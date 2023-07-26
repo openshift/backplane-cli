@@ -133,7 +133,7 @@ var _ = Describe("console command", func() {
 	})
 
 	setupConfig := func() {
-		err := os.Setenv(info.BACKPLANE_PROXY_ENV_NAME, proxyURL)
+		err := os.Setenv(info.BackplaneProxyEnvName, proxyURL)
 		Expect(err).To(BeNil())
 
 		err = utils.CreateTempKubeConfig(&testKubeCfg)

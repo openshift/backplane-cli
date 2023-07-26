@@ -22,7 +22,7 @@ var (
 )
 
 const (
-	gitHubApiEndPoint = "https://api.github.com/repos/openshift/backplane-cli"
+	gitHubAPIEndPoint = "https://api.github.com/repos/openshift/backplane-cli"
 	assetTemplateName = "ocm-backplane_%s_%s_%s.tar.gz" // version, GOOS, GOARCH
 	timeout           = 10 * time.Second
 )
@@ -153,7 +153,7 @@ func (c *ClientConfig) Option(opts ...ClientOption) {
 }
 func (c *ClientConfig) Default() {
 	if c.BaseURL == "" {
-		c.BaseURL = gitHubApiEndPoint
+		c.BaseURL = gitHubAPIEndPoint
 	}
 }
 
@@ -171,7 +171,7 @@ type OSConfig struct {
 func (osConfig *OSConfig) FindAssetURL(latestVersion upgrade.Release) (string, bool) {
 	for _, asset := range latestVersion.Assets {
 		if osConfig.isMatchingArchive(asset, latestVersion.TagName) {
-			return asset.DownloadUrl, true
+			return asset.DownloadURL, true
 		}
 
 	}

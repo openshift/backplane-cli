@@ -1,8 +1,9 @@
-package awsUtil
+package awsutil
 
 import (
 	"encoding/json"
 	"fmt"
+
 	"sigs.k8s.io/yaml"
 )
 
@@ -11,7 +12,7 @@ export AWS_SECRET_ACCESS_KEY=%s
 export AWS_SESSION_TOKEN=%s`
 
 type AWSCredentialsResponse struct {
-	AccessKeyId     string `json:"AccessKeyId" yaml:"AccessKeyId"`
+	AccessKeyID     string `json:"AccessKeyID" yaml:"AccessKeyID"`
 	SecretAccessKey string `json:"SecretAccessKey" yaml:"SecretAccessKey"`
 	SessionToken    string `json:"SessionToken" yaml:"SessionToken"`
 	Region          string `json:"Region,omitempty" yaml:"Region,omitempty"`
@@ -19,7 +20,7 @@ type AWSCredentialsResponse struct {
 }
 
 func (r AWSCredentialsResponse) EnvFormat() string {
-	return fmt.Sprintf(awsExportFormat, r.AccessKeyId, r.SecretAccessKey, r.SessionToken)
+	return fmt.Sprintf(awsExportFormat, r.AccessKeyID, r.SecretAccessKey, r.SessionToken)
 }
 
 func (r AWSCredentialsResponse) RenderOutput(outputFormat string) (string, error) {

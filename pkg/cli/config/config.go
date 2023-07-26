@@ -21,7 +21,7 @@ type BackplaneConfiguration struct {
 // GetConfigFilePath returns the Backplane CLI configuration filepath
 func GetConfigFilePath() (string, error) {
 	// Check if user has explicitly defined backplane config path
-	path, found := os.LookupEnv(info.BACKPLANE_CONFIG_PATH_ENV_NAME)
+	path, found := os.LookupEnv(info.BackplaneConfigPathEnvName)
 	if found {
 		return path, nil
 	}
@@ -31,7 +31,7 @@ func GetConfigFilePath() (string, error) {
 		return "", err
 	}
 
-	configFilePath := filepath.Join(UserHomeDir, info.BACKPLANE_CONFIG_DEFAULT_FILE_PATH, info.BACKPLANE_CONFIG_DEFAULT_FILE_NAME)
+	configFilePath := filepath.Join(UserHomeDir, info.BackplaneConfigDefaultFilePath, info.BackplaneConfigDefaultFileName)
 
 	return configFilePath, nil
 }
@@ -57,13 +57,13 @@ func GetBackplaneConfiguration() (bpConfig BackplaneConfiguration, err error) {
 	}
 
 	// Check if user has explicitly defined backplane URL; it has higher precedence over the config file
-	err = viper.BindEnv("url", info.BACKPLANE_URL_ENV_NAME)
+	err = viper.BindEnv("url", info.BackplaneURLEnvName)
 	if err != nil {
 		return bpConfig, err
 	}
 
 	// Check if user has explicitly defined proxy; it has higher precedence over the config file
-	err = viper.BindEnv("proxy-url", info.BACKPLANE_PROXY_ENV_NAME)
+	err = viper.BindEnv("proxy-url", info.BackplaneProxyEnvName)
 	if err != nil {
 		return bpConfig, err
 	}
@@ -79,7 +79,7 @@ func GetBackplaneConfiguration() (bpConfig BackplaneConfiguration, err error) {
 func (config BackplaneConfiguration) CheckAPIConnection() error {
 
 	// make test api connection
-	connectionOk, err := config.testHttpRequestToBackplaneAPI()
+	connectionOk, err := config.testHTTPRequestToBackplaneAPI()
 
 	if !connectionOk {
 		return err
@@ -88,18 +88,18 @@ func (config BackplaneConfiguration) CheckAPIConnection() error {
 	return nil
 }
 
-// testHttpRequestToBackplaneAPI returns status of the the API connection
-func (config BackplaneConfiguration) testHttpRequestToBackplaneAPI() (bool, error) {
+// testHTTPRequestToBackplaneAPI returns status of the API connection
+func (config BackplaneConfiguration) testHTTPRequestToBackplaneAPI() (bool, error) {
 	client := http.Client{
 		Timeout: 5 * time.Second,
 	}
 
 	if config.ProxyURL != "" {
-		proxyUrl, err := url.Parse(config.ProxyURL)
+		proxyURL, err := url.Parse(config.ProxyURL)
 		if err != nil {
 			return false, err
 		}
-		http.DefaultTransport = &http.Transport{Proxy: http.ProxyURL(proxyUrl)}
+		http.DefaultTransport = &http.Transport{Proxy: http.ProxyURL(proxyURL)}
 	}
 
 	req, err := http.NewRequest("HEAD", config.URL, nil)

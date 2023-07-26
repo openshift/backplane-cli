@@ -15,6 +15,7 @@ import (
 	"sigs.k8s.io/yaml"
 
 	BackplaneApi "github.com/openshift/backplane-api/pkg/client"
+
 	"github.com/openshift/backplane-cli/pkg/cli/config"
 	"github.com/openshift/backplane-cli/pkg/utils"
 )
@@ -103,13 +104,13 @@ func runConsole(cmd *cobra.Command, argv []string) (err error) {
 		clusterKey = clusterInfo.ClusterID
 	}
 
-	clusterId, clusterName, err := utils.DefaultOCMInterface.GetTargetCluster(clusterKey)
+	clusterID, clusterName, err := utils.DefaultOCMInterface.GetTargetCluster(clusterKey)
 	if err != nil {
 		return err
 	}
 
 	logger.WithFields(logger.Fields{
-		"ID":   clusterId,
+		"ID":   clusterID,
 		"Name": clusterName}).Infoln("Target cluster")
 
 	// ============Get Backplane URl ==========================
@@ -130,8 +131,8 @@ func runConsole(cmd *cobra.Command, argv []string) (err error) {
 		logger.Infof("Using backplane URL: %s\n", bpURL)
 	}
 
-	// ======== Get cloudconsole from backplane API ============
-	response, err := getCloudConsole(bpURL, clusterId)
+	// ======== Get cloud console from backplane API ============
+	response, err := getCloudConsole(bpURL, clusterID)
 	if err != nil {
 		return err
 	}
@@ -160,13 +161,13 @@ func validateParams(argv []string) (err error) {
 }
 
 // getCloudConsole returns console response calling to public Backplane API
-func getCloudConsole(backplaneURL string, clusterId string) (*ConsoleResponse, error) {
+func getCloudConsole(backplaneURL string, clusterID string) (*ConsoleResponse, error) {
 	logger.Debugln("Getting Cloud Console")
 	client, err := utils.DefaultClientUtils.GetBackplaneClient(backplaneURL)
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.GetCloudConsole(context.TODO(), clusterId)
+	resp, err := client.GetCloudConsole(context.TODO(), clusterID)
 	if err != nil {
 		return nil, err
 	}

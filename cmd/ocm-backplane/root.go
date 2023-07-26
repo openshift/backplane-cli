@@ -19,6 +19,9 @@ package main
 import (
 	"os"
 
+	log "github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
+
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/cloud"
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/config"
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/console"
@@ -34,8 +37,6 @@ import (
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/upgrade"
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/version"
 	"github.com/openshift/backplane-cli/pkg/cli/globalflags"
-	log "github.com/sirupsen/logrus"
-	"github.com/spf13/cobra"
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -69,11 +70,11 @@ func init() {
 	rootCmd.AddCommand(elevate.ElevateCmd)
 	rootCmd.AddCommand(login.LoginCmd)
 	rootCmd.AddCommand(logout.LogoutCmd)
-	rootCmd.AddCommand(managedJob.NewManagedJobCmd())
+	rootCmd.AddCommand(managedjob.NewManagedJobCmd())
 	rootCmd.AddCommand(script.NewScriptCmd())
 	rootCmd.AddCommand(status.StatusCmd)
 	rootCmd.AddCommand(session.NewCmdSession())
-	rootCmd.AddCommand(testJob.NewTestJobCommand())
+	rootCmd.AddCommand(testjob.NewTestJobCommand())
 	rootCmd.AddCommand(upgrade.UpgradeCmd)
 	rootCmd.AddCommand(version.VersionCmd)
 	rootCmd.AddCommand(monitoring.MonitoringCmd)

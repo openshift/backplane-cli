@@ -9,14 +9,15 @@ import (
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/spf13/cobra"
+	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/tools/clientcmd/api"
+
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/login"
 	"github.com/openshift/backplane-cli/pkg/client/mocks"
 	"github.com/openshift/backplane-cli/pkg/info"
 	"github.com/openshift/backplane-cli/pkg/utils"
 	mocks2 "github.com/openshift/backplane-cli/pkg/utils/mocks"
-	"github.com/spf13/cobra"
-	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/client-go/tools/clientcmd/api"
 )
 
 func MakeIoReader(s string) io.ReadCloser {
@@ -33,10 +34,10 @@ var _ = Describe("Logout command", func() {
 		mockOcmInterface   *mocks2.MockOCMInterface
 		mockClientUtil     *mocks2.MockClientUtils
 
-		testClusterId   string
+		testClusterID   string
 		testToken       string
-		trueClusterId   string
-		backplaneAPIUri string
+		trueClusterID   string
+		backplaneAPIURI string
 
 		fakeResp *http.Response
 
@@ -59,10 +60,10 @@ var _ = Describe("Logout command", func() {
 
 		mockClientWithResp.EXPECT().LoginClusterWithResponse(gomock.Any(), gomock.Any()).Return(nil, nil).Times(0)
 
-		testClusterId = "test123"
+		testClusterID = "test123"
 		testToken = "hello123"
-		trueClusterId = "trueID123"
-		backplaneAPIUri = "https://api.integration.backplane.example.com"
+		trueClusterID = "trueID123"
+		backplaneAPIURI = "https://api.integration.backplane.example.com"
 
 		fakeResp = &http.Response{
 			Body:       MakeIoReader(`{"proxy_uri":"proxy", "statusCode":200, "message":"msg"}`),
@@ -109,12 +110,12 @@ var _ = Describe("Logout command", func() {
 			CurrentContext: "default/myopenshiftcluster/example.openshift",
 		}
 
-		os.Setenv(info.BACKPLANE_URL_ENV_NAME, backplaneAPIUri)
+		os.Setenv(info.BackplaneURLEnvName, backplaneAPIURI)
 	})
 
 	AfterEach(func() {
 		utils.RemoveTempKubeConfig()
-		os.Setenv(info.BACKPLANE_URL_ENV_NAME, "")
+		os.Setenv(info.BackplaneURLEnvName, "")
 		mockCtrl.Finish()
 	})
 
@@ -124,13 +125,13 @@ var _ = Describe("Logout command", func() {
 
 			err := utils.CreateTempKubeConfig(&kubeConfig)
 			Expect(err).To(BeNil())
-			mockOcmInterface.EXPECT().GetTargetCluster(testClusterId).Return(trueClusterId, testClusterId, nil).AnyTimes()
-			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterId)).Return(false, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, testClusterID, nil).AnyTimes()
+			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
-			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken(backplaneAPIUri, testToken).Return(mockClient, nil).AnyTimes()
-			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(trueClusterId)).Return(fakeResp, nil).AnyTimes()
+			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken(backplaneAPIURI, testToken).Return(mockClient, nil).AnyTimes()
+			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(trueClusterID)).Return(fakeResp, nil).AnyTimes()
 
-			loginCmd.SetArgs([]string{testClusterId})
+			loginCmd.SetArgs([]string{testClusterID})
 			err = loginCmd.Execute()
 
 			Expect(err).To(BeNil())

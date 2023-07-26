@@ -12,14 +12,14 @@ import (
 var _ = Describe("Login Kube Config test", func() {
 
 	var (
-		testClusterId string
+		testClusterID string
 		kubeConfig    api.Config
 		kubePath      string
 	)
 
 	BeforeEach(func() {
 
-		testClusterId = "test123"
+		testClusterID = "test123"
 		kubeConfig = api.Config{
 			Kind:        "Config",
 			APIVersion:  "v1",
@@ -41,10 +41,10 @@ var _ = Describe("Login Kube Config test", func() {
 
 			err := SetKubeConfigBasePath(kubePath)
 			Expect(err).To(BeNil())
-			path, err := CreateClusterKubeConfig(testClusterId, kubeConfig)
+			path, err := CreateClusterKubeConfig(testClusterID, kubeConfig)
 
 			Expect(err).To(BeNil())
-			Expect(path).Should(ContainSubstring(testClusterId))
+			Expect(path).Should(ContainSubstring(testClusterID))
 
 			//check file is exist
 			_, err = os.Stat(path)
@@ -58,7 +58,7 @@ var _ = Describe("Login Kube Config test", func() {
 			err := SetKubeConfigBasePath(kubePath)
 			Expect(err).To(BeNil())
 
-			path, err := CreateClusterKubeConfig(testClusterId, kubeConfig)
+			path, err := CreateClusterKubeConfig(testClusterID, kubeConfig)
 			Expect(err).To(BeNil())
 
 			// check file is exist
@@ -66,7 +66,7 @@ var _ = Describe("Login Kube Config test", func() {
 			Expect(err).To(BeNil())
 
 			// delete kube config
-			err = RemoveClusterKubeConfig(testClusterId)
+			err = RemoveClusterKubeConfig(testClusterID)
 			Expect(err).To(BeNil())
 
 			// check file is not exist

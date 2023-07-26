@@ -38,8 +38,8 @@ var _ = Describe("Cloud console command", func() {
 		mockClientUtil     *mocks2.MockClientUtils
 		mockClusterUtils   *mocks2.MockClusterUtils
 
-		trueClusterId string
-		proxyUri      string
+		trueClusterID string
+		proxyURI      string
 		credentialAWS string
 		credentialGcp string
 
@@ -47,7 +47,7 @@ var _ = Describe("Cloud console command", func() {
 		fakeGCloudResp        *http.Response
 		fakeBrokenAWSResp     *http.Response
 		fakeBrokenGCPResp     *http.Response
-		fakeMalformedJsonResp *http.Response
+		fakeMalformedJSONResp *http.Response
 	)
 
 	BeforeEach(func() {
@@ -65,8 +65,8 @@ var _ = Describe("Cloud console command", func() {
 		utils.DefaultClusterUtils = mockClusterUtils
 		utils.DefaultClientUtils = mockClientUtil
 
-		trueClusterId = "trueID123"
-		proxyUri = "https://shard.apps"
+		trueClusterID = "trueID123"
+		proxyURI = "https://shard.apps"
 		credentialAWS = "fake aws credential"
 		credentialGcp = "fake gcp credential"
 
@@ -92,14 +92,14 @@ var _ = Describe("Cloud console command", func() {
 		}
 		fakeGCloudResp.Header.Add("Content-Type", "json")
 
-		fakeMalformedJsonResp = &http.Response{
+		fakeMalformedJSONResp = &http.Response{
 			Body: MakeIoReader(
 				`{"proxy_uri":proxy"}`,
 			),
 			Header:     map[string][]string{},
 			StatusCode: http.StatusOK,
 		}
-		fakeMalformedJsonResp.Header.Add("Content-Type", "json")
+		fakeMalformedJSONResp.Header.Add("Content-Type", "json")
 
 		// Define broken AWS response
 		// https://stackoverflow.com/questions/32708717/go-when-will-json-unmarshal-to-struct-return-error
@@ -136,11 +136,11 @@ var _ = Describe("Cloud console command", func() {
 
 		// Disabled log output
 		log.SetOutput(io.Discard)
-		os.Setenv(info.BACKPLANE_URL_ENV_NAME, proxyUri)
+		os.Setenv(info.BackplaneURLEnvName, proxyURI)
 	})
 
 	AfterEach(func() {
-		os.Setenv(info.BACKPLANE_URL_ENV_NAME, "")
+		os.Setenv(info.BackplaneURLEnvName, "")
 		mockCtrl.Finish()
 	})
 
@@ -148,10 +148,10 @@ var _ = Describe("Cloud console command", func() {
 
 		It("should return AWS cloud credential", func() {
 
-			mockClientUtil.EXPECT().GetBackplaneClient(proxyUri).Return(mockClient, nil).AnyTimes()
-			mockClient.EXPECT().GetCloudCredentials(gomock.Any(), trueClusterId).Return(fakeAWSResp, nil)
+			mockClientUtil.EXPECT().GetBackplaneClient(proxyURI).Return(mockClient, nil).AnyTimes()
+			mockClient.EXPECT().GetCloudCredentials(gomock.Any(), trueClusterID).Return(fakeAWSResp, nil)
 
-			crdentialResponse, err := getCloudCredential(proxyUri, trueClusterId)
+			crdentialResponse, err := getCloudCredential(proxyURI, trueClusterID)
 			Expect(err).To(BeNil())
 
 			Expect(crdentialResponse.JSON200).NotTo(BeNil())
@@ -161,9 +161,9 @@ var _ = Describe("Cloud console command", func() {
 		It("should fail when AWS Unavailable", func() {
 			fakeAWSResp.StatusCode = http.StatusInternalServerError
 
-			mockClientUtil.EXPECT().GetBackplaneClient(proxyUri).Return(mockClient, nil).AnyTimes()
-			mockClient.EXPECT().GetCloudCredentials(gomock.Any(), trueClusterId).Return(fakeAWSResp, nil)
-			_, err := getCloudCredential(proxyUri, trueClusterId)
+			mockClientUtil.EXPECT().GetBackplaneClient(proxyURI).Return(mockClient, nil).AnyTimes()
+			mockClient.EXPECT().GetCloudCredentials(gomock.Any(), trueClusterID).Return(fakeAWSResp, nil)
+			_, err := getCloudCredential(proxyURI, trueClusterID)
 			Expect(err).NotTo(BeNil())
 
 			Expect(err.Error()).To(ContainSubstring("error from backplane: \n Status Code: 500\n"))
@@ -173,9 +173,9 @@ var _ = Describe("Cloud console command", func() {
 		It("should fail when GCP Unavailable", func() {
 			fakeGCloudResp.StatusCode = http.StatusInternalServerError
 
-			mockClientUtil.EXPECT().GetBackplaneClient(proxyUri).Return(mockClient, nil).AnyTimes()
-			mockClient.EXPECT().GetCloudCredentials(gomock.Any(), trueClusterId).Return(fakeGCloudResp, nil)
-			_, err := getCloudCredential(proxyUri, trueClusterId)
+			mockClientUtil.EXPECT().GetBackplaneClient(proxyURI).Return(mockClient, nil).AnyTimes()
+			mockClient.EXPECT().GetCloudCredentials(gomock.Any(), trueClusterID).Return(fakeGCloudResp, nil)
+			_, err := getCloudCredential(proxyURI, trueClusterID)
 			Expect(err).NotTo(BeNil())
 
 			Expect(err.Error()).To(ContainSubstring("error from backplane: \n Status Code: 500\n"))
@@ -183,9 +183,9 @@ var _ = Describe("Cloud console command", func() {
 		})
 
 		It("should fail when we can't parse the response from backplane", func() {
-			mockClientUtil.EXPECT().GetBackplaneClient(proxyUri).Return(mockClient, nil).AnyTimes()
-			mockClient.EXPECT().GetCloudCredentials(gomock.Any(), trueClusterId).Return(fakeMalformedJsonResp, nil)
-			_, err := getCloudCredential(proxyUri, trueClusterId)
+			mockClientUtil.EXPECT().GetBackplaneClient(proxyURI).Return(mockClient, nil).AnyTimes()
+			mockClient.EXPECT().GetCloudCredentials(gomock.Any(), trueClusterID).Return(fakeMalformedJSONResp, nil)
+			_, err := getCloudCredential(proxyURI, trueClusterID)
 			Expect(err).NotTo(BeNil())
 
 			Expect(err.Error()).To(ContainSubstring(fmt.Errorf("unable to parse response body from backplane:\n  Status Code: %d", 200).Error()))
@@ -195,9 +195,9 @@ var _ = Describe("Cloud console command", func() {
 		It("should fail for unauthorized BP-API", func() {
 			fakeAWSResp.StatusCode = http.StatusUnauthorized
 
-			mockClientUtil.EXPECT().GetBackplaneClient(proxyUri).Return(mockClient, nil).AnyTimes()
-			mockClient.EXPECT().GetCloudCredentials(gomock.Any(), trueClusterId).Return(fakeAWSResp, nil)
-			_, err := getCloudCredential(proxyUri, trueClusterId)
+			mockClientUtil.EXPECT().GetBackplaneClient(proxyURI).Return(mockClient, nil).AnyTimes()
+			mockClient.EXPECT().GetCloudCredentials(gomock.Any(), trueClusterID).Return(fakeAWSResp, nil)
+			_, err := getCloudCredential(proxyURI, trueClusterID)
 			Expect(err).NotTo(BeNil())
 
 			Expect(err.Error()).Should(ContainSubstring("error from backplane: \n Status Code: 401\n"))
@@ -315,7 +315,7 @@ var _ = Describe("Cloud console command", func() {
 
 	Context("test renderCloudCredentials", func() {
 		creds := AWSCredentialsResponse{
-			AccessKeyId:     "foo",
+			AccessKeyID:     "foo",
 			SecretAccessKey: "bar",
 			SessionToken:    "baz",
 			Region:          "quux",
@@ -349,7 +349,7 @@ var _ = Describe("Cloud console command", func() {
 	Context("TestAWSCredentialsResponseString(", func() {
 		It("It formats the output correctly", func() {
 			r := &AWSCredentialsResponse{
-				AccessKeyId:     "12345",
+				AccessKeyID:     "12345",
 				SecretAccessKey: "56789",
 				SessionToken:    "sessiontoken",
 				Region:          "region",
@@ -357,7 +357,7 @@ var _ = Describe("Cloud console command", func() {
 			}
 
 			formattedcreds := `Temporary Credentials:
-  AccessKeyId: 12345
+  AccessKeyID: 12345
   SecretAccessKey: 56789
   SessionToken: sessiontoken
   Region: region
@@ -368,7 +368,7 @@ var _ = Describe("Cloud console command", func() {
 	Context("TestGCPCredentialsResponseString", func() {
 		It("It formats the output correctly", func() {
 			r := &GCPCredentialsResponse{
-				ProjectId: "foo",
+				ProjectID: "foo",
 			}
 			expect := `If this is your first time, run "gcloud auth login" and then
 gcloud config set project foo`
@@ -379,7 +379,7 @@ gcloud config set project foo`
 	Context("TestAWSCredentialsResponseFmtEformattedcredsxport", func() {
 		It("It formats the output correctly", func() {
 			r := &AWSCredentialsResponse{
-				AccessKeyId:     "foo",
+				AccessKeyID:     "foo",
 				SecretAccessKey: "bar",
 				SessionToken:    "baz",
 				Region:          "quux",
@@ -396,7 +396,7 @@ export AWS_DEFAULT_REGION=quux`
 	Context("TestGCPCredentialsResponseFmtExport", func() {
 		It("It formats the output correctly", func() {
 			r := &GCPCredentialsResponse{
-				ProjectId: "foo",
+				ProjectID: "foo",
 			}
 
 			gcpExportFormatOut := `export CLOUDSDK_CORE_PROJECT=foo`

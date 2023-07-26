@@ -1,4 +1,4 @@
-package managedJob
+package managedjob
 
 import (
 	"errors"
@@ -8,13 +8,14 @@ import (
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/spf13/cobra"
+	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/tools/clientcmd/api"
+
 	"github.com/openshift/backplane-cli/pkg/client/mocks"
 	"github.com/openshift/backplane-cli/pkg/info"
 	"github.com/openshift/backplane-cli/pkg/utils"
 	mocks2 "github.com/openshift/backplane-cli/pkg/utils/mocks"
-	"github.com/spf13/cobra"
-	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/client-go/tools/clientcmd/api"
 )
 
 var _ = Describe("managedJob get command", func() {
@@ -25,11 +26,11 @@ var _ = Describe("managedJob get command", func() {
 		mockOcmInterface *mocks2.MockOCMInterface
 		mockClientUtil   *mocks2.MockClientUtils
 
-		testClusterId string
+		testClusterID string
 		testToken     string
-		trueClusterId string
-		proxyUri      string
-		testJobId     string
+		trueClusterID string
+		proxyURI      string
+		testJobID     string
 
 		fakeResp         *http.Response
 		fakeRespMultiple *http.Response
@@ -47,11 +48,11 @@ var _ = Describe("managedJob get command", func() {
 		mockClientUtil = mocks2.NewMockClientUtils(mockCtrl)
 		utils.DefaultClientUtils = mockClientUtil
 
-		testClusterId = "test123"
+		testClusterID = "test123"
 		testToken = "hello123"
-		trueClusterId = "trueID123"
-		proxyUri = "https://shard.apps"
-		testJobId = "jid123"
+		trueClusterID = "trueID123"
+		proxyURI = "https://shard.apps"
+		testJobID = "jid123"
 
 		sut = NewManagedJobCmd()
 
@@ -118,66 +119,66 @@ var _ = Describe("managedJob get command", func() {
 		// Clear config file
 		_ = clientcmd.ModifyConfig(clientcmd.NewDefaultPathOptions(), api.Config{}, true)
 
-		os.Setenv(info.BACKPLANE_URL_ENV_NAME, proxyUri)
+		os.Setenv(info.BackplaneURLEnvName, proxyURI)
 	})
 
 	AfterEach(func() {
-		os.Setenv(info.BACKPLANE_URL_ENV_NAME, "")
+		os.Setenv(info.BackplaneURLEnvName, "")
 		mockCtrl.Finish()
 	})
 
 	Context("get a single managed job", func() {
 		It("when running with a simple case should work as expected for single job", func() {
 			// It should query for the internal cluster id first
-			mockOcmInterface.EXPECT().GetTargetCluster(testClusterId).Return(trueClusterId, testClusterId, nil)
+			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, testClusterID, nil)
 			// Then it will look for the backplane shard
-			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterId)).Return(false, nil).AnyTimes()
+			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
-			mockClientUtil.EXPECT().MakeRawBackplaneAPIClient(proxyUri).Return(mockClient, nil)
-			mockClient.EXPECT().GetRun(gomock.Any(), trueClusterId, gomock.Eq(testJobId)).Return(fakeResp, nil)
+			mockClientUtil.EXPECT().MakeRawBackplaneAPIClient(proxyURI).Return(mockClient, nil)
+			mockClient.EXPECT().GetRun(gomock.Any(), trueClusterID, gomock.Eq(testJobID)).Return(fakeResp, nil)
 
-			sut.SetArgs([]string{"get", testJobId, "--cluster-id", testClusterId})
+			sut.SetArgs([]string{"get", testJobID, "--cluster-id", testClusterID})
 			err := sut.Execute()
 
 			Expect(err).To(BeNil())
 		})
 
 		It("should respect url flag", func() {
-			mockOcmInterface.EXPECT().GetTargetCluster(testClusterId).Return(trueClusterId, testClusterId, nil)
+			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, testClusterID, nil)
 			// Then it will look for the backplane shard
-			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterId)).Return(false, nil).AnyTimes()
+			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
 			mockClientUtil.EXPECT().MakeRawBackplaneAPIClient("https://newbackplane.url").Return(mockClient, nil)
-			mockClient.EXPECT().GetRun(gomock.Any(), trueClusterId, gomock.Eq(testJobId)).Return(fakeResp, nil)
+			mockClient.EXPECT().GetRun(gomock.Any(), trueClusterID, gomock.Eq(testJobID)).Return(fakeResp, nil)
 
-			sut.SetArgs([]string{"get", testJobId, "--cluster-id", testClusterId, "--url", "https://newbackplane.url"})
+			sut.SetArgs([]string{"get", testJobID, "--cluster-id", testClusterID, "--url", "https://newbackplane.url"})
 			err := sut.Execute()
 
 			Expect(err).To(BeNil())
 		})
 
 		It("should fail when backplane did not return a 200", func() {
-			mockOcmInterface.EXPECT().GetTargetCluster(testClusterId).Return(trueClusterId, testClusterId, nil)
-			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterId)).Return(false, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, testClusterID, nil)
+			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
-			mockClientUtil.EXPECT().MakeRawBackplaneAPIClient(proxyUri).Return(mockClient, nil)
-			mockClient.EXPECT().GetRun(gomock.Any(), trueClusterId, gomock.Eq(testJobId)).Return(nil, errors.New("err"))
+			mockClientUtil.EXPECT().MakeRawBackplaneAPIClient(proxyURI).Return(mockClient, nil)
+			mockClient.EXPECT().GetRun(gomock.Any(), trueClusterID, gomock.Eq(testJobID)).Return(nil, errors.New("err"))
 
-			sut.SetArgs([]string{"get", testJobId, "--cluster-id", testClusterId})
+			sut.SetArgs([]string{"get", testJobID, "--cluster-id", testClusterID})
 			err := sut.Execute()
 
 			Expect(err).ToNot(BeNil())
 		})
 
 		It("should not work when backplane returns a non parsable response", func() {
-			mockOcmInterface.EXPECT().GetTargetCluster(testClusterId).Return(trueClusterId, testClusterId, nil)
-			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterId)).Return(false, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, testClusterID, nil)
+			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
-			mockClientUtil.EXPECT().MakeRawBackplaneAPIClient(proxyUri).Return(mockClient, nil)
+			mockClientUtil.EXPECT().MakeRawBackplaneAPIClient(proxyURI).Return(mockClient, nil)
 			fakeResp.Body = MakeIoReader("Sad")
-			mockClient.EXPECT().GetRun(gomock.Any(), trueClusterId, gomock.Eq(testJobId)).Return(fakeResp, errors.New("err"))
+			mockClient.EXPECT().GetRun(gomock.Any(), trueClusterID, gomock.Eq(testJobID)).Return(fakeResp, errors.New("err"))
 
-			sut.SetArgs([]string{"get", testJobId, "--cluster-id", testClusterId})
+			sut.SetArgs([]string{"get", testJobID, "--cluster-id", testClusterID})
 			err := sut.Execute()
 
 			Expect(err).ToNot(BeNil())
@@ -187,55 +188,55 @@ var _ = Describe("managedJob get command", func() {
 	Context("get a all managed jobs", func() {
 		It("when running with a simple case should work as expected", func() {
 			// It should query for the internal cluster id first
-			mockOcmInterface.EXPECT().GetTargetCluster(testClusterId).Return(trueClusterId, testClusterId, nil)
+			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, testClusterID, nil)
 			// Then it will look for the backplane shard
-			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterId)).Return(false, nil).AnyTimes()
+			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
-			mockClientUtil.EXPECT().MakeRawBackplaneAPIClient(proxyUri).Return(mockClient, nil)
-			mockClient.EXPECT().GetAllJobs(gomock.Any(), trueClusterId).Return(fakeRespMultiple, nil)
+			mockClientUtil.EXPECT().MakeRawBackplaneAPIClient(proxyURI).Return(mockClient, nil)
+			mockClient.EXPECT().GetAllJobs(gomock.Any(), trueClusterID).Return(fakeRespMultiple, nil)
 
-			sut.SetArgs([]string{"get", "--cluster-id", testClusterId})
+			sut.SetArgs([]string{"get", "--cluster-id", testClusterID})
 			err := sut.Execute()
 
 			Expect(err).To(BeNil())
 		})
 
 		It("should respect url flag", func() {
-			mockOcmInterface.EXPECT().GetTargetCluster(testClusterId).Return(trueClusterId, testClusterId, nil)
+			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, testClusterID, nil)
 			// Then it will look for the backplane shard
-			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterId)).Return(false, nil).AnyTimes()
+			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
 			mockClientUtil.EXPECT().MakeRawBackplaneAPIClient("https://newbackplane.url").Return(mockClient, nil)
-			mockClient.EXPECT().GetAllJobs(gomock.Any(), trueClusterId).Return(fakeRespMultiple, nil)
+			mockClient.EXPECT().GetAllJobs(gomock.Any(), trueClusterID).Return(fakeRespMultiple, nil)
 
-			sut.SetArgs([]string{"get", "--cluster-id", testClusterId, "--url", "https://newbackplane.url"})
+			sut.SetArgs([]string{"get", "--cluster-id", testClusterID, "--url", "https://newbackplane.url"})
 			err := sut.Execute()
 
 			Expect(err).To(BeNil())
 		})
 
 		It("should fail when backplane did not return a 200", func() {
-			mockOcmInterface.EXPECT().GetTargetCluster(testClusterId).Return(trueClusterId, testClusterId, nil)
-			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterId)).Return(false, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, testClusterID, nil)
+			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
-			mockClientUtil.EXPECT().MakeRawBackplaneAPIClient(proxyUri).Return(mockClient, nil)
-			mockClient.EXPECT().GetAllJobs(gomock.Any(), trueClusterId).Return(nil, errors.New("err"))
+			mockClientUtil.EXPECT().MakeRawBackplaneAPIClient(proxyURI).Return(mockClient, nil)
+			mockClient.EXPECT().GetAllJobs(gomock.Any(), trueClusterID).Return(nil, errors.New("err"))
 
-			sut.SetArgs([]string{"get", "--cluster-id", testClusterId})
+			sut.SetArgs([]string{"get", "--cluster-id", testClusterID})
 			err := sut.Execute()
 
 			Expect(err).ToNot(BeNil())
 		})
 
 		It("should not work when backplane returns a non parsable response", func() {
-			mockOcmInterface.EXPECT().GetTargetCluster(testClusterId).Return(trueClusterId, testClusterId, nil)
-			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterId)).Return(false, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, testClusterID, nil)
+			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
-			mockClientUtil.EXPECT().MakeRawBackplaneAPIClient(proxyUri).Return(mockClient, nil)
+			mockClientUtil.EXPECT().MakeRawBackplaneAPIClient(proxyURI).Return(mockClient, nil)
 			fakeRespMultiple.Body = MakeIoReader("Sad")
-			mockClient.EXPECT().GetAllJobs(gomock.Any(), trueClusterId).Return(fakeRespMultiple, errors.New("err"))
+			mockClient.EXPECT().GetAllJobs(gomock.Any(), trueClusterID).Return(fakeRespMultiple, errors.New("err"))
 
-			sut.SetArgs([]string{"get", "--cluster-id", testClusterId})
+			sut.SetArgs([]string{"get", "--cluster-id", testClusterID})
 			err := sut.Execute()
 
 			Expect(err).ToNot(BeNil())

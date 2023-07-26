@@ -1,28 +1,30 @@
-package awsUtil
+package awsutil
 
 import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
+	"net/url"
+	"time"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/aws/retry"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/aws/aws-sdk-go-v2/service/sts/types"
+
 	"github.com/openshift/backplane-cli/pkg/utils"
-	"net/http"
-	"net/url"
-	"time"
 )
 
-func StsClientWithProxy(proxyUrl string) (*sts.Client, error) {
+func StsClientWithProxy(proxyURL string) (*sts.Client, error) {
 	cfg, err := config.LoadDefaultConfig(context.TODO(),
 		config.WithRegion("us-east-1"), // We don't care about region here, but the API still wants to see one set
 		config.WithHTTPClient(&http.Client{
 			Transport: &http.Transport{
 				Proxy: func(*http.Request) (*url.URL, error) {
-					return url.Parse(proxyUrl)
+					return url.Parse(proxyURL)
 				},
 			},
 		}),
@@ -84,7 +86,7 @@ var DefaultSTSClientProviderFunc STSClientProviderFunc = func(optnFns ...func(op
 	return sts.NewFromConfig(cfg), nil
 }
 
-func AssumeRoleSequence(roleSessionName string, seedClient STSRoleAssumer, roleArnSequence []string, proxyUrl string, stsClientProviderFunc STSClientProviderFunc) (*types.Credentials, error) {
+func AssumeRoleSequence(roleSessionName string, seedClient STSRoleAssumer, roleArnSequence []string, proxyURL string, stsClientProviderFunc STSClientProviderFunc) (*types.Credentials, error) {
 	if len(roleArnSequence) == 0 {
 		return nil, errors.New("role ARN sequence cannot be empty")
 	}
@@ -105,7 +107,7 @@ func AssumeRoleSequence(roleSessionName string, seedClient STSRoleAssumer, roleA
 				config.WithHTTPClient(&http.Client{
 					Transport: &http.Transport{
 						Proxy: func(*http.Request) (*url.URL, error) {
-							return url.Parse(proxyUrl)
+							return url.Parse(proxyURL)
 						},
 					},
 				}),

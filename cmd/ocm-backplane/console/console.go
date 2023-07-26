@@ -263,16 +263,16 @@ func runConsole(cmd *cobra.Command, argv []string) (err error) {
 	if err != nil {
 		return err
 	}
-	clusterId := currentClusterInfo.ClusterID
+	clusterID := currentClusterInfo.ClusterID
 
-	consoleContainerName := fmt.Sprintf("console-%s", clusterId)
+	consoleContainerName := fmt.Sprintf("console-%s", clusterID)
 
 	err = checkAndFindContainerURL(consoleContainerName, containerEngine)
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("Starting console for cluster %s\n", clusterId)
+	fmt.Printf("Starting console for cluster %s\n", clusterID)
 
 	// Get the RESTconfig from the current kubeconfig context.
 	cf := genericclioptions.NewConfigFlags(true)
@@ -362,14 +362,14 @@ func runConsole(cmd *cobra.Command, argv []string) (err error) {
 	}
 
 	// Set proxy URL to the container
-	proxyUrl, err := getProxyUrl()
+	proxyURL, err := getProxyURL()
 	if err != nil {
 		return err
 	}
 
-	if proxyUrl != "" {
+	if proxyURL != "" {
 		engRunArgs = append(engRunArgs,
-			"--env", fmt.Sprintf("HTTPS_PROXY=%s", proxyUrl),
+			"--env", fmt.Sprintf("HTTPS_PROXY=%s", proxyURL),
 		)
 	}
 
@@ -389,13 +389,13 @@ func runConsole(cmd *cobra.Command, argv []string) (err error) {
 		consoleArgs.image,
 	)
 
-	c, err := utils.DefaultOCMInterface.GetClusterInfoByID(clusterId)
+	c, err := utils.DefaultOCMInterface.GetClusterInfoByID(clusterID)
 	if err != nil {
 		return err
 	}
 	p, ok := c.GetProduct()
 	if !ok {
-		return fmt.Errorf("Could not get product information")
+		return fmt.Errorf("could not get product information")
 	}
 
 	logger.WithField("Command", fmt.Sprintf("`%s %s`", containerEngine, strings.Join(pullArgs, " "))).Infoln("Pulling image")
@@ -408,10 +408,10 @@ func runConsole(cmd *cobra.Command, argv []string) (err error) {
 	}
 
 	branding := "dedicated"
-	documentationUrl := "https://docs.openshift.com/dedicated/4/"
+	documentationURL := "https://docs.openshift.com/dedicated/4/"
 	if p.ID() == "rosa" {
 		branding = "ocp"
-		documentationUrl = "https://docs.openshift.com/rosa/"
+		documentationURL = "https://docs.openshift.com/rosa/"
 	}
 
 	// Run the console container
@@ -421,7 +421,7 @@ func runConsole(cmd *cobra.Command, argv []string) (err error) {
 		"--public-dir=/opt/bridge/static",
 		"-base-address", fmt.Sprintf("http://127.0.0.1:%s", consoleArgs.port),
 		"-branding", branding,
-		"-documentation-base-url", documentationUrl,
+		"-documentation-base-url", documentationURL,
 		"-user-settings-location", "localstorage",
 		"-user-auth", "disabled",
 		"-k8s-mode", "off-cluster",
@@ -444,24 +444,24 @@ func runConsole(cmd *cobra.Command, argv []string) (err error) {
 	}
 
 	// Store the locally running console URL or splice it into a url provided in consoleArgs.url
-	consoleUrl, err := replaceConsoleUrl(fmt.Sprintf("http://127.0.0.1:%s", consoleArgs.port))
+	consoleURL, err := replaceConsoleURL(fmt.Sprintf("http://127.0.0.1:%s", consoleArgs.port))
 	if err != nil {
 		return fmt.Errorf("failed to replace url: %v", err)
 	}
 
-	fmt.Printf("== Console is available at %s ==\n\n", consoleUrl)
+	fmt.Printf("== Console is available at %s ==\n\n", consoleURL)
 	logger.WithField("Command", fmt.Sprintf("`%s %s`", containerEngine, strings.Join(containerArgs, " "))).Infoln("Running container")
 
 	if consoleArgs.openBrowser {
 		go func() {
 			err := wait.PollImmediate(time.Second, 5*time.Second, func() (bool, error) {
-				return utils.CheckHealth(fmt.Sprintf("%s/health", consoleUrl)), nil
+				return utils.CheckHealth(fmt.Sprintf("%s/health", consoleURL)), nil
 			})
 			if err != nil {
 				logger.Warnf("failed waiting for container to become ready: %s", err)
 				return
 			}
-			err = browser.OpenURL(consoleUrl)
+			err = browser.OpenURL(consoleURL)
 			if err != nil {
 				logger.Warnf("failed opening a browser: %s", err)
 			}
@@ -484,7 +484,7 @@ func runConsole(cmd *cobra.Command, argv []string) (err error) {
 // If a url is provided via consoleArgs.url, then the original url pointing to the homepage of the locally-running
 // console will have its scheme and host inserted into consoleArgs.url.
 // This is commonly used when trying to open a console url provided by PagerDuty or an end-user.
-func replaceConsoleUrl(original string) (string, error) {
+func replaceConsoleURL(original string) (string, error) {
 	if consoleArgs.url != "" {
 		o, err := url.Parse(original)
 		if err != nil {
@@ -508,16 +508,16 @@ func replaceConsoleUrl(original string) (string, error) {
 }
 
 // Get the proxy url
-func getProxyUrl() (proxyUrl string, err error) {
+func getProxyURL() (proxyURL string, err error) {
 	bpConfig, err := config.GetBackplaneConfiguration()
 
 	if err != nil {
 		return "", err
 	}
 
-	proxyUrl = bpConfig.ProxyURL
+	proxyURL = bpConfig.ProxyURL
 
-	return proxyUrl, nil
+	return proxyURL, nil
 }
 
 // getImageFromCluster get the image from the console deployment

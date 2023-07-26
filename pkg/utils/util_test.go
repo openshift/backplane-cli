@@ -65,61 +65,61 @@ func TestGetFreePort(t *testing.T) {
 func TestMatchBaseDomain(t *testing.T) {
 	tests := []struct {
 		name       string
-		longUrl    string
+		longURL    string
 		baseDomain string
 		expect     bool
 	}{
 		{
 			name:       "case-1",
-			longUrl:    "a.example.com",
+			longURL:    "a.example.com",
 			baseDomain: "example.com",
 			expect:     true,
 		},
 		{
 			name:       "case-2",
-			longUrl:    "a.b.c.example.com",
+			longURL:    "a.b.c.example.com",
 			baseDomain: "example.com",
 			expect:     true,
 		},
 		{
 			name:       "case-3",
-			longUrl:    "example.com",
+			longURL:    "example.com",
 			baseDomain: "example.com",
 			expect:     true,
 		},
 		{
 			name:       "case-4",
-			longUrl:    "a.example.com",
+			longURL:    "a.example.com",
 			baseDomain: "",
 			expect:     true,
 		},
 		{
 			name:       "case-5",
-			longUrl:    "",
+			longURL:    "",
 			baseDomain: "",
 			expect:     true,
 		},
 		{
 			name:       "case-6",
-			longUrl:    "",
+			longURL:    "",
 			baseDomain: "example.com",
 			expect:     false,
 		},
 		{
 			name:       "case-7",
-			longUrl:    "a.example.com.io",
+			longURL:    "a.example.com.io",
 			baseDomain: "example.com",
 			expect:     false,
 		},
 		{
 			name:       "case-8",
-			longUrl:    "a.b.c",
+			longURL:    "a.b.c",
 			baseDomain: "e.f.g",
 			expect:     false,
 		},
 		{
 			name:       "case-9",
-			longUrl:    "a",
+			longURL:    "a",
 			baseDomain: "a",
 			expect:     true,
 		},
@@ -127,7 +127,7 @@ func TestMatchBaseDomain(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := MatchBaseDomain(tt.longUrl, tt.baseDomain)
+			result := MatchBaseDomain(tt.longURL, tt.baseDomain)
 			if result != tt.expect {
 				t.Errorf("Expecting: %t, but get: %t", tt.expect, result)
 			}
