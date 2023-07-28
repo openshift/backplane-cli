@@ -3,15 +3,7 @@ package monitoring
 import (
 	"context"
 	"fmt"
-	"github.com/Masterminds/semver"
-	routev1typedclient "github.com/openshift/client-go/route/clientset/versioned/typed/route/v1"
-	userv1typedclient "github.com/openshift/client-go/user/clientset/versioned/typed/user/v1"
-	"github.com/pkg/browser"
-	logger "github.com/sirupsen/logrus"
 	"io"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	restclient "k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
 	"log"
 	"net"
 	"net/http"
@@ -19,16 +11,25 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/Masterminds/semver"
+	routev1typedclient "github.com/openshift/client-go/route/clientset/versioned/typed/route/v1"
+	userv1typedclient "github.com/openshift/client-go/user/clientset/versioned/typed/user/v1"
+	"github.com/pkg/browser"
+	logger "github.com/sirupsen/logrus"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	restclient "k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
+
 	"github.com/openshift/backplane-cli/pkg/cli/config"
 	"github.com/openshift/backplane-cli/pkg/utils"
 )
 
 const (
-	ALERTMANAGER            = "alertmanager"
-	PROMETHEUS              = "prometheus"
-	THANOS                  = "thanos"
-	GRAFANA                 = "grafana"
-	OPENSHIFT_MONITORING_NS = "openshift-monitoring"
+	ALERTMANAGER          = "alertmanager"
+	PROMETHEUS            = "prometheus"
+	THANOS                = "thanos"
+	GRAFANA               = "grafana"
+	OpenShiftMonitoringNS = "openshift-monitoring"
 )
 
 var (
@@ -36,7 +37,7 @@ var (
 		Namespace  string
 		Selector   string
 		Port       string
-		OriginUrl  string
+		OriginURL  string
 		ListenAddr string
 		Browser    bool
 		KeepAlive  bool
@@ -73,13 +74,13 @@ func (c Client) RunMonitoring(monitoringType string) error {
 
 	// set up monitoring Url if it's empty
 	if c.url == "" {
-		c.url, err = getBackplaneMonitoringUrl(monitoringType)
+		c.url, err = getBackplaneMonitoringURL(monitoringType)
 		if err != nil {
 			return err
 		}
 	}
 
-	mUrl, err := url.Parse(c.url)
+	mURL, err := url.Parse(c.url)
 	if err != nil {
 		return err
 	}
@@ -99,10 +100,10 @@ func (c Client) RunMonitoring(monitoringType string) error {
 	hasNs := len(MonitoringOpts.Namespace) != 0
 	hasAppSelector := len(MonitoringOpts.Selector) != 0
 	hasPort := len(MonitoringOpts.Port) != 0
-	hasUrl := len(MonitoringOpts.OriginUrl) != 0
+	hasURL := len(MonitoringOpts.OriginURL) != 0
 
-	// serveUrl is the port-forward url we print to the user in the end.
-	serveUrl, err := serveUrl(hasUrl, hasNs, cfg)
+	// serveURL is the port-forward url we print to the user in the end.
+	serveURL, err := serveURL(hasURL, hasNs, cfg)
 	if err != nil {
 		return err
 	}
@@ -129,23 +130,23 @@ func (c Client) RunMonitoring(monitoringType string) error {
 	}
 
 	// Add http proxy transport
-	proxyUrl, err := getProxyUrl()
+	proxyURL, err := getProxyURL()
 	if err != nil {
 		return err
 	}
-	if proxyUrl != "" {
-		proxyUrl, err := url.Parse(proxyUrl)
+	if proxyURL != "" {
+		proxyURL, err := url.Parse(proxyURL)
 		if err != nil {
 			return err
 		}
 		http.DefaultTransport = &http.Transport{
-			Proxy: http.ProxyURL(proxyUrl),
+			Proxy: http.ProxyURL(proxyURL),
 		}
 
-		logger.Debugf("Using backplane Proxy URL: %s\n", proxyUrl)
+		logger.Debugf("Using backplane Proxy URL: %s\n", proxyURL)
 	}
 
-	req = setProxyRequest(req, mUrl, name, accessToken, isGrafana, hasNs, hasAppSelector, hasPort)
+	req = setProxyRequest(req, mURL, name, accessToken, isGrafana, hasNs, hasAppSelector, hasPort)
 
 	resp, err := c.http.Do(req)
 	if err != nil {
@@ -162,7 +163,7 @@ func (c Client) RunMonitoring(monitoringType string) error {
 	// If the above test pass, we will construct a reverse proxy for the user
 	proxy := &httputil.ReverseProxy{
 		Director: func(req *http.Request) {
-			setProxyRequest(req, mUrl, name, accessToken, isGrafana, hasNs, hasAppSelector, hasPort)
+			setProxyRequest(req, mURL, name, accessToken, isGrafana, hasNs, hasAppSelector, hasPort)
 		},
 	}
 
@@ -184,10 +185,10 @@ func (c Client) RunMonitoring(monitoringType string) error {
 		return err
 	}
 
-	serveUrl.Host = addr
+	serveURL.Host = addr
 
 	if MonitoringOpts.Browser {
-		err = browser.OpenURL(serveUrl.String())
+		err = browser.OpenURL(serveURL.String())
 		if err != nil {
 			logger.Warnf("failed opening a browser: %s", err)
 		}
@@ -195,7 +196,7 @@ func (c Client) RunMonitoring(monitoringType string) error {
 
 	if MonitoringOpts.KeepAlive {
 		if !MonitoringOpts.Browser {
-			fmt.Printf("Serving %s at %s\n", monitoringType, serveUrl.String())
+			fmt.Printf("Serving %s at %s\n", monitoringType, serveURL.String())
 		}
 		return http.Serve(l, proxy) //#nosec: G114
 	} else {
@@ -204,27 +205,27 @@ func (c Client) RunMonitoring(monitoringType string) error {
 
 }
 
-// getBackplaneMonitoringUrl returns the backplane API monitoring URL based on monitoring type
-func getBackplaneMonitoringUrl(monitoringType string) (string, error) {
-	monitoringUrl := ""
+// getBackplaneMonitoringURL returns the backplane API monitoring URL based on monitoring type
+func getBackplaneMonitoringURL(monitoringType string) (string, error) {
+	monitoringURL := ""
 	cfg, err := clientcmd.BuildConfigFromFlags("", clientcmd.NewDefaultPathOptions().GetDefaultFilename())
 	if err != nil {
-		return monitoringUrl, err
+		return monitoringURL, err
 	}
 
 	// creates URL for serving
 	if !strings.Contains(cfg.Host, "backplane/cluster") {
-		return monitoringUrl, fmt.Errorf("the api server is not a backplane url, please make sure you login to the cluster using backplane")
+		return monitoringURL, fmt.Errorf("the api server is not a backplane url, please make sure you login to the cluster using backplane")
 	}
-	monitoringUrl = strings.Replace(cfg.Host, "backplane/cluster", fmt.Sprintf("backplane/%s", monitoringType), 1)
-	monitoringUrl = strings.TrimSuffix(monitoringUrl, "/")
-	return monitoringUrl, nil
+	monitoringURL = strings.Replace(cfg.Host, "backplane/cluster", fmt.Sprintf("backplane/%s", monitoringType), 1)
+	monitoringURL = strings.TrimSuffix(monitoringURL, "/")
+	return monitoringURL, nil
 }
 
 // Setting Headers, accessToken, port and selector
 func setProxyRequest(
 	req *http.Request,
-	proxyUrl *url.URL,
+	proxyURL *url.URL,
 	userName string,
 	accessToken *string,
 	isGrafana bool,
@@ -233,9 +234,9 @@ func setProxyRequest(
 	hasPort bool,
 ) *http.Request {
 	req.URL.Scheme = "https"
-	req.Host = proxyUrl.Host
-	req.URL.Host = proxyUrl.Host
-	req.URL.Path = singleJoiningSlash(proxyUrl.Path, req.URL.Path)
+	req.Host = proxyURL.Host
+	req.URL.Host = proxyURL.Host
+	req.URL.Path = singleJoiningSlash(proxyURL.Path, req.URL.Path)
 	if _, ok := req.Header["User-Agent"]; !ok {
 		// explicitly disable User-Agent so it's not set to default value
 		req.Header.Set("User-Agent", "")
@@ -270,8 +271,8 @@ func singleJoiningSlash(a, b string) string {
 	return a + b
 }
 
-// Check if a route of the originUrl exist in the namespace.
-func hasMatchRoute(namespace string, originUrl *url.URL, cfg *restclient.Config) bool {
+// Check if a route of the originURL exist in the namespace.
+func hasMatchRoute(namespace string, originURL *url.URL, cfg *restclient.Config) bool {
 	routeInterface, err := routev1typedclient.NewForConfig(cfg)
 	if err != nil {
 		logger.Warnf("cannot create route client-go interface %s", err)
@@ -286,7 +287,7 @@ func hasMatchRoute(namespace string, originUrl *url.URL, cfg *restclient.Config)
 		ri := rt.Status.Ingress
 		for _, ig := range ri {
 			logger.Debugf("found route ingress %s", ig.Host)
-			if utils.MatchBaseDomain(originUrl.Hostname(), ig.Host) {
+			if utils.MatchBaseDomain(originURL.Hostname(), ig.Host) {
 				return true
 			}
 		}
@@ -294,14 +295,14 @@ func hasMatchRoute(namespace string, originUrl *url.URL, cfg *restclient.Config)
 	return false
 }
 
-// serveUrl returns the port-forward url to the route
-func serveUrl(hasUrl, hasNs bool, cfg *restclient.Config) (*url.URL, error) {
-	serveUrl := &url.URL{
+// serveURL returns the port-forward url to the route
+func serveURL(hasURL, hasNs bool, cfg *restclient.Config) (*url.URL, error) {
+	serveURL := &url.URL{
 		Scheme: "http",
 	}
 
-	if hasUrl {
-		originUrl, err := url.Parse(MonitoringOpts.OriginUrl)
+	if hasURL {
+		originURL, err := url.Parse(MonitoringOpts.OriginURL)
 		if err != nil {
 			return nil, err
 		}
@@ -315,7 +316,7 @@ func serveUrl(hasUrl, hasNs bool, cfg *restclient.Config) (*url.URL, error) {
 			return nil, err
 		}
 		baseDomain := currentCluster.DNS().BaseDomain()
-		if !utils.MatchBaseDomain(originUrl.Hostname(), baseDomain) {
+		if !utils.MatchBaseDomain(originURL.Hostname(), baseDomain) {
 			return nil, fmt.Errorf("the basedomain %s of the current logged cluster %s does not match the provided url, please login to the corresponding cluster first",
 				baseDomain, currentClusterInfo.ClusterID)
 		}
@@ -325,37 +326,37 @@ func serveUrl(hasUrl, hasNs bool, cfg *restclient.Config) (*url.URL, error) {
 			return nil, fmt.Errorf("namepace should not be blank, please specify namespace by --namespace")
 		}
 
-		if !hasMatchRoute(MonitoringOpts.Namespace, originUrl, cfg) {
+		if !hasMatchRoute(MonitoringOpts.Namespace, originURL, cfg) {
 			return nil, fmt.Errorf("cannot find a matching route in namespace %s for the given url, please specify a correct namespace by --namespace",
 				MonitoringOpts.Namespace)
 		}
 
 		// append path and query to the url printed later
-		serveUrl.Path = originUrl.Path
-		serveUrl.RawQuery = originUrl.RawQuery
-		serveUrl.Fragment = originUrl.Fragment
-		return serveUrl, nil
+		serveURL.Path = originURL.Path
+		serveURL.RawQuery = originURL.RawQuery
+		serveURL.Fragment = originURL.Fragment
+		return serveURL, nil
 	}
 
-	return serveUrl, nil
+	return serveURL, nil
 }
 
-// getProxyUrl returns the proxy url
-func getProxyUrl() (proxyUrl string, err error) {
+// getProxyURL returns the proxy url
+func getProxyURL() (proxyURL string, err error) {
 	bpConfig, err := config.GetBackplaneConfiguration()
 
 	if err != nil {
 		return "", err
 	}
 
-	proxyUrl = bpConfig.ProxyURL
+	proxyURL = bpConfig.ProxyURL
 
-	return proxyUrl, nil
+	return proxyURL, nil
 }
 
 // validateClusterVersion checks the clusterversion based on namespace
 func validateClusterVersion(monitoringName string) error {
-	if MonitoringOpts.Namespace == OPENSHIFT_MONITORING_NS {
+	if MonitoringOpts.Namespace == OpenShiftMonitoringNS {
 		//checks cluster version
 		currentClusterInfo, err := utils.DefaultClusterUtils.GetBackplaneClusterFromConfig()
 		if err != nil {

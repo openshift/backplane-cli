@@ -1,4 +1,4 @@
-package managedJob
+package managedjob
 
 import (
 	"context"
@@ -20,7 +20,7 @@ var (
 		canonicalName string
 		params        []string
 		wait          bool
-		clusterId     string
+		clusterID     string
 		url           string
 		raw           bool
 		logs          bool
@@ -74,7 +74,7 @@ func runCreateManagedJob(cmd *cobra.Command, args []string) (err error) {
 	}
 
 	// ======== Initialize backplaneURL ========
-	bpCluster, err := utils.DefaultClusterUtils.GetBackplaneCluster(options.clusterId)
+	bpCluster, err := utils.DefaultClusterUtils.GetBackplaneCluster(options.clusterID)
 	if err != nil {
 		return err
 	}
@@ -88,7 +88,7 @@ func runCreateManagedJob(cmd *cobra.Command, args []string) (err error) {
 
 	backplaneHost := bpCluster.BackplaneHost
 	clusterID := bpCluster.ClusterID
-	options.clusterId = clusterID
+	options.clusterID = clusterID
 
 	if options.url != "" {
 		backplaneHost = options.url
@@ -143,7 +143,7 @@ func initParams(cmd *cobra.Command, argv []string) (err error) {
 	options.canonicalName = canonicalNameArg
 
 	// init Cluster key
-	options.clusterId, err = cmd.Flags().GetString("cluster-id")
+	options.clusterID, err = cmd.Flags().GetString("cluster-id")
 	if err != nil {
 		return err
 	}
@@ -181,7 +181,7 @@ func createJob(client BackplaneApi.ClientInterface) (*BackplaneApi.Job, error) {
 	}
 
 	// call create end point
-	resp, err := client.CreateJob(context.TODO(), options.clusterId, createJob)
+	resp, err := client.CreateJob(context.TODO(), options.clusterID, createJob)
 
 	if err != nil {
 		return nil, err
@@ -201,7 +201,7 @@ func createJob(client BackplaneApi.ClientInterface) (*BackplaneApi.Job, error) {
 	// render job details
 	fmt.Printf("%s\nJobId: %s\n", *createResp.JSON200.Message, *createResp.JSON200.JobId)
 	if options.raw {
-		_ = utils.RenderJsonBytes(createResp.JSON200)
+		_ = utils.RenderJSONBytes(createResp.JSON200)
 	}
 	return createResp.JSON200, nil
 }
@@ -273,7 +273,7 @@ func fetchJobLogs(client BackplaneApi.ClientInterface, job *BackplaneApi.Job) er
 	version := "v2"
 	follow := true
 
-	resp, err := client.GetJobLogs(context.TODO(), options.clusterId, *job.JobId, &BackplaneApi.GetJobLogsParams{Version: &version, Follow: &follow})
+	resp, err := client.GetJobLogs(context.TODO(), options.clusterID, *job.JobId, &BackplaneApi.GetJobLogsParams{Version: &version, Follow: &follow})
 	if err != nil {
 		return err
 	}
@@ -290,7 +290,7 @@ func fetchJobLogs(client BackplaneApi.ClientInterface, job *BackplaneApi.Job) er
 }
 
 func getJobStatus(client BackplaneApi.ClientInterface, job *BackplaneApi.Job) (BackplaneApi.JobStatusStatus, error) {
-	jobResp, err := client.GetRun(context.TODO(), options.clusterId, *job.JobId)
+	jobResp, err := client.GetRun(context.TODO(), options.clusterID, *job.JobId)
 
 	if err != nil {
 		return "", err

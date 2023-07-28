@@ -25,7 +25,7 @@ type Release struct {
 // ReleaseAsset defines the name and download url
 type ReleaseAsset struct {
 	Name        string `json:"name"`
-	DownloadUrl string `json:"browser_download_url"`
+	DownloadURL string `json:"browser_download_url"`
 }
 
 // GitServer defines generic functions for getting the latest release and archive

@@ -1,14 +1,15 @@
-package awsUtil
+package awsutil
 
 import (
 	"context"
 	"errors"
+	"reflect"
+	"testing"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/aws/aws-sdk-go-v2/service/sts/types"
-	"reflect"
-	"testing"
 )
 
 type STSRoleAssumerMock struct {

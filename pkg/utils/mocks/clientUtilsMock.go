@@ -109,16 +109,16 @@ func (mr *MockClientUtilsMockRecorder) MakeRawBackplaneAPIClientWithAccessToken(
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MakeRawBackplaneAPIClientWithAccessToken", reflect.TypeOf((*MockClientUtils)(nil).MakeRawBackplaneAPIClientWithAccessToken), arg0, arg1)
 }
 
-// SetClientProxyUrl mocks base method.
-func (m *MockClientUtils) SetClientProxyUrl(arg0 string) error {
+// SetClientProxyURL mocks base method.
+func (m *MockClientUtils) SetClientProxyURL(arg0 string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SetClientProxyUrl", arg0)
+	ret := m.ctrl.Call(m, "SetClientProxyURL", arg0)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// SetClientProxyUrl indicates an expected call of SetClientProxyUrl.
-func (mr *MockClientUtilsMockRecorder) SetClientProxyUrl(arg0 interface{}) *gomock.Call {
+// SetClientProxyURL indicates an expected call of SetClientProxyURL.
+func (mr *MockClientUtilsMockRecorder) SetClientProxyURL(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetClientProxyUrl", reflect.TypeOf((*MockClientUtils)(nil).SetClientProxyUrl), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetClientProxyURL", reflect.TypeOf((*MockClientUtils)(nil).SetClientProxyURL), arg0)
 }

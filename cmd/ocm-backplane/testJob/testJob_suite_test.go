@@ -1,4 +1,4 @@
-package testJob
+package testjob
 
 import (
 	"io"

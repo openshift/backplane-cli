@@ -20,11 +20,11 @@ type ClientUtils interface {
 	MakeRawBackplaneAPIClientWithAccessToken(base, accessToken string) (BackplaneApi.ClientInterface, error)
 	MakeRawBackplaneAPIClient(base string) (BackplaneApi.ClientInterface, error)
 	GetBackplaneClient(backplaneURL string) (client BackplaneApi.ClientInterface, err error)
-	SetClientProxyUrl(proxyUrl string) error
+	SetClientProxyURL(proxyURL string) error
 }
 
 type DefaultClientUtilsImpl struct {
-	clientProxyUrl string
+	clientProxyURL string
 }
 
 var (
@@ -42,23 +42,23 @@ func (s *DefaultClientUtilsImpl) MakeRawBackplaneAPIClientWithAccessToken(base, 
 	}
 
 	// Inject client Proxy Url from config
-	if s.clientProxyUrl == "" {
+	if s.clientProxyURL == "" {
 		bpConfig, err := config.GetBackplaneConfiguration()
 		if err != nil {
 			return nil, err
 		}
-		s.clientProxyUrl = bpConfig.ProxyURL
+		s.clientProxyURL = bpConfig.ProxyURL
 	}
 
 	// Update http proxy transport
-	if s.clientProxyUrl != "" {
-		proxyUrl, err := url.Parse(s.clientProxyUrl)
+	if s.clientProxyURL != "" {
+		proxyURL, err := url.Parse(s.clientProxyURL)
 		if err != nil {
 			return nil, err
 		}
-		http.DefaultTransport = &http.Transport{Proxy: http.ProxyURL(proxyUrl)}
+		http.DefaultTransport = &http.Transport{Proxy: http.ProxyURL(proxyURL)}
 
-		logger.Debugf("Using backplane Proxy URL: %s\n", s.clientProxyUrl)
+		logger.Debugf("Using backplane Proxy URL: %s\n", s.clientProxyURL)
 	}
 
 	return BackplaneApi.NewClient(base, co)
@@ -122,11 +122,11 @@ func (s *DefaultClientUtilsImpl) GetBackplaneClient(backplaneURL string) (client
 	return backplaneClient, nil
 }
 
-// SetClientProxyUrl Set client proxy url for http transport
-func (s *DefaultClientUtilsImpl) SetClientProxyUrl(proxyUrl string) error {
-	if proxyUrl == "" {
-		return errors.New("proxy Url is empty")
+// SetClientProxyURL Set client proxy url for http transport
+func (s *DefaultClientUtilsImpl) SetClientProxyURL(proxyURL string) error {
+	if proxyURL == "" {
+		return errors.New("proxy URL is empty")
 	}
-	s.clientProxyUrl = proxyUrl
+	s.clientProxyURL = proxyURL
 	return nil
 }

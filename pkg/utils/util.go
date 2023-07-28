@@ -10,8 +10,9 @@ import (
 	"reflect"
 	"strings"
 
-	logger "github.com/sirupsen/logrus"
 	netUrl "net/url"
+
+	logger "github.com/sirupsen/logrus"
 
 	BackplaneApi "github.com/openshift/backplane-api/pkg/client"
 
@@ -26,7 +27,7 @@ import (
 
 const (
 	ClustersPageSize             = 50
-	BackplaneApiUrlRegexp string = `(?mi)^https:\/\/api\.(.*)backplane\.(.*)`
+	BackplaneAPIURLRegexp string = `(?mi)^https:\/\/api\.(.*)backplane\.(.*)`
 	ClusterIDRegexp       string = "/?backplane/cluster/([a-zA-Z0-9]+)/?"
 )
 
@@ -71,12 +72,12 @@ func GetFreePort() (int, error) {
 // return false if it not 200 or encounter any error.
 func CheckHealth(url string) bool {
 	// Parse the given URL and check for ambiguities
-	parsedUrl, err := netUrl.Parse(url)
+	parsedURL, err := netUrl.Parse(url)
 	if err != nil {
 		return false //just return false for any error
 	}
 
-	resp, err := http.Get(parsedUrl.String())
+	resp, err := http.Get(parsedURL.String())
 	if err != nil {
 		return false //just return false for any error
 	}
@@ -123,7 +124,7 @@ func TryRenderErrorRaw(rsp *http.Response) error {
 	if err != nil {
 		return err
 	}
-	return RenderJsonBytes(data)
+	return RenderJSONBytes(data)
 }
 
 func GetFormattedError(rsp *http.Response) error {

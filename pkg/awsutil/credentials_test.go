@@ -1,15 +1,16 @@
-package awsUtil
+package awsutil
 
 import (
 	"encoding/json"
 	"fmt"
-	"sigs.k8s.io/yaml"
 	"testing"
+
+	"sigs.k8s.io/yaml"
 )
 
 func TestAWSCredentialsResponse_EnvFormat(t *testing.T) {
 	type fields struct {
-		AccessKeyId     string
+		AccessKeyID     string
 		SecretAccessKey string
 		SessionToken    string
 	}
@@ -24,7 +25,7 @@ func TestAWSCredentialsResponse_EnvFormat(t *testing.T) {
 		},
 		{
 			name:   "Contains Access Key Id only",
-			fields: fields{AccessKeyId: "test-key"},
+			fields: fields{AccessKeyID: "test-key"},
 			want:   fmt.Sprintf(awsExportFormat, "test-key", "", ""),
 		},
 		{
@@ -39,12 +40,12 @@ func TestAWSCredentialsResponse_EnvFormat(t *testing.T) {
 		},
 		{
 			name:   "Contains Access Key Id and Secret Access Key",
-			fields: fields{AccessKeyId: "test-key", SecretAccessKey: "test-secret-key"},
+			fields: fields{AccessKeyID: "test-key", SecretAccessKey: "test-secret-key"},
 			want:   fmt.Sprintf(awsExportFormat, "test-key", "test-secret-key", ""),
 		},
 		{
 			name:   "Contains Access Key Id and Session Token",
-			fields: fields{AccessKeyId: "test-key", SessionToken: "test-session-token"},
+			fields: fields{AccessKeyID: "test-key", SessionToken: "test-session-token"},
 			want:   fmt.Sprintf(awsExportFormat, "test-key", "", "test-session-token"),
 		},
 		{
@@ -54,14 +55,14 @@ func TestAWSCredentialsResponse_EnvFormat(t *testing.T) {
 		},
 		{
 			name:   "Contains Access Key Id, Secret Access Key, and Session Token",
-			fields: fields{AccessKeyId: "test-key", SecretAccessKey: "test-secret-key", SessionToken: "test-session-token"},
+			fields: fields{AccessKeyID: "test-key", SecretAccessKey: "test-secret-key", SessionToken: "test-session-token"},
 			want:   fmt.Sprintf(awsExportFormat, "test-key", "test-secret-key", "test-session-token"),
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := AWSCredentialsResponse{
-				AccessKeyId:     tt.fields.AccessKeyId,
+				AccessKeyID:     tt.fields.AccessKeyID,
 				SecretAccessKey: tt.fields.SecretAccessKey,
 				SessionToken:    tt.fields.SessionToken,
 			}
@@ -74,7 +75,7 @@ func TestAWSCredentialsResponse_EnvFormat(t *testing.T) {
 
 func TestAWSCredentialsResponse_RenderOutput(t *testing.T) {
 	type fields struct {
-		AccessKeyId     string
+		AccessKeyID     string
 		SecretAccessKey string
 		SessionToken    string
 		Region          string
@@ -84,7 +85,7 @@ func TestAWSCredentialsResponse_RenderOutput(t *testing.T) {
 		outputFormat string
 	}
 	credentials := fields{
-		AccessKeyId:     "1",
+		AccessKeyID:     "1",
 		SecretAccessKey: "2",
 		SessionToken:    "3",
 		Region:          "4",
@@ -129,7 +130,7 @@ func TestAWSCredentialsResponse_RenderOutput(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := AWSCredentialsResponse{
-				AccessKeyId:     tt.fields.AccessKeyId,
+				AccessKeyID:     tt.fields.AccessKeyID,
 				SecretAccessKey: tt.fields.SecretAccessKey,
 				SessionToken:    tt.fields.SessionToken,
 				Region:          tt.fields.Region,

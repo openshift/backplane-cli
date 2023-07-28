@@ -23,6 +23,7 @@ import (
 	"github.com/spf13/cobra"
 
 	bpclient "github.com/openshift/backplane-api/pkg/client"
+
 	"github.com/openshift/backplane-cli/pkg/utils"
 )
 
@@ -74,15 +75,13 @@ func newListScriptCmd() *cobra.Command {
 			}
 
 			// ======== Transform clusterKey to clusterID (clusterKey can be name, ID external ID) ========
-			clusterId, _, err := utils.DefaultOCMInterface.GetTargetCluster(clusterKey)
+			clusterID, _, err := utils.DefaultOCMInterface.GetTargetCluster(clusterKey)
 			if err != nil {
 				return err
 			}
 
-
-
 			// ======== Call Endpoint ========
-			resp, err := client.GetScriptsByCluster(context.TODO(), clusterId, &bpclient.GetScriptsByClusterParams{})
+			resp, err := client.GetScriptsByCluster(context.TODO(), clusterID, &bpclient.GetScriptsByClusterParams{})
 
 			if err != nil {
 				return err

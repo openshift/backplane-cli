@@ -1,4 +1,4 @@
-package managedJob
+package managedjob
 
 import (
 	"io"

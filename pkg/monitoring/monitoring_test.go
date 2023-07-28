@@ -10,11 +10,12 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	"k8s.io/client-go/tools/clientcmd/api"
+
 	"github.com/openshift/backplane-cli/pkg/client/mocks"
 	"github.com/openshift/backplane-cli/pkg/info"
 	"github.com/openshift/backplane-cli/pkg/utils"
 	mocks2 "github.com/openshift/backplane-cli/pkg/utils/mocks"
-	"k8s.io/client-go/tools/clientcmd/api"
 )
 
 var _ = Describe("Backplane Monitoring Unit test", func() {
@@ -25,9 +26,9 @@ var _ = Describe("Backplane Monitoring Unit test", func() {
 		mockOcmInterface   *mocks2.MockOCMInterface
 		mockClientUtil     *mocks2.MockClientUtils
 
-		testClusterId   string
+		testClusterID   string
 		testToken       string
-		trueClusterId   string
+		trueClusterID   string
 		backplaneAPIUri string
 
 		fakeResp *http.Response
@@ -49,9 +50,9 @@ var _ = Describe("Backplane Monitoring Unit test", func() {
 		mockClientUtil = mocks2.NewMockClientUtils(mockCtrl)
 		utils.DefaultClientUtils = mockClientUtil
 
-		testClusterId = "test123"
+		testClusterID = "test123"
 		testToken = "hello123"
-		trueClusterId = "trueID123"
+		trueClusterID = "trueID123"
 		backplaneAPIUri = "https://api.integration.backplane.example.com"
 
 		fakeResp = &http.Response{
@@ -111,7 +112,7 @@ var _ = Describe("Backplane Monitoring Unit test", func() {
 		err := utils.CreateTempKubeConfig(&testKubeCfg)
 		Expect(err).To(BeNil())
 
-		os.Setenv(info.BACKPLANE_URL_ENV_NAME, backplaneAPIUri)
+		os.Setenv(info.BackplaneURLEnvName, backplaneAPIUri)
 	})
 
 	AfterEach(func() {
@@ -131,14 +132,14 @@ var _ = Describe("Backplane Monitoring Unit test", func() {
 		It("should fail for cluster version greater than 4.11 and openshift monitoring namespace ", func() {
 
 			mockClientWithResp.EXPECT().LoginClusterWithResponse(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
-			mockOcmInterface.EXPECT().GetTargetCluster(trueClusterId).Return(trueClusterId, testClusterId, nil).AnyTimes()
-			mockOcmInterface.EXPECT().GetClusterInfoByID(testClusterId).Return(clusterVersion412, nil).AnyTimes()
-			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterId)).Return(false, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetTargetCluster(trueClusterID).Return(trueClusterID, testClusterID, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetClusterInfoByID(testClusterID).Return(clusterVersion412, nil).AnyTimes()
+			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
 			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken(backplaneAPIUri, testToken).Return(mockClient, nil).AnyTimes()
-			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(trueClusterId)).Return(fakeResp, nil).AnyTimes()
+			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(trueClusterID)).Return(fakeResp, nil).AnyTimes()
 
-			MonitoringOpts.Namespace = OPENSHIFT_MONITORING_NS
+			MonitoringOpts.Namespace = OpenShiftMonitoringNS
 
 			// check for prometheus
 
@@ -165,12 +166,12 @@ var _ = Describe("Backplane Monitoring Unit test", func() {
 
 		It("should serve thanos monitoring dashboard for cluster version greater than 4.11", func() {
 			mockClientWithResp.EXPECT().LoginClusterWithResponse(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
-			mockOcmInterface.EXPECT().GetTargetCluster(trueClusterId).Return(trueClusterId, testClusterId, nil).AnyTimes()
-			mockOcmInterface.EXPECT().GetClusterInfoByID(testClusterId).Return(clusterVersion412, nil).AnyTimes()
-			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterId)).Return(false, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetTargetCluster(trueClusterID).Return(trueClusterID, testClusterID, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetClusterInfoByID(testClusterID).Return(clusterVersion412, nil).AnyTimes()
+			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
 			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken(backplaneAPIUri, testToken).Return(mockClient, nil).AnyTimes()
-			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(trueClusterId)).Return(fakeResp, nil).AnyTimes()
+			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(trueClusterID)).Return(fakeResp, nil).AnyTimes()
 
 			MonitoringOpts.KeepAlive = false
 
@@ -188,14 +189,14 @@ var _ = Describe("Backplane Monitoring Unit test", func() {
 		It("should serve monitoring dashboard for cluster version lower than 4.11 and openshift monitoring namespace ", func() {
 
 			mockClientWithResp.EXPECT().LoginClusterWithResponse(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
-			mockOcmInterface.EXPECT().GetTargetCluster(trueClusterId).Return(trueClusterId, testClusterId, nil).AnyTimes()
-			mockOcmInterface.EXPECT().GetClusterInfoByID(testClusterId).Return(clusterVersion410, nil).AnyTimes()
-			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterId)).Return(false, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetTargetCluster(trueClusterID).Return(trueClusterID, testClusterID, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetClusterInfoByID(testClusterID).Return(clusterVersion410, nil).AnyTimes()
+			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
 			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken(backplaneAPIUri, testToken).Return(mockClient, nil).AnyTimes()
-			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(trueClusterId)).Return(fakeResp, nil).AnyTimes()
+			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(trueClusterID)).Return(fakeResp, nil).AnyTimes()
 
-			MonitoringOpts.Namespace = OPENSHIFT_MONITORING_NS
+			MonitoringOpts.Namespace = OpenShiftMonitoringNS
 			MonitoringOpts.KeepAlive = false
 			svr := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				_, _ = w.Write([]byte("dummy data"))

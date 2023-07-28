@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"regexp"
 
-	"github.com/sirupsen/logrus"
 	logger "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"k8s.io/client-go/tools/clientcmd"
@@ -13,7 +12,7 @@ import (
 	"github.com/openshift/backplane-cli/pkg/utils"
 )
 
-// logoutCmd represents the logout command
+// LogoutCmd represents the logout command
 var LogoutCmd = &cobra.Command{
 	Use:   "logout",
 	Short: "Logout of the current cluster by deleting the related reference in kubeconfig",
@@ -29,13 +28,13 @@ func runLogout(cmd *cobra.Command, argv []string) error {
 
 	// Logout specific cluster
 	if len(argv) == 1 {
-		clusterId, _, err := utils.DefaultOCMInterface.GetTargetCluster(argv[0])
+		clusterID, _, err := utils.DefaultOCMInterface.GetTargetCluster(argv[0])
 		if err != nil {
 			return err
 		}
 
 		// Remove cluster specific Kubeconfig file
-		err = login.RemoveClusterKubeConfig(clusterId)
+		err = login.RemoveClusterKubeConfig(clusterID)
 		if err != nil {
 			return err
 		}
@@ -68,9 +67,9 @@ func runLogout(cmd *cobra.Command, argv []string) error {
 		// backplane should only handle `logout` associated context
 		// created with backplane itself, we check this via matching
 		// the cluster server endpoint
-		backplaneServerRegex := regexp.MustCompile(utils.BackplaneApiUrlRegexp)
+		backplaneServerRegex := regexp.MustCompile(utils.BackplaneAPIURLRegexp)
 
-		logger.WithFields(logrus.Fields{
+		logger.WithFields(logger.Fields{
 			"currentServer":  currentServer,
 			"currentUser":    currentUser,
 			"currentContext": rc.CurrentContext,

@@ -1,4 +1,4 @@
-package managedJob
+package managedjob
 
 import (
 	"github.com/spf13/cobra"

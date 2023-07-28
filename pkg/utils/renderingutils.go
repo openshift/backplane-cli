@@ -13,7 +13,7 @@ import (
 	"golang.org/x/term"
 )
 
-// This renderer only uses tabs and renders based on terminal width available
+// RenderTabbedTable only uses tabs and renders based on terminal width available
 // It keeps the first column in it's full length and truncates others
 func RenderTabbedTable(headers []string, data [][]string) {
 	columnPadding := 2
@@ -97,9 +97,9 @@ func RenderTable(headers []string, data [][]string) {
 	table.Render()
 }
 
-// RenderJson is an effectual function that renders the reader as JSON
+// RenderJSON is an effectual function that renders the reader as JSON
 // returns err if render fails
-func RenderJson(reader io.Reader) error {
+func RenderJSON(reader io.Reader) error {
 	body, err := ioutil.ReadAll(reader)
 	if err != nil {
 		return err
@@ -112,9 +112,9 @@ func RenderJson(reader io.Reader) error {
 	return nil
 }
 
-// RenderJsonBytes is an effectual function that renders the reader as JSON
+// RenderJSONBytes is an effectual function that renders the reader as JSON
 // returns err if render fails
-func RenderJsonBytes(i interface{}) error {
+func RenderJSONBytes(i interface{}) error {
 	resString, err := json.MarshalIndent(i, "", "  ")
 	if err != nil {
 		return err

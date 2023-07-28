@@ -9,8 +9,9 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
 
-	"github.com/openshift/backplane-cli/pkg/info"
 	logger "github.com/sirupsen/logrus"
+
+	"github.com/openshift/backplane-cli/pkg/info"
 )
 
 var (
@@ -18,7 +19,7 @@ var (
 )
 
 // CreateClusterKubeConfig creates cluster specific kube config based on a cluster ID
-func CreateClusterKubeConfig(clusterId string, kubeConfig api.Config) (string, error) {
+func CreateClusterKubeConfig(clusterID string, kubeConfig api.Config) (string, error) {
 
 	basePath, err := getKubeConfigBasePath()
 	if err != nil {
@@ -26,7 +27,7 @@ func CreateClusterKubeConfig(clusterId string, kubeConfig api.Config) (string, e
 	}
 
 	// Create cluster folder
-	path := filepath.Join(basePath, clusterId)
+	path := filepath.Join(basePath, clusterID)
 	if _, err = os.Stat(path); errors.Is(err, os.ErrNotExist) {
 		err := os.MkdirAll(path, os.ModePerm)
 		if err != nil {
@@ -55,7 +56,7 @@ func CreateClusterKubeConfig(clusterId string, kubeConfig api.Config) (string, e
 
 	// set kube config env with temp kube config file
 
-	err = os.Setenv(info.BACKPLANE_KUBECONFIG_ENV_NAME, filename)
+	err = os.Setenv(info.BackplaneKubeconfigEnvName, filename)
 	if err != nil {
 		return "", err
 	}
@@ -64,14 +65,14 @@ func CreateClusterKubeConfig(clusterId string, kubeConfig api.Config) (string, e
 }
 
 // RemoveClusterKubeConfig delete cluster specific kube config file
-func RemoveClusterKubeConfig(clusterId string) error {
+func RemoveClusterKubeConfig(clusterID string) error {
 
 	basePath, err := getKubeConfigBasePath()
 	if err != nil {
 		return err
 	}
 
-	path := filepath.Join(basePath, clusterId)
+	path := filepath.Join(basePath, clusterID)
 
 	_, err = os.Stat(path)
 	if !errors.Is(err, os.ErrNotExist) {
@@ -81,7 +82,7 @@ func RemoveClusterKubeConfig(clusterId string) error {
 }
 
 // SaveKubeConfig modify Kube config based on user setting
-func SaveKubeConfig(clusterId string, config api.Config, isMulti bool, kubePath string) error {
+func SaveKubeConfig(clusterID string, config api.Config, isMulti bool, kubePath string) error {
 
 	if isMulti {
 		//update path
@@ -92,12 +93,12 @@ func SaveKubeConfig(clusterId string, config api.Config, isMulti bool, kubePath 
 			}
 		}
 		//save config to current session
-		path, err := CreateClusterKubeConfig(clusterId, config)
+		path, err := CreateClusterKubeConfig(clusterID, config)
 
 		if kubePath == "" {
 			// Inform how to setup kube config
-			fmt.Printf("Execute the following command to log into the cluster %s \n", clusterId)
-			fmt.Println("export " + info.BACKPLANE_KUBECONFIG_ENV_NAME + "=" + path)
+			fmt.Printf("Execute the following command to log into the cluster %s \n", clusterID)
+			fmt.Println("export " + info.BackplaneKubeconfigEnvName + "=" + path)
 		}
 
 		if err != nil {

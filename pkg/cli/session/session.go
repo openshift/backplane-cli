@@ -40,7 +40,7 @@ type Options struct {
 
 	Alias string
 
-	ClusterId   string
+	ClusterID   string
 	ClusterName string
 
 	GlobalOpts *globalflags.GlobalOptions
@@ -55,50 +55,50 @@ func (e *BackplaneSession) RunCommand(cmd *cobra.Command, args []string) error {
 	if len(args) > 0 {
 		e.Options.Alias = args[0]
 	}
-	if e.Options.ClusterId == "" && e.Options.Alias == "" {
-		return fmt.Errorf("ClusterId or Alias required")
+	if e.Options.ClusterID == "" && e.Options.Alias == "" {
+		return fmt.Errorf("ClusterID or Alias required")
 	}
 
 	if e.Options.Alias == "" {
 		log.Println("No Alias set, using cluster ID")
-		e.Options.Alias = e.Options.ClusterId
+		e.Options.Alias = e.Options.ClusterID
 	}
 
 	// Verify validity of the ClusterID
 	clusterKey := e.Options.Alias
-	if e.Options.ClusterId != "" {
-		clusterKey = e.Options.ClusterId
+	if e.Options.ClusterID != "" {
+		clusterKey = e.Options.ClusterID
 	}
 
-	clusterId, clusterName, err := utils.DefaultOCMInterface.GetTargetCluster(clusterKey)
+	clusterID, clusterName, err := utils.DefaultOCMInterface.GetTargetCluster(clusterKey)
 
 	if err != nil {
 		return fmt.Errorf("invalid cluster Id %s", clusterKey)
 	}
 
 	if e.Options.GlobalOpts.Manager {
-		clusterId, clusterName, err = utils.DefaultOCMInterface.GetManagingCluster(clusterId)
-		e.Options.Alias = clusterId
+		clusterID, clusterName, err = utils.DefaultOCMInterface.GetManagingCluster(clusterID)
+		e.Options.Alias = clusterID
 		if err != nil {
 			return err
 		}
 
-		fmt.Printf("Switching to management cluster ID: %v, Name: %v\n", clusterId, clusterName)
+		fmt.Printf("Switching to management cluster ID: %v, Name: %v\n", clusterID, clusterName)
 	}
 
 	if e.Options.GlobalOpts.Service {
-		clusterId, clusterName, err = utils.DefaultOCMInterface.GetServiceCluster(clusterId)
-		e.Options.Alias = clusterId
+		clusterID, clusterName, err = utils.DefaultOCMInterface.GetServiceCluster(clusterID)
+		e.Options.Alias = clusterID
 		if err != nil {
 			return err
 		}
 
-		fmt.Printf("Switching to service cluster ID: %v, Name: %v\n", clusterId, clusterName)
+		fmt.Printf("Switching to service cluster ID: %v, Name: %v\n", clusterID, clusterName)
 	}
 
 	// set cluster options
 	e.Options.ClusterName = clusterName
-	e.Options.ClusterId = clusterId
+	e.Options.ClusterID = clusterID
 
 	err = e.initSessionPath()
 	if err != nil {
@@ -237,9 +237,9 @@ HISTFILE=` + e.Path + `/.history
 PATH=` + e.Path + `/bin:` + os.Getenv("PATH") + `
 `
 
-	if e.Options.ClusterId != "" {
-		clusterEnvContent := "KUBECONFIG=" + filepath.Join(e.Path, e.Options.ClusterId, "config") + "\n"
-		clusterEnvContent = clusterEnvContent + "CLUSTERID=" + e.Options.ClusterId + "\n"
+	if e.Options.ClusterID != "" {
+		clusterEnvContent := "KUBECONFIG=" + filepath.Join(e.Path, e.Options.ClusterID, "config") + "\n"
+		clusterEnvContent = clusterEnvContent + "CLUSTERID=" + e.Options.ClusterID + "\n"
 		clusterEnvContent = clusterEnvContent + "CLUSTERNAME=" + e.Options.ClusterName + "\n"
 		envContent = envContent + clusterEnvContent
 	}
@@ -298,7 +298,7 @@ func (e *BackplaneSession) createBins() error {
 			log.Fatal(err)
 		}
 	}
-	err := e.createBin("ocd", "ocm describe cluster "+e.Options.ClusterId)
+	err := e.createBin("ocd", "ocm describe cluster "+e.Options.ClusterID)
 	if err != nil {
 		return err
 	}
@@ -365,7 +365,7 @@ func (e *BackplaneSession) initSessionPath() error {
 		if err != nil {
 			return err
 		}
-		sessionDir := info.BACKPLANE_DEFAULT_SESSION_DIRECTORY
+		sessionDir := info.BackplaneDefaultSessionDirectory
 
 		// Get the session directory name via config
 		if bpConfig.SessionDirectory != "" {
@@ -391,7 +391,7 @@ func (e *BackplaneSession) initSessionPath() error {
 // initClusterLogin login to cluster and save kube config into session for valid clusters
 func (e *BackplaneSession) initClusterLogin(cmd *cobra.Command) error {
 
-	if e.Options.ClusterId != "" {
+	if e.Options.ClusterID != "" {
 
 		// Setting up the flags
 		err := login.LoginCmd.Flags().Set("multi", "true")
@@ -404,7 +404,7 @@ func (e *BackplaneSession) initClusterLogin(cmd *cobra.Command) error {
 		}
 
 		// Execute login command
-		err = login.LoginCmd.RunE(cmd, []string{e.Options.ClusterId})
+		err = login.LoginCmd.RunE(cmd, []string{e.Options.ClusterID})
 		if err != nil {
 			return fmt.Errorf("error occurred when login to the cluster %v", err)
 		}

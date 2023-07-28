@@ -8,10 +8,11 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	"k8s.io/client-go/tools/clientcmd"
+
 	"github.com/openshift/backplane-cli/pkg/info"
 	"github.com/openshift/backplane-cli/pkg/utils"
 	"github.com/openshift/backplane-cli/pkg/utils/mocks"
-	"k8s.io/client-go/tools/clientcmd"
 )
 
 const (
@@ -207,7 +208,7 @@ func TestGetBackplaneClusterFromClusterKey(t *testing.T) {
 	utils.DefaultOCMInterface = mockOcmInterface
 
 	t.Run("it returns a cluster struct from a valid cluster key", func(_ *testing.T) {
-		os.Setenv(info.BACKPLANE_URL_ENV_NAME, "https://backplane-url.cluster-key.redhat.com")
+		os.Setenv(info.BackplaneURLEnvName, "https://backplane-url.cluster-key.redhat.com")
 		mockOcmInterface.EXPECT().GetTargetCluster("cluster-key").Return("1234", "cluster-key", nil)
 
 		cluster, err := utils.DefaultClusterUtils.GetBackplaneClusterFromClusterKey("cluster-key")

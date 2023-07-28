@@ -2,10 +2,12 @@ package cloud
 
 import (
 	"fmt"
-	"github.com/openshift/backplane-cli/pkg/awsUtil"
+
+	"github.com/spf13/cobra"
+
+	"github.com/openshift/backplane-cli/pkg/awsutil"
 	"github.com/openshift/backplane-cli/pkg/cli/config"
 	"github.com/openshift/backplane-cli/pkg/utils"
-	"github.com/spf13/cobra"
 )
 
 var tokenArgs struct {
@@ -43,18 +45,18 @@ func runToken(*cobra.Command, []string) error {
 	if err != nil {
 		return fmt.Errorf("error retrieving backplane configuration: %w", err)
 	}
-	svc, err := awsUtil.StsClientWithProxy(bpConfig.ProxyURL)
+	svc, err := awsutil.StsClientWithProxy(bpConfig.ProxyURL)
 	if err != nil {
 		return fmt.Errorf("error creating STS client: %w", err)
 	}
 
-	result, err := awsUtil.AssumeRoleWithJWT(*ocmToken, tokenArgs.roleArn, svc)
+	result, err := awsutil.AssumeRoleWithJWT(*ocmToken, tokenArgs.roleArn, svc)
 	if err != nil {
 		return fmt.Errorf("failed to assume role with JWT: %w", err)
 	}
 
-	credsResponse := awsUtil.AWSCredentialsResponse{
-		AccessKeyId:     *result.AccessKeyId,
+	credsResponse := awsutil.AWSCredentialsResponse{
+		AccessKeyID:     *result.AccessKeyId,
 		SecretAccessKey: *result.SecretAccessKey,
 		SessionToken:    *result.SessionToken,
 		Expiration:      result.Expiration.String(),

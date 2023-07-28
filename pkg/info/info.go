@@ -8,17 +8,17 @@ import (
 
 const (
 	// Environment Variables
-	BACKPLANE_URL_ENV_NAME         = "BACKPLANE_URL"
-	BACKPLANE_PROXY_ENV_NAME       = "HTTPS_PROXY"
-	BACKPLANE_CONFIG_PATH_ENV_NAME = "BACKPLANE_CONFIG"
-	BACKPLANE_KUBECONFIG_ENV_NAME  = "KUBECONFIG"
+	BackplaneURLEnvName        = "BACKPLANE_URL"
+	BackplaneProxyEnvName      = "HTTPS_PROXY"
+	BackplaneConfigPathEnvName = "BACKPLANE_CONFIG"
+	BackplaneKubeconfigEnvName = "KUBECONFIG"
 
 	// Configuration
-	BACKPLANE_CONFIG_DEFAULT_FILE_PATH = ".config/backplane"
-	BACKPLANE_CONFIG_DEFAULT_FILE_NAME = "config.json"
+	BackplaneConfigDefaultFilePath = ".config/backplane"
+	BackplaneConfigDefaultFileName = "config.json"
 
 	// Session
-	BACKPLANE_DEFAULT_SESSION_DIRECTORY = "backplane"
+	BackplaneDefaultSessionDirectory = "backplane"
 
 	// GitHub API get fetch the latest tag
 	UpstreamReleaseAPI = "https://api.github.com/repos/openshift/backplane-cli/releases/latest"

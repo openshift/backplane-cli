@@ -129,7 +129,7 @@ func TestFindAssetURL(t *testing.T) {
 				Assets: []upgrade.ReleaseAsset{
 					{
 						Name:        "ocm-backplane_0.0.1_Darwin_arm64.tar.gz",
-						DownloadUrl: "https://github.com/openshift/backplane-cli/releases/download/v0.0.1/ocm-backplane_0.0.1_Darwin_arm64.tar.gz",
+						DownloadURL: "https://github.com/openshift/backplane-cli/releases/download/v0.0.1/ocm-backplane_0.0.1_Darwin_arm64.tar.gz",
 					},
 				},
 			},
@@ -146,7 +146,7 @@ func TestFindAssetURL(t *testing.T) {
 				Assets: []upgrade.ReleaseAsset{
 					{
 						Name:        "ocm-backplane_0.0.1_Linux_arm64.tar.gz",
-						DownloadUrl: "https://github.com/openshift/backplane-cli/releases/download/v0.0.1/ocm-backplane_0.0.1_Linux_arm64.tar.gz",
+						DownloadURL: "https://github.com/openshift/backplane-cli/releases/download/v0.0.1/ocm-backplane_0.0.1_Linux_arm64.tar.gz",
 					},
 				},
 			},
@@ -163,11 +163,11 @@ func TestFindAssetURL(t *testing.T) {
 				Assets: []upgrade.ReleaseAsset{
 					{
 						Name:        "ocm-backplane_0.0.1_Linux_arm64.tar.gz",
-						DownloadUrl: "https://github.com/openshift/backplane-cli/releases/download/v0.0.1/ocm-backplane_0.0.1_Linux_arm64.tar.gz",
+						DownloadURL: "https://github.com/openshift/backplane-cli/releases/download/v0.0.1/ocm-backplane_0.0.1_Linux_arm64.tar.gz",
 					},
 					{
 						Name:        "ocm-backplane_0.0.1_Darwin_arm64.tar.gz",
-						DownloadUrl: "https://github.com/openshift/backplane-cli/releases/download/v0.0.1/ocm-backplane_0.0.1_Darwin_arm64.tar.gz",
+						DownloadURL: "https://github.com/openshift/backplane-cli/releases/download/v0.0.1/ocm-backplane_0.0.1_Darwin_arm64.tar.gz",
 					},
 				},
 			},
@@ -184,14 +184,14 @@ func TestFindAssetURL(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 
 			t.Parallel()
-			downloadUrl, assertMatch := tc.osConfig.FindAssetURL(tc.LatestRelease)
+			downloadURL, assertMatch := tc.osConfig.FindAssetURL(tc.LatestRelease)
 
 			if assertMatch != tc.match {
 				t.Errorf("expected res to be %t got %t", assertMatch, tc.match)
 			}
 
-			if downloadUrl != tc.ExpectedAsert {
-				t.Errorf("expected res to be %s got %s", tc.ExpectedAsert, downloadUrl)
+			if downloadURL != tc.ExpectedAsert {
+				t.Errorf("expected res to be %s got %s", tc.ExpectedAsert, downloadURL)
 			}
 
 		})

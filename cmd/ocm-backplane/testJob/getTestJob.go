@@ -1,4 +1,4 @@
-package testJob
+package testjob
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	backplaneApi "github.com/openshift/backplane-api/pkg/client"
+
 	"github.com/openshift/backplane-cli/pkg/cli/config"
 	"github.com/openshift/backplane-cli/pkg/utils"
 )
@@ -15,7 +16,7 @@ import (
 func newGetTestJobCommand() *cobra.Command {
 
 	cmd := &cobra.Command{
-		Use:           "get <testId>",
+		Use:           "get <testID>",
 		Short:         "Get a backplane testjob resource",
 		Args:          cobra.ExactArgs(1),
 		SilenceUsage:  true,
@@ -72,7 +73,7 @@ func runGetTestJob(cmd *cobra.Command, args []string) error {
 	}
 
 	// It is always 1 in length, enforced by cobra
-	testId := args[0]
+	testID := args[0]
 
 	client, err := utils.DefaultClientUtils.MakeRawBackplaneAPIClient(backplaneHost)
 	if err != nil {
@@ -80,7 +81,7 @@ func runGetTestJob(cmd *cobra.Command, args []string) error {
 	}
 
 	// ======== Call Endpoint ========
-	resp, err := client.GetTestScriptRun(context.TODO(), clusterID, testId)
+	resp, err := client.GetTestScriptRun(context.TODO(), clusterID, testID)
 
 	// ======== Render Results ========
 	if err != nil {
@@ -100,7 +101,7 @@ func runGetTestJob(cmd *cobra.Command, args []string) error {
 	fmt.Printf("TestId: %s, Status: %s\n", createResp.JSON200.TestId, *createResp.JSON200.Status)
 
 	if rawFlag {
-		_ = utils.RenderJsonBytes(createResp.JSON200)
+		_ = utils.RenderJSONBytes(createResp.JSON200)
 	}
 	return nil
 }

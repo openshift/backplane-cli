@@ -1,4 +1,4 @@
-package testJob
+package testjob
 
 import (
 	"bytes"
@@ -17,6 +17,7 @@ import (
 	"sigs.k8s.io/yaml"
 
 	backplaneApi "github.com/openshift/backplane-api/pkg/client"
+
 	"github.com/openshift/backplane-cli/pkg/cli/config"
 	"github.com/openshift/backplane-cli/pkg/utils"
 )
@@ -170,7 +171,7 @@ func runCreateTestJob(cmd *cobra.Command, args []string) error {
 
 	fmt.Printf("%s\nTestId: %s\n", *createResp.JSON200.Message, createResp.JSON200.TestId)
 	if rawFlag {
-		_ = utils.RenderJsonBytes(createResp.JSON200)
+		_ = utils.RenderJSONBytes(createResp.JSON200)
 	}
 	return nil
 }

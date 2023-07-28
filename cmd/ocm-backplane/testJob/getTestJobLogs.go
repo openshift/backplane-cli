@@ -1,4 +1,4 @@
-package testJob
+package testjob
 
 import (
 	"context"
@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 
 	bpClient "github.com/openshift/backplane-api/pkg/client"
+
 	"github.com/openshift/backplane-cli/pkg/cli/config"
 	"github.com/openshift/backplane-cli/pkg/utils"
 )
@@ -80,7 +81,7 @@ func runGetTestJobLogs(cmd *cobra.Command, args []string) error {
 	}
 
 	// It is always 1 in length, enforced by cobra
-	testId := args[0]
+	testID := args[0]
 
 	client, err := utils.DefaultClientUtils.MakeRawBackplaneAPIClient(backplaneHost)
 	if err != nil {
@@ -89,7 +90,7 @@ func runGetTestJobLogs(cmd *cobra.Command, args []string) error {
 
 	// ======== Call Endpoint ========
 	version := "v2"
-	resp, err := client.GetTestScriptRunLogs(context.TODO(), clusterID, testId, &bpClient.GetTestScriptRunLogsParams{Version: &version, Follow: &logFlag})
+	resp, err := client.GetTestScriptRunLogs(context.TODO(), clusterID, testID, &bpClient.GetTestScriptRunLogsParams{Version: &version, Follow: &logFlag})
 
 	// ======== Render Results ========
 	if err != nil {

@@ -5,10 +5,11 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/spf13/cobra"
+
 	"github.com/openshift/backplane-cli/pkg/cli/globalflags"
 	"github.com/openshift/backplane-cli/pkg/cli/session"
 	"github.com/openshift/backplane-cli/pkg/info"
-	"github.com/spf13/cobra"
 )
 
 var globalOpts = &globalflags.GlobalOptions{}
@@ -27,7 +28,7 @@ func NewCmdSession() *cobra.Command {
 		RunE:              session.RunCommand,
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			validEnvs := []string{}
-			files, err := os.ReadDir(filepath.Join(os.Getenv("HOME"), info.BACKPLANE_DEFAULT_SESSION_DIRECTORY))
+			files, err := os.ReadDir(filepath.Join(os.Getenv("HOME"), info.BackplaneDefaultSessionDirectory))
 			if err != nil {
 				return validEnvs, cobra.ShellCompDirectiveNoFileComp
 			}
@@ -55,7 +56,7 @@ func NewCmdSession() *cobra.Command {
 	)
 
 	sessionCmd.Flags().StringVarP(
-		&options.ClusterId,
+		&options.ClusterID,
 		"cluster-id",
 		"c",
 		"",

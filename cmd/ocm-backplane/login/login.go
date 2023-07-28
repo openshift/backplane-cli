@@ -98,50 +98,50 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 	}
 
 	// Set proxy url to http client
-	proxyUrl := globalOpts.ProxyURL
-	if proxyUrl != "" {
-		err = utils.DefaultClientUtils.SetClientProxyUrl(proxyUrl)
+	proxyURL := globalOpts.ProxyURL
+	if proxyURL != "" {
+		err = utils.DefaultClientUtils.SetClientProxyURL(proxyURL)
 
 		if err != nil {
 			return err
 		}
-		logger.Debugf("Using backplane Proxy URL: %s\n", proxyUrl)
+		logger.Debugf("Using backplane Proxy URL: %s\n", proxyURL)
 	}
 
-	if len(proxyUrl) == 0 {
-		proxyUrl = bpConfig.ProxyURL
+	if len(proxyURL) == 0 {
+		proxyURL = bpConfig.ProxyURL
 	}
 
-	clusterId, clusterName, err := utils.DefaultOCMInterface.GetTargetCluster(clusterKey)
+	clusterID, clusterName, err := utils.DefaultOCMInterface.GetTargetCluster(clusterKey)
 	if err != nil {
 		return err
 	}
 
 	logger.WithFields(logger.Fields{
-		"ID":   clusterId,
+		"ID":   clusterID,
 		"Name": clusterName}).Infoln("Target cluster")
 
 	if globalOpts.Manager {
-		logger.WithField("Cluster ID", clusterId).Debugln("Finding managing cluster")
-		clusterId, clusterName, err = utils.DefaultOCMInterface.GetManagingCluster(clusterId)
+		logger.WithField("Cluster ID", clusterID).Debugln("Finding managing cluster")
+		clusterID, clusterName, err = utils.DefaultOCMInterface.GetManagingCluster(clusterID)
 		if err != nil {
 			return err
 		}
 
 		logger.WithFields(logger.Fields{
-			"ID":   clusterId,
+			"ID":   clusterID,
 			"Name": clusterName}).Infoln("Management cluster")
 	}
 
 	if globalOpts.Service {
-		logger.WithField("Cluster ID", clusterId).Debugln("Finding service cluster")
-		clusterId, clusterName, err = utils.DefaultOCMInterface.GetServiceCluster(clusterId)
+		logger.WithField("Cluster ID", clusterID).Debugln("Finding service cluster")
+		clusterID, clusterName, err = utils.DefaultOCMInterface.GetServiceCluster(clusterID)
 		if err != nil {
 			return err
 		}
 
 		logger.WithFields(logger.Fields{
-			"ID":   clusterId,
+			"ID":   clusterID,
 			"Name": clusterName}).Infoln("Service cluster")
 	}
 
@@ -156,16 +156,16 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 	}
 
 	// Get Backplane URL
-	bpUrl := globalOpts.BackplaneURL
-	if bpUrl == "" {
-		bpUrl = bpConfig.URL
+	bpURL := globalOpts.BackplaneURL
+	if bpURL == "" {
+		bpURL = bpConfig.URL
 	}
 
-	if bpUrl == "" {
+	if bpURL == "" {
 		return errors.New("empty backplane url - check your backplane-cli configuration")
 	}
 
-	logger.Debugf("Using backplane URL: %s\n", bpUrl)
+	logger.Debugf("Using backplane URL: %s\n", bpURL)
 
 	// Get ocm access token
 	logger.Debugln("Finding ocm token")
@@ -176,16 +176,16 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 	logger.Debugln("Found OCM access token")
 
 	// Not great if there's an error checking if the cluster is hibernating, but ignore it for now and continue
-	if isHibernating, _ := utils.DefaultOCMInterface.IsClusterHibernating(clusterId); isHibernating {
+	if isHibernating, _ := utils.DefaultOCMInterface.IsClusterHibernating(clusterID); isHibernating {
 		// If it is hibernating, don't try to connect as it will fail
 		return fmt.Errorf("cluster %s is hibernating, login failed", clusterKey)
 	}
 
 	// Query backplane-api for proxy url
-	bpAPIClusterUrl, err := doLogin(bpUrl, clusterId, *accessToken)
+	bpAPIClusterURL, err := doLogin(bpURL, clusterID, *accessToken)
 	if err != nil {
 		// If login failed, we try to find out if the cluster is hibernating
-		isHibernating, _ := utils.DefaultOCMInterface.IsClusterHibernating(clusterId)
+		isHibernating, _ := utils.DefaultOCMInterface.IsClusterHibernating(clusterID)
 		if isHibernating {
 			// Hibernating, print an error
 			return fmt.Errorf("cluster %s is hibernating, login failed", clusterKey)
@@ -198,7 +198,7 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 		// Otherwise, return the failure
 		return fmt.Errorf("can't login to cluster: %v", err)
 	}
-	logger.WithField("URL", bpAPIClusterUrl).Debugln("Proxy")
+	logger.WithField("URL", bpAPIClusterURL).Debugln("Proxy")
 
 	cf := genericclioptions.NewConfigFlags(true)
 	rc, err := cf.ToRawKubeConfigLoader().RawConfig()
@@ -219,12 +219,12 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 	targetUser := api.NewAuthInfo()
 	targetContext := api.NewContext()
 
-	targetCluster.Server = bpAPIClusterUrl
+	targetCluster.Server = bpAPIClusterURL
 
 	// Add proxy URL to target cluster
 
-	if proxyUrl != "" {
-		targetCluster.ProxyURL = proxyUrl
+	if proxyURL != "" {
+		targetCluster.ProxyURL = proxyURL
 	}
 
 	targetUserNickName := getUsernameFromJWT(*accessToken)
@@ -243,15 +243,15 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 	rc.CurrentContext = targetContextNickName
 
 	// Save the config.
-	err = login.SaveKubeConfig(clusterId, rc, args.multiCluster, args.kubeConfigPath)
+	err = login.SaveKubeConfig(clusterID, rc, args.multiCluster, args.kubeConfigPath)
 
 	return err
 }
 
 // GetRestConfig returns a client-go *rest.Config which can be used to programmatically interact with the
-// Kubernetes API of a provided clusterId
-func GetRestConfig(bp config.BackplaneConfiguration, clusterId string) (*rest.Config, error) {
-	cluster, err := utils.DefaultOCMInterface.GetClusterInfoByID(clusterId)
+// Kubernetes API of a provided clusterID
+func GetRestConfig(bp config.BackplaneConfiguration, clusterID string) (*rest.Config, error) {
+	cluster, err := utils.DefaultOCMInterface.GetClusterInfoByID(clusterID)
 	if err != nil {
 		return nil, err
 	}
@@ -261,13 +261,13 @@ func GetRestConfig(bp config.BackplaneConfiguration, clusterId string) (*rest.Co
 		return nil, err
 	}
 
-	bpAPIClusterUrl, err := doLogin(bp.URL, clusterId, *accessToken)
+	bpAPIClusterURL, err := doLogin(bp.URL, clusterID, *accessToken)
 	if err != nil {
 		return nil, fmt.Errorf("failed to backplane login to cluster %s: %v", cluster.Name(), err)
 	}
 
 	cfg := &rest.Config{
-		Host:        bpAPIClusterUrl,
+		Host:        bpAPIClusterURL,
 		BearerToken: *accessToken,
 	}
 
@@ -282,8 +282,8 @@ func GetRestConfig(bp config.BackplaneConfiguration, clusterId string) (*rest.Co
 
 // GetRestConfigAsUser returns a client-go *rest.Config like GetRestConfig, but supports configuring an
 // impersonation username. Commonly, this is "backplane-cluster-admin"
-func GetRestConfigAsUser(bp config.BackplaneConfiguration, clusterId, username string) (*rest.Config, error) {
-	cfg, err := GetRestConfig(bp, clusterId)
+func GetRestConfigAsUser(bp config.BackplaneConfiguration, clusterID, username string) (*rest.Config, error) {
+	cfg, err := GetRestConfig(bp, clusterID)
 	if err != nil {
 		return nil, err
 	}
@@ -320,7 +320,7 @@ func getUsernameFromJWT(token string) string {
 }
 
 // doLogin returns the proxy url for the target cluster.
-func doLogin(api, clusterId, accessToken string) (string, error) {
+func doLogin(api, clusterID, accessToken string) (string, error) {
 
 	client, err := utils.DefaultClientUtils.MakeRawBackplaneAPIClientWithAccessToken(api, accessToken)
 
@@ -328,7 +328,7 @@ func doLogin(api, clusterId, accessToken string) (string, error) {
 		return "", fmt.Errorf("unable to create backplane api client")
 	}
 
-	resp, err := client.LoginCluster(context.TODO(), clusterId)
+	resp, err := client.LoginCluster(context.TODO(), clusterID)
 	// Print the whole response if we can't parse it. Eg. 5xx error from http server.
 	if err != nil {
 		// trying to determine the error

@@ -4,14 +4,16 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
-	"github.com/openshift/backplane-cli/pkg/awsUtil"
+	"github.com/spf13/cobra"
+
+	"github.com/openshift/backplane-cli/pkg/awsutil"
 	"github.com/openshift/backplane-cli/pkg/cli/config"
 	"github.com/openshift/backplane-cli/pkg/utils"
-	"github.com/spf13/cobra"
-	"io"
 )
 
 const (
@@ -70,16 +72,16 @@ func runAssume(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("error retrieving backplane configuration: %w", err)
 	}
 
-	initialClient, err := awsUtil.StsClientWithProxy(bpConfig.ProxyURL)
+	initialClient, err := awsutil.StsClientWithProxy(bpConfig.ProxyURL)
 	if err != nil {
 		return fmt.Errorf("failed to create sts client: %w", err)
 	}
-	seedCredentials, err := awsUtil.AssumeRoleWithJWT(*ocmToken, assumeArgs.roleArn, initialClient)
+	seedCredentials, err := awsutil.AssumeRoleWithJWT(*ocmToken, assumeArgs.roleArn, initialClient)
 	if err != nil {
 		return fmt.Errorf("failed to assume role using JWT: %w", err)
 	}
 
-	clusterId, _, err := utils.DefaultOCMInterface.GetTargetCluster(args[0])
+	clusterID, _, err := utils.DefaultOCMInterface.GetTargetCluster(args[0])
 	if err != nil {
 		return fmt.Errorf("failed to get target cluster: %w", err)
 	}
@@ -89,7 +91,7 @@ func runAssume(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to create backplane client with access token: %w", err)
 	}
 
-	response, err := backplaneClient.GetAssumeRoleSequence(context.TODO(), clusterId)
+	response, err := backplaneClient.GetAssumeRoleSequence(context.TODO(), clusterID)
 	if err != nil {
 		return fmt.Errorf("failed to fetch arn sequence: %w", err)
 	}
@@ -119,13 +121,13 @@ func runAssume(_ *cobra.Command, args []string) error {
 		Region:      "us-east-1",
 		Credentials: credentials.NewStaticCredentialsProvider(*seedCredentials.AccessKeyId, *seedCredentials.SecretAccessKey, *seedCredentials.SessionToken),
 	})
-	targetCredentials, err := awsUtil.AssumeRoleSequence(email, seedClient, roleAssumeSequence, bpConfig.ProxyURL, awsUtil.DefaultSTSClientProviderFunc)
+	targetCredentials, err := awsutil.AssumeRoleSequence(email, seedClient, roleAssumeSequence, bpConfig.ProxyURL, awsutil.DefaultSTSClientProviderFunc)
 	if err != nil {
 		return fmt.Errorf("failed to assume role sequence: %w", err)
 	}
 
-	credsResponse := awsUtil.AWSCredentialsResponse{
-		AccessKeyId:     *targetCredentials.AccessKeyId,
+	credsResponse := awsutil.AWSCredentialsResponse{
+		AccessKeyID:     *targetCredentials.AccessKeyId,
 		SecretAccessKey: *targetCredentials.SecretAccessKey,
 		SessionToken:    *targetCredentials.SessionToken,
 		Expiration:      targetCredentials.Expiration.String(),
