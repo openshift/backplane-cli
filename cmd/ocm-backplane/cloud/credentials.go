@@ -177,7 +177,10 @@ func runCredentials(cmd *cobra.Command, argv []string) error {
 	// ======== Call Endpoint ==================================
 	logger.Debugln("Getting Cloud Credentials")
 
-	credsResp, _ := getCloudCredential(bpURL, clusterID)
+	credsResp, err := getCloudCredential(bpURL, clusterID)
+	if err != nil {
+		return err
+	}
 
 	// ======== Render cloud credentials =======================
 	switch cloudProvider {
