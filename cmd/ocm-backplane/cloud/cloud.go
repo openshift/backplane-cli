@@ -1,8 +1,11 @@
 package cloud
 
 import (
+	bpconfig "github.com/openshift/backplane-cli/pkg/cli/config"
 	"github.com/spf13/cobra"
 )
+
+var GetBackplaneConfiguration = bpconfig.GetBackplaneConfiguration
 
 var CloudCmd = &cobra.Command{
 	Use:               "cloud",
