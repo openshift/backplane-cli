@@ -9,6 +9,8 @@ backplane-cli is a CLI tool to interact with [backplane api](https://github.com/
 
 ## Installation
 
+Go should be installed in your local system with version 1.19 
+
 ### Option 1: Download from release
 
 Download the latest binary from the GitHub [releases](https://github.com/openshift/backplane-cli/releases) page.
