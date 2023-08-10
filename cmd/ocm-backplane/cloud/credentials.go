@@ -16,12 +16,10 @@ import (
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	BackplaneApi "github.com/openshift/backplane-api/pkg/client"
 
-	bpconfig "github.com/openshift/backplane-cli/pkg/cli/config"
 	"github.com/openshift/backplane-cli/pkg/utils"
 )
 
 var GetBackplaneClusterFromConfig = utils.DefaultClusterUtils.GetBackplaneClusterFromConfig
-var GetBackplaneConfiguration = bpconfig.GetBackplaneConfiguration
 
 var credentialArgs struct {
 	backplaneURL string
