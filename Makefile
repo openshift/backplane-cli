@@ -121,6 +121,10 @@ build-image:
 lint-in-container: build-image
 	$(RUN_IN_CONTAINER_CMD) "go mod download && make lint"
 
+.PHONY: scan
+scan: 
+	govulncheck ./...
+
 image:
 	$(CONTAINER_ENGINE) build --pull --platform linux/amd64 -t $(IMAGE_URI_VERSION) .
 	$(CONTAINER_ENGINE) tag $(IMAGE_URI_VERSION) $(IMAGE_URI_LATEST)
