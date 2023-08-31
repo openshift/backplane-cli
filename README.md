@@ -242,7 +242,12 @@ Folowing command delete the session
 ```
 ocm backplane session --delete <session-name>
 ```
+## Promotion/Release cycle of backplane CLI
+Backplane CLI has a default release cycle of every 2 weeks 
 
+In case of you have changes that have immediate impact and would need an immediate promotion, please reach out to:
+
+Backplane team (alias : @backplane-team) in #sd-ims-backplane slack channel 
 
 ## Debugging issues
 
