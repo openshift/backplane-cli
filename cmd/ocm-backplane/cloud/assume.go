@@ -24,6 +24,7 @@ var assumeArgs struct {
 	initialRoleArn string
 	output         string
 	debugFile      string
+	console        bool
 }
 
 var StsClientWithProxy = awsutil.StsClientWithProxy
@@ -50,7 +51,10 @@ With given role:
 backplane cloud assume e3b2fdc5-d9a7-435e-8870-312689cfb29c --initial-role-arn arn:aws:iam::1234567890:role/read-only -oenv
 
 With a debug file:
-backplane cloud assume e3b2fdc5-d9a7-435e-8870-312689cfb29c --debug-file test_arns`,
+backplane cloud assume e3b2fdc5-d9a7-435e-8870-312689cfb29c --debug-file test_arns
+
+As console url:
+backplane cloud assume e3b2fdc5-d9a7-435e-8870-312689cfb29c --console`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runAssume,
 }
@@ -60,10 +64,11 @@ func init() {
 	flags.StringVar(&assumeArgs.initialRoleArn, "initial-role-arn", DefaultInitialRoleArn, "The arn of the role for which to start the role assume process.")
 	flags.StringVarP(&assumeArgs.output, "output", "o", "env", "Format the output of the console response.")
 	flags.StringVar(&assumeArgs.debugFile, "debug-file", "", "A file containing the list of ARNs to assume in order, not including the initial role ARN. Providing this flag will bypass calls to the backplane API to retrieve the assume role chain. The file should be a plain text file with each ARN on a new line.")
+	flags.BoolVar(&assumeArgs.console, "console", false, "Outputs a console url to access the targeted cluster instead of the STS credentials.")
 }
 
 type assumeChainResponse struct {
-	AssumptionSequence []namedRoleArn `json:"assumption_sequence"`
+	AssumptionSequence []namedRoleArn `json:"assumptionSequence"`
 }
 
 type namedRoleArn struct {
@@ -154,17 +159,30 @@ func runAssume(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to assume role sequence: %w", err)
 	}
 
-	credsResponse := awsutil.AWSCredentialsResponse{
-		AccessKeyID:     *targetCredentials.AccessKeyId,
-		SecretAccessKey: *targetCredentials.SecretAccessKey,
-		SessionToken:    *targetCredentials.SessionToken,
-		Expiration:      targetCredentials.Expiration.String(),
-	}
-	formattedResult, err := credsResponse.RenderOutput(assumeArgs.output)
-	if err != nil {
-		return fmt.Errorf("failed to format output correctly: %w", err)
-	}
+	if assumeArgs.console {
+		resp, err := awsutil.GetSigninToken(targetCredentials)
+		if err != nil {
+			return fmt.Errorf("failed to get signin token from AWS: %w", err)
+		}
 
-	fmt.Println(formattedResult)
+		signInFederationURL, err := awsutil.GetConsoleURL(resp.SigninToken)
+		if err != nil {
+			return fmt.Errorf("failed to generate console url: %w", err)
+		}
+
+		fmt.Printf("The AWS Console URL is:\n%s\n", signInFederationURL.String())
+	} else {
+		credsResponse := awsutil.AWSCredentialsResponse{
+			AccessKeyID:     *targetCredentials.AccessKeyId,
+			SecretAccessKey: *targetCredentials.SecretAccessKey,
+			SessionToken:    *targetCredentials.SessionToken,
+			Expiration:      targetCredentials.Expiration.String(),
+		}
+		formattedResult, err := credsResponse.RenderOutput(assumeArgs.output)
+		if err != nil {
+			return fmt.Errorf("failed to format output correctly: %w", err)
+		}
+		fmt.Println(formattedResult)
+	}
 	return nil
 }
