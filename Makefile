@@ -11,6 +11,7 @@ GO_BUILD_FLAGS_LINUX_CROSS :=-tags 'include_gcs include_oss containers_image_ope
 
 GOLANGCI_LINT_VERSION=v1.52.2
 GORELEASER_VERSION=v1.14.1
+GOVULNCHECK_VERSION=v1.0.1
 
 TESTOPTS ?=
 
@@ -121,8 +122,10 @@ build-image:
 lint-in-container: build-image
 	$(RUN_IN_CONTAINER_CMD) "go mod download && make lint"
 
-.PHONY: scan
-scan: 
+ensure-govulncheck:
+	@ls $(GOPATH)/bin/govulncheck 1>/dev/null || go install golang.org/x/vuln/cmd/govulncheck@${GOVULNCHECK_VERSION}
+
+scan: ensure-govulncheck
 	govulncheck ./...
 
 image:
