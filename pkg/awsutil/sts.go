@@ -2,8 +2,10 @@ package awsutil
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"time"
@@ -17,6 +19,24 @@ import (
 
 	"github.com/openshift/backplane-cli/pkg/utils"
 )
+
+const (
+	AwsFederatedSigninEndpoint = "https://signin.aws.amazon.com/federation"
+	AwsConsoleURL              = "https://console.aws.amazon.com/"
+	DefaultIssuer              = "Red Hat SRE"
+)
+
+type AWSFederatedSessionData struct {
+	SessionID    string `json:"sessionId"`
+	SessionKey   string `json:"sessionKey"`
+	SessionToken string `json:"sessionToken"`
+}
+
+type AWSSigninTokenResponse struct {
+	SigninToken string
+}
+
+var httpGetFunc = http.Get
 
 func StsClientWithProxy(proxyURL string) (*sts.Client, error) {
 	cfg, err := config.LoadDefaultConfig(context.TODO(),
@@ -129,4 +149,66 @@ func AssumeRoleSequence(roleSessionName string, seedClient STSRoleAssumer, roleA
 	}
 
 	return lastCredentials, nil
+}
+
+func GetSigninToken(awsCredentials *types.Credentials) (*AWSSigninTokenResponse, error) {
+	sessionData := AWSFederatedSessionData{
+		SessionID:    *awsCredentials.AccessKeyId,
+		SessionKey:   *awsCredentials.SecretAccessKey,
+		SessionToken: *awsCredentials.SessionToken,
+	}
+
+	data, err := json.Marshal(sessionData)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal session data: %w", err)
+	}
+
+	federationParams := url.Values{}
+	federationParams.Add("Action", "getSigninToken")
+	federationParams.Add("SessionType", "json")
+	federationParams.Add("Session", string(data))
+
+	baseFederationURL, err := url.Parse(AwsFederatedSigninEndpoint)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse aws federated signin endpoint: %w", err)
+	}
+
+	baseFederationURL.RawQuery = federationParams.Encode()
+
+	res, err := httpGetFunc(baseFederationURL.String())
+	if err != nil {
+		return nil, fmt.Errorf("failed to get signin token from %v: %w", baseFederationURL, err)
+	}
+	if res.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("failed to get signin token from %v, status code %d", baseFederationURL, res.StatusCode)
+	}
+	defer res.Body.Close()
+
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	var resp AWSSigninTokenResponse
+	if err = json.Unmarshal(body, &resp); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal signin token response: %w", err)
+	}
+
+	return &resp, nil
+}
+
+func GetConsoleURL(signinToken string) (*url.URL, error) {
+	signinParams := url.Values{}
+	signinParams.Add("Action", "login")
+	signinParams.Add("Destination", AwsConsoleURL)
+	signinParams.Add("Issuer", DefaultIssuer)
+	signinParams.Add("SigninToken", signinToken)
+
+	signInFederationURL, err := url.Parse(AwsFederatedSigninEndpoint)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse federated signin endpoint: %w", err)
+	}
+
+	signInFederationURL.RawQuery = signinParams.Encode()
+	return signInFederationURL, nil
 }

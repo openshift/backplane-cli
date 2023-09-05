@@ -1,8 +1,12 @@
 package awsutil
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"io"
+	"net/http"
+	"net/url"
 	"reflect"
 	"testing"
 
@@ -198,6 +202,106 @@ func TestAssumeRoleSequence(t *testing.T) {
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("AssumeRoleSequence() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestGetSigninToken(t *testing.T) {
+	awsCredentials := &types.Credentials{
+		AccessKeyId:     aws.String("testAccessKeyId"),
+		SecretAccessKey: aws.String("testSecretAccessKey"),
+		SessionToken:    aws.String("testSessionToken"),
+	}
+	tests := []struct {
+		name        string
+		httpGetFunc func(url string) (resp *http.Response, err error)
+		want        *AWSSigninTokenResponse
+		wantErr     bool
+	}{
+		{
+			name: "properly gets a signin token",
+			httpGetFunc: func(_ string) (resp *http.Response, err error) {
+				return &http.Response{
+					StatusCode: 200,
+					Body:       io.NopCloser(bytes.NewReader([]byte(`{"SigninToken":"theToken"}`))),
+				}, nil
+			},
+			want: &AWSSigninTokenResponse{SigninToken: "theToken"},
+		},
+		{
+			name: "malformed signin token response",
+			httpGetFunc: func(_ string) (resp *http.Response, err error) {
+				return &http.Response{
+					StatusCode: 200,
+					Body:       io.NopCloser(bytes.NewReader([]byte(`{"foo":"theToken"}`))),
+				}, nil
+			},
+			want: &AWSSigninTokenResponse{},
+		},
+		{
+			name: "non-200 response code",
+			httpGetFunc: func(_ string) (resp *http.Response, err error) {
+				return &http.Response{
+					StatusCode: 401,
+					Body:       io.NopCloser(bytes.NewReader([]byte(``))),
+				}, nil
+			},
+			wantErr: true,
+		},
+		{
+			name: "error when making http call",
+			httpGetFunc: func(_ string) (resp *http.Response, err error) {
+				return &http.Response{
+					StatusCode: 401,
+					Body:       io.NopCloser(bytes.NewReader([]byte(``))),
+				}, errors.New("oops")
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			httpGetFunc = tt.httpGetFunc
+			got, err := GetSigninToken(awsCredentials)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("GetSigninToken() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("GetSigninToken() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestGetConsoleUrl(t *testing.T) {
+	tests := []struct {
+		name        string
+		signinToken string
+		want        *url.URL
+		wantErr     bool
+	}{
+		{
+			name:        "valid signin token",
+			signinToken: "the_token",
+			want: &url.URL{
+				Scheme:   "https",
+				Host:     "signin.aws.amazon.com",
+				Path:     "/federation",
+				RawQuery: "Action=login&Destination=https%3A%2F%2Fconsole.aws.amazon.com%2F&Issuer=Red+Hat+SRE&SigninToken=the_token",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := GetConsoleURL(tt.signinToken)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("GetConsoleURL() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("GetConsoleURL() got = %v, want %v", got, tt.want)
 			}
 		})
 	}
