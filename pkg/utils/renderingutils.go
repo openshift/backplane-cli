@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"strings"
 	"text/tabwriter"
@@ -100,7 +99,7 @@ func RenderTable(headers []string, data [][]string) {
 // RenderJSON is an effectual function that renders the reader as JSON
 // returns err if render fails
 func RenderJSON(reader io.Reader) error {
-	body, err := ioutil.ReadAll(reader)
+	body, err := io.ReadAll(reader)
 	if err != nil {
 		return err
 	}

@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 
@@ -174,7 +174,7 @@ var _ = Describe("managedJob create command", func() {
 
 			Expect(err).To(BeNil())
 
-			outPutText, _ := ioutil.ReadAll(outPuts)
+			outPutText, _ := io.ReadAll(outPuts)
 			Expect(string(outPutText)).Should(ContainSubstring("Job Succeeded"))
 		})
 
@@ -222,7 +222,7 @@ var _ = Describe("managedJob create command", func() {
 
 			Expect(err).To(BeNil())
 
-			outPutText, _ := ioutil.ReadAll(outPuts)
+			outPutText, _ := io.ReadAll(outPuts)
 			Expect(string(outPutText)).Should(ContainSubstring("Job Failed"))
 		})
 
@@ -243,7 +243,7 @@ var _ = Describe("managedJob create command", func() {
 
 			Expect(err).To(BeNil())
 
-			outPutText, _ := ioutil.ReadAll(outPuts)
+			outPutText, _ := io.ReadAll(outPuts)
 			Expect(string(outPutText)).Should(ContainSubstring("fetching logs for"))
 		})
 
