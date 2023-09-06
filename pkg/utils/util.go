@@ -3,7 +3,7 @@ package utils
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net"
 	"net/http"
 	"os"
@@ -104,7 +104,7 @@ func MatchBaseDomain(longHostname, baseDomain string) bool {
 }
 
 func TryParseBackplaneAPIError(rsp *http.Response) (*BackplaneApi.Error, error) {
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
