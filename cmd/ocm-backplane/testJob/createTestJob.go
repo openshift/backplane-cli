@@ -235,15 +235,8 @@ func createTestScriptFromFiles() (*backplaneApi.CreateTestScriptRunJSONRequestBo
 //
 // Inline into function before source definition of example.sh
 // #!/bin/bash
-// cat << EOF > lib.sh
-// #!/bin/bash
-//
-//	function echo_foo () {
-//		echo $1
-//	}
-//
-// EOF
-// source lib.sh
+// base64 -d <<< (based64 encoded lib.sh) > ./lib.sh
+// source ./lib.sh
 //
 // echo_foo "Hello"
 func inlineLibrarySourceFiles(script string, scriptPath string) (string, error) {
@@ -280,9 +273,9 @@ func inlineLibrarySourceFiles(script string, scriptPath string) (string, error) 
 	if err != nil {
 		return "", err
 	}
-	library := string(fileBody)
+	libraryEncoded := base64.StdEncoding.EncodeToString([]byte(fileBody))
 
-	inlinedFunction := "cat << EOF > ./lib.sh\n" + library + "\nEOF\n" + "source ./lib.sh\n"
+	inlinedFunction := "base64 -d <<< " + libraryEncoded + " > ./lib.sh\nsource ./lib.sh\n"
 
 	inlinedScript := strings.Replace(script, match, inlinedFunction, 1)
 
