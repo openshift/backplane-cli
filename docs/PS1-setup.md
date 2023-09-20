@@ -26,6 +26,7 @@ PS1='[\u@\h \W $(kube_ps1)]\$ '
 
 ## Zsh
 
+### With `oh-my-zsh` enabled
 kube-ps1 is included as a plugin in the oh-my-zsh project. To enable it, edit your `~/.zshrc` and add the plugin:
 
 ```
@@ -45,6 +46,21 @@ function cluster_function() {
   echo $clustername.$baseid
 }
 KUBE_PS1_BINARY=oc
-KUBE_PS1_CLUSTER_FUNCTION=cluster_function
+export KUBE_PS1_CLUSTER_FUNCTION=cluster_function
 PROMPT='$(kube_ps1)'$PROMPT
+~~~
+### Without `oh-my-zsh` enabled
+Save the [kube-ps1](https://raw.githubusercontent.com/jonmosco/kube-ps1/master/kube-ps1.sh) script to local, and append the below to `~/.zshrc`.
+~~~
+source /path/to/kube-ps1.sh ##<---- replace this to your location
+function cluster_function() {
+  info="$(ocm backplane status 2> /dev/null)"
+  if [ $? -ne 0 ]; then return; fi
+  clustername=$(grep "Cluster Name" <<< $info | awk '{print $3}')
+  baseid=$(grep "Cluster Basedomain" <<< $info | awk '{print $3}' | cut -d'.' -f1,2)
+  echo $clustername.$baseid
+}
+KUBE_PS1_BINARY=oc
+export KUBE_PS1_CLUSTER_FUNCTION=cluster_function
+PS1='[\u@\h \W $(kube_ps1)]\$ '
 ~~~
