@@ -58,7 +58,7 @@ Example usage:
 		"params",
 		"p",
 		[]string{},
-		"Params to be passed to managedjob execution in json format. For e.g. -p 'VAR1=VAL1' -p VAR2=VAL2 ")
+		"Params to be passed to managedjob execution in json format. Example: -p 'VAR1=VAL1' -p VAR2=VAL2 ")
 
 	cmd.Flags().StringP(
 		"library-file-path",
@@ -72,6 +72,13 @@ Example usage:
 		"d",
 		false,
 		"Use this flag to perform a dry run, which will yield the YAML of the job without creating it.",
+	)
+
+	cmd.Flags().StringP(
+		"base-image-override",
+		"i",
+		"",
+		"Optional custom repository URI to override managed-scripts base image. Example: base-image-override=quay.io/foobar/managed-scripts:latest.",
 	)
 
 	return cmd
@@ -115,11 +122,18 @@ func runCreateTestJob(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	// Base image override flag
+	baseImageOverrideFlag, err := cmd.Flags().GetString("base-image-override")
+	if err != nil {
+		return err
+	}
+
 	// raw flag
 	rawFlag, err := cmd.Flags().GetBool("raw")
 	if err != nil {
 		return err
 	}
+
 	// ======== Initialize backplaneURL ========
 	bpConfig, err := config.GetBackplaneConfiguration()
 	if err != nil {
@@ -161,7 +175,11 @@ func runCreateTestJob(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	cj.Parameters = &backplaneApi.CreateTestJob_Parameters{AdditionalProperties: parsedParams}
+	if baseImageOverrideFlag != "" {
+		cj.BaseImageOverride = &baseImageOverrideFlag
+	}
+
+	cj.Parameters = &parsedParams
 
 	// ======== Call Endpoint ========
 	resp, err := client.CreateTestScriptRun(context.TODO(), clusterID, *cj)
