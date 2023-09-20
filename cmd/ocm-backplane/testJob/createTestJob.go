@@ -149,7 +149,7 @@ func runCreateTestJob(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	cj.Parameters = &backplaneApi.CreateTestJob_Parameters{AdditionalProperties: parsedParams}
+	cj.Parameters = &parsedParams
 
 	// ======== Call Endpoint ========
 	resp, err := client.CreateTestScriptRun(context.TODO(), clusterID, *cj)
