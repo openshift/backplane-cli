@@ -71,7 +71,7 @@ Example usage:
 		"dry-run",
 		"d",
 		false,
-		"Use this flag to perform a dry run, showing the YAML of the Job without creating it",
+		"Use this flag to perform a dry run, which will yield the YAML of the job without creating it.",
 	)
 
 	return cmd
