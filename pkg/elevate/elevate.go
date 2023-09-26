@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 
 	logger "github.com/sirupsen/logrus"
 	"k8s.io/client-go/tools/clientcmd/api"
@@ -61,12 +62,19 @@ func RunElevate(argv []string) error {
 
 	logger.Debug("Adding impersonation RBAC allow permissions to kubeconfig")
 
-	elevateCmd := argv[1:]
+	elevateCmd := "oc " + strings.Join(argv[1:], " ")
+
+	shell := "/bin/bash"
+
+	if len(argv) > 3 {
+		shell = argv[4]
+	}
 
 	logger.Debugln("Executing command with temporary kubeconfig as backplane-cluster-admin")
-	ocCmd := ExecCmd("oc", elevateCmd...)
 
+	ocCmd := ExecCmd(shell, "-c", elevateCmd)
 	ocCmd.Env = append(ocCmd.Env, os.Environ()...)
+	ocCmd.Stdin = os.Stdin
 	ocCmd.Stderr = os.Stderr
 	ocCmd.Stdout = os.Stdout
 
@@ -75,6 +83,7 @@ func RunElevate(argv []string) error {
 	}
 
 	err = ocCmd.Run()
+
 	kubeconfigPath, _ := os.LookupEnv("KUBECONFIG")
 	defer func() {
 		logger.Debugln("Command error; Cleaning up temporary kubeconfig")
