@@ -109,7 +109,7 @@ func TestAddElevationReasonToRawKubeconfig(t *testing.T) {
 }
 
 func TestRunElevate(t *testing.T) {
-	t.Run("It errors if we cannot load the kubeconfig", func(t *testing.T) {
+	t.Run("It returns an error if we cannot load the kubeconfig", func(t *testing.T) {
 		ExecCmd = exec.Command
 		OsRemove = os.Remove
 		ReadKubeConfigRaw = func() (api.Config, error) {
@@ -120,7 +120,7 @@ func TestRunElevate(t *testing.T) {
 		}
 	})
 
-	t.Run("It errors if kubeconfig has no current context", func(t *testing.T) {
+	t.Run("It returns an error if kubeconfig has no current context", func(t *testing.T) {
 		ExecCmd = exec.Command
 		OsRemove = os.Remove
 		ReadKubeConfigRaw = func() (api.Config, error) {
@@ -131,7 +131,7 @@ func TestRunElevate(t *testing.T) {
 		}
 	})
 
-	t.Run("It errors if the exec command errors", func(t *testing.T) {
+	t.Run("It returns an error if the exec command has errors", func(t *testing.T) {
 		ExecCmd = fakeExecCommandError
 		OsRemove = os.Remove
 		ReadKubeConfigRaw = func() (api.Config, error) {
