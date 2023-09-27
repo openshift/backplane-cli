@@ -67,6 +67,13 @@ Example usage:
 		"Optional library file to be passed in (must live in managed-scripts/scripts directory)",
 	)
 
+	cmd.Flags().BoolP(
+		"dry-run",
+		"d",
+		false,
+		"Use this flag to perform a dry run, which will yield the YAML of the job without creating it.",
+	)
+
 	return cmd
 }
 
@@ -81,6 +88,11 @@ func runCreateTestJob(cmd *cobra.Command, args []string) error {
 
 	// ======== Parsing Flags ========
 	// Params flag
+	dryRun, err := cmd.Flags().GetBool("dry-run")
+	if err != nil {
+		return err
+	}
+
 	arr, err := cmd.Flags().GetStringArray("params")
 	if err != nil {
 		return err
@@ -144,7 +156,7 @@ func runCreateTestJob(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	cj, err := createTestScriptFromFiles()
+	cj, err := createTestScriptFromFiles(dryRun)
 	if err != nil {
 		return err
 	}
@@ -176,7 +188,7 @@ func runCreateTestJob(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func createTestScriptFromFiles() (*backplaneApi.CreateTestScriptRunJSONRequestBody, error) {
+func createTestScriptFromFiles(dryRun bool) (*backplaneApi.CreateTestScriptRunJSONRequestBody, error) {
 	// Read the yaml file from cwd
 	yamlFile, err := os.ReadFile("metadata.yaml")
 	if err != nil {
@@ -212,6 +224,7 @@ func createTestScriptFromFiles() (*backplaneApi.CreateTestScriptRunJSONRequestBo
 	return &backplaneApi.CreateTestScriptRunJSONRequestBody{
 		ScriptBody:     scriptBodyEncoded,
 		ScriptMetadata: scriptMeta,
+		DryRun:         &dryRun,
 	}, nil
 }
 
