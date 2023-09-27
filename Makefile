@@ -126,7 +126,7 @@ ensure-govulncheck:
 	@ls $(GOPATH)/bin/govulncheck 1>/dev/null || go install golang.org/x/vuln/cmd/govulncheck@${GOVULNCHECK_VERSION}
 
 scan: ensure-govulncheck
-	-govulncheck ./...
+	-govulncheck ./... 2>&1
 	@echo "Note: Vulnerabilities were checked, but failures are currently non-blocking."
 
 image:
