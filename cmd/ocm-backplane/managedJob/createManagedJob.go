@@ -175,9 +175,7 @@ func createJob(client BackplaneApi.ClientInterface) (*BackplaneApi.Job, error) {
 	// create job request
 	createJob := BackplaneApi.CreateJobJSONRequestBody{
 		CanonicalName: &options.canonicalName,
-		Parameters: &BackplaneApi.CreateJob_Parameters{
-			AdditionalProperties: jobParams,
-		},
+		Parameters: &jobParams,
 	}
 
 	// call create end point

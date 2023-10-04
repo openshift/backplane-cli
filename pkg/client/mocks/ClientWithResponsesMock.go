@@ -57,7 +57,7 @@ func (mr *MockClientWithResponsesInterfaceMockRecorder) CreateJobWithBodyWithRes
 }
 
 // CreateJobWithResponse mocks base method.
-func (m *MockClientWithResponsesInterface) CreateJobWithResponse(arg0 context.Context, arg1 string, arg2 Openapi.CreateJobJSONRequestBody, arg3 ...Openapi.RequestEditorFn) (*Openapi.CreateJobResponse, error) {
+func (m *MockClientWithResponsesInterface) CreateJobWithResponse(arg0 context.Context, arg1 string, arg2 Openapi.CreateJob, arg3 ...Openapi.RequestEditorFn) (*Openapi.CreateJobResponse, error) {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{arg0, arg1, arg2}
 	for _, a := range arg3 {
@@ -97,7 +97,7 @@ func (mr *MockClientWithResponsesInterfaceMockRecorder) CreateTestScriptRunWithB
 }
 
 // CreateTestScriptRunWithResponse mocks base method.
-func (m *MockClientWithResponsesInterface) CreateTestScriptRunWithResponse(arg0 context.Context, arg1 string, arg2 Openapi.CreateTestScriptRunJSONRequestBody, arg3 ...Openapi.RequestEditorFn) (*Openapi.CreateTestScriptRunResponse, error) {
+func (m *MockClientWithResponsesInterface) CreateTestScriptRunWithResponse(arg0 context.Context, arg1 string, arg2 Openapi.CreateTestJob, arg3 ...Openapi.RequestEditorFn) (*Openapi.CreateTestScriptRunResponse, error) {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{arg0, arg1, arg2}
 	for _, a := range arg3 {
@@ -314,26 +314,6 @@ func (mr *MockClientWithResponsesInterfaceMockRecorder) GetScriptsByClusterWithR
 	mr.mock.ctrl.T.Helper()
 	varargs := append([]interface{}{arg0, arg1, arg2}, arg3...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetScriptsByClusterWithResponse", reflect.TypeOf((*MockClientWithResponsesInterface)(nil).GetScriptsByClusterWithResponse), varargs...)
-}
-
-// GetScriptsWithResponse mocks base method.
-func (m *MockClientWithResponsesInterface) GetScriptsWithResponse(arg0 context.Context, arg1 *Openapi.GetScriptsParams, arg2 ...Openapi.RequestEditorFn) (*Openapi.GetScriptsResponse, error) {
-	m.ctrl.T.Helper()
-	varargs := []interface{}{arg0, arg1}
-	for _, a := range arg2 {
-		varargs = append(varargs, a)
-	}
-	ret := m.ctrl.Call(m, "GetScriptsWithResponse", varargs...)
-	ret0, _ := ret[0].(*Openapi.GetScriptsResponse)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetScriptsWithResponse indicates an expected call of GetScriptsWithResponse.
-func (mr *MockClientWithResponsesInterfaceMockRecorder) GetScriptsWithResponse(arg0, arg1 interface{}, arg2 ...interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	varargs := append([]interface{}{arg0, arg1}, arg2...)
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetScriptsWithResponse", reflect.TypeOf((*MockClientWithResponsesInterface)(nil).GetScriptsWithResponse), varargs...)
 }
 
 // GetTestScriptRunLogsWithResponse mocks base method.
