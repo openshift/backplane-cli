@@ -38,7 +38,7 @@ func (m *MockClientInterface) EXPECT() *MockClientInterfaceMockRecorder {
 }
 
 // CreateJob mocks base method.
-func (m *MockClientInterface) CreateJob(arg0 context.Context, arg1 string, arg2 Openapi.CreateJobJSONRequestBody, arg3 ...Openapi.RequestEditorFn) (*http.Response, error) {
+func (m *MockClientInterface) CreateJob(arg0 context.Context, arg1 string, arg2 Openapi.CreateJob, arg3 ...Openapi.RequestEditorFn) (*http.Response, error) {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{arg0, arg1, arg2}
 	for _, a := range arg3 {
@@ -78,7 +78,7 @@ func (mr *MockClientInterfaceMockRecorder) CreateJobWithBody(arg0, arg1, arg2, a
 }
 
 // CreateTestScriptRun mocks base method.
-func (m *MockClientInterface) CreateTestScriptRun(arg0 context.Context, arg1 string, arg2 Openapi.CreateTestScriptRunJSONRequestBody, arg3 ...Openapi.RequestEditorFn) (*http.Response, error) {
+func (m *MockClientInterface) CreateTestScriptRun(arg0 context.Context, arg1 string, arg2 Openapi.CreateTestJob, arg3 ...Openapi.RequestEditorFn) (*http.Response, error) {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{arg0, arg1, arg2}
 	for _, a := range arg3 {
@@ -295,26 +295,6 @@ func (mr *MockClientInterfaceMockRecorder) GetRun(arg0, arg1, arg2 interface{}, 
 	mr.mock.ctrl.T.Helper()
 	varargs := append([]interface{}{arg0, arg1, arg2}, arg3...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRun", reflect.TypeOf((*MockClientInterface)(nil).GetRun), varargs...)
-}
-
-// GetScripts mocks base method.
-func (m *MockClientInterface) GetScripts(arg0 context.Context, arg1 *Openapi.GetScriptsParams, arg2 ...Openapi.RequestEditorFn) (*http.Response, error) {
-	m.ctrl.T.Helper()
-	varargs := []interface{}{arg0, arg1}
-	for _, a := range arg2 {
-		varargs = append(varargs, a)
-	}
-	ret := m.ctrl.Call(m, "GetScripts", varargs...)
-	ret0, _ := ret[0].(*http.Response)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetScripts indicates an expected call of GetScripts.
-func (mr *MockClientInterfaceMockRecorder) GetScripts(arg0, arg1 interface{}, arg2 ...interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	varargs := append([]interface{}{arg0, arg1}, arg2...)
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetScripts", reflect.TypeOf((*MockClientInterface)(nil).GetScripts), varargs...)
 }
 
 // GetScriptsByCluster mocks base method.

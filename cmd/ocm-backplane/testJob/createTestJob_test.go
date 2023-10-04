@@ -149,6 +149,22 @@ var _ = Describe("testJob create command", func() {
 			Expect(err).To(BeNil())
 		})
 
+		It("should respect the base image when supplied as a flag", func() {
+			baseImgOverride := "quay.io/foo/bar"
+			mockOcmInterface.EXPECT().IsProduction().Return(false, nil)
+			// It should query for the internal cluster id first
+			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, testClusterID, nil)
+			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
+			mockClientUtil.EXPECT().MakeRawBackplaneAPIClient(proxyURI).Return(mockClient, nil)
+			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
+			mockClient.EXPECT().CreateTestScriptRun(gomock.Any(), trueClusterID, gomock.Any()).Return(fakeResp, nil)
+
+			sut.SetArgs([]string{"create", "--cluster-id", testClusterID, "--base-image-override", baseImgOverride})
+			err := sut.Execute()
+
+			Expect(err).To(BeNil())
+		})
+
 		It("Should able use the current logged in cluster if non specified and retrieve from config file", func() {
 			os.Setenv(info.BackplaneURLEnvName, "https://api-backplane.apps.something.com")
 			mockOcmInterface.EXPECT().IsProduction().Return(false, nil)
