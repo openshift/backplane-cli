@@ -129,9 +129,9 @@ scan: ensure-govulncheck
 	@output=$$(govulncheck ./... 2>&1); \
 	echo "$$output"; \
 	if echo "$$output" | grep -q "Vulnerability"; then \
-		echo "Note: Vulnerabilities were detected but are non-blocking."; \
-	fi; \
-	exit 0
+		echo "Note: Detected vulnerabilities (non-blocking for now). Consider updating vulnerable Go packages to their fixed versions."; \
+		exit 0; \
+	fi
 
 image:
 	$(CONTAINER_ENGINE) build --pull --platform linux/amd64 -t $(IMAGE_URI_VERSION) .
