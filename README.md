@@ -266,3 +266,20 @@ Please help us to improve. To contact the backplane team:
 
 - @backplane-team in slack channel #sd-ims-backplane (CoreOS workspace)
 - Or reach out [OWNERS](https://github.com/openshift/backplane-cli/blob/main/OWNERS)
+
+## Vulnerability Scanning with `govulncheck`
+
+As part of our continuous integration (CI) process, we've incorporated `govulncheck` to identify known vulnerabilities in the `backplane-cli` codebase.
+Following each CI execution, especially when PRs are submitted, a detailed vulnerability report can be found in `build-log.txt`. This is nested within
+the `artifacts/test/` directory of the `ci/prow/scan-optional` test. To retrieve the report:
+- Click on `Details` next to `ci/prow/scan-optional` in a specific PR.
+- Click `Artifacts` at the top-right corner of the page.
+- Navigate to `artifacts/test/` to view the `build-log.txt` containing vulnerability information.
+
+While some detected vulnerabilities might be non-blocking at the moment, they are still reported. We encourage both users and developers to thoroughly
+review these reports. If any Go packages are flagged, consider updating them to their fixed versions.
+
+To manually execute a vulnerability scan locally, run the following command:
+```
+make scan
+```
