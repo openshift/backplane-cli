@@ -355,9 +355,11 @@ func runConsole(cmd *cobra.Command, argv []string) (err error) {
 	if containerEngine == PODMAN {
 		engPullArgs = append(engPullArgs,
 			"--authfile", configFilename,
+			"--platform=linux/amd64", // always run linux/amd64 image; fix for podman for macOS
 		)
 		engRunArgs = append(engRunArgs,
 			"--authfile", configFilename,
+			"--platform=linux/amd64", // always run linux/amd64 image; fix for podman for macOS
 		)
 	}
 
