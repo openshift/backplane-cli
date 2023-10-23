@@ -3,6 +3,7 @@ package cloud
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -16,15 +17,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const (
-	DefaultInitialRoleArn = "arn:aws:iam::922711891673:role/SRE-Support-Role"
-)
-
 var assumeArgs struct {
-	initialRoleArn string
-	output         string
-	debugFile      string
-	console        bool
+	output    string
+	debugFile string
+	console   bool
 }
 
 var StsClientWithProxy = awsutil.StsClientWithProxy
@@ -37,18 +33,18 @@ var AssumeCmd = &cobra.Command{
 	Short: "Performs the assume role chaining necessary to generate temporary access to the customer's AWS account",
 	Long: `Performs the assume role chaining necessary to generate temporary access to the customer's AWS account
 
-This command is the equivalent of running "aws sts assume-role-with-web-identity --initial-role-arn [role-arn] --web-identity-token [ocm token] --role-session-name [email from OCM token]" behind the scenes,
-where the ocm token used is the result of running "ocm token". Then, the command makes a call to the backplane API to get the necessary jump roles for the cluster's account. It then calls the
-equivalent of "aws sts assume-role --initial-role-arn [role-arn] --role-session-name [email from OCM token]" repeatedly for each role arn in the chain, using the previous role's credentials to assume the next
-role in the chain.
+This command is the equivalent of running "aws sts assume-role-with-web-identity --role-arn [role-arn] --web-identity-token [ocm token] --role-session-name [email from OCM token]"
+behind the scenes, where the ocm token used is the result of running "ocm token" and the role-arn is the value of "assume-initial-arn" from the backplane configuration.
 
-This command will output sts credentials for the target role in the given cluster in formatted JSON. If no "role-arn" is provided, a default role will be used.
+Then, the command makes a call to the backplane API to get the necessary jump roles for the cluster's account. It then calls the
+equivalent of "aws sts assume-role --role-arn [role-arn] --role-session-name [email from OCM token]" repeatedly for each
+role arn in the chain, using the previous role's credentials to assume the next role in the chain.
+
+By default this command will output sts credentials for the support in the given cluster account formatted as terminal envars.
+If the "--console" flag is provided, it will output a link to the web console for the target cluster's account.
 `,
-	Example: `With default role:
+	Example: `With -o flag specified:
 backplane cloud assume e3b2fdc5-d9a7-435e-8870-312689cfb29c -oenv
-
-With given role:
-backplane cloud assume e3b2fdc5-d9a7-435e-8870-312689cfb29c --initial-role-arn arn:aws:iam::1234567890:role/read-only -oenv
 
 With a debug file:
 backplane cloud assume e3b2fdc5-d9a7-435e-8870-312689cfb29c --debug-file test_arns
@@ -61,8 +57,7 @@ backplane cloud assume e3b2fdc5-d9a7-435e-8870-312689cfb29c --console`,
 
 func init() {
 	flags := AssumeCmd.Flags()
-	flags.StringVar(&assumeArgs.initialRoleArn, "initial-role-arn", DefaultInitialRoleArn, "The arn of the role for which to start the role assume process.")
-	flags.StringVarP(&assumeArgs.output, "output", "o", "env", "Format the output of the console response.")
+	flags.StringVarP(&assumeArgs.output, "output", "o", "env", "Format the output of the console response. Valid values are `env`, `json`, and `yaml`.")
 	flags.StringVar(&assumeArgs.debugFile, "debug-file", "", "A file containing the list of ARNs to assume in order, not including the initial role ARN. Providing this flag will bypass calls to the backplane API to retrieve the assume role chain. The file should be a plain text file with each ARN on a new line.")
 	flags.BoolVar(&assumeArgs.console, "console", false, "Outputs a console url to access the targeted cluster instead of the STS credentials.")
 }
@@ -86,29 +81,29 @@ func runAssume(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to retrieve OCM token: %w", err)
 	}
 
+	email, err := utils.GetStringFieldFromJWT(*ocmToken, "email")
+	if err != nil {
+		return fmt.Errorf("unable to extract email from given token: %w", err)
+	}
+
 	bpConfig, err := GetBackplaneConfiguration()
 	if err != nil {
 		return fmt.Errorf("error retrieving backplane configuration: %w", err)
+	}
+
+	if bpConfig.AssumeInitialArn == "" {
+		return errors.New("backplane config is missing required `assume-initial-arn` property")
 	}
 
 	initialClient, err := StsClientWithProxy(bpConfig.ProxyURL)
 	if err != nil {
 		return fmt.Errorf("failed to create sts client: %w", err)
 	}
-	seedCredentials, err := AssumeRoleWithJWT(*ocmToken, assumeArgs.initialRoleArn, initialClient)
+
+	seedCredentials, err := AssumeRoleWithJWT(*ocmToken, bpConfig.AssumeInitialArn, initialClient)
 	if err != nil {
 		return fmt.Errorf("failed to assume role using JWT: %w", err)
 	}
-
-	email, err := utils.GetStringFieldFromJWT(*ocmToken, "email")
-	if err != nil {
-		return fmt.Errorf("unable to extract email from given token: %w", err)
-	}
-
-	seedClient := sts.NewFromConfig(aws.Config{
-		Region:      "us-east-1",
-		Credentials: NewStaticCredentialsProvider(*seedCredentials.AccessKeyId, *seedCredentials.SecretAccessKey, *seedCredentials.SessionToken),
-	})
 
 	var roleAssumeSequence []string
 	if assumeArgs.debugFile == "" {
@@ -154,6 +149,11 @@ func runAssume(_ *cobra.Command, args []string) error {
 		roleAssumeSequence = append(roleAssumeSequence, strings.Split(string(arnBytes), "\n")...)
 	}
 
+	seedClient := sts.NewFromConfig(aws.Config{
+		Region:      "us-east-1",
+		Credentials: NewStaticCredentialsProvider(seedCredentials.AccessKeyID, seedCredentials.SecretAccessKey, seedCredentials.SessionToken),
+	})
+
 	targetCredentials, err := AssumeRoleSequence(email, seedClient, roleAssumeSequence, bpConfig.ProxyURL, awsutil.DefaultSTSClientProviderFunc)
 	if err != nil {
 		return fmt.Errorf("failed to assume role sequence: %w", err)
@@ -173,10 +173,10 @@ func runAssume(_ *cobra.Command, args []string) error {
 		fmt.Printf("The AWS Console URL is:\n%s\n", signInFederationURL.String())
 	} else {
 		credsResponse := awsutil.AWSCredentialsResponse{
-			AccessKeyID:     *targetCredentials.AccessKeyId,
-			SecretAccessKey: *targetCredentials.SecretAccessKey,
-			SessionToken:    *targetCredentials.SessionToken,
-			Expiration:      targetCredentials.Expiration.String(),
+			AccessKeyID:     targetCredentials.AccessKeyID,
+			SecretAccessKey: targetCredentials.SecretAccessKey,
+			SessionToken:    targetCredentials.SessionToken,
+			Expiration:      targetCredentials.Expires.String(),
 		}
 		formattedResult, err := credsResponse.RenderOutput(assumeArgs.output)
 		if err != nil {

@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
 	"io"
 	"net/http"
 	"net/url"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -36,12 +38,14 @@ func defaultSuccessMockSTSClient() STSRoleAssumerMock {
 			AccessKeyId:     aws.String("test-access-key-id"),
 			SecretAccessKey: aws.String("test-secret-access-key"),
 			SessionToken:    aws.String("test-session-token"),
+			Expiration:      aws.Time(time.UnixMilli(1)),
 		},
 	}, &sts.AssumeRoleWithWebIdentityOutput{
 		Credentials: &types.Credentials{
 			AccessKeyId:     aws.String("test-access-key-id"),
 			SecretAccessKey: aws.String("test-secret-access-key"),
 			SessionToken:    aws.String("test-session-token"),
+			Expiration:      aws.Time(time.UnixMilli(1)),
 		},
 	}, nil)
 }
@@ -62,12 +66,12 @@ func TestAssumeRoleWithJWT(t *testing.T) {
 	type args struct {
 		jwt       string
 		roleArn   string
-		stsClient STSRoleWithWebIdentityAssumer
+		stsClient stscreds.AssumeRoleWithWebIdentityAPIClient
 	}
 	tests := []struct {
 		name    string
 		args    args
-		want    *types.Credentials
+		want    aws.Credentials
 		wantErr bool
 	}{
 		{
@@ -94,10 +98,13 @@ func TestAssumeRoleWithJWT(t *testing.T) {
 				roleArn:   "arn:aws:iam::1234567890:role/read-only",
 				stsClient: defaultSuccessMockSTSClient(),
 			},
-			want: &types.Credentials{
-				AccessKeyId:     aws.String("test-access-key-id"),
-				SecretAccessKey: aws.String("test-secret-access-key"),
-				SessionToken:    aws.String("test-session-token"),
+			want: aws.Credentials{
+				AccessKeyID:     "test-access-key-id",
+				SecretAccessKey: "test-secret-access-key",
+				SessionToken:    "test-session-token",
+				Source:          "WebIdentityCredentials",
+				CanExpire:       true,
+				Expires:         time.UnixMilli(1),
 			},
 		},
 	}
@@ -118,8 +125,8 @@ func TestAssumeRoleWithJWT(t *testing.T) {
 func TestAssumeRole(t *testing.T) {
 	tests := []struct {
 		name      string
-		stsClient STSRoleAssumer
-		want      *types.Credentials
+		stsClient stscreds.AssumeRoleAPIClient
+		want      aws.Credentials
 		wantErr   bool
 	}{
 		{
@@ -130,10 +137,13 @@ func TestAssumeRole(t *testing.T) {
 		{
 			name:      "Successfully assumes role",
 			stsClient: defaultSuccessMockSTSClient(),
-			want: &types.Credentials{
-				AccessKeyId:     aws.String("test-access-key-id"),
-				SecretAccessKey: aws.String("test-secret-access-key"),
-				SessionToken:    aws.String("test-session-token"),
+			want: aws.Credentials{
+				AccessKeyID:     "test-access-key-id",
+				SecretAccessKey: "test-secret-access-key",
+				SessionToken:    "test-session-token",
+				Source:          "AssumeRoleProvider",
+				CanExpire:       true,
+				Expires:         time.UnixMilli(1),
 			},
 		},
 	}
@@ -153,14 +163,14 @@ func TestAssumeRole(t *testing.T) {
 
 func TestAssumeRoleSequence(t *testing.T) {
 	type args struct {
-		seedClient            STSRoleAssumer
+		seedClient            stscreds.AssumeRoleAPIClient
 		roleArnSequence       []string
 		stsClientProviderFunc STSClientProviderFunc
 	}
 	tests := []struct {
 		name    string
 		args    args
-		want    *types.Credentials
+		want    aws.Credentials
 		wantErr bool
 	}{
 		{
@@ -182,14 +192,17 @@ func TestAssumeRoleSequence(t *testing.T) {
 			args: args{
 				seedClient:      defaultSuccessMockSTSClient(),
 				roleArnSequence: []string{"a"},
-				stsClientProviderFunc: func(optFns ...func(*config.LoadOptions) error) (STSRoleAssumer, error) {
+				stsClientProviderFunc: func(optFns ...func(*config.LoadOptions) error) (stscreds.AssumeRoleAPIClient, error) {
 					return defaultSuccessMockSTSClient(), nil
 				},
 			},
-			want: &types.Credentials{
-				AccessKeyId:     aws.String("test-access-key-id"),
-				SecretAccessKey: aws.String("test-secret-access-key"),
-				SessionToken:    aws.String("test-session-token"),
+			want: aws.Credentials{
+				AccessKeyID:     "test-access-key-id",
+				SecretAccessKey: "test-secret-access-key",
+				SessionToken:    "test-session-token",
+				Source:          "AssumeRoleProvider",
+				CanExpire:       true,
+				Expires:         time.UnixMilli(1),
 			},
 		},
 	}
@@ -208,10 +221,10 @@ func TestAssumeRoleSequence(t *testing.T) {
 }
 
 func TestGetSigninToken(t *testing.T) {
-	awsCredentials := &types.Credentials{
-		AccessKeyId:     aws.String("testAccessKeyId"),
-		SecretAccessKey: aws.String("testSecretAccessKey"),
-		SessionToken:    aws.String("testSessionToken"),
+	awsCredentials := aws.Credentials{
+		AccessKeyID:     "testAccessKeyId",
+		SecretAccessKey: "testSecretAccessKey",
+		SessionToken:    "testSessionToken",
 	}
 	tests := []struct {
 		name        string
