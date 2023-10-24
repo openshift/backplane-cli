@@ -56,10 +56,10 @@ func runToken(*cobra.Command, []string) error {
 	}
 
 	credsResponse := awsutil.AWSCredentialsResponse{
-		AccessKeyID:     *result.AccessKeyId,
-		SecretAccessKey: *result.SecretAccessKey,
-		SessionToken:    *result.SessionToken,
-		Expiration:      result.Expiration.String(),
+		AccessKeyID:     result.AccessKeyID,
+		SecretAccessKey: result.SecretAccessKey,
+		SessionToken:    result.SessionToken,
+		Expiration:      result.Expires.String(),
 	}
 
 	formattedResult, err := credsResponse.RenderOutput(tokenArgs.output)

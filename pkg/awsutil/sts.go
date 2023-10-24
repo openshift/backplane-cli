@@ -5,25 +5,25 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
+	"github.com/openshift/backplane-cli/pkg/utils"
 	"io"
 	"net/http"
 	"net/url"
 	"time"
-
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/aws/retry"
-	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/credentials"
-	"github.com/aws/aws-sdk-go-v2/service/sts"
-	"github.com/aws/aws-sdk-go-v2/service/sts/types"
-
-	"github.com/openshift/backplane-cli/pkg/utils"
 )
 
 const (
 	AwsFederatedSigninEndpoint = "https://signin.aws.amazon.com/federation"
 	AwsConsoleURL              = "https://console.aws.amazon.com/"
 	DefaultIssuer              = "Red Hat SRE"
+
+	assumeRoleMaxRetries   = 5
+	assumeRoleRetryBackoff = 5 * time.Second
 )
 
 type AWSFederatedSessionData struct {
@@ -56,49 +56,52 @@ func StsClientWithProxy(proxyURL string) (*sts.Client, error) {
 	return sts.NewFromConfig(cfg), nil
 }
 
-type STSRoleAssumer interface {
-	AssumeRole(ctx context.Context, params *sts.AssumeRoleInput, optFns ...func(*sts.Options)) (*sts.AssumeRoleOutput, error)
+// IdentityTokenValue is for retrieving an identity token from the given file name
+type IdentityTokenValue string
+
+// GetIdentityToken retrieves the JWT token from the file and returns the contents as a []byte
+func (j IdentityTokenValue) GetIdentityToken() ([]byte, error) {
+	return []byte(j), nil
 }
 
-type STSRoleWithWebIdentityAssumer interface {
-	AssumeRoleWithWebIdentity(ctx context.Context, params *sts.AssumeRoleWithWebIdentityInput, optFns ...func(*sts.Options)) (*sts.AssumeRoleWithWebIdentityOutput, error)
-}
-
-func AssumeRoleWithJWT(jwt string, roleArn string, stsClient STSRoleWithWebIdentityAssumer) (*types.Credentials, error) {
+func AssumeRoleWithJWT(jwt string, roleArn string, stsClient stscreds.AssumeRoleWithWebIdentityAPIClient) (aws.Credentials, error) {
 	email, err := utils.GetStringFieldFromJWT(jwt, "email")
 	if err != nil {
-		return nil, fmt.Errorf("unable to extract email from given token: %w", err)
-	}
-	input := &sts.AssumeRoleWithWebIdentityInput{
-		RoleArn:          aws.String(roleArn),
-		RoleSessionName:  aws.String(email),
-		WebIdentityToken: aws.String(jwt),
+		return aws.Credentials{}, fmt.Errorf("unable to extract email from given token: %w", err)
 	}
 
-	result, err := stsClient.AssumeRoleWithWebIdentity(context.TODO(), input)
+	credentialsCache := aws.NewCredentialsCache(stscreds.NewWebIdentityRoleProvider(
+		stsClient,
+		roleArn,
+		IdentityTokenValue(jwt),
+		func(options *stscreds.WebIdentityRoleOptions) {
+			options.RoleSessionName = email
+		},
+	))
+
+	result, err := credentialsCache.Retrieve(context.TODO())
 	if err != nil {
-		return nil, fmt.Errorf("unable to assume the given role with the token provided: %w", err)
+		return aws.Credentials{}, fmt.Errorf("unable to assume the given role with the token provided: %w", err)
 	}
 
-	return result.Credentials, nil
+	return result, nil
 }
 
-func AssumeRole(roleSessionName string, stsClient STSRoleAssumer, roleArn string) (*types.Credentials, error) {
-	input := &sts.AssumeRoleInput{
-		RoleArn:         aws.String(roleArn),
-		RoleSessionName: aws.String(roleSessionName),
-	}
-	result, err := stsClient.AssumeRole(context.TODO(), input)
+func AssumeRole(roleSessionName string, stsClient stscreds.AssumeRoleAPIClient, roleArn string) (aws.Credentials, error) {
+	assumeRoleProvider := stscreds.NewAssumeRoleProvider(stsClient, roleArn, func(options *stscreds.AssumeRoleOptions) {
+		options.RoleSessionName = roleSessionName
+	})
+	result, err := assumeRoleProvider.Retrieve(context.TODO())
 	if err != nil {
-		return nil, fmt.Errorf("failed to assume role %v: %w", roleArn, err)
+		return aws.Credentials{}, fmt.Errorf("failed to assume role %v: %w", roleArn, err)
 	}
 
-	return result.Credentials, nil
+	return result, nil
 }
 
-type STSClientProviderFunc func(optFns ...func(*config.LoadOptions) error) (STSRoleAssumer, error)
+type STSClientProviderFunc func(optFns ...func(*config.LoadOptions) error) (stscreds.AssumeRoleAPIClient, error)
 
-var DefaultSTSClientProviderFunc STSClientProviderFunc = func(optnFns ...func(options *config.LoadOptions) error) (STSRoleAssumer, error) {
+var DefaultSTSClientProviderFunc STSClientProviderFunc = func(optnFns ...func(options *config.LoadOptions) error) (stscreds.AssumeRoleAPIClient, error) {
 	cfg, err := config.LoadDefaultConfig(context.TODO(), optnFns...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load default AWS config: %w", err)
@@ -106,44 +109,39 @@ var DefaultSTSClientProviderFunc STSClientProviderFunc = func(optnFns ...func(op
 	return sts.NewFromConfig(cfg), nil
 }
 
-func AssumeRoleSequence(roleSessionName string, seedClient STSRoleAssumer, roleArnSequence []string, proxyURL string, stsClientProviderFunc STSClientProviderFunc) (*types.Credentials, error) {
+func AssumeRoleSequence(roleSessionName string, seedClient stscreds.AssumeRoleAPIClient, roleArnSequence []string, proxyURL string, stsClientProviderFunc STSClientProviderFunc) (aws.Credentials, error) {
 	if len(roleArnSequence) == 0 {
-		return nil, errors.New("role ARN sequence cannot be empty")
+		return aws.Credentials{}, errors.New("role ARN sequence cannot be empty")
 	}
 
 	nextClient := seedClient
-	var lastCredentials *types.Credentials
+	var lastCredentials aws.Credentials
 
 	for i, roleArn := range roleArnSequence {
 		result, err := AssumeRole(roleSessionName, nextClient, roleArn)
-		if err != nil {
-			return nil, fmt.Errorf("failed to assume role %v: %w", roleArn, err)
+		retryCount := 0
+		for err != nil {
+			// IAM policy updates can take a few seconds to resolve, and the sts.Client in AWS' Go SDK doesn't refresh itself on retries.
+			// https://github.com/aws/aws-sdk-go-v2/issues/2332
+			if retryCount < assumeRoleMaxRetries {
+				fmt.Println("Waiting for IAM policy changes to resolve...")
+				time.Sleep(assumeRoleRetryBackoff)
+				nextClient, err = createAssumeRoleSequenceClient(stsClientProviderFunc, lastCredentials, proxyURL)
+				if err != nil {
+					return aws.Credentials{}, fmt.Errorf("failed to create client with credentials for role %v: %w", roleArn, err)
+				}
+				result, err = AssumeRole(roleSessionName, nextClient, roleArn)
+				retryCount++
+			} else {
+				return aws.Credentials{}, fmt.Errorf("failed to assume role %v: %w", roleArn, err)
+			}
 		}
 		lastCredentials = result
 
 		if i < len(roleArnSequence)-1 {
-			nextClient, err = stsClientProviderFunc(
-				config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(*lastCredentials.AccessKeyId, *lastCredentials.SecretAccessKey, *lastCredentials.SessionToken)),
-				config.WithHTTPClient(&http.Client{
-					Transport: &http.Transport{
-						Proxy: func(*http.Request) (*url.URL, error) {
-							return url.Parse(proxyURL)
-						},
-					},
-				}),
-				config.WithRetryer(func() aws.Retryer {
-					return retry.NewStandard(func(options *retry.StandardOptions) {
-						options.Retryables = append(options.Retryables, retry.RetryableHTTPStatusCode{
-							Codes: map[int]struct{}{401: {}, 403: {}, 404: {}}, // Handle IAM eventual consistency because backplane api modifies trust policy
-						})
-						options.MaxAttempts = 5
-						options.MaxBackoff = 20 * time.Second
-					})
-				}),
-				config.WithRegion("us-east-1"), // We don't care about region here, but the API still wants to see one set
-			)
+			nextClient, err = createAssumeRoleSequenceClient(stsClientProviderFunc, lastCredentials, proxyURL)
 			if err != nil {
-				return nil, fmt.Errorf("failed to create client with credentials from role %v: %w", roleArn, err)
+				return aws.Credentials{}, fmt.Errorf("failed to create client with credentials for role %v: %w", roleArn, err)
 			}
 		}
 	}
@@ -151,11 +149,25 @@ func AssumeRoleSequence(roleSessionName string, seedClient STSRoleAssumer, roleA
 	return lastCredentials, nil
 }
 
-func GetSigninToken(awsCredentials *types.Credentials) (*AWSSigninTokenResponse, error) {
+func createAssumeRoleSequenceClient(stsClientProviderFunc STSClientProviderFunc, creds aws.Credentials, proxyURL string) (stscreds.AssumeRoleAPIClient, error) {
+	return stsClientProviderFunc(
+		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(creds.AccessKeyID, creds.SecretAccessKey, creds.SessionToken)),
+		config.WithHTTPClient(&http.Client{
+			Transport: &http.Transport{
+				Proxy: func(*http.Request) (*url.URL, error) {
+					return url.Parse(proxyURL)
+				},
+			},
+		}),
+		config.WithRegion("us-east-1"), // We don't care about region here, but the API still wants to see one set
+	)
+}
+
+func GetSigninToken(awsCredentials aws.Credentials) (*AWSSigninTokenResponse, error) {
 	sessionData := AWSFederatedSessionData{
-		SessionID:    *awsCredentials.AccessKeyId,
-		SessionKey:   *awsCredentials.SecretAccessKey,
-		SessionToken: *awsCredentials.SessionToken,
+		SessionID:    awsCredentials.AccessKeyID,
+		SessionKey:   awsCredentials.SecretAccessKey,
+		SessionToken: awsCredentials.SessionToken,
 	}
 
 	data, err := json.Marshal(sessionData)

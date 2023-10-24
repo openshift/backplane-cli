@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
-	"github.com/aws/aws-sdk-go-v2/service/sts/types"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -64,18 +65,19 @@ var _ = Describe("Cloud assume command", func() {
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testOcmToken, nil).Times(1)
 			GetBackplaneConfiguration = func() (bpConfig config.BackplaneConfiguration, err error) {
 				return config.BackplaneConfiguration{
-					URL:      "testUrl.com",
-					ProxyURL: "testProxyUrl.com",
+					URL:              "testUrl.com",
+					ProxyURL:         "testProxyUrl.com",
+					AssumeInitialArn: "arn:aws:iam::123456789:role/ManagedOpenShift-Support-Role",
 				}, nil
 			}
 			StsClientWithProxy = func(proxyURL string) (*sts.Client, error) {
 				return &sts.Client{}, nil
 			}
-			AssumeRoleWithJWT = func(jwt string, roleArn string, stsClient awsutil.STSRoleWithWebIdentityAssumer) (*types.Credentials, error) {
-				return &types.Credentials{
-					AccessKeyId:     &testAccessKeyID,
-					SecretAccessKey: &testSecretAccessKey,
-					SessionToken:    &testSessionToken,
+			AssumeRoleWithJWT = func(jwt string, roleArn string, stsClient stscreds.AssumeRoleWithWebIdentityAPIClient) (aws.Credentials, error) {
+				return aws.Credentials{
+					AccessKeyID:     testAccessKeyID,
+					SecretAccessKey: testSecretAccessKey,
+					SessionToken:    testSessionToken,
 				}, nil
 			}
 			NewStaticCredentialsProvider = func(key, secret, session string) credentials.StaticCredentialsProvider {
@@ -87,12 +89,12 @@ var _ = Describe("Cloud assume command", func() {
 				StatusCode: 200,
 				Body:       io.NopCloser(strings.NewReader(`{"assumption_sequence":[{"name": "name_one", "arn": "arn_one"},{"name": "name_two", "arn": "arn_two"}]}`)),
 			}, nil).Times(1)
-			AssumeRoleSequence = func(roleSessionName string, seedClient awsutil.STSRoleAssumer, roleArnSequence []string, proxyURL string, stsClientProviderFunc awsutil.STSClientProviderFunc) (*types.Credentials, error) {
-				return &types.Credentials{
-					AccessKeyId:     &testAccessKeyID,
-					SecretAccessKey: &testSecretAccessKey,
-					SessionToken:    &testSessionToken,
-					Expiration:      &testExpiration,
+			AssumeRoleSequence = func(roleSessionName string, seedClient stscreds.AssumeRoleAPIClient, roleArnSequence []string, proxyURL string, stsClientProviderFunc awsutil.STSClientProviderFunc) (aws.Credentials, error) {
+				return aws.Credentials{
+					AccessKeyID:     testAccessKeyID,
+					SecretAccessKey: testSecretAccessKey,
+					SessionToken:    testSessionToken,
+					Expires:         testExpiration,
 				}, nil
 			}
 
@@ -118,12 +120,13 @@ var _ = Describe("Cloud assume command", func() {
 			err := runAssume(nil, []string{testClusterID})
 			Expect(err.Error()).To(Equal("error retrieving backplane configuration: oops"))
 		})
-		It("should fail if cannot create create sts client with proxy", func() {
+		It("should fail if cannot create sts client with proxy", func() {
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testOcmToken, nil).Times(1)
 			GetBackplaneConfiguration = func() (bpConfig config.BackplaneConfiguration, err error) {
 				return config.BackplaneConfiguration{
-					URL:      "testUrl.com",
-					ProxyURL: "testProxyUrl.com",
+					URL:              "testUrl.com",
+					ProxyURL:         "testProxyUrl.com",
+					AssumeInitialArn: "arn:aws:iam::123456789:role/ManagedOpenShift-Support-Role",
 				}, nil
 			}
 			StsClientWithProxy = func(proxyURL string) (*sts.Client, error) {
@@ -137,15 +140,16 @@ var _ = Describe("Cloud assume command", func() {
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testOcmToken, nil).Times(1)
 			GetBackplaneConfiguration = func() (bpConfig config.BackplaneConfiguration, err error) {
 				return config.BackplaneConfiguration{
-					URL:      "testUrl.com",
-					ProxyURL: "testProxyUrl.com",
+					URL:              "testUrl.com",
+					ProxyURL:         "testProxyUrl.com",
+					AssumeInitialArn: "arn:aws:iam::123456789:role/ManagedOpenShift-Support-Role",
 				}, nil
 			}
 			StsClientWithProxy = func(proxyURL string) (*sts.Client, error) {
 				return &sts.Client{}, nil
 			}
-			AssumeRoleWithJWT = func(jwt string, roleArn string, stsClient awsutil.STSRoleWithWebIdentityAssumer) (*types.Credentials, error) {
-				return nil, errors.New("failure")
+			AssumeRoleWithJWT = func(jwt string, roleArn string, stsClient stscreds.AssumeRoleWithWebIdentityAPIClient) (aws.Credentials, error) {
+				return aws.Credentials{}, errors.New("failure")
 			}
 
 			err := runAssume(nil, []string{testClusterID})
@@ -156,18 +160,19 @@ var _ = Describe("Cloud assume command", func() {
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testOcmToken, nil).Times(1)
 			GetBackplaneConfiguration = func() (bpConfig config.BackplaneConfiguration, err error) {
 				return config.BackplaneConfiguration{
-					URL:      "testUrl.com",
-					ProxyURL: "testProxyUrl.com",
+					URL:              "testUrl.com",
+					ProxyURL:         "testProxyUrl.com",
+					AssumeInitialArn: "arn:aws:iam::123456789:role/ManagedOpenShift-Support-Role",
 				}, nil
 			}
 			StsClientWithProxy = func(proxyURL string) (*sts.Client, error) {
 				return &sts.Client{}, nil
 			}
-			AssumeRoleWithJWT = func(jwt string, roleArn string, stsClient awsutil.STSRoleWithWebIdentityAssumer) (*types.Credentials, error) {
-				return &types.Credentials{
-					AccessKeyId:     &testAccessKeyID,
-					SecretAccessKey: &testSecretAccessKey,
-					SessionToken:    &testSessionToken,
+			AssumeRoleWithJWT = func(jwt string, roleArn string, stsClient stscreds.AssumeRoleWithWebIdentityAPIClient) (aws.Credentials, error) {
+				return aws.Credentials{
+					AccessKeyID:     testAccessKeyID,
+					SecretAccessKey: testSecretAccessKey,
+					SessionToken:    testSessionToken,
 				}, nil
 			}
 
@@ -178,18 +183,19 @@ var _ = Describe("Cloud assume command", func() {
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testOcmToken, nil).Times(1)
 			GetBackplaneConfiguration = func() (bpConfig config.BackplaneConfiguration, err error) {
 				return config.BackplaneConfiguration{
-					URL:      "testUrl.com",
-					ProxyURL: "testProxyUrl.com",
+					URL:              "testUrl.com",
+					ProxyURL:         "testProxyUrl.com",
+					AssumeInitialArn: "arn:aws:iam::123456789:role/ManagedOpenShift-Support-Role",
 				}, nil
 			}
 			StsClientWithProxy = func(proxyURL string) (*sts.Client, error) {
 				return &sts.Client{}, nil
 			}
-			AssumeRoleWithJWT = func(jwt string, roleArn string, stsClient awsutil.STSRoleWithWebIdentityAssumer) (*types.Credentials, error) {
-				return &types.Credentials{
-					AccessKeyId:     &testAccessKeyID,
-					SecretAccessKey: &testSecretAccessKey,
-					SessionToken:    &testSessionToken,
+			AssumeRoleWithJWT = func(jwt string, roleArn string, stsClient stscreds.AssumeRoleWithWebIdentityAPIClient) (aws.Credentials, error) {
+				return aws.Credentials{
+					AccessKeyID:     testAccessKeyID,
+					SecretAccessKey: testSecretAccessKey,
+					SessionToken:    testSessionToken,
 				}, nil
 			}
 			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return("", "", errors.New("oh no")).Times(1)
@@ -201,18 +207,19 @@ var _ = Describe("Cloud assume command", func() {
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testOcmToken, nil).Times(1)
 			GetBackplaneConfiguration = func() (bpConfig config.BackplaneConfiguration, err error) {
 				return config.BackplaneConfiguration{
-					URL:      "testUrl.com",
-					ProxyURL: "testProxyUrl.com",
+					URL:              "testUrl.com",
+					ProxyURL:         "testProxyUrl.com",
+					AssumeInitialArn: "arn:aws:iam::123456789:role/ManagedOpenShift-Support-Role",
 				}, nil
 			}
 			StsClientWithProxy = func(proxyURL string) (*sts.Client, error) {
 				return &sts.Client{}, nil
 			}
-			AssumeRoleWithJWT = func(jwt string, roleArn string, stsClient awsutil.STSRoleWithWebIdentityAssumer) (*types.Credentials, error) {
-				return &types.Credentials{
-					AccessKeyId:     &testAccessKeyID,
-					SecretAccessKey: &testSecretAccessKey,
-					SessionToken:    &testSessionToken,
+			AssumeRoleWithJWT = func(jwt string, roleArn string, stsClient stscreds.AssumeRoleWithWebIdentityAPIClient) (aws.Credentials, error) {
+				return aws.Credentials{
+					AccessKeyID:     testAccessKeyID,
+					SecretAccessKey: testSecretAccessKey,
+					SessionToken:    testSessionToken,
 				}, nil
 			}
 			NewStaticCredentialsProvider = func(key, secret, session string) credentials.StaticCredentialsProvider {
@@ -228,18 +235,19 @@ var _ = Describe("Cloud assume command", func() {
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testOcmToken, nil).Times(1)
 			GetBackplaneConfiguration = func() (bpConfig config.BackplaneConfiguration, err error) {
 				return config.BackplaneConfiguration{
-					URL:      "testUrl.com",
-					ProxyURL: "testProxyUrl.com",
+					URL:              "testUrl.com",
+					ProxyURL:         "testProxyUrl.com",
+					AssumeInitialArn: "arn:aws:iam::123456789:role/ManagedOpenShift-Support-Role",
 				}, nil
 			}
 			StsClientWithProxy = func(proxyURL string) (*sts.Client, error) {
 				return &sts.Client{}, nil
 			}
-			AssumeRoleWithJWT = func(jwt string, roleArn string, stsClient awsutil.STSRoleWithWebIdentityAssumer) (*types.Credentials, error) {
-				return &types.Credentials{
-					AccessKeyId:     &testAccessKeyID,
-					SecretAccessKey: &testSecretAccessKey,
-					SessionToken:    &testSessionToken,
+			AssumeRoleWithJWT = func(jwt string, roleArn string, stsClient stscreds.AssumeRoleWithWebIdentityAPIClient) (aws.Credentials, error) {
+				return aws.Credentials{
+					AccessKeyID:     testAccessKeyID,
+					SecretAccessKey: testSecretAccessKey,
+					SessionToken:    testSessionToken,
 				}, nil
 			}
 			NewStaticCredentialsProvider = func(key, secret, session string) credentials.StaticCredentialsProvider {
@@ -256,18 +264,19 @@ var _ = Describe("Cloud assume command", func() {
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testOcmToken, nil).Times(1)
 			GetBackplaneConfiguration = func() (bpConfig config.BackplaneConfiguration, err error) {
 				return config.BackplaneConfiguration{
-					URL:      "testUrl.com",
-					ProxyURL: "testProxyUrl.com",
+					URL:              "testUrl.com",
+					ProxyURL:         "testProxyUrl.com",
+					AssumeInitialArn: "arn:aws:iam::123456789:role/ManagedOpenShift-Support-Role",
 				}, nil
 			}
 			StsClientWithProxy = func(proxyURL string) (*sts.Client, error) {
 				return &sts.Client{}, nil
 			}
-			AssumeRoleWithJWT = func(jwt string, roleArn string, stsClient awsutil.STSRoleWithWebIdentityAssumer) (*types.Credentials, error) {
-				return &types.Credentials{
-					AccessKeyId:     &testAccessKeyID,
-					SecretAccessKey: &testSecretAccessKey,
-					SessionToken:    &testSessionToken,
+			AssumeRoleWithJWT = func(jwt string, roleArn string, stsClient stscreds.AssumeRoleWithWebIdentityAPIClient) (aws.Credentials, error) {
+				return aws.Credentials{
+					AccessKeyID:     testAccessKeyID,
+					SecretAccessKey: testSecretAccessKey,
+					SessionToken:    testSessionToken,
 				}, nil
 			}
 			NewStaticCredentialsProvider = func(key, secret, session string) credentials.StaticCredentialsProvider {
@@ -288,18 +297,19 @@ var _ = Describe("Cloud assume command", func() {
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testOcmToken, nil).Times(1)
 			GetBackplaneConfiguration = func() (bpConfig config.BackplaneConfiguration, err error) {
 				return config.BackplaneConfiguration{
-					URL:      "testUrl.com",
-					ProxyURL: "testProxyUrl.com",
+					URL:              "testUrl.com",
+					ProxyURL:         "testProxyUrl.com",
+					AssumeInitialArn: "arn:aws:iam::123456789:role/ManagedOpenShift-Support-Role",
 				}, nil
 			}
 			StsClientWithProxy = func(proxyURL string) (*sts.Client, error) {
 				return &sts.Client{}, nil
 			}
-			AssumeRoleWithJWT = func(jwt string, roleArn string, stsClient awsutil.STSRoleWithWebIdentityAssumer) (*types.Credentials, error) {
-				return &types.Credentials{
-					AccessKeyId:     &testAccessKeyID,
-					SecretAccessKey: &testSecretAccessKey,
-					SessionToken:    &testSessionToken,
+			AssumeRoleWithJWT = func(jwt string, roleArn string, stsClient stscreds.AssumeRoleWithWebIdentityAPIClient) (aws.Credentials, error) {
+				return aws.Credentials{
+					AccessKeyID:     testAccessKeyID,
+					SecretAccessKey: testSecretAccessKey,
+					SessionToken:    testSessionToken,
 				}, nil
 			}
 			NewStaticCredentialsProvider = func(key, secret, session string) credentials.StaticCredentialsProvider {
@@ -319,18 +329,19 @@ var _ = Describe("Cloud assume command", func() {
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testOcmToken, nil).Times(1)
 			GetBackplaneConfiguration = func() (bpConfig config.BackplaneConfiguration, err error) {
 				return config.BackplaneConfiguration{
-					URL:      "testUrl.com",
-					ProxyURL: "testProxyUrl.com",
+					URL:              "testUrl.com",
+					ProxyURL:         "testProxyUrl.com",
+					AssumeInitialArn: "arn:aws:iam::123456789:role/ManagedOpenShift-Support-Role",
 				}, nil
 			}
 			StsClientWithProxy = func(proxyURL string) (*sts.Client, error) {
 				return &sts.Client{}, nil
 			}
-			AssumeRoleWithJWT = func(jwt string, roleArn string, stsClient awsutil.STSRoleWithWebIdentityAssumer) (*types.Credentials, error) {
-				return &types.Credentials{
-					AccessKeyId:     &testAccessKeyID,
-					SecretAccessKey: &testSecretAccessKey,
-					SessionToken:    &testSessionToken,
+			AssumeRoleWithJWT = func(jwt string, roleArn string, stsClient stscreds.AssumeRoleWithWebIdentityAPIClient) (aws.Credentials, error) {
+				return aws.Credentials{
+					AccessKeyID:     testAccessKeyID,
+					SecretAccessKey: testSecretAccessKey,
+					SessionToken:    testSessionToken,
 				}, nil
 			}
 			NewStaticCredentialsProvider = func(key, secret, session string) credentials.StaticCredentialsProvider {
@@ -342,8 +353,8 @@ var _ = Describe("Cloud assume command", func() {
 				StatusCode: 200,
 				Body:       io.NopCloser(strings.NewReader(`{"assumption_sequence":[{"name": "name_one", "arn": "arn_one"},{"name": "name_two", "arn": "arn_two"}]}`)),
 			}, nil).Times(1)
-			AssumeRoleSequence = func(roleSessionName string, seedClient awsutil.STSRoleAssumer, roleArnSequence []string, proxyURL string, stsClientProviderFunc awsutil.STSClientProviderFunc) (*types.Credentials, error) {
-				return nil, errors.New("oops")
+			AssumeRoleSequence = func(roleSessionName string, seedClient stscreds.AssumeRoleAPIClient, roleArnSequence []string, proxyURL string, stsClientProviderFunc awsutil.STSClientProviderFunc) (aws.Credentials, error) {
+				return aws.Credentials{}, errors.New("oops")
 			}
 
 			err := runAssume(nil, []string{testClusterID})
