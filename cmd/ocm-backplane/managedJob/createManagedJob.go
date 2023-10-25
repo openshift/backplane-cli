@@ -175,7 +175,7 @@ func createJob(client BackplaneApi.ClientInterface) (*BackplaneApi.Job, error) {
 	// create job request
 	createJob := BackplaneApi.CreateJobJSONRequestBody{
 		CanonicalName: &options.canonicalName,
-		Parameters: &jobParams,
+		Parameters:    &jobParams,
 	}
 
 	// call create end point
@@ -183,6 +183,11 @@ func createJob(client BackplaneApi.ClientInterface) (*BackplaneApi.Job, error) {
 
 	if err != nil {
 		return nil, err
+	}
+
+	// Check for the warning header and display it if found.
+	if warningMsg := resp.Header.Get("Backplane-Warning"); warningMsg != "" {
+		fmt.Fprintln(os.Stderr, warningMsg)
 	}
 
 	if resp.StatusCode != http.StatusOK {
