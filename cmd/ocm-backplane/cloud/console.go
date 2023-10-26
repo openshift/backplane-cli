@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/openshift/backplane-cli/pkg/awsutil"
 	"net/http"
 	"os"
 	"strconv"
@@ -30,14 +31,14 @@ type ConsoleResponse struct {
 	ConsoleLink string `json:"ConsoleLink" yaml:"ConsoleLink"`
 }
 
-var consoleStrFmt string = `Console Link:
+var consoleStrFmt = `Console Link:
   Link: %s`
 
 func (r *ConsoleResponse) String() string {
 	return fmt.Sprintf(consoleStrFmt, r.ConsoleLink)
 }
 
-// Environment variable that indicates if open by browser is set as default
+// EnvBrowserDefault environment variable that indicates if open by browser is set as default
 const EnvBrowserDefault = "BACKPLANE_DEFAULT_OPEN_BROWSER"
 
 // ConsoleCmd represents the cloud credentials command
@@ -109,6 +110,11 @@ func runConsole(cmd *cobra.Command, argv []string) (err error) {
 		return err
 	}
 
+	cluster, err := utils.DefaultOCMInterface.GetClusterInfoByID(clusterID)
+	if err != nil {
+		return fmt.Errorf("failed to get cluster info for %s: %w", clusterID, err)
+	}
+
 	logger.WithFields(logger.Fields{
 		"ID":   clusterID,
 		"Name": clusterName}).Infoln("Target cluster")
@@ -132,13 +138,35 @@ func runConsole(cmd *cobra.Command, argv []string) (err error) {
 	}
 
 	// ======== Get cloud console from backplane API ============
-	response, err := getCloudConsole(bpURL, clusterID)
+
+	var consoleResponse *ConsoleResponse
+	isolatedBackplane, err := isIsolatedBackplaneAccess(cluster)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to determine if cluster is using isolated backplane access: %w", err)
+	}
+	if isolatedBackplane {
+		targetCredentials, err := getIsolatedCredentials(clusterID)
+		if err != nil {
+			return fmt.Errorf("failed to get cloud credentials for cluster %v: %w", clusterID, err)
+		}
+		resp, err := awsutil.GetSigninToken(targetCredentials)
+		if err != nil {
+			return fmt.Errorf("failed to get signin token: %w", err)
+		}
+
+		signinFederationURL, err := awsutil.GetConsoleURL(resp.SigninToken)
+		if err != nil {
+			return fmt.Errorf("failed to generate console url: %w", err)
+		}
+		consoleResponse = &ConsoleResponse{ConsoleLink: signinFederationURL.String()}
+	} else {
+		consoleResponse, err = getCloudConsole(bpURL, clusterID)
+		if err != nil {
+			return err
+		}
 	}
 
-	// ====== Render cloud console response based on output format
-	err = renderCloudConsole(response)
+	err = renderCloudConsole(consoleResponse)
 	if err != nil {
 		return err
 	}

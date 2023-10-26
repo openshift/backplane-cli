@@ -111,6 +111,21 @@ func (mr *MockOCMInterfaceMockRecorder) GetServiceCluster(arg0 interface{}) *gom
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetServiceCluster", reflect.TypeOf((*MockOCMInterface)(nil).GetServiceCluster), arg0)
 }
 
+// GetStsSupportJumpRole mocks base method.
+func (m *MockOCMInterface) GetStsSupportJumpRoleARN(arg0 string) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetStsSupportJumpRoleARN", arg0)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetStsSupportJumpRole indicates an expected call of GetStsSupportJumpRole.
+func (mr *MockOCMInterfaceMockRecorder) GetStsSupportJumpRole(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetStsSupportJumpRoleARN", reflect.TypeOf((*MockOCMInterface)(nil).GetStsSupportJumpRoleARN), arg0)
+}
+
 // GetTargetCluster mocks base method.
 func (m *MockOCMInterface) GetTargetCluster(arg0 string) (string, string, error) {
 	m.ctrl.T.Helper()
