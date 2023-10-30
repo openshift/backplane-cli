@@ -23,6 +23,7 @@ type OCMInterface interface {
 	GetClusterInfoByID(clusterID string) (*cmv1.Cluster, error)
 	IsProduction() (bool, error)
 	GetPullSecret() (string, error)
+	GetStsSupportJumpRoleARN(clusterID string) (string, error)
 }
 
 type DefaultOCMInterfaceImpl struct{}
@@ -259,6 +260,18 @@ func (*DefaultOCMInterfaceImpl) IsProduction() (bool, error) {
 	defer connection.Close()
 
 	return connection.URL() == "https://api.openshift.com", nil
+}
+
+func (*DefaultOCMInterfaceImpl) GetStsSupportJumpRoleARN(clusterID string) (string, error) {
+	connection, err := ocm.NewConnection().Build()
+	if err != nil {
+		return "", fmt.Errorf("failed to create OCM connection: %v", err)
+	}
+	response, err := connection.ClustersMgmt().V1().Clusters().Cluster(clusterID).StsSupportJumpRole().Get().Send()
+	if err != nil {
+		return "", fmt.Errorf("failed to get STS Support Jump Role for cluster %v, %w", clusterID, err)
+	}
+	return response.Body().RoleArn(), nil
 }
 
 func getClusters(client *cmv1.ClustersClient, clusterKey string) ([]*cmv1.Cluster, error) {

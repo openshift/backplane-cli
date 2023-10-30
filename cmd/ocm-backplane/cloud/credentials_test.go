@@ -22,6 +22,7 @@ import (
 
 	"github.com/openshift/backplane-cli/pkg/cli/config"
 	"github.com/openshift/backplane-cli/pkg/client/mocks"
+	bpCredentials "github.com/openshift/backplane-cli/pkg/credentials"
 	"github.com/openshift/backplane-cli/pkg/info"
 	"github.com/openshift/backplane-cli/pkg/utils"
 	mocks2 "github.com/openshift/backplane-cli/pkg/utils/mocks"
@@ -278,6 +279,7 @@ var _ = Describe("Cloud console command", func() {
 				mockOcmInterface.EXPECT().GetTargetCluster(gomock.Any()).Return("foo", "bar", nil).AnyTimes()
 				mockOcmInterface.EXPECT().GetClusterInfoByID(gomock.Any()).Return(&cmv1.Cluster{}, nil).AnyTimes()
 				mockClusterUtils.EXPECT().GetCloudProvider(gomock.Any()).Return("azure").AnyTimes()
+
 				Expect(runCredentials(&cobra.Command{}, []string{"cluster-key"})).To(Equal(
 					fmt.Errorf("unsupported cloud provider: %s", "azure"),
 				))
@@ -314,7 +316,7 @@ var _ = Describe("Cloud console command", func() {
 	})
 
 	Context("test renderCloudCredentials", func() {
-		creds := AWSCredentialsResponse{
+		creds := bpCredentials.AWSCredentialsResponse{
 			AccessKeyID:     "foo",
 			SecretAccessKey: "bar",
 			SessionToken:    "baz",
@@ -322,7 +324,7 @@ var _ = Describe("Cloud console command", func() {
 		}
 
 		It("prints the format export if the env output flag is supplied", func() {
-			export := creds.fmtExport()
+			export := creds.FmtExport()
 
 			Expect(renderCloudCredentials("env", &creds)).To(Equal(export))
 		})
@@ -348,7 +350,7 @@ var _ = Describe("Cloud console command", func() {
 	})
 	Context("TestAWSCredentialsResponseString(", func() {
 		It("It formats the output correctly", func() {
-			r := &AWSCredentialsResponse{
+			r := &bpCredentials.AWSCredentialsResponse{
 				AccessKeyID:     "12345",
 				SecretAccessKey: "56789",
 				SessionToken:    "sessiontoken",
@@ -367,7 +369,7 @@ var _ = Describe("Cloud console command", func() {
 	})
 	Context("TestGCPCredentialsResponseString", func() {
 		It("It formats the output correctly", func() {
-			r := &GCPCredentialsResponse{
+			r := &bpCredentials.GCPCredentialsResponse{
 				ProjectID: "foo",
 			}
 			expect := `If this is your first time, run "gcloud auth login" and then
@@ -378,7 +380,7 @@ gcloud config set project foo`
 	})
 	Context("TestAWSCredentialsResponseFmtEformattedcredsxport", func() {
 		It("It formats the output correctly", func() {
-			r := &AWSCredentialsResponse{
+			r := &bpCredentials.AWSCredentialsResponse{
 				AccessKeyID:     "foo",
 				SecretAccessKey: "bar",
 				SessionToken:    "baz",
@@ -390,18 +392,18 @@ gcloud config set project foo`
 export AWS_SECRET_ACCESS_KEY=bar
 export AWS_SESSION_TOKEN=baz
 export AWS_DEFAULT_REGION=quux`
-			Expect(awsExportOut).To(Equal(r.fmtExport()))
+			Expect(awsExportOut).To(Equal(r.FmtExport()))
 		})
 	})
 	Context("TestGCPCredentialsResponseFmtExport", func() {
 		It("It formats the output correctly", func() {
-			r := &GCPCredentialsResponse{
+			r := &bpCredentials.GCPCredentialsResponse{
 				ProjectID: "foo",
 			}
 
 			gcpExportFormatOut := `export CLOUDSDK_CORE_PROJECT=foo`
 
-			Expect(gcpExportFormatOut).To(Equal(r.fmtExport()))
+			Expect(gcpExportFormatOut).To(Equal(r.FmtExport()))
 		})
 	})
 })

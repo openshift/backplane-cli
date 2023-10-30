@@ -5,15 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	bpCredentials "github.com/openshift/backplane-cli/pkg/credentials"
 	"net/http"
 
 	logger "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"sigs.k8s.io/yaml"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/credentials"
 	BackplaneApi "github.com/openshift/backplane-api/pkg/client"
 
 	"github.com/openshift/backplane-cli/pkg/utils"
@@ -24,69 +22,6 @@ var GetBackplaneClusterFromConfig = utils.DefaultClusterUtils.GetBackplaneCluste
 var credentialArgs struct {
 	backplaneURL string
 	output       string
-}
-
-type CredentialsResponse interface {
-	// String returns a friendly message outlining how users can setup cloud environment access
-	String() string
-
-	// fmtExport sets environment variables for users to export to setup cloud environment access
-	fmtExport() string
-}
-
-type AWSCredentialsResponse struct {
-	AccessKeyID     string `json:"AccessKeyID" yaml:"AccessKeyID"`
-	SecretAccessKey string `json:"SecretAccessKey" yaml:"SecretAccessKey"`
-	SessionToken    string `json:"SessionToken" yaml:"SessionToken"`
-	Region          string `json:"Region" yaml:"Region"`
-	Expiration      string `json:"Expiration" yaml:"Expiration"`
-}
-
-type GCPCredentialsResponse struct {
-	ProjectID string `json:"project_id" yaml:"project_id"`
-}
-
-const (
-	// format strings for printing AWS credentials as a string or as environment variables
-	awsCredentialsStringFormat = `Temporary Credentials:
-  AccessKeyID: %s
-  SecretAccessKey: %s
-  SessionToken: %s
-  Region: %s
-  Expires: %s`
-	awsExportFormat = `export AWS_ACCESS_KEY_ID=%s
-export AWS_SECRET_ACCESS_KEY=%s
-export AWS_SESSION_TOKEN=%s
-export AWS_DEFAULT_REGION=%s`
-
-	// format strings for printing GCP credentials as a string or as environment variables
-	gcpCredentialsStringFormat = `If this is your first time, run "gcloud auth login" and then
-gcloud config set project %s`
-	gcpExportFormat = `export CLOUDSDK_CORE_PROJECT=%s`
-)
-
-func (r *AWSCredentialsResponse) String() string {
-	return fmt.Sprintf(awsCredentialsStringFormat, r.AccessKeyID, r.SecretAccessKey, r.SessionToken, r.Region, r.Expiration)
-}
-
-func (r *AWSCredentialsResponse) fmtExport() string {
-	return fmt.Sprintf(awsExportFormat, r.AccessKeyID, r.SecretAccessKey, r.SessionToken, r.Region)
-}
-
-// AWSV2Config returns an aws-sdk-go-v2 config that can be used to programmatically access the AWS API
-func (r *AWSCredentialsResponse) AWSV2Config() (aws.Config, error) {
-	return config.LoadDefaultConfig(context.TODO(),
-		config.WithRegion(r.Region),
-		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(r.AccessKeyID, r.SecretAccessKey, r.SessionToken)),
-	)
-}
-
-func (r *GCPCredentialsResponse) String() string {
-	return fmt.Sprintf(gcpCredentialsStringFormat, r.ProjectID)
-}
-
-func (r *GCPCredentialsResponse) fmtExport() string {
-	return fmt.Sprintf(gcpExportFormat, r.ProjectID)
 }
 
 // CredentialsCmd represents the cloud credentials command
@@ -175,65 +110,38 @@ func runCredentials(cmd *cobra.Command, argv []string) error {
 	// ======== Call Endpoint ==================================
 	logger.Debugln("Getting Cloud Credentials")
 
-	credsResp, err := getCloudCredential(bpURL, clusterID)
+	var output string
+	isolatedBackplane, err := isIsolatedBackplaneAccess(cluster)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to determine if cluster is using isolated backplane access: %w", err)
 	}
-
-	// ======== Render cloud credentials =======================
-	switch cloudProvider {
-	case "aws":
-		cliResp := &AWSCredentialsResponse{}
-		if err := json.Unmarshal([]byte(*credsResp.JSON200.Credentials), cliResp); err != nil {
-			return fmt.Errorf("unable to unmarshal AWS credentials response from backplane %s: %w", *credsResp.JSON200.Credentials, err)
+	if isolatedBackplane {
+		targetCredentials, err := getIsolatedCredentials(clusterID)
+		if err != nil {
+			return fmt.Errorf("failed to get cloud credentials for cluster %v: %w", clusterID, err)
 		}
-		cliResp.Region = *credsResp.JSON200.Region
-		creds, err := renderCloudCredentials(credentialArgs.output, cliResp)
+		output, err = renderCloudCredentials(credentialArgs.output, &bpCredentials.AWSCredentialsResponse{
+			AccessKeyID:     targetCredentials.AccessKeyID,
+			SecretAccessKey: targetCredentials.SecretAccessKey,
+			SessionToken:    targetCredentials.SessionToken,
+			Expiration:      targetCredentials.Expires.String(),
+		})
+		if err != nil {
+			return fmt.Errorf("failed to render credentials: %w", err)
+		}
+	} else {
+		credsResp, err := getCloudCredential(bpURL, clusterID)
+		if err != nil {
+			return fmt.Errorf("failed to get cloud credentials for cluster %v: %w", clusterID, err)
+		}
+		output, err = renderCredentials(credsResp.JSON200.Credentials, cloudProvider)
 		if err != nil {
 			return err
 		}
-		fmt.Println(creds)
-		return nil
-	case "gcp":
-		cliResp := &GCPCredentialsResponse{}
-		if err := json.Unmarshal([]byte(*credsResp.JSON200.Credentials), cliResp); err != nil {
-			return fmt.Errorf("unable to unmarshal GCP credentials response from backplane %s: %w", *credsResp.JSON200.Credentials, err)
-		}
-		creds, err := renderCloudCredentials(credentialArgs.output, cliResp)
-		if err != nil {
-			return err
-		}
-		fmt.Println(creds)
-		return nil
-	default:
-		return fmt.Errorf("unsupported cloud provider: %s", cloudProvider)
-	}
-}
-
-// GetAWSV2Config allows consumers to get an aws-sdk-go-v2 Config to programmatically access the AWS API
-func GetAWSV2Config(backplaneURL string, clusterID string) (aws.Config, error) {
-	cluster, err := utils.DefaultOCMInterface.GetClusterInfoByID(clusterID)
-	if err != nil {
-		return aws.Config{}, err
 	}
 
-	cloudProvider := utils.DefaultClusterUtils.GetCloudProvider(cluster)
-	if cloudProvider != "aws" {
-		return aws.Config{}, fmt.Errorf("only supported for the aws cloud provider, this cluster has: %s", cloudProvider)
-	}
-
-	resp, err := getCloudCredential(backplaneURL, clusterID)
-	if err != nil {
-		return aws.Config{}, err
-	}
-
-	credsResp := &AWSCredentialsResponse{}
-	if err := json.Unmarshal([]byte(*resp.JSON200.Credentials), credsResp); err != nil {
-		return aws.Config{}, fmt.Errorf("unable to unmarshal AWS credentials response from backplane %s: %w", *resp.JSON200.Credentials, err)
-	}
-	credsResp.Region = *resp.JSON200.Region
-
-	return credsResp.AWSV2Config()
+	fmt.Println(output)
+	return nil
 }
 
 // getCloudCredential returns Cloud Credentials Response
@@ -266,11 +174,38 @@ func getCloudCredential(backplaneURL string, clusterID string) (*BackplaneApi.Ge
 	return credsResp, nil
 }
 
+func renderCredentials(credentials *string, cloudProvider string) (string, error) {
+	switch cloudProvider {
+	case "aws":
+		cliResp := &bpCredentials.AWSCredentialsResponse{}
+		if err := json.Unmarshal([]byte(*credentials), cliResp); err != nil {
+			return "", fmt.Errorf("unable to unmarshal AWS credentials response from backplane %s: %w", *credentials, err)
+		}
+		creds, err := renderCloudCredentials(credentialArgs.output, cliResp)
+		if err != nil {
+			return "", err
+		}
+		return creds, nil
+	case "gcp":
+		cliResp := &bpCredentials.GCPCredentialsResponse{}
+		if err := json.Unmarshal([]byte(*credentials), cliResp); err != nil {
+			return "", fmt.Errorf("unable to unmarshal GCP credentials response from backplane %s: %w", *credentials, err)
+		}
+		creds, err := renderCloudCredentials(credentialArgs.output, cliResp)
+		if err != nil {
+			return "", err
+		}
+		return creds, nil
+	default:
+		return "", fmt.Errorf("unsupported cloud provider: %s", cloudProvider)
+	}
+}
+
 // renderCloudCredentials displays the results of `ocm backplane cloud credentials` for AWS clusters
-func renderCloudCredentials(outputFormat string, creds CredentialsResponse) (string, error) {
+func renderCloudCredentials(outputFormat string, creds bpCredentials.Response) (string, error) {
 	switch outputFormat {
 	case "env":
-		return creds.fmtExport(), nil
+		return creds.FmtExport(), nil
 	case "yaml":
 		yamlBytes, err := yaml.Marshal(creds)
 		if err != nil {

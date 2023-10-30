@@ -94,6 +94,7 @@ var _ = Describe("Cloud console command", func() {
 	Context("Execute cloud console command", func() {
 		It("should return AWS cloud console", func() {
 			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, testClusterID, nil)
+			mockOcmInterface.EXPECT().GetClusterInfoByID(trueClusterID).Return(nil, nil)
 			mockClientUtil.EXPECT().GetBackplaneClient(proxyURI).Return(mockClient, nil).AnyTimes()
 			mockClient.EXPECT().GetCloudConsole(gomock.Any(), trueClusterID).Return(fakeAWSResp, nil)
 
@@ -104,6 +105,7 @@ var _ = Describe("Cloud console command", func() {
 
 		It("should return GCP cloud console", func() {
 			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, testClusterID, nil)
+			mockOcmInterface.EXPECT().GetClusterInfoByID(trueClusterID).Return(nil, nil)
 			mockClientUtil.EXPECT().GetBackplaneClient(proxyURI).Return(mockClient, nil).AnyTimes()
 			mockClient.EXPECT().GetCloudConsole(gomock.Any(), trueClusterID).Return(fakeGCloudResp, nil)
 			err := runConsole(nil, []string{testClusterID})
