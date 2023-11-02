@@ -22,7 +22,7 @@ const (
 	AwsConsoleURL                      = "https://console.aws.amazon.com/"
 	DefaultIssuer                      = "Red Hat SRE"
 
-	assumeRoleMaxRetries   = 5
+	assumeRoleMaxRetries   = 3
 	assumeRoleRetryBackoff = 5 * time.Second
 )
 

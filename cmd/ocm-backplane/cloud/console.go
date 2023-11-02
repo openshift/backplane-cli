@@ -147,19 +147,25 @@ func runConsole(cmd *cobra.Command, argv []string) (err error) {
 	if isolatedBackplane {
 		targetCredentials, err := getIsolatedCredentials(clusterID)
 		if err != nil {
-			return fmt.Errorf("failed to get cloud credentials for cluster %v: %w", clusterID, err)
-		}
+			// itn-2023-00143 handle case where customer's org is on the isolated flow,
+			// but they have not yet migrated their account roles
+			fmt.Println("Cluster's org is using new flow but cluster has not migrated to new account roles. Trying old flow...")
+			consoleResponse, err = getCloudConsole(bpURL, clusterID)
+			if err != nil {
+				return err
+			}
+		} else {
+			resp, err := awsutil.GetSigninToken(targetCredentials, cluster.Region().ID())
+			if err != nil {
+				return fmt.Errorf("failed to get signin token: %w", err)
+			}
 
-		resp, err := awsutil.GetSigninToken(targetCredentials, cluster.Region().ID())
-		if err != nil {
-			return fmt.Errorf("failed to get signin token: %w", err)
+			signinFederationURL, err := awsutil.GetConsoleURL(resp.SigninToken, cluster.Region().ID())
+			if err != nil {
+				return fmt.Errorf("failed to generate console url: %w", err)
+			}
+			consoleResponse = &ConsoleResponse{ConsoleLink: signinFederationURL.String()}
 		}
-
-		signinFederationURL, err := awsutil.GetConsoleURL(resp.SigninToken, cluster.Region().ID())
-		if err != nil {
-			return fmt.Errorf("failed to generate console url: %w", err)
-		}
-		consoleResponse = &ConsoleResponse{ConsoleLink: signinFederationURL.String()}
 	} else {
 		consoleResponse, err = getCloudConsole(bpURL, clusterID)
 		if err != nil {
