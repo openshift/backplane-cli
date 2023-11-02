@@ -226,6 +226,7 @@ func TestGetSigninToken(t *testing.T) {
 		SecretAccessKey: "testSecretAccessKey",
 		SessionToken:    "testSessionToken",
 	}
+	region := "us-east-1"
 	tests := []struct {
 		name        string
 		httpGetFunc func(url string) (resp *http.Response, err error)
@@ -276,7 +277,7 @@ func TestGetSigninToken(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			httpGetFunc = tt.httpGetFunc
-			got, err := GetSigninToken(awsCredentials)
+			got, err := GetSigninToken(awsCredentials, region)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GetSigninToken() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -300,7 +301,7 @@ func TestGetConsoleUrl(t *testing.T) {
 			signinToken: "the_token",
 			want: &url.URL{
 				Scheme:   "https",
-				Host:     "signin.aws.amazon.com",
+				Host:     "us-east-1.signin.aws.amazon.com",
 				Path:     "/federation",
 				RawQuery: "Action=login&Destination=https%3A%2F%2Fconsole.aws.amazon.com%2F&Issuer=Red+Hat+SRE&SigninToken=the_token",
 			},
@@ -308,7 +309,7 @@ func TestGetConsoleUrl(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := GetConsoleURL(tt.signinToken)
+			got, err := GetConsoleURL(tt.signinToken, "us-east-1")
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GetConsoleURL() error = %v, wantErr %v", err, tt.wantErr)
 				return

@@ -149,12 +149,13 @@ func runConsole(cmd *cobra.Command, argv []string) (err error) {
 		if err != nil {
 			return fmt.Errorf("failed to get cloud credentials for cluster %v: %w", clusterID, err)
 		}
-		resp, err := awsutil.GetSigninToken(targetCredentials)
+
+		resp, err := awsutil.GetSigninToken(targetCredentials, cluster.Region().ID())
 		if err != nil {
 			return fmt.Errorf("failed to get signin token: %w", err)
 		}
 
-		signinFederationURL, err := awsutil.GetConsoleURL(resp.SigninToken)
+		signinFederationURL, err := awsutil.GetConsoleURL(resp.SigninToken, cluster.Region().ID())
 		if err != nil {
 			return fmt.Errorf("failed to generate console url: %w", err)
 		}

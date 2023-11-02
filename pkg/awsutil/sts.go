@@ -18,9 +18,9 @@ import (
 )
 
 const (
-	AwsFederatedSigninEndpoint = "https://signin.aws.amazon.com/federation"
-	AwsConsoleURL              = "https://console.aws.amazon.com/"
-	DefaultIssuer              = "Red Hat SRE"
+	AwsFederatedSigninEndpointTemplate = "https://%v.signin.aws.amazon.com/federation"
+	AwsConsoleURL                      = "https://console.aws.amazon.com/"
+	DefaultIssuer                      = "Red Hat SRE"
 
 	assumeRoleMaxRetries   = 5
 	assumeRoleRetryBackoff = 5 * time.Second
@@ -163,7 +163,7 @@ func createAssumeRoleSequenceClient(stsClientProviderFunc STSClientProviderFunc,
 	)
 }
 
-func GetSigninToken(awsCredentials aws.Credentials) (*AWSSigninTokenResponse, error) {
+func GetSigninToken(awsCredentials aws.Credentials, region string) (*AWSSigninTokenResponse, error) {
 	sessionData := AWSFederatedSessionData{
 		SessionID:    awsCredentials.AccessKeyID,
 		SessionKey:   awsCredentials.SecretAccessKey,
@@ -180,7 +180,7 @@ func GetSigninToken(awsCredentials aws.Credentials) (*AWSSigninTokenResponse, er
 	federationParams.Add("SessionType", "json")
 	federationParams.Add("Session", string(data))
 
-	baseFederationURL, err := url.Parse(AwsFederatedSigninEndpoint)
+	baseFederationURL, err := url.Parse(fmt.Sprintf(AwsFederatedSigninEndpointTemplate, region))
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse aws federated signin endpoint: %w", err)
 	}
@@ -209,14 +209,14 @@ func GetSigninToken(awsCredentials aws.Credentials) (*AWSSigninTokenResponse, er
 	return &resp, nil
 }
 
-func GetConsoleURL(signinToken string) (*url.URL, error) {
+func GetConsoleURL(signinToken string, region string) (*url.URL, error) {
 	signinParams := url.Values{}
 	signinParams.Add("Action", "login")
 	signinParams.Add("Destination", AwsConsoleURL)
 	signinParams.Add("Issuer", DefaultIssuer)
 	signinParams.Add("SigninToken", signinToken)
 
-	signInFederationURL, err := url.Parse(AwsFederatedSigninEndpoint)
+	signInFederationURL, err := url.Parse(fmt.Sprintf(AwsFederatedSigninEndpointTemplate, region))
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse federated signin endpoint: %w", err)
 	}

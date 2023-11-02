@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/aws"
 	bpCredentials "github.com/openshift/backplane-cli/pkg/credentials"
 	"net/http"
 
@@ -120,12 +121,18 @@ func runCredentials(cmd *cobra.Command, argv []string) error {
 		if err != nil {
 			return fmt.Errorf("failed to get cloud credentials for cluster %v: %w", clusterID, err)
 		}
-		output, err = renderCloudCredentials(credentialArgs.output, &bpCredentials.AWSCredentialsResponse{
+
+		bpCreds := &bpCredentials.AWSCredentialsResponse{
 			AccessKeyID:     targetCredentials.AccessKeyID,
 			SecretAccessKey: targetCredentials.SecretAccessKey,
 			SessionToken:    targetCredentials.SessionToken,
 			Expiration:      targetCredentials.Expires.String(),
-		})
+		}
+		if region, ok := cluster.GetRegion(); ok {
+			bpCreds.Region = region.ID()
+		}
+
+		output, err = renderCloudCredentials(credentialArgs.output, bpCreds)
 		if err != nil {
 			return fmt.Errorf("failed to render credentials: %w", err)
 		}
@@ -134,7 +141,7 @@ func runCredentials(cmd *cobra.Command, argv []string) error {
 		if err != nil {
 			return fmt.Errorf("failed to get cloud credentials for cluster %v: %w", clusterID, err)
 		}
-		output, err = renderCredentials(credsResp.JSON200.Credentials, cloudProvider)
+		output, err = renderCredentials(credsResp.JSON200.Credentials, credsResp.JSON200.Region, cloudProvider)
 		if err != nil {
 			return err
 		}
@@ -174,13 +181,14 @@ func getCloudCredential(backplaneURL string, clusterID string) (*BackplaneApi.Ge
 	return credsResp, nil
 }
 
-func renderCredentials(credentials *string, cloudProvider string) (string, error) {
+func renderCredentials(credentials *string, region *string, cloudProvider string) (string, error) {
 	switch cloudProvider {
 	case "aws":
 		cliResp := &bpCredentials.AWSCredentialsResponse{}
 		if err := json.Unmarshal([]byte(*credentials), cliResp); err != nil {
 			return "", fmt.Errorf("unable to unmarshal AWS credentials response from backplane %s: %w", *credentials, err)
 		}
+		cliResp.Region = aws.ToString(region)
 		creds, err := renderCloudCredentials(credentialArgs.output, cliResp)
 		if err != nil {
 			return "", err
