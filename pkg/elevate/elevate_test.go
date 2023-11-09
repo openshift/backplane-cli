@@ -7,19 +7,11 @@ import (
 	"os/exec"
 	"testing"
 
+	"github.com/golang/mock/gomock"
 	"github.com/openshift/backplane-cli/pkg/utils"
+	mocks2 "github.com/openshift/backplane-cli/pkg/utils/mocks"
 	"k8s.io/client-go/tools/clientcmd/api"
 )
-
-// MockShellChecker defines a mock implementation that can simulate different shell validation scenarios.
-type MockShellChecker struct {
-	IsValid bool // Determines whether the IsValidShell will return true or false.
-}
-
-// IsValidShell implements the ShellCheckerInterface.
-func (m MockShellChecker) IsValidShell(shellPath string) bool {
-	return m.IsValid
-}
 
 func fakeExecCommandError(command string, args ...string) *exec.Cmd {
 	cs := []string{"-test.run=TestHelperProcessError", "--", command}
@@ -210,15 +202,20 @@ func TestRunElevate(t *testing.T) {
 	})
 
 	t.Run("It returns an error when SHELL environment variable is empty and /bin/bash is invalid", func(t *testing.T) {
-		originalShell := os.Getenv("SHELL")
-		defer os.Setenv("SHELL", originalShell)
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+
+		mockShellChecker := mocks2.NewMockShellCheckerInterface(mockCtrl)
+		mockShellChecker.EXPECT().IsValidShell("").Return(false).AnyTimes()
+		mockShellChecker.EXPECT().IsValidShell("/bin/bash").Return(false).Times(1)
+
+		// Inject the mockShellChecker into the actual code
+		originalShellChecker := utils.ShellChecker
+		defer func() { utils.ShellChecker = originalShellChecker }()
+		utils.ShellChecker = mockShellChecker
 
 		os.Setenv("SHELL", "")
-
-		// Override the ShellChecker with the mock that always returns false
-		originalShellChecker := utils.ShellChecker
-		utils.ShellChecker = MockShellChecker{IsValid: false}
-		defer func() { utils.ShellChecker = originalShellChecker }()
+		defer os.Unsetenv("SHELL")
 
 		// Run the elevate command with the SHELL environment variable empty
 		err := RunElevate([]string{"elevate-reason", "oc", "get", "pods"})
@@ -226,9 +223,9 @@ func TestRunElevate(t *testing.T) {
 		expectedErrorMsg := "both the SHELL environment variable and /bin/bash are not set or invalid. Please ensure a valid shell is set in your environment"
 		if err == nil {
 			t.Errorf("expected an error when SHELL environment variable is empty and /bin/bash is invalid, got nil")
-		}
-		if err.Error() != expectedErrorMsg {
-			t.Errorf("expected error message to be: %s, but got: %s", expectedErrorMsg, err.Error())
+		} else if err.Error() != expectedErrorMsg {
+			t.Errorf("expected error message to be: '%s', but got: '%s'", expectedErrorMsg, err.Error())
 		}
 	})
+
 }
