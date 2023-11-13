@@ -4,6 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
+	"strings"
+	"time"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
@@ -17,10 +22,6 @@ import (
 	"github.com/openshift/backplane-cli/pkg/client/mocks"
 	"github.com/openshift/backplane-cli/pkg/utils"
 	mocks2 "github.com/openshift/backplane-cli/pkg/utils/mocks"
-	"io"
-	"net/http"
-	"strings"
-	"time"
 )
 
 //nolint:gosec
@@ -411,7 +412,7 @@ var _ = Describe("isIsolatedBackplaneAccess", func() {
 			Expect(err).To(BeNil())
 		})
 		It("returns an error if fails to get STS Support Jump Role from OCM for STS enabled cluster", func() {
-			mockOcmInterface.EXPECT().GetStsSupportJumpRole(testClusterID).Return("", errors.New("oops"))
+			mockOcmInterface.EXPECT().GetStsSupportJumpRoleARN(testClusterID).Return("", errors.New("oops"))
 
 			stsBuilder := &v1.STSBuilder{}
 			stsBuilder.Enabled(true)
@@ -429,7 +430,7 @@ var _ = Describe("isIsolatedBackplaneAccess", func() {
 			Expect(err).NotTo(BeNil())
 		})
 		It("returns an error if fails to parse STS Support Jump Role from OCM for STS enabled cluster", func() {
-			mockOcmInterface.EXPECT().GetStsSupportJumpRole(testClusterID).Return("not-an-arn", nil)
+			mockOcmInterface.EXPECT().GetStsSupportJumpRoleARN(testClusterID).Return("not-an-arn", nil)
 
 			stsBuilder := &v1.STSBuilder{}
 			stsBuilder.Enabled(true)
@@ -447,7 +448,7 @@ var _ = Describe("isIsolatedBackplaneAccess", func() {
 			Expect(err).NotTo(BeNil())
 		})
 		It("returns false with no error for STS enabled cluster with ARN that matches old support flow ARN", func() {
-			mockOcmInterface.EXPECT().GetStsSupportJumpRole(testClusterID).Return("arn:aws:iam::123456789:role/RH-Technical-Support-Access", nil)
+			mockOcmInterface.EXPECT().GetStsSupportJumpRoleARN(testClusterID).Return("arn:aws:iam::123456789:role/RH-Technical-Support-Access", nil)
 
 			stsBuilder := &v1.STSBuilder{}
 			stsBuilder.Enabled(true)
@@ -466,7 +467,7 @@ var _ = Describe("isIsolatedBackplaneAccess", func() {
 			Expect(err).To(BeNil())
 		})
 		It("returns true with no error for STS enabled cluster with ARN that doesn't match old support flow ARN", func() {
-			mockOcmInterface.EXPECT().GetStsSupportJumpRole(testClusterID).Return("arn:aws:iam::123456789:role/RH-Technical-Support-12345", nil)
+			mockOcmInterface.EXPECT().GetStsSupportJumpRoleARN(testClusterID).Return("arn:aws:iam::123456789:role/RH-Technical-Support-12345", nil)
 
 			stsBuilder := &v1.STSBuilder{}
 			stsBuilder.Enabled(true)
