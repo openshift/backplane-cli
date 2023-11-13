@@ -9,6 +9,7 @@ import (
 	"time"
 
 	BackplaneApi "github.com/openshift/backplane-api/pkg/client"
+	logger "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/util/wait"
 
@@ -187,7 +188,7 @@ func createJob(client BackplaneApi.ClientInterface) (*BackplaneApi.Job, error) {
 
 	// Check for the warning header and display it if found.
 	if warningMsg := resp.Header.Get("Backplane-Warning"); warningMsg != "" {
-		fmt.Fprintln(os.Stderr, warningMsg)
+		logger.Warnf("warning: %s", warningMsg)
 	}
 
 	if resp.StatusCode != http.StatusOK {
