@@ -9,6 +9,7 @@ import (
 	"time"
 
 	BackplaneApi "github.com/openshift/backplane-api/pkg/client"
+	logger "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/util/wait"
 
@@ -175,7 +176,7 @@ func createJob(client BackplaneApi.ClientInterface) (*BackplaneApi.Job, error) {
 	// create job request
 	createJob := BackplaneApi.CreateJobJSONRequestBody{
 		CanonicalName: &options.canonicalName,
-		Parameters: &jobParams,
+		Parameters:    &jobParams,
 	}
 
 	// call create end point
@@ -183,6 +184,11 @@ func createJob(client BackplaneApi.ClientInterface) (*BackplaneApi.Job, error) {
 
 	if err != nil {
 		return nil, err
+	}
+
+	// Check for the warning header and display it if found.
+	if warningMsg := resp.Header.Get("Backplane-Warning"); warningMsg != "" {
+		logger.Warnf("warning: %s", warningMsg)
 	}
 
 	if resp.StatusCode != http.StatusOK {
