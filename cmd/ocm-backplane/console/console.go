@@ -456,7 +456,7 @@ func runConsole(cmd *cobra.Command, argv []string) (err error) {
 
 	if consoleArgs.openBrowser {
 		go func() {
-			err := wait.PollImmediate(time.Second, 5*time.Second, func() (bool, error) {
+			err := wait.PollUntilContextTimeout(context.Background(), time.Second, 5*time.Second, true, func(context.Context) (bool, error) {
 				return utils.CheckHealth(fmt.Sprintf("%s/health", consoleURL)), nil
 			})
 			if err != nil {
