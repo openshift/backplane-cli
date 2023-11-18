@@ -5,17 +5,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/aws/aws-sdk-go-v2/aws"
-	bpCredentials "github.com/openshift/backplane-cli/pkg/credentials"
 	"net/http"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	BackplaneApi "github.com/openshift/backplane-api/pkg/client"
+	bpCredentials "github.com/openshift/backplane-cli/pkg/credentials"
+	"github.com/openshift/backplane-cli/pkg/utils"
 	logger "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"sigs.k8s.io/yaml"
-
-	BackplaneApi "github.com/openshift/backplane-api/pkg/client"
-
-	"github.com/openshift/backplane-cli/pkg/utils"
 )
 
 var GetBackplaneClusterFromConfig = utils.DefaultClusterUtils.GetBackplaneClusterFromConfig
@@ -84,8 +83,6 @@ func runCredentials(cmd *cobra.Command, argv []string) error {
 		return fmt.Errorf("failed to get cluster info for %s: %w", clusterID, err)
 	}
 
-	cloudProvider := utils.DefaultClusterUtils.GetCloudProvider(cluster)
-
 	logger.WithFields(logger.Fields{
 		"ID":   clusterID,
 		"Name": clusterName}).Infoln("Target cluster")
@@ -111,65 +108,58 @@ func runCredentials(cmd *cobra.Command, argv []string) error {
 	// ======== Call Endpoint ==================================
 	logger.Debugln("Getting Cloud Credentials")
 
-	var output string
-	isolatedBackplane, err := isIsolatedBackplaneAccess(cluster)
+	credsResp, err := getCloudCredentials(bpURL, cluster)
 	if err != nil {
-		return fmt.Errorf("failed to determine if cluster is using isolated backplane access: %w", err)
+		return fmt.Errorf("failed to get cloud credentials for cluster %v: %w", clusterID, err)
 	}
-	if isolatedBackplane {
-		targetCredentials, err := getIsolatedCredentials(clusterID)
-		if err != nil {
-			// itn-2023-00143 handle case where customer's org is on the isolated flow,
-			// but they have not yet migrated their account roles
-			fmt.Println("Cluster's org is using new flow but cluster has not migrated to new account roles. Trying old flow...")
-			credsResp, err := getCloudCredential(bpURL, clusterID)
-			if err != nil {
-				return fmt.Errorf("failed to get cloud credentials for cluster %v: %w", clusterID, err)
-			}
-			output, err = renderCredentials(credsResp.JSON200.Credentials, credsResp.JSON200.Region, cloudProvider)
-			if err != nil {
-				return err
-			}
-		} else {
-			bpCreds := &bpCredentials.AWSCredentialsResponse{
-				AccessKeyID:     targetCredentials.AccessKeyID,
-				SecretAccessKey: targetCredentials.SecretAccessKey,
-				SessionToken:    targetCredentials.SessionToken,
-				Expiration:      targetCredentials.Expires.String(),
-			}
-			if region, ok := cluster.GetRegion(); ok {
-				bpCreds.Region = region.ID()
-			}
 
-			output, err = renderCloudCredentials(credentialArgs.output, bpCreds)
-			if err != nil {
-				return fmt.Errorf("failed to render credentials: %w", err)
-			}
-		}
-	} else {
-		credsResp, err := getCloudCredential(bpURL, clusterID)
-		if err != nil {
-			return fmt.Errorf("failed to get cloud credentials for cluster %v: %w", clusterID, err)
-		}
-		output, err = renderCredentials(credsResp.JSON200.Credentials, credsResp.JSON200.Region, cloudProvider)
-		if err != nil {
-			return err
-		}
+	output, err := renderCloudCredentials(credentialArgs.output, credsResp)
+	if err != nil {
+		return fmt.Errorf("failed to render credentials: %w", err)
 	}
 
 	fmt.Println(output)
 	return nil
 }
 
-// getCloudCredential returns Cloud Credentials Response
-func getCloudCredential(backplaneURL string, clusterID string) (*BackplaneApi.GetCloudCredentialsResponse, error) {
+// getCloudCredentials returns Cloud Credentials Response
+func getCloudCredentials(backplaneURL string, cluster *cmv1.Cluster) (bpCredentials.Response, error) {
+	isolatedBackplane, err := isIsolatedBackplaneAccess(cluster)
+	if err != nil {
+		logger.Infof("failed to determine if the cluster is using isolated backplane access: %v", err)
+		logger.Infof("for more information, try ocm get /api/clusters_mgmt/v1/clusters/%s/sts_support_jump_role", cluster.ID())
+		logger.Infof("attempting to fallback to %s", OldFlowSupportRole)
+	}
+
+	if isolatedBackplane {
+		logger.Debugf("cluster is using isolated backplane")
+		targetCredentials, err := getIsolatedCredentials(cluster.ID())
+		if err != nil {
+			// itn-2023-00143 handle case where customer's org is on the isolated flow,
+			// but they have not yet migrated their account roles
+			logger.Infof("attempting to fallback to %s", OldFlowSupportRole)
+			return getCloudCredentialsFromBackplaneAPI(backplaneURL, cluster)
+		}
+
+		return &bpCredentials.AWSCredentialsResponse{
+			AccessKeyID:     targetCredentials.AccessKeyID,
+			SecretAccessKey: targetCredentials.SecretAccessKey,
+			SessionToken:    targetCredentials.SessionToken,
+			Expiration:      targetCredentials.Expires.String(),
+			Region:          cluster.Region().ID(),
+		}, nil
+	}
+
+	return getCloudCredentialsFromBackplaneAPI(backplaneURL, cluster)
+}
+
+func getCloudCredentialsFromBackplaneAPI(backplaneURL string, cluster *cmv1.Cluster) (bpCredentials.Response, error) {
 	client, err := utils.DefaultClientUtils.GetBackplaneClient(backplaneURL)
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := client.GetCloudCredentials(context.TODO(), clusterID)
-
+	resp, err := client.GetCloudCredentials(context.TODO(), cluster.ID())
 	if err != nil {
 		return nil, err
 	}
@@ -185,38 +175,41 @@ func getCloudCredential(backplaneURL string, clusterID string) (*BackplaneApi.Ge
 		return nil, fmt.Errorf("unable to parse response body from backplane:\n  Status Code: %d : err: %v", resp.StatusCode, err)
 	}
 
-	if len(credsResp.Body) == 0 {
-		return nil, fmt.Errorf("empty response from backplane")
-	}
-	return credsResp, nil
-}
-
-func renderCredentials(credentials *string, region *string, cloudProvider string) (string, error) {
-	switch cloudProvider {
+	switch cluster.CloudProvider().ID() {
 	case "aws":
 		cliResp := &bpCredentials.AWSCredentialsResponse{}
-		if err := json.Unmarshal([]byte(*credentials), cliResp); err != nil {
-			return "", fmt.Errorf("unable to unmarshal AWS credentials response from backplane %s: %w", *credentials, err)
+		if err := json.Unmarshal([]byte(*credsResp.JSON200.Credentials), cliResp); err != nil {
+			return nil, fmt.Errorf("unable to unmarshal AWS credentials response from backplane %s: %w", *credsResp.JSON200.Credentials, err)
 		}
-		cliResp.Region = aws.ToString(region)
-		creds, err := renderCloudCredentials(credentialArgs.output, cliResp)
-		if err != nil {
-			return "", err
-		}
-		return creds, nil
+		cliResp.Region = cluster.Region().ID()
+		return cliResp, nil
 	case "gcp":
 		cliResp := &bpCredentials.GCPCredentialsResponse{}
-		if err := json.Unmarshal([]byte(*credentials), cliResp); err != nil {
-			return "", fmt.Errorf("unable to unmarshal GCP credentials response from backplane %s: %w", *credentials, err)
+		if err := json.Unmarshal([]byte(*credsResp.JSON200.Credentials), cliResp); err != nil {
+			return nil, fmt.Errorf("unable to unmarshal GCP credentials response from backplane %s: %w", *credsResp.JSON200.Credentials, err)
 		}
-		creds, err := renderCloudCredentials(credentialArgs.output, cliResp)
-		if err != nil {
-			return "", err
-		}
-		return creds, nil
+		return cliResp, nil
 	default:
-		return "", fmt.Errorf("unsupported cloud provider: %s", cloudProvider)
+		return nil, fmt.Errorf("unsupported cloud provider: %s", cluster.CloudProvider().ID())
 	}
+}
+
+// GetAWSV2Config allows consumers to get an aws-sdk-go-v2 Config to programmatically access the AWS API
+func GetAWSV2Config(backplaneURL string, cluster *cmv1.Cluster) (aws.Config, error) {
+	if cluster.CloudProvider().ID() != "aws" {
+		return aws.Config{}, fmt.Errorf("only supported for the aws cloud provider, this cluster has: %s", cluster.CloudProvider().ID())
+	}
+	creds, err := getCloudCredentials(backplaneURL, cluster)
+	if err != nil {
+		return aws.Config{}, err
+	}
+
+	awsCreds, ok := creds.(*bpCredentials.AWSCredentialsResponse)
+	if !ok {
+		return aws.Config{}, errors.New("unexpected error: failed to convert backplane creds to AWSCredentialsResponse")
+	}
+
+	return awsCreds.AWSV2Config()
 }
 
 // renderCloudCredentials displays the results of `ocm backplane cloud credentials` for AWS clusters

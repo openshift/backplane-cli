@@ -1,6 +1,17 @@
 package credentials
 
-import "fmt"
+import (
+	"context"
+	"fmt"
+	"net/http"
+	"net/url"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
+	awshttp "github.com/aws/aws-sdk-go-v2/aws/transport/http"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	bpconfig "github.com/openshift/backplane-cli/pkg/cli/config"
+)
 
 const (
 	// AwsCredentialsStringFormat format strings for printing AWS credentials as a string or as environment variables
@@ -30,4 +41,29 @@ func (r *AWSCredentialsResponse) String() string {
 
 func (r *AWSCredentialsResponse) FmtExport() string {
 	return fmt.Sprintf(AwsExportFormat, r.AccessKeyID, r.SecretAccessKey, r.SessionToken, r.Region)
+}
+
+// AWSV2Config returns an aws-sdk-go-v2 config that can be used to programmatically access the AWS API
+func (r *AWSCredentialsResponse) AWSV2Config() (aws.Config, error) {
+	bpConfig, err := bpconfig.GetBackplaneConfiguration()
+	if err != nil {
+		return aws.Config{}, fmt.Errorf("failed to load backplane config file: %w", err)
+	}
+
+	proxyURL, err := url.Parse(bpConfig.ProxyURL)
+	if err != nil {
+		return aws.Config{}, fmt.Errorf("failed to parse proxy_url from backplane config file: %w", err)
+	}
+
+	// Configure aws-sdk-go-v2 to use backplane's specified proxy
+	// https://aws.github.io/aws-sdk-go-v2/docs/configuring-sdk/custom-http/#configuring-a-proxy
+	httpClient := awshttp.NewBuildableClient().WithTransportOptions(func(tr *http.Transport) {
+		tr.Proxy = http.ProxyURL(proxyURL)
+	})
+
+	return config.LoadDefaultConfig(context.Background(),
+		config.WithHTTPClient(httpClient),
+		config.WithRegion(r.Region),
+		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(r.AccessKeyID, r.SecretAccessKey, r.SessionToken)),
+	)
 }

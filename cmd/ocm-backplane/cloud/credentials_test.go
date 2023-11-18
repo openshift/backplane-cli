@@ -152,7 +152,7 @@ var _ = Describe("Cloud console command", func() {
 			mockClientUtil.EXPECT().GetBackplaneClient(proxyURI).Return(mockClient, nil).AnyTimes()
 			mockClient.EXPECT().GetCloudCredentials(gomock.Any(), trueClusterID).Return(fakeAWSResp, nil)
 
-			crdentialResponse, err := getCloudCredential(proxyURI, trueClusterID)
+			crdentialResponse, err := GetCloudCredentials(proxyURI, trueClusterID)
 			Expect(err).To(BeNil())
 
 			Expect(crdentialResponse.JSON200).NotTo(BeNil())
@@ -164,7 +164,7 @@ var _ = Describe("Cloud console command", func() {
 
 			mockClientUtil.EXPECT().GetBackplaneClient(proxyURI).Return(mockClient, nil).AnyTimes()
 			mockClient.EXPECT().GetCloudCredentials(gomock.Any(), trueClusterID).Return(fakeAWSResp, nil)
-			_, err := getCloudCredential(proxyURI, trueClusterID)
+			_, err := GetCloudCredentials(proxyURI, trueClusterID)
 			Expect(err).NotTo(BeNil())
 
 			Expect(err.Error()).To(ContainSubstring("error from backplane: \n Status Code: 500\n"))
@@ -176,7 +176,7 @@ var _ = Describe("Cloud console command", func() {
 
 			mockClientUtil.EXPECT().GetBackplaneClient(proxyURI).Return(mockClient, nil).AnyTimes()
 			mockClient.EXPECT().GetCloudCredentials(gomock.Any(), trueClusterID).Return(fakeGCloudResp, nil)
-			_, err := getCloudCredential(proxyURI, trueClusterID)
+			_, err := GetCloudCredentials(proxyURI, trueClusterID)
 			Expect(err).NotTo(BeNil())
 
 			Expect(err.Error()).To(ContainSubstring("error from backplane: \n Status Code: 500\n"))
@@ -186,7 +186,7 @@ var _ = Describe("Cloud console command", func() {
 		It("should fail when we can't parse the response from backplane", func() {
 			mockClientUtil.EXPECT().GetBackplaneClient(proxyURI).Return(mockClient, nil).AnyTimes()
 			mockClient.EXPECT().GetCloudCredentials(gomock.Any(), trueClusterID).Return(fakeMalformedJSONResp, nil)
-			_, err := getCloudCredential(proxyURI, trueClusterID)
+			_, err := GetCloudCredentials(proxyURI, trueClusterID)
 			Expect(err).NotTo(BeNil())
 
 			Expect(err.Error()).To(ContainSubstring(fmt.Errorf("unable to parse response body from backplane:\n  Status Code: %d", 200).Error()))
@@ -198,7 +198,7 @@ var _ = Describe("Cloud console command", func() {
 
 			mockClientUtil.EXPECT().GetBackplaneClient(proxyURI).Return(mockClient, nil).AnyTimes()
 			mockClient.EXPECT().GetCloudCredentials(gomock.Any(), trueClusterID).Return(fakeAWSResp, nil)
-			_, err := getCloudCredential(proxyURI, trueClusterID)
+			_, err := GetCloudCredentials(proxyURI, trueClusterID)
 			Expect(err).NotTo(BeNil())
 
 			Expect(err.Error()).Should(ContainSubstring("error from backplane: \n Status Code: 401\n"))
