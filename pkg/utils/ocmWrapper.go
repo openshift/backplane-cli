@@ -267,6 +267,8 @@ func (*DefaultOCMInterfaceImpl) GetStsSupportJumpRoleARN(clusterID string) (stri
 	if err != nil {
 		return "", fmt.Errorf("failed to create OCM connection: %v", err)
 	}
+	defer connection.Close()
+
 	response, err := connection.ClustersMgmt().V1().Clusters().Cluster(clusterID).StsSupportJumpRole().Get().Send()
 	if err != nil {
 		return "", fmt.Errorf("failed to get STS Support Jump Role for cluster %v, %w", clusterID, err)

@@ -8,7 +8,6 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	v1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	utils "github.com/openshift/backplane-cli/pkg/utils"
 )
 
@@ -82,20 +81,6 @@ func (m *MockClusterUtils) GetBackplaneClusterFromConfig() (utils.BackplaneClust
 func (mr *MockClusterUtilsMockRecorder) GetBackplaneClusterFromConfig() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBackplaneClusterFromConfig", reflect.TypeOf((*MockClusterUtils)(nil).GetBackplaneClusterFromConfig))
-}
-
-// GetCloudProvider mocks base method.
-func (m *MockClusterUtils) GetCloudProvider(arg0 *v1.Cluster) string {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetCloudProvider", arg0)
-	ret0, _ := ret[0].(string)
-	return ret0
-}
-
-// GetCloudProvider indicates an expected call of GetCloudProvider.
-func (mr *MockClusterUtilsMockRecorder) GetCloudProvider(arg0 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCloudProvider", reflect.TypeOf((*MockClusterUtils)(nil).GetCloudProvider), arg0)
 }
 
 // GetClusterIDAndHostFromClusterURL mocks base method.
