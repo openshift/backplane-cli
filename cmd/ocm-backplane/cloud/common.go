@@ -5,15 +5,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
-	v1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/backplane-cli/pkg/awsutil"
 	"github.com/openshift/backplane-cli/pkg/utils"
-	"io"
-	"net/http"
 )
 
 const OldFlowSupportRole = "role/RH-Technical-Support-Access"
@@ -107,23 +108,20 @@ func getIsolatedCredentials(clusterID string) (aws.Credentials, error) {
 	return targetCredentials, nil
 }
 
-func isIsolatedBackplaneAccess(cluster *v1.Cluster) (bool, error) {
-	if clusterAws, ok := cluster.GetAWS(); ok {
-		if clusterAwsSts, ok := clusterAws.GetSTS(); ok {
-			if clusterAwsSts.Enabled() {
-				stsSupportJumpRole, err := utils.DefaultOCMInterface.GetStsSupportJumpRoleARN(cluster.ID())
-				if err != nil {
-					return false, fmt.Errorf("failed to get sts support jump role ARN for cluster %v: %w", cluster.ID(), err)
-				}
-				supportRoleArn, err := arn.Parse(stsSupportJumpRole)
-				if err != nil {
-					return false, fmt.Errorf("failed to parse ARN for jump role %v: %w", stsSupportJumpRole, err)
-				}
-				if supportRoleArn.Resource != OldFlowSupportRole {
-					return true, nil
-				}
-			}
+func isIsolatedBackplaneAccess(cluster *cmv1.Cluster) (bool, error) {
+	if cluster.AWS().STS().Enabled() {
+		stsSupportJumpRole, err := utils.DefaultOCMInterface.GetStsSupportJumpRoleARN(cluster.ID())
+		if err != nil {
+			return false, fmt.Errorf("failed to get sts support jump role ARN for cluster %v: %w", cluster.ID(), err)
+		}
+		supportRoleArn, err := arn.Parse(stsSupportJumpRole)
+		if err != nil {
+			return false, fmt.Errorf("failed to parse ARN for jump role %v: %w", stsSupportJumpRole, err)
+		}
+		if supportRoleArn.Resource != OldFlowSupportRole {
+			return true, nil
 		}
 	}
+
 	return false, nil
 }

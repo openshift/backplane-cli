@@ -5,7 +5,6 @@ import (
 	"net/url"
 	"regexp"
 
-	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	logger "github.com/sirupsen/logrus"
 	"k8s.io/client-go/tools/clientcmd"
 
@@ -22,7 +21,6 @@ type ClusterUtils interface {
 	GetClusterIDAndHostFromClusterURL(clusterURL string) (string, string, error)
 	GetBackplaneClusterFromConfig() (BackplaneCluster, error)
 	GetBackplaneClusterFromClusterKey(clusterKey string) (BackplaneCluster, error)
-	GetCloudProvider(cluster *cmv1.Cluster) string
 	GetBackplaneCluster(params ...string) (BackplaneCluster, error)
 }
 
@@ -108,9 +106,4 @@ func (s *DefaultClusterUtilsImpl) GetBackplaneCluster(params ...string) (Backpla
 		return s.GetBackplaneClusterFromClusterKey(params[0])
 	}
 	return s.GetBackplaneClusterFromConfig()
-}
-
-// GetCloudProvider gets the cluster's cloud provider
-func (s *DefaultClusterUtilsImpl) GetCloudProvider(cluster *cmv1.Cluster) string {
-	return cluster.CloudProvider().ID()
 }
