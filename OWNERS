@@ -9,6 +9,7 @@ reviewers:
   - hectorakemp
   - Dee-6777
   - xiaoyu74
+  - mjlshen
 
 approvers:
   - wanghaoran1988
@@ -17,6 +18,7 @@ approvers:
   - feichashao
   - supreeth7
   - bmeng
+  - mjlshen
 
 maintainers:
   - wanghaoran1988
