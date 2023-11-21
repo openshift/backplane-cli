@@ -39,18 +39,15 @@ type AWSSigninTokenResponse struct {
 var httpGetFunc = http.Get
 
 func StsClientWithProxy(proxyURL string) (*sts.Client, error) {
-	cfg, err := config.LoadDefaultConfig(context.TODO(),
-		config.WithRegion("us-east-1"), // We don't care about region here, but the API still wants to see one set
-		config.WithHTTPClient(&http.Client{
+	cfg := aws.Config{
+		Region: "us-east-1", // We don't care about region here, but the API still wants to see one set
+		HTTPClient: &http.Client{
 			Transport: &http.Transport{
 				Proxy: func(*http.Request) (*url.URL, error) {
 					return url.Parse(proxyURL)
 				},
 			},
-		}),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load default AWS config: %w", err)
+		},
 	}
 
 	return sts.NewFromConfig(cfg), nil
