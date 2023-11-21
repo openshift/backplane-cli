@@ -135,8 +135,9 @@ func getCloudCredentials(backplaneURL string, cluster *cmv1.Cluster) (bpCredenti
 		logger.Debugf("cluster is using isolated backplane")
 		targetCredentials, err := getIsolatedCredentials(cluster.ID())
 		if err != nil {
-			// itn-2023-00143 handle case where customer's org is on the isolated flow,
-			// but they have not yet migrated their account roles
+			// TODO: This fallback should be removed in the future
+			// TODO: when we are more confident in our ability to access clusters using the isolated flow
+			logger.Infof("failed to assume role with isolated backplane flow: %v", err)
 			logger.Infof("attempting to fallback to %s", OldFlowSupportRole)
 			return getCloudCredentialsFromBackplaneAPI(backplaneURL, cluster)
 		}
