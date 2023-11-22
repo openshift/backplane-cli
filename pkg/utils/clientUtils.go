@@ -19,7 +19,7 @@ type ClientUtils interface {
 	MakeBackplaneAPIClientWithAccessToken(base, accessToken string) (BackplaneApi.ClientWithResponsesInterface, error)
 	MakeRawBackplaneAPIClientWithAccessToken(base, accessToken string) (BackplaneApi.ClientInterface, error)
 	MakeRawBackplaneAPIClient(base string) (BackplaneApi.ClientInterface, error)
-	GetBackplaneClient(backplaneURL string, ocmToken string, proxyUrl *string) (client BackplaneApi.ClientInterface, err error)
+	GetBackplaneClient(backplaneURL string, ocmToken string, proxyURL *string) (client BackplaneApi.ClientInterface, err error)
 	SetClientProxyURL(proxyURL string) error
 }
 
@@ -67,8 +67,8 @@ func (s *DefaultClientUtilsImpl) MakeRawBackplaneAPIClientWithAccessToken(base, 
 }
 
 // makeRawBackplaneAPIClientWithAccessTokenCustomProxy creates a BackplaneApi.ClientInterface with a custom proxy url
-// proxyUrl is optional, the default behavior is no proxy.
-func makeRawBackplaneAPIClientWithAccessTokenCustomProxy(server string, accessToken string, proxyUrl *string) (BackplaneApi.ClientInterface, error) {
+// proxyURL is optional, the default behavior is no proxy.
+func makeRawBackplaneAPIClientWithAccessTokenCustomProxy(server string, accessToken string, proxyURL *string) (BackplaneApi.ClientInterface, error) {
 	co := func(client *BackplaneApi.Client) error {
 		client.RequestEditors = append(client.RequestEditors, func(ctx context.Context, req *http.Request) error {
 			req.Header.Add("Authorization", "Bearer "+accessToken)
@@ -78,13 +78,13 @@ func makeRawBackplaneAPIClientWithAccessTokenCustomProxy(server string, accessTo
 		return nil
 	}
 
-	if proxyUrl != nil {
-		proxy, err := url.Parse(*proxyUrl)
+	if proxyURL != nil {
+		proxy, err := url.Parse(*proxyURL)
 		if err != nil {
 			return nil, err
 		}
 		http.DefaultTransport = &http.Transport{Proxy: http.ProxyURL(proxy)}
-		logger.Debugf("Using backplane Proxy URL: %s\n", *proxyUrl)
+		logger.Debugf("Using backplane Proxy URL: %s\n", *proxyURL)
 	}
 
 	return BackplaneApi.NewClient(server, co)
@@ -121,7 +121,7 @@ func (s *DefaultClientUtilsImpl) MakeBackplaneAPIClient(base string) (BackplaneA
 
 // GetBackplaneClient returns authenticated Backplane API client
 // Proxy is optional.
-func (s *DefaultClientUtilsImpl) GetBackplaneClient(backplaneURL string, ocmToken string, proxyUrl *string) (client BackplaneApi.ClientInterface, err error) {
+func (s *DefaultClientUtilsImpl) GetBackplaneClient(backplaneURL string, ocmToken string, proxyURL *string) (client BackplaneApi.ClientInterface, err error) {
 	if backplaneURL == "" {
 		bpConfig, err := config.GetBackplaneConfiguration()
 		backplaneURL = bpConfig.URL
@@ -132,7 +132,7 @@ func (s *DefaultClientUtilsImpl) GetBackplaneClient(backplaneURL string, ocmToke
 	}
 
 	logger.Debugln("Getting client")
-	backplaneClient, err := makeRawBackplaneAPIClientWithAccessTokenCustomProxy(backplaneURL, ocmToken, proxyUrl)
+	backplaneClient, err := makeRawBackplaneAPIClientWithAccessTokenCustomProxy(backplaneURL, ocmToken, proxyURL)
 	if err != nil {
 		return client, fmt.Errorf("unable to create backplane api client: %w", err)
 	}
