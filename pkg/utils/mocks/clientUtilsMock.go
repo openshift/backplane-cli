@@ -35,18 +35,18 @@ func (m *MockClientUtils) EXPECT() *MockClientUtilsMockRecorder {
 }
 
 // GetBackplaneClient mocks base method.
-func (m *MockClientUtils) GetBackplaneClient(arg0 string) (Openapi.ClientInterface, error) {
+func (m *MockClientUtils) GetBackplaneClient(arg0 string, arg1 *string) (Openapi.ClientInterface, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetBackplaneClient", arg0)
+	ret := m.ctrl.Call(m, "GetBackplaneClient", arg0, arg1)
 	ret0, _ := ret[0].(Openapi.ClientInterface)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetBackplaneClient indicates an expected call of GetBackplaneClient.
-func (mr *MockClientUtilsMockRecorder) GetBackplaneClient(arg0 interface{}) *gomock.Call {
+func (mr *MockClientUtilsMockRecorder) GetBackplaneClient(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBackplaneClient", reflect.TypeOf((*MockClientUtils)(nil).GetBackplaneClient), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBackplaneClient", reflect.TypeOf((*MockClientUtils)(nil).GetBackplaneClient), arg0, arg1)
 }
 
 // MakeBackplaneAPIClient mocks base method.

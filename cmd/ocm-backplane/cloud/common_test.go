@@ -54,26 +54,18 @@ var _ = Describe("getIsolatedCredentials", func() {
 
 	Context("Execute getIsolatedCredentials", func() {
 		It("should fail if no argument is provided", func() {
-			_, err := getIsolatedCredentials("")
+			_, err := getIsolatedCredentials("", &testOcmToken)
 			Expect(err).To(Equal(fmt.Errorf("must provide non-empty cluster ID")))
 		})
-		It("should fail if cannot retrieve OCM token", func() {
-			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(nil, errors.New("foo")).Times(1)
-
-			_, err := getIsolatedCredentials(testClusterID)
-			Expect(err.Error()).To(Equal("failed to retrieve OCM token: foo"))
-		})
 		It("should fail if cannot retrieve backplane configuration", func() {
-			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testOcmToken, nil).Times(1)
 			GetBackplaneConfiguration = func() (bpConfig config.BackplaneConfiguration, err error) {
 				return config.BackplaneConfiguration{}, errors.New("oops")
 			}
 
-			_, err := getIsolatedCredentials(testClusterID)
+			_, err := getIsolatedCredentials(testClusterID, &testOcmToken)
 			Expect(err.Error()).To(Equal("error retrieving backplane configuration: oops"))
 		})
 		It("should fail if backplane configuration does not contain value for AssumeInitialArn", func() {
-			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testOcmToken, nil).Times(1)
 			GetBackplaneConfiguration = func() (bpConfig config.BackplaneConfiguration, err error) {
 				return config.BackplaneConfiguration{
 					URL:              "testUrl.com",
@@ -82,11 +74,10 @@ var _ = Describe("getIsolatedCredentials", func() {
 				}, nil
 			}
 
-			_, err := getIsolatedCredentials(testClusterID)
+			_, err := getIsolatedCredentials(testClusterID, &testOcmToken)
 			Expect(err.Error()).To(Equal("backplane config is missing required `assume-initial-arn` property"))
 		})
 		It("should fail if cannot create sts client with proxy", func() {
-			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testOcmToken, nil).Times(1)
 			GetBackplaneConfiguration = func() (bpConfig config.BackplaneConfiguration, err error) {
 				return config.BackplaneConfiguration{
 					URL:              "testUrl.com",
@@ -98,11 +89,10 @@ var _ = Describe("getIsolatedCredentials", func() {
 				return nil, errors.New(":(")
 			}
 
-			_, err := getIsolatedCredentials(testClusterID)
+			_, err := getIsolatedCredentials(testClusterID, &testOcmToken)
 			Expect(err.Error()).To(Equal("failed to create sts client: :("))
 		})
 		It("should fail if initial role cannot be assumed with JWT", func() {
-			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testOcmToken, nil).Times(1)
 			GetBackplaneConfiguration = func() (bpConfig config.BackplaneConfiguration, err error) {
 				return config.BackplaneConfiguration{
 					URL:              "testUrl.com",
@@ -117,12 +107,11 @@ var _ = Describe("getIsolatedCredentials", func() {
 				return aws.Credentials{}, errors.New("failure")
 			}
 
-			_, err := getIsolatedCredentials(testClusterID)
+			_, err := getIsolatedCredentials(testClusterID, &testOcmToken)
 			Expect(err.Error()).To(Equal("failed to assume role using JWT: failure"))
 		})
 		It("should fail if email cannot be pulled off JWT", func() {
-			testOcmToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
-			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testOcmToken, nil).Times(1)
+			testOcmToken := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
 			GetBackplaneConfiguration = func() (bpConfig config.BackplaneConfiguration, err error) {
 				return config.BackplaneConfiguration{
 					URL:              "testUrl.com",
@@ -141,11 +130,10 @@ var _ = Describe("getIsolatedCredentials", func() {
 				}, nil
 			}
 
-			_, err := getIsolatedCredentials(testClusterID)
+			_, err := getIsolatedCredentials(testClusterID, &testOcmToken)
 			Expect(err.Error()).To(Equal("unable to extract email from given token: no field email on given token"))
 		})
 		It("should fail if error creating backplane api client", func() {
-			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testOcmToken, nil).Times(1)
 			GetBackplaneConfiguration = func() (bpConfig config.BackplaneConfiguration, err error) {
 				return config.BackplaneConfiguration{
 					URL:              "testUrl.com",
@@ -168,7 +156,7 @@ var _ = Describe("getIsolatedCredentials", func() {
 			}
 			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken("testUrl.com", testOcmToken).Return(nil, errors.New("foo")).Times(1)
 
-			_, err := getIsolatedCredentials(testClusterID)
+			_, err := getIsolatedCredentials(testClusterID, &testOcmToken)
 			Expect(err.Error()).To(Equal("failed to create backplane client with access token: foo"))
 		})
 	})

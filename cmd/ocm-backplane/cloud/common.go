@@ -33,14 +33,9 @@ type namedRoleArn struct {
 	Arn  string `json:"arn"`
 }
 
-func getIsolatedCredentials(clusterID string) (aws.Credentials, error) {
+func getIsolatedCredentials(clusterID string, ocmToken *string) (aws.Credentials, error) {
 	if clusterID == "" {
 		return aws.Credentials{}, errors.New("must provide non-empty cluster ID")
-	}
-
-	ocmToken, err := utils.DefaultOCMInterface.GetOCMAccessToken()
-	if err != nil {
-		return aws.Credentials{}, fmt.Errorf("failed to retrieve OCM token: %w", err)
 	}
 
 	email, err := utils.GetStringFieldFromJWT(*ocmToken, "email")
