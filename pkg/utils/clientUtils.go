@@ -19,7 +19,7 @@ type ClientUtils interface {
 	MakeBackplaneAPIClientWithAccessToken(base, accessToken string) (BackplaneApi.ClientWithResponsesInterface, error)
 	MakeRawBackplaneAPIClientWithAccessToken(base, accessToken string) (BackplaneApi.ClientInterface, error)
 	MakeRawBackplaneAPIClient(base string) (BackplaneApi.ClientInterface, error)
-	GetBackplaneClient(backplaneURL string) (client BackplaneApi.ClientInterface, err error)
+	GetBackplaneClient(backplaneURL string, ocmToken *string) (client BackplaneApi.ClientInterface, err error)
 	SetClientProxyURL(proxyURL string) error
 }
 
@@ -94,7 +94,7 @@ func (s *DefaultClientUtilsImpl) MakeBackplaneAPIClient(base string) (BackplaneA
 }
 
 // GetBackplaneClient returns authenticated Backplane API client
-func (s *DefaultClientUtilsImpl) GetBackplaneClient(backplaneURL string) (client BackplaneApi.ClientInterface, err error) {
+func (s *DefaultClientUtilsImpl) GetBackplaneClient(backplaneURL string, ocmToken *string) (client BackplaneApi.ClientInterface, err error) {
 	if backplaneURL == "" {
 		bpConfig, err := config.GetBackplaneConfiguration()
 		backplaneURL = bpConfig.URL
@@ -104,16 +104,8 @@ func (s *DefaultClientUtilsImpl) GetBackplaneClient(backplaneURL string) (client
 		logger.Infof("Using backplane URL: %s\n", backplaneURL)
 	}
 
-	// Get backplane API client
-	logger.Debugln("Finding ocm token")
-	accessToken, err := DefaultOCMInterface.GetOCMAccessToken()
-	if err != nil {
-		return client, err
-	}
-	logger.Debugln("Found OCM access token")
-
 	logger.Debugln("Getting client")
-	backplaneClient, err := DefaultClientUtils.MakeRawBackplaneAPIClientWithAccessToken(backplaneURL, *accessToken)
+	backplaneClient, err := DefaultClientUtils.MakeRawBackplaneAPIClientWithAccessToken(backplaneURL, *ocmToken)
 	if err != nil {
 		return client, fmt.Errorf("unable to create backplane api client: %w", err)
 	}

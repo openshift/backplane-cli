@@ -5,10 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/openshift/backplane-cli/pkg/awsutil"
 	"net/http"
 	"os"
 	"strconv"
+
+	"github.com/openshift/backplane-cli/pkg/awsutil"
 
 	"github.com/pkg/browser"
 	logger "github.com/sirupsen/logrus"
@@ -137,6 +138,12 @@ func runConsole(cmd *cobra.Command, argv []string) (err error) {
 		logger.Infof("Using backplane URL: %s\n", bpURL)
 	}
 
+	// ============Get OCM token ==========================
+	ocmToken, err := utils.DefaultOCMInterface.GetOCMAccessToken()
+	if err != nil {
+		return fmt.Errorf("failed to retrieve OCM token: %w", err)
+	}
+
 	// ======== Get cloud console from backplane API ============
 
 	var consoleResponse *ConsoleResponse
@@ -145,13 +152,13 @@ func runConsole(cmd *cobra.Command, argv []string) (err error) {
 		return fmt.Errorf("failed to determine if cluster is using isolated backplane access: %w", err)
 	}
 	if isolatedBackplane {
-		targetCredentials, err := getIsolatedCredentials(clusterID)
+		targetCredentials, err := getIsolatedCredentials(clusterID, ocmToken)
 		if err != nil {
 			// TODO: This fallback should be removed in the future
 			// TODO: when we are more confident in our ability to access clusters using the isolated flow
 			logger.Infof("failed to assume role with isolated backplane flow: %v", err)
 			logger.Infof("attempting to fallback to %s", OldFlowSupportRole)
-			consoleResponse, err = getCloudConsole(bpURL, clusterID)
+			consoleResponse, err = getCloudConsole(bpURL, ocmToken, clusterID)
 			if err != nil {
 				return err
 			}
@@ -168,7 +175,7 @@ func runConsole(cmd *cobra.Command, argv []string) (err error) {
 			consoleResponse = &ConsoleResponse{ConsoleLink: signinFederationURL.String()}
 		}
 	} else {
-		consoleResponse, err = getCloudConsole(bpURL, clusterID)
+		consoleResponse, err = getCloudConsole(bpURL, ocmToken, clusterID)
 		if err != nil {
 			return err
 		}
@@ -197,9 +204,10 @@ func validateParams(argv []string) (err error) {
 }
 
 // getCloudConsole returns console response calling to public Backplane API
-func getCloudConsole(backplaneURL string, clusterID string) (*ConsoleResponse, error) {
+func getCloudConsole(backplaneURL string, ocmToken *string, clusterID string) (*ConsoleResponse, error) {
 	logger.Debugln("Getting Cloud Console")
-	client, err := utils.DefaultClientUtils.GetBackplaneClient(backplaneURL)
+
+	client, err := utils.DefaultClientUtils.GetBackplaneClient(backplaneURL, ocmToken)
 	if err != nil {
 		return nil, err
 	}
