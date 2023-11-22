@@ -115,7 +115,7 @@ func runCredentials(cmd *cobra.Command, argv []string) error {
 	// ======== Call Endpoint ==================================
 	logger.Debugln("Getting Cloud Credentials")
 
-	queryConfig := &CloudQueryConfig{ocmConnection: ocmSdk, BackplaneConfiguration: backplaneConfiguration}
+	queryConfig := &CloudQueryConfig{OcmConnection: ocmSdk, BackplaneConfiguration: backplaneConfiguration}
 
 	credsResp, err := getCloudCredentials(queryConfig, cluster)
 	if err != nil {
@@ -133,12 +133,12 @@ func runCredentials(cmd *cobra.Command, argv []string) error {
 
 // getCloudCredentials returns Cloud Credentials Response
 func getCloudCredentials(queryConfig *CloudQueryConfig, cluster *cmv1.Cluster) (bpCredentials.Response, error) {
-	ocmToken, _, err := queryConfig.ocmConnection.Tokens()
+	ocmToken, _, err := queryConfig.OcmConnection.Tokens()
 	if err != nil {
 		return nil, fmt.Errorf("unable to get token for ocm connection")
 	}
 
-	isolatedBackplane, err := isIsolatedBackplaneAccess(cluster, queryConfig.ocmConnection)
+	isolatedBackplane, err := isIsolatedBackplaneAccess(cluster, queryConfig.OcmConnection)
 	if err != nil {
 		logger.Infof("failed to determine if the cluster is using isolated backplane access: %v", err)
 		logger.Infof("for more information, try ocm get /api/clusters_mgmt/v1/clusters/%s/sts_support_jump_role", cluster.ID())

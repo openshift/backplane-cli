@@ -151,7 +151,7 @@ func runConsole(cmd *cobra.Command, argv []string) (err error) {
 
 	// Initialize query config
 
-	queryConfig := &CloudQueryConfig{ocmConnection: ocmSdk, BackplaneConfiguration: backplaneConfiguration}
+	queryConfig := &CloudQueryConfig{OcmConnection: ocmSdk, BackplaneConfiguration: backplaneConfiguration}
 
 	// ======== Get cloud console from backplane API ============
 	var consoleResponse *ConsoleResponse

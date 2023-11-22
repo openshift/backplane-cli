@@ -29,7 +29,7 @@ var AssumeRoleSequence = awsutil.AssumeRoleSequence
 // Wrapper for the configuration needed for cloud requests
 type CloudQueryConfig struct {
 	config.BackplaneConfiguration
-	ocmConnection *ocmsdk.Connection
+	OcmConnection *ocmsdk.Connection
 }
 
 type assumeChainResponse struct {

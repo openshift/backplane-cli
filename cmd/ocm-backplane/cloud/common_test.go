@@ -48,7 +48,7 @@ var _ = Describe("getIsolatedCredentials", func() {
 		testAccessKeyID = "test-access-key-id"
 		testSecretAccessKey = "test-secret-access-key"
 		testSessionToken = "test-session-token"
-		queryConfig = CloudQueryConfig{ocmConnection: &sdk.Connection{}, BackplaneConfiguration: config.BackplaneConfiguration{URL: "test", AssumeInitialArn: "test"}}
+		queryConfig = CloudQueryConfig{OcmConnection: &sdk.Connection{}, BackplaneConfiguration: config.BackplaneConfiguration{URL: "test", AssumeInitialArn: "test"}}
 	})
 
 	AfterEach(func() {
