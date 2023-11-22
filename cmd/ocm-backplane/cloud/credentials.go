@@ -169,7 +169,7 @@ func getCloudCredentials(queryConfig *CloudQueryConfig, cluster *cmv1.Cluster) (
 }
 
 func getCloudCredentialsFromBackplaneAPI(queryConfig *CloudQueryConfig, ocmToken string, cluster *cmv1.Cluster) (bpCredentials.Response, error) {
-	client, err := utils.DefaultClientUtils.GetBackplaneClient(queryConfig.URL, ocmToken, queryConfig.ProxyURL)
+	client, err := utils.DefaultClientUtils.GetBackplaneClient(queryConfig.BackplaneConfiguration.URL, ocmToken, queryConfig.BackplaneConfiguration.ProxyURL)
 	if err != nil {
 		return nil, err
 	}

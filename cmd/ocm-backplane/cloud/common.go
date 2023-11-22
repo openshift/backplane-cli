@@ -51,21 +51,21 @@ func getIsolatedCredentials(clusterID string, queryConfig *CloudQueryConfig, ocm
 		return aws.Credentials{}, fmt.Errorf("unable to extract email from given token: %w", err)
 	}
 
-	if queryConfig.AssumeInitialArn == "" {
+	if queryConfig.BackplaneConfiguration.AssumeInitialArn == "" {
 		return aws.Credentials{}, errors.New("backplane config is missing required `assume-initial-arn` property")
 	}
 
-	initialClient, err := StsClientWithProxy(queryConfig.ProxyURL)
+	initialClient, err := StsClientWithProxy(queryConfig.BackplaneConfiguration.ProxyURL)
 	if err != nil {
 		return aws.Credentials{}, fmt.Errorf("failed to create sts client: %w", err)
 	}
 
-	seedCredentials, err := AssumeRoleWithJWT(*ocmToken, queryConfig.AssumeInitialArn, initialClient)
+	seedCredentials, err := AssumeRoleWithJWT(*ocmToken, queryConfig.BackplaneConfiguration.AssumeInitialArn, initialClient)
 	if err != nil {
 		return aws.Credentials{}, fmt.Errorf("failed to assume role using JWT: %w", err)
 	}
 
-	backplaneClient, err := utils.DefaultClientUtils.GetBackplaneClient(queryConfig.URL, *ocmToken, queryConfig.ProxyURL)
+	backplaneClient, err := utils.DefaultClientUtils.GetBackplaneClient(queryConfig.BackplaneConfiguration.URL, *ocmToken, queryConfig.BackplaneConfiguration.ProxyURL)
 	if err != nil {
 		return aws.Credentials{}, fmt.Errorf("failed to create backplane client with access token: %w", err)
 	}
@@ -99,7 +99,7 @@ func getIsolatedCredentials(clusterID string, queryConfig *CloudQueryConfig, ocm
 		Credentials: NewStaticCredentialsProvider(seedCredentials.AccessKeyID, seedCredentials.SecretAccessKey, seedCredentials.SessionToken),
 	})
 
-	targetCredentials, err := AssumeRoleSequence(email, seedClient, roleAssumeSequence, queryConfig.ProxyURL, awsutil.DefaultSTSClientProviderFunc)
+	targetCredentials, err := AssumeRoleSequence(email, seedClient, roleAssumeSequence, queryConfig.BackplaneConfiguration.ProxyURL, awsutil.DefaultSTSClientProviderFunc)
 	if err != nil {
 		return aws.Credentials{}, fmt.Errorf("failed to assume role sequence: %w", err)
 	}

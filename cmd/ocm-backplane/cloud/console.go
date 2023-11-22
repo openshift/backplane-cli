@@ -215,7 +215,7 @@ func validateParams(argv []string) (err error) {
 func getCloudConsole(queryConfig *CloudQueryConfig, ocmToken string, clusterID string) (*ConsoleResponse, error) {
 	logger.Debugln("Getting Cloud Console")
 
-	client, err := utils.DefaultClientUtils.GetBackplaneClient(queryConfig.URL, ocmToken, queryConfig.ProxyURL)
+	client, err := utils.DefaultClientUtils.GetBackplaneClient(queryConfig.BackplaneConfiguration.URL, ocmToken, queryConfig.BackplaneConfiguration.ProxyURL)
 	if err != nil {
 		return nil, err
 	}
