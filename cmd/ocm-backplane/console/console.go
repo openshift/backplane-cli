@@ -369,9 +369,9 @@ func runConsole(cmd *cobra.Command, argv []string) (err error) {
 		return err
 	}
 
-	if proxyURL != "" {
+	if proxyURL != nil {
 		engRunArgs = append(engRunArgs,
-			"--env", fmt.Sprintf("HTTPS_PROXY=%s", proxyURL),
+			"--env", fmt.Sprintf("HTTPS_PROXY=%s", *proxyURL),
 		)
 	}
 
@@ -509,17 +509,14 @@ func replaceConsoleURL(original string) (string, error) {
 	return original, nil
 }
 
-// Get the proxy url
-func getProxyURL() (proxyURL string, err error) {
+// getProxyURL returns the proxy url
+func getProxyURL() (proxyURL *string, err error) {
 	bpConfig, err := config.GetBackplaneConfiguration()
-
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	proxyURL = bpConfig.ProxyURL
-
-	return proxyURL, nil
+	return bpConfig.ProxyURL, nil
 }
 
 // getImageFromCluster get the image from the console deployment

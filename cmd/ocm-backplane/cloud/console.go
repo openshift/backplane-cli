@@ -9,6 +9,7 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/openshift-online/ocm-cli/pkg/ocm"
 	"github.com/openshift/backplane-cli/pkg/awsutil"
 
 	"github.com/pkg/browser"
@@ -120,45 +121,52 @@ func runConsole(cmd *cobra.Command, argv []string) (err error) {
 		"ID":   clusterID,
 		"Name": clusterName}).Infoln("Target cluster")
 
-	// ============Get Backplane URl ==========================
-	bpURL := ""
-	if consoleArgs.backplaneURL != "" {
-		bpURL = consoleArgs.backplaneURL
-	} else {
-		// Get Backplane configuration
-		bpConfig, err := config.GetBackplaneConfiguration()
-		if err != nil {
-			return fmt.Errorf("can't find backplane url: %w", err)
-		}
-
-		if bpConfig.URL == "" {
-			return errors.New("empty backplane url - check your backplane-cli configuration")
-		}
-		bpURL = bpConfig.URL
-		logger.Infof("Using backplane URL: %s\n", bpURL)
-	}
-
-	// ============Get OCM token ==========================
-	ocmToken, err := utils.DefaultOCMInterface.GetOCMAccessToken()
+	// Initialize backplane configuration
+	backplaneConfiguration, err := config.GetBackplaneConfiguration()
 	if err != nil {
-		return fmt.Errorf("failed to retrieve OCM token: %w", err)
+		return fmt.Errorf("unable to build backplane configuration: %w", err)
 	}
+
+	// ============Get Backplane URl ==========================
+	if credentialArgs.backplaneURL != "" { // Overwrite if parameter is set
+		backplaneConfiguration.URL = credentialArgs.backplaneURL
+	}
+
+	if backplaneConfiguration.URL == "" {
+		return errors.New("empty backplane url - check your backplane-cli configuration")
+	}
+	logger.Infof("Using backplane URL: %s\n", backplaneConfiguration.URL)
+
+	// Initialize OCM sdk
+	ocmSdk, err := ocm.NewConnection().Build()
+	if err != nil {
+		return fmt.Errorf("unable to build ocm sdk: %w", err)
+	}
+	defer ocmSdk.Close()
+
+	ocmToken, _, err := ocmSdk.Tokens()
+	if err != nil {
+		return fmt.Errorf("unable to get token for ocm connection")
+	}
+
+	// Initialize query config
+
+	queryConfig := &CloudQueryConfig{ocmConnection: ocmSdk, BackplaneConfiguration: backplaneConfiguration}
 
 	// ======== Get cloud console from backplane API ============
-
 	var consoleResponse *ConsoleResponse
-	isolatedBackplane, err := isIsolatedBackplaneAccess(cluster)
+	isolatedBackplane, err := isIsolatedBackplaneAccess(cluster, ocmSdk)
 	if err != nil {
 		return fmt.Errorf("failed to determine if cluster is using isolated backplane access: %w", err)
 	}
 	if isolatedBackplane {
-		targetCredentials, err := getIsolatedCredentials(clusterID, ocmToken)
+		targetCredentials, err := getIsolatedCredentials(clusterID, queryConfig, &ocmToken)
 		if err != nil {
 			// TODO: This fallback should be removed in the future
 			// TODO: when we are more confident in our ability to access clusters using the isolated flow
 			logger.Infof("failed to assume role with isolated backplane flow: %v", err)
 			logger.Infof("attempting to fallback to %s", OldFlowSupportRole)
-			consoleResponse, err = getCloudConsole(bpURL, ocmToken, clusterID)
+			consoleResponse, err = getCloudConsole(queryConfig, ocmToken, clusterID)
 			if err != nil {
 				return err
 			}
@@ -175,7 +183,7 @@ func runConsole(cmd *cobra.Command, argv []string) (err error) {
 			consoleResponse = &ConsoleResponse{ConsoleLink: signinFederationURL.String()}
 		}
 	} else {
-		consoleResponse, err = getCloudConsole(bpURL, ocmToken, clusterID)
+		consoleResponse, err = getCloudConsole(queryConfig, ocmToken, clusterID)
 		if err != nil {
 			return err
 		}
@@ -204,10 +212,10 @@ func validateParams(argv []string) (err error) {
 }
 
 // getCloudConsole returns console response calling to public Backplane API
-func getCloudConsole(backplaneURL string, ocmToken *string, clusterID string) (*ConsoleResponse, error) {
+func getCloudConsole(queryConfig *CloudQueryConfig, ocmToken string, clusterID string) (*ConsoleResponse, error) {
 	logger.Debugln("Getting Cloud Console")
 
-	client, err := utils.DefaultClientUtils.GetBackplaneClient(backplaneURL, ocmToken)
+	client, err := utils.DefaultClientUtils.GetBackplaneClient(queryConfig.URL, ocmToken, queryConfig.ProxyURL)
 	if err != nil {
 		return nil, err
 	}

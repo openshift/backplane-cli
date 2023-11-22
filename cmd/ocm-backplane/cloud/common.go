@@ -12,17 +12,25 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
+	ocmsdk "github.com/openshift-online/ocm-sdk-go"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/backplane-cli/pkg/awsutil"
+	"github.com/openshift/backplane-cli/pkg/cli/config"
 	"github.com/openshift/backplane-cli/pkg/utils"
 )
 
 const OldFlowSupportRole = "role/RH-Technical-Support-Access"
 
-var StsClientWithProxy = awsutil.StsClientWithProxy
+var StsClientWithProxy = awsutil.StsClient
 var AssumeRoleWithJWT = awsutil.AssumeRoleWithJWT
 var NewStaticCredentialsProvider = credentials.NewStaticCredentialsProvider
 var AssumeRoleSequence = awsutil.AssumeRoleSequence
+
+// Wrapper for the configuration needed for cloud requests
+type CloudQueryConfig struct {
+	config.BackplaneConfiguration
+	ocmConnection *ocmsdk.Connection
+}
 
 type assumeChainResponse struct {
 	AssumptionSequence []namedRoleArn `json:"assumptionSequence"`
@@ -33,7 +41,7 @@ type namedRoleArn struct {
 	Arn  string `json:"arn"`
 }
 
-func getIsolatedCredentials(clusterID string, ocmToken *string) (aws.Credentials, error) {
+func getIsolatedCredentials(clusterID string, queryConfig *CloudQueryConfig, ocmToken *string) (aws.Credentials, error) {
 	if clusterID == "" {
 		return aws.Credentials{}, errors.New("must provide non-empty cluster ID")
 	}
@@ -43,26 +51,21 @@ func getIsolatedCredentials(clusterID string, ocmToken *string) (aws.Credentials
 		return aws.Credentials{}, fmt.Errorf("unable to extract email from given token: %w", err)
 	}
 
-	bpConfig, err := GetBackplaneConfiguration()
-	if err != nil {
-		return aws.Credentials{}, fmt.Errorf("error retrieving backplane configuration: %w", err)
-	}
-
-	if bpConfig.AssumeInitialArn == "" {
+	if queryConfig.AssumeInitialArn == "" {
 		return aws.Credentials{}, errors.New("backplane config is missing required `assume-initial-arn` property")
 	}
 
-	initialClient, err := StsClientWithProxy(bpConfig.ProxyURL)
+	initialClient, err := StsClientWithProxy(queryConfig.ProxyURL)
 	if err != nil {
 		return aws.Credentials{}, fmt.Errorf("failed to create sts client: %w", err)
 	}
 
-	seedCredentials, err := AssumeRoleWithJWT(*ocmToken, bpConfig.AssumeInitialArn, initialClient)
+	seedCredentials, err := AssumeRoleWithJWT(*ocmToken, queryConfig.AssumeInitialArn, initialClient)
 	if err != nil {
 		return aws.Credentials{}, fmt.Errorf("failed to assume role using JWT: %w", err)
 	}
 
-	backplaneClient, err := utils.DefaultClientUtils.MakeRawBackplaneAPIClientWithAccessToken(bpConfig.URL, *ocmToken)
+	backplaneClient, err := utils.DefaultClientUtils.GetBackplaneClient(queryConfig.URL, *ocmToken, queryConfig.ProxyURL)
 	if err != nil {
 		return aws.Credentials{}, fmt.Errorf("failed to create backplane client with access token: %w", err)
 	}
@@ -96,16 +99,16 @@ func getIsolatedCredentials(clusterID string, ocmToken *string) (aws.Credentials
 		Credentials: NewStaticCredentialsProvider(seedCredentials.AccessKeyID, seedCredentials.SecretAccessKey, seedCredentials.SessionToken),
 	})
 
-	targetCredentials, err := AssumeRoleSequence(email, seedClient, roleAssumeSequence, bpConfig.ProxyURL, awsutil.DefaultSTSClientProviderFunc)
+	targetCredentials, err := AssumeRoleSequence(email, seedClient, roleAssumeSequence, queryConfig.ProxyURL, awsutil.DefaultSTSClientProviderFunc)
 	if err != nil {
 		return aws.Credentials{}, fmt.Errorf("failed to assume role sequence: %w", err)
 	}
 	return targetCredentials, nil
 }
 
-func isIsolatedBackplaneAccess(cluster *cmv1.Cluster) (bool, error) {
+func isIsolatedBackplaneAccess(cluster *cmv1.Cluster, ocmConnection *ocmsdk.Connection) (bool, error) {
 	if cluster.AWS().STS().Enabled() {
-		stsSupportJumpRole, err := utils.DefaultOCMInterface.GetStsSupportJumpRoleARN(cluster.ID())
+		stsSupportJumpRole, err := utils.DefaultOCMInterface.GetStsSupportJumpRoleARN(ocmConnection, cluster.ID())
 		if err != nil {
 			return false, fmt.Errorf("failed to get sts support jump role ARN for cluster %v: %w", cluster.ID(), err)
 		}

@@ -26,16 +26,21 @@ func getConfig(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	proxyUrl := ""
+	if config.ProxyURL != nil {
+		proxyUrl = *config.ProxyURL
+	}
+
 	switch args[0] {
 	case URLConfigVar:
 		fmt.Printf("%s: %s\n", URLConfigVar, config.URL)
 	case ProxyURLConfigVar:
-		fmt.Printf("%s: %s\n", ProxyURLConfigVar, config.ProxyURL)
+		fmt.Printf("%s: %s\n", ProxyURLConfigVar, proxyUrl)
 	case SessionConfigVar:
 		fmt.Printf("%s: %s\n", SessionConfigVar, config.SessionDirectory)
 	case "all":
 		fmt.Printf("%s: %s\n", URLConfigVar, config.URL)
-		fmt.Printf("%s: %s\n", ProxyURLConfigVar, config.ProxyURL)
+		fmt.Printf("%s: %s\n", ProxyURLConfigVar, proxyUrl)
 		fmt.Printf("%s: %s\n", SessionConfigVar, config.SessionDirectory)
 	default:
 		return fmt.Errorf("supported config variables are %s, %s & %s", URLConfigVar, ProxyURLConfigVar, SessionConfigVar)

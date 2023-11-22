@@ -8,8 +8,10 @@ import (
 	"net/http"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/openshift-online/ocm-cli/pkg/ocm"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	BackplaneApi "github.com/openshift/backplane-api/pkg/client"
+	"github.com/openshift/backplane-cli/pkg/cli/config"
 	bpCredentials "github.com/openshift/backplane-cli/pkg/credentials"
 	"github.com/openshift/backplane-cli/pkg/utils"
 	logger "github.com/sirupsen/logrus"
@@ -87,34 +89,35 @@ func runCredentials(cmd *cobra.Command, argv []string) error {
 		"ID":   clusterID,
 		"Name": clusterName}).Infoln("Target cluster")
 
-	// ============Get Backplane URl ==========================
-	bpURL := ""
-	if credentialArgs.backplaneURL != "" {
-		bpURL = credentialArgs.backplaneURL
-	} else {
-		// Get Backplane configuration
-		bpConfig, err := GetBackplaneConfiguration()
-		if err != nil {
-			return fmt.Errorf("can't find backplane url: %w", err)
-		}
-
-		if bpConfig.URL == "" {
-			return errors.New("empty backplane url - check your backplane-cli configuration")
-		}
-		bpURL = bpConfig.URL
-		logger.Infof("Using backplane URL: %s\n", bpURL)
-	}
-
-	// ============ Get OCM Token ==========================
-	ocmToken, err := utils.DefaultOCMInterface.GetOCMAccessToken()
+	// Initialize backplane configuration
+	backplaneConfiguration, err := config.GetBackplaneConfiguration()
 	if err != nil {
-		return fmt.Errorf("failed to retrieve OCM token: %w", err)
+		return fmt.Errorf("unable to build backplane configuration: %w", err)
 	}
+
+	// ============Get Backplane URl ==========================
+	if credentialArgs.backplaneURL != "" { // Overwrite if parameter is set
+		backplaneConfiguration.URL = credentialArgs.backplaneURL
+	}
+
+	if backplaneConfiguration.URL == "" {
+		return errors.New("empty backplane url - check your backplane-cli configuration")
+	}
+	logger.Infof("Using backplane URL: %s\n", backplaneConfiguration.URL)
+
+	// Initialize OCM sdk
+	ocmSdk, err := ocm.NewConnection().Build()
+	if err != nil {
+		return fmt.Errorf("unable to build ocm sdk: %w", err)
+	}
+	defer ocmSdk.Close()
 
 	// ======== Call Endpoint ==================================
 	logger.Debugln("Getting Cloud Credentials")
 
-	credsResp, err := getCloudCredentials(bpURL, ocmToken, cluster)
+	queryConfig := &CloudQueryConfig{ocmConnection: ocmSdk, BackplaneConfiguration: backplaneConfiguration}
+
+	credsResp, err := getCloudCredentials(queryConfig, cluster)
 	if err != nil {
 		return fmt.Errorf("failed to get cloud credentials for cluster %v: %w", clusterID, err)
 	}
@@ -129,8 +132,13 @@ func runCredentials(cmd *cobra.Command, argv []string) error {
 }
 
 // getCloudCredentials returns Cloud Credentials Response
-func getCloudCredentials(backplaneURL string, ocmToken *string, cluster *cmv1.Cluster) (bpCredentials.Response, error) {
-	isolatedBackplane, err := isIsolatedBackplaneAccess(cluster)
+func getCloudCredentials(queryConfig *CloudQueryConfig, cluster *cmv1.Cluster) (bpCredentials.Response, error) {
+	ocmToken, _, err := queryConfig.ocmConnection.Tokens()
+	if err != nil {
+		return nil, fmt.Errorf("unable to get token for ocm connection")
+	}
+
+	isolatedBackplane, err := isIsolatedBackplaneAccess(cluster, queryConfig.ocmConnection)
 	if err != nil {
 		logger.Infof("failed to determine if the cluster is using isolated backplane access: %v", err)
 		logger.Infof("for more information, try ocm get /api/clusters_mgmt/v1/clusters/%s/sts_support_jump_role", cluster.ID())
@@ -139,13 +147,13 @@ func getCloudCredentials(backplaneURL string, ocmToken *string, cluster *cmv1.Cl
 
 	if isolatedBackplane {
 		logger.Debugf("cluster is using isolated backplane")
-		targetCredentials, err := getIsolatedCredentials(cluster.ID(), ocmToken)
+		targetCredentials, err := getIsolatedCredentials(cluster.ID(), queryConfig, &ocmToken)
 		if err != nil {
 			// TODO: This fallback should be removed in the future
 			// TODO: when we are more confident in our ability to access clusters using the isolated flow
 			logger.Infof("failed to assume role with isolated backplane flow: %v", err)
 			logger.Infof("attempting to fallback to %s", OldFlowSupportRole)
-			return getCloudCredentialsFromBackplaneAPI(backplaneURL, ocmToken, cluster)
+			return getCloudCredentialsFromBackplaneAPI(queryConfig, ocmToken, cluster)
 		}
 
 		return &bpCredentials.AWSCredentialsResponse{
@@ -157,11 +165,11 @@ func getCloudCredentials(backplaneURL string, ocmToken *string, cluster *cmv1.Cl
 		}, nil
 	}
 
-	return getCloudCredentialsFromBackplaneAPI(backplaneURL, ocmToken, cluster)
+	return getCloudCredentialsFromBackplaneAPI(queryConfig, ocmToken, cluster)
 }
 
-func getCloudCredentialsFromBackplaneAPI(backplaneURL string, ocmToken *string, cluster *cmv1.Cluster) (bpCredentials.Response, error) {
-	client, err := utils.DefaultClientUtils.GetBackplaneClient(backplaneURL, ocmToken)
+func getCloudCredentialsFromBackplaneAPI(queryConfig *CloudQueryConfig, ocmToken string, cluster *cmv1.Cluster) (bpCredentials.Response, error) {
+	client, err := utils.DefaultClientUtils.GetBackplaneClient(queryConfig.URL, ocmToken, queryConfig.ProxyURL)
 	if err != nil {
 		return nil, err
 	}
@@ -201,22 +209,12 @@ func getCloudCredentialsFromBackplaneAPI(backplaneURL string, ocmToken *string, 
 	}
 }
 
-// GetAWSV2Config allows consumers to get an aws-sdk-go-v2 Config to programmatically access the AWS API
-func GetAWSV2Config(backplaneURL string, cluster *cmv1.Cluster) (aws.Config, error) {
-	ocmToken, err := utils.DefaultOCMInterface.GetOCMAccessToken()
-	if err != nil {
-		return aws.Config{}, fmt.Errorf("failed to retrieve OCM token: %w", err)
-	}
-
-	return GetAWSV2ConfigCustomOCMToken(backplaneURL, ocmToken, cluster)
-}
-
-// GetAWSV2ConfigCustomOCMToken allows consumers to get an aws-sdk-go-v2 Config using a custom OCM token to programmatically access the AWS API
-func GetAWSV2ConfigCustomOCMToken(backplaneURL string, ocmToken *string, cluster *cmv1.Cluster) (aws.Config, error) {
+// GetAWSV2ConfigCustom allows consumers to get an aws-sdk-go-v2 Config to programmatically access the AWS API
+func GetAWSV2Config(queryConfig *CloudQueryConfig, cluster *cmv1.Cluster) (aws.Config, error) {
 	if cluster.CloudProvider().ID() != "aws" {
 		return aws.Config{}, fmt.Errorf("only supported for the aws cloud provider, this cluster has: %s", cluster.CloudProvider().ID())
 	}
-	creds, err := getCloudCredentials(backplaneURL, ocmToken, cluster)
+	creds, err := getCloudCredentials(queryConfig, cluster)
 	if err != nil {
 		return aws.Config{}, err
 	}

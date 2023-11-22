@@ -12,6 +12,7 @@ import (
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	sdk "github.com/openshift-online/ocm-sdk-go"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/backplane-cli/pkg/cli/config"
 	"github.com/openshift/backplane-cli/pkg/utils"
@@ -30,6 +31,7 @@ var _ = Describe("getIsolatedCredentials", func() {
 		testAccessKeyID     string
 		testSecretAccessKey string
 		testSessionToken    string
+		queryConfig         CloudQueryConfig
 	)
 
 	BeforeEach(func() {
@@ -46,6 +48,7 @@ var _ = Describe("getIsolatedCredentials", func() {
 		testAccessKeyID = "test-access-key-id"
 		testSecretAccessKey = "test-secret-access-key"
 		testSessionToken = "test-session-token"
+		queryConfig = CloudQueryConfig{ocmConnection: &sdk.Connection{}, BackplaneConfiguration: config.BackplaneConfiguration{URL: "test", AssumeInitialArn: "test"}}
 	})
 
 	AfterEach(func() {
@@ -54,72 +57,32 @@ var _ = Describe("getIsolatedCredentials", func() {
 
 	Context("Execute getIsolatedCredentials", func() {
 		It("should fail if no argument is provided", func() {
-			_, err := getIsolatedCredentials("", &testOcmToken)
+			_, err := getIsolatedCredentials("", &queryConfig, &testOcmToken)
 			Expect(err).To(Equal(fmt.Errorf("must provide non-empty cluster ID")))
 		})
-		It("should fail if cannot retrieve backplane configuration", func() {
-			GetBackplaneConfiguration = func() (bpConfig config.BackplaneConfiguration, err error) {
-				return config.BackplaneConfiguration{}, errors.New("oops")
-			}
-
-			_, err := getIsolatedCredentials(testClusterID, &testOcmToken)
-			Expect(err.Error()).To(Equal("error retrieving backplane configuration: oops"))
-		})
-		It("should fail if backplane configuration does not contain value for AssumeInitialArn", func() {
-			GetBackplaneConfiguration = func() (bpConfig config.BackplaneConfiguration, err error) {
-				return config.BackplaneConfiguration{
-					URL:              "testUrl.com",
-					ProxyURL:         "testProxyUrl.com",
-					AssumeInitialArn: "",
-				}, nil
-			}
-
-			_, err := getIsolatedCredentials(testClusterID, &testOcmToken)
-			Expect(err.Error()).To(Equal("backplane config is missing required `assume-initial-arn` property"))
-		})
 		It("should fail if cannot create sts client with proxy", func() {
-			GetBackplaneConfiguration = func() (bpConfig config.BackplaneConfiguration, err error) {
-				return config.BackplaneConfiguration{
-					URL:              "testUrl.com",
-					ProxyURL:         "testProxyUrl.com",
-					AssumeInitialArn: "arn:aws:iam::123456789:role/ManagedOpenShift-Support-Role",
-				}, nil
-			}
-			StsClientWithProxy = func(proxyURL string) (*sts.Client, error) {
+			StsClientWithProxy = func(proxyURL *string) (*sts.Client, error) {
 				return nil, errors.New(":(")
 			}
 
-			_, err := getIsolatedCredentials(testClusterID, &testOcmToken)
+			_, err := getIsolatedCredentials(testClusterID, &queryConfig, &testOcmToken)
 			Expect(err.Error()).To(Equal("failed to create sts client: :("))
 		})
 		It("should fail if initial role cannot be assumed with JWT", func() {
-			GetBackplaneConfiguration = func() (bpConfig config.BackplaneConfiguration, err error) {
-				return config.BackplaneConfiguration{
-					URL:              "testUrl.com",
-					ProxyURL:         "testProxyUrl.com",
-					AssumeInitialArn: "arn:aws:iam::123456789:role/ManagedOpenShift-Support-Role",
-				}, nil
-			}
-			StsClientWithProxy = func(proxyURL string) (*sts.Client, error) {
+			StsClientWithProxy = func(proxyURL *string) (*sts.Client, error) {
 				return &sts.Client{}, nil
 			}
 			AssumeRoleWithJWT = func(jwt string, roleArn string, stsClient stscreds.AssumeRoleWithWebIdentityAPIClient) (aws.Credentials, error) {
 				return aws.Credentials{}, errors.New("failure")
 			}
 
-			_, err := getIsolatedCredentials(testClusterID, &testOcmToken)
+			_, err := getIsolatedCredentials(testClusterID, &queryConfig, &testOcmToken)
 			Expect(err.Error()).To(Equal("failed to assume role using JWT: failure"))
 		})
 		It("should fail if email cannot be pulled off JWT", func() {
 			testOcmToken := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
-			GetBackplaneConfiguration = func() (bpConfig config.BackplaneConfiguration, err error) {
-				return config.BackplaneConfiguration{
-					URL:              "testUrl.com",
-					ProxyURL:         "testProxyUrl.com",
-					AssumeInitialArn: "arn:aws:iam::123456789:role/ManagedOpenShift-Support-Role",
-				}, nil
-			}
-			StsClientWithProxy = func(proxyURL string) (*sts.Client, error) {
+
+			StsClientWithProxy = func(proxyURL *string) (*sts.Client, error) {
 				return &sts.Client{}, nil
 			}
 			AssumeRoleWithJWT = func(jwt string, roleArn string, stsClient stscreds.AssumeRoleWithWebIdentityAPIClient) (aws.Credentials, error) {
@@ -130,18 +93,11 @@ var _ = Describe("getIsolatedCredentials", func() {
 				}, nil
 			}
 
-			_, err := getIsolatedCredentials(testClusterID, &testOcmToken)
+			_, err := getIsolatedCredentials(testClusterID, &queryConfig, &testOcmToken)
 			Expect(err.Error()).To(Equal("unable to extract email from given token: no field email on given token"))
 		})
 		It("should fail if error creating backplane api client", func() {
-			GetBackplaneConfiguration = func() (bpConfig config.BackplaneConfiguration, err error) {
-				return config.BackplaneConfiguration{
-					URL:              "testUrl.com",
-					ProxyURL:         "testProxyUrl.com",
-					AssumeInitialArn: "arn:aws:iam::123456789:role/ManagedOpenShift-Support-Role",
-				}, nil
-			}
-			StsClientWithProxy = func(proxyURL string) (*sts.Client, error) {
+			StsClientWithProxy = func(proxyURL *string) (*sts.Client, error) {
 				return &sts.Client{}, nil
 			}
 			AssumeRoleWithJWT = func(jwt string, roleArn string, stsClient stscreds.AssumeRoleWithWebIdentityAPIClient) (aws.Credentials, error) {
@@ -154,9 +110,9 @@ var _ = Describe("getIsolatedCredentials", func() {
 			NewStaticCredentialsProvider = func(key, secret, session string) credentials.StaticCredentialsProvider {
 				return credentials.StaticCredentialsProvider{}
 			}
-			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken("testUrl.com", testOcmToken).Return(nil, errors.New("foo")).Times(1)
+			mockClientUtil.EXPECT().GetBackplaneClient(queryConfig.URL, testOcmToken, queryConfig.ProxyURL).Return(nil, errors.New("foo")).Times(1)
 
-			_, err := getIsolatedCredentials(testClusterID, &testOcmToken)
+			_, err := getIsolatedCredentials(testClusterID, &queryConfig, &testOcmToken)
 			Expect(err.Error()).To(Equal("failed to create backplane client with access token: foo"))
 		})
 	})
@@ -193,7 +149,7 @@ func TestIsIsolatedBackplaneAccess(t *testing.T) {
 	//cmv1.NewStsSupportJumpRole().RoleArn(OldFlowSupportRole)
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			actual, err := isIsolatedBackplaneAccess(test.cluster)
+			actual, err := isIsolatedBackplaneAccess(test.cluster, &sdk.Connection{})
 			if err != nil {
 				t.Errorf("unexpected err: %v", err)
 			}
@@ -228,7 +184,7 @@ var _ = Describe("isIsolatedBackplaneAccess", func() {
 
 	Context("Execute isIsolatedBackplaneAccess", func() {
 		It("returns an error if fails to get STS Support Jump Role from OCM for STS enabled cluster", func() {
-			mockOcmInterface.EXPECT().GetStsSupportJumpRoleARN(testClusterID).Return("", errors.New("oops"))
+			mockOcmInterface.EXPECT().GetStsSupportJumpRoleARN(&sdk.Connection{}, testClusterID).Return("", errors.New("oops"))
 
 			stsBuilder := &cmv1.STSBuilder{}
 			stsBuilder.Enabled(true)
@@ -241,12 +197,12 @@ var _ = Describe("isIsolatedBackplaneAccess", func() {
 			clusterBuilder.ID(testClusterID)
 
 			cluster, _ := clusterBuilder.Build()
-			_, err := isIsolatedBackplaneAccess(cluster)
+			_, err := isIsolatedBackplaneAccess(cluster, &sdk.Connection{})
 
 			Expect(err).NotTo(BeNil())
 		})
 		It("returns an error if fails to parse STS Support Jump Role from OCM for STS enabled cluster", func() {
-			mockOcmInterface.EXPECT().GetStsSupportJumpRoleARN(testClusterID).Return("not-an-arn", nil)
+			mockOcmInterface.EXPECT().GetStsSupportJumpRoleARN(&sdk.Connection{}, testClusterID).Return("not-an-arn", nil)
 
 			stsBuilder := &cmv1.STSBuilder{}
 			stsBuilder.Enabled(true)
@@ -259,12 +215,12 @@ var _ = Describe("isIsolatedBackplaneAccess", func() {
 			clusterBuilder.ID(testClusterID)
 
 			cluster, _ := clusterBuilder.Build()
-			_, err := isIsolatedBackplaneAccess(cluster)
+			_, err := isIsolatedBackplaneAccess(cluster, &sdk.Connection{})
 
 			Expect(err).NotTo(BeNil())
 		})
 		It("returns false with no error for STS enabled cluster with ARN that matches old support flow ARN", func() {
-			mockOcmInterface.EXPECT().GetStsSupportJumpRoleARN(testClusterID).Return("arn:aws:iam::123456789:role/RH-Technical-Support-Access", nil)
+			mockOcmInterface.EXPECT().GetStsSupportJumpRoleARN(&sdk.Connection{}, testClusterID).Return("arn:aws:iam::123456789:role/RH-Technical-Support-Access", nil)
 
 			stsBuilder := &cmv1.STSBuilder{}
 			stsBuilder.Enabled(true)
@@ -277,13 +233,13 @@ var _ = Describe("isIsolatedBackplaneAccess", func() {
 			clusterBuilder.ID(testClusterID)
 
 			cluster, _ := clusterBuilder.Build()
-			result, err := isIsolatedBackplaneAccess(cluster)
+			result, err := isIsolatedBackplaneAccess(cluster, &sdk.Connection{})
 
 			Expect(result).To(Equal(false))
 			Expect(err).To(BeNil())
 		})
 		It("returns true with no error for STS enabled cluster with ARN that doesn't match old support flow ARN", func() {
-			mockOcmInterface.EXPECT().GetStsSupportJumpRoleARN(testClusterID).Return("arn:aws:iam::123456789:role/RH-Technical-Support-12345", nil)
+			mockOcmInterface.EXPECT().GetStsSupportJumpRoleARN(&sdk.Connection{}, testClusterID).Return("arn:aws:iam::123456789:role/RH-Technical-Support-12345", nil)
 
 			stsBuilder := &cmv1.STSBuilder{}
 			stsBuilder.Enabled(true)
@@ -296,7 +252,7 @@ var _ = Describe("isIsolatedBackplaneAccess", func() {
 			clusterBuilder.ID(testClusterID)
 
 			cluster, _ := clusterBuilder.Build()
-			result, err := isIsolatedBackplaneAccess(cluster)
+			result, err := isIsolatedBackplaneAccess(cluster, &sdk.Connection{})
 
 			Expect(result).To(Equal(true))
 			Expect(err).To(BeNil())

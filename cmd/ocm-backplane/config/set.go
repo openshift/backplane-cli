@@ -42,7 +42,11 @@ func setConfig(cmd *cobra.Command, args []string) error {
 		}
 
 		bpConfig.URL = viper.GetString("url")
-		bpConfig.ProxyURL = viper.GetString("proxy-url")
+		proxyURL := viper.GetString("proxy-url")
+		if proxyURL != "" {
+			bpConfig.ProxyURL = &proxyURL
+		}
+
 		bpConfig.SessionDirectory = viper.GetString("session-dir")
 	}
 
@@ -76,7 +80,7 @@ func setConfig(cmd *cobra.Command, args []string) error {
 	case URLConfigVar:
 		bpConfig.URL = args[1]
 	case ProxyURLConfigVar:
-		bpConfig.ProxyURL = args[1]
+		bpConfig.ProxyURL = &args[1]
 	case SessionConfigVar:
 		bpConfig.SessionDirectory = args[1]
 	default:
