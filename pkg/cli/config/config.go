@@ -1,13 +1,13 @@
 package config
 
 import (
-	"fmt"
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
 	"time"
 
+	logger "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 
 	"github.com/openshift/backplane-cli/pkg/info"
@@ -79,7 +79,7 @@ func GetBackplaneConfiguration() (bpConfig BackplaneConfiguration, err error) {
 	if proxyURL != "" {
 		bpConfig.ProxyURL = &proxyURL
 	} else {
-		fmt.Println("WARNING: No proxy configuration available. This may result in failing commands as backplane-api is only available from select networks.")
+		logger.Warn("No proxy configuration available. This may result in failing commands as backplane-api is only available from select networks.")
 	}
 
 	return bpConfig, nil
