@@ -5,16 +5,19 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
+	"net/url"
+	"time"
+
+	logger "github.com/sirupsen/logrus"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/openshift/backplane-cli/pkg/utils"
-	"io"
-	"net/http"
-	"net/url"
-	"time"
 )
 
 const (
@@ -121,7 +124,7 @@ func AssumeRoleSequence(roleSessionName string, seedClient stscreds.AssumeRoleAP
 			// IAM policy updates can take a few seconds to resolve, and the sts.Client in AWS' Go SDK doesn't refresh itself on retries.
 			// https://github.com/aws/aws-sdk-go-v2/issues/2332
 			if retryCount < assumeRoleMaxRetries {
-				fmt.Println("Waiting for IAM policy changes to resolve...")
+				logger.Info("Waiting for IAM policy changes to resolve...")
 				time.Sleep(assumeRoleRetryBackoff)
 				nextClient, err = createAssumeRoleSequenceClient(stsClientProviderFunc, lastCredentials, proxyURL)
 				if err != nil {
