@@ -110,7 +110,7 @@ var _ = Describe("getIsolatedCredentials", func() {
 			NewStaticCredentialsProvider = func(key, secret, session string) credentials.StaticCredentialsProvider {
 				return credentials.StaticCredentialsProvider{}
 			}
-			mockClientUtil.EXPECT().GetBackplaneClient(queryConfig.BackplaneConfiguration.URL, testOcmToken, queryConfig.ProxyURL).Return(nil, errors.New("foo")).Times(1)
+			mockClientUtil.EXPECT().GetBackplaneClient(queryConfig.BackplaneConfiguration.URL, testOcmToken, nil).Return(nil, errors.New("foo")).Times(1)
 
 			_, err := getIsolatedCredentials(testClusterID, &queryConfig, &testOcmToken)
 			Expect(err.Error()).To(Equal("failed to create backplane client with access token: foo"))
