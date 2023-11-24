@@ -21,13 +21,13 @@ import (
 
 const OldFlowSupportRole = "role/RH-Technical-Support-Access"
 
-var StsClientWithProxy = awsutil.StsClient
+var StsClient = awsutil.StsClient
 var AssumeRoleWithJWT = awsutil.AssumeRoleWithJWT
 var NewStaticCredentialsProvider = credentials.NewStaticCredentialsProvider
 var AssumeRoleSequence = awsutil.AssumeRoleSequence
 
 // Wrapper for the configuration needed for cloud requests
-type CloudQueryConfig struct {
+type QueryConfig struct {
 	config.BackplaneConfiguration
 	OcmConnection *ocmsdk.Connection
 }
@@ -41,7 +41,7 @@ type namedRoleArn struct {
 	Arn  string `json:"arn"`
 }
 
-func getIsolatedCredentials(clusterID string, queryConfig *CloudQueryConfig, ocmToken *string) (aws.Credentials, error) {
+func getIsolatedCredentials(clusterID string, cfg *QueryConfig, ocmToken *string) (aws.Credentials, error) {
 	if clusterID == "" {
 		return aws.Credentials{}, errors.New("must provide non-empty cluster ID")
 	}
@@ -51,21 +51,21 @@ func getIsolatedCredentials(clusterID string, queryConfig *CloudQueryConfig, ocm
 		return aws.Credentials{}, fmt.Errorf("unable to extract email from given token: %w", err)
 	}
 
-	if queryConfig.BackplaneConfiguration.AssumeInitialArn == "" {
+	if cfg.BackplaneConfiguration.AssumeInitialArn == "" {
 		return aws.Credentials{}, errors.New("backplane config is missing required `assume-initial-arn` property")
 	}
 
-	initialClient, err := StsClientWithProxy(queryConfig.BackplaneConfiguration.ProxyURL)
+	initialClient, err := StsClient(cfg.BackplaneConfiguration.ProxyURL)
 	if err != nil {
 		return aws.Credentials{}, fmt.Errorf("failed to create sts client: %w", err)
 	}
 
-	seedCredentials, err := AssumeRoleWithJWT(*ocmToken, queryConfig.BackplaneConfiguration.AssumeInitialArn, initialClient)
+	seedCredentials, err := AssumeRoleWithJWT(*ocmToken, cfg.BackplaneConfiguration.AssumeInitialArn, initialClient)
 	if err != nil {
 		return aws.Credentials{}, fmt.Errorf("failed to assume role using JWT: %w", err)
 	}
 
-	backplaneClient, err := utils.DefaultClientUtils.GetBackplaneClient(queryConfig.BackplaneConfiguration.URL, *ocmToken, queryConfig.BackplaneConfiguration.ProxyURL)
+	backplaneClient, err := utils.DefaultClientUtils.GetBackplaneClient(cfg.BackplaneConfiguration.URL, *ocmToken, cfg.BackplaneConfiguration.ProxyURL)
 	if err != nil {
 		return aws.Credentials{}, fmt.Errorf("failed to create backplane client with access token: %w", err)
 	}
@@ -99,7 +99,7 @@ func getIsolatedCredentials(clusterID string, queryConfig *CloudQueryConfig, ocm
 		Credentials: NewStaticCredentialsProvider(seedCredentials.AccessKeyID, seedCredentials.SecretAccessKey, seedCredentials.SessionToken),
 	})
 
-	targetCredentials, err := AssumeRoleSequence(email, seedClient, roleAssumeSequence, queryConfig.BackplaneConfiguration.ProxyURL, awsutil.DefaultSTSClientProviderFunc)
+	targetCredentials, err := AssumeRoleSequence(email, seedClient, roleAssumeSequence, cfg.BackplaneConfiguration.ProxyURL, awsutil.DefaultSTSClientProviderFunc)
 	if err != nil {
 		return aws.Credentials{}, fmt.Errorf("failed to assume role sequence: %w", err)
 	}

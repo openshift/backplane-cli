@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"net/http"
 	"net/url"
 	"os"
@@ -77,6 +78,8 @@ func GetBackplaneConfiguration() (bpConfig BackplaneConfiguration, err error) {
 	proxyURL := viper.GetString("proxy-url")
 	if proxyURL != "" {
 		bpConfig.ProxyURL = &proxyURL
+	} else {
+		fmt.Println("WARNING: No proxy configuration available. This may result in failing commands as backplane-api is only available from select networks.")
 	}
 
 	return bpConfig, nil

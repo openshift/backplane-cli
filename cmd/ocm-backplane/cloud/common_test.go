@@ -31,7 +31,7 @@ var _ = Describe("getIsolatedCredentials", func() {
 		testAccessKeyID     string
 		testSecretAccessKey string
 		testSessionToken    string
-		queryConfig         CloudQueryConfig
+		queryConfig         QueryConfig
 	)
 
 	BeforeEach(func() {
@@ -48,7 +48,7 @@ var _ = Describe("getIsolatedCredentials", func() {
 		testAccessKeyID = "test-access-key-id"
 		testSecretAccessKey = "test-secret-access-key"
 		testSessionToken = "test-session-token"
-		queryConfig = CloudQueryConfig{OcmConnection: &sdk.Connection{}, BackplaneConfiguration: config.BackplaneConfiguration{URL: "test", AssumeInitialArn: "test"}}
+		queryConfig = QueryConfig{OcmConnection: &sdk.Connection{}, BackplaneConfiguration: config.BackplaneConfiguration{URL: "test", AssumeInitialArn: "test"}}
 	})
 
 	AfterEach(func() {
@@ -61,7 +61,7 @@ var _ = Describe("getIsolatedCredentials", func() {
 			Expect(err).To(Equal(fmt.Errorf("must provide non-empty cluster ID")))
 		})
 		It("should fail if cannot create sts client with proxy", func() {
-			StsClientWithProxy = func(proxyURL *string) (*sts.Client, error) {
+			StsClient = func(proxyURL *string) (*sts.Client, error) {
 				return nil, errors.New(":(")
 			}
 
@@ -69,7 +69,7 @@ var _ = Describe("getIsolatedCredentials", func() {
 			Expect(err.Error()).To(Equal("failed to create sts client: :("))
 		})
 		It("should fail if initial role cannot be assumed with JWT", func() {
-			StsClientWithProxy = func(proxyURL *string) (*sts.Client, error) {
+			StsClient = func(proxyURL *string) (*sts.Client, error) {
 				return &sts.Client{}, nil
 			}
 			AssumeRoleWithJWT = func(jwt string, roleArn string, stsClient stscreds.AssumeRoleWithWebIdentityAPIClient) (aws.Credentials, error) {
@@ -82,7 +82,7 @@ var _ = Describe("getIsolatedCredentials", func() {
 		It("should fail if email cannot be pulled off JWT", func() {
 			testOcmToken := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
 
-			StsClientWithProxy = func(proxyURL *string) (*sts.Client, error) {
+			StsClient = func(proxyURL *string) (*sts.Client, error) {
 				return &sts.Client{}, nil
 			}
 			AssumeRoleWithJWT = func(jwt string, roleArn string, stsClient stscreds.AssumeRoleWithWebIdentityAPIClient) (aws.Credentials, error) {
@@ -97,7 +97,7 @@ var _ = Describe("getIsolatedCredentials", func() {
 			Expect(err.Error()).To(Equal("unable to extract email from given token: no field email on given token"))
 		})
 		It("should fail if error creating backplane api client", func() {
-			StsClientWithProxy = func(proxyURL *string) (*sts.Client, error) {
+			StsClient = func(proxyURL *string) (*sts.Client, error) {
 				return &sts.Client{}, nil
 			}
 			AssumeRoleWithJWT = func(jwt string, roleArn string, stsClient stscreds.AssumeRoleWithWebIdentityAPIClient) (aws.Credentials, error) {

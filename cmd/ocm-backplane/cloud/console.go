@@ -151,7 +151,7 @@ func runConsole(cmd *cobra.Command, argv []string) (err error) {
 
 	// Initialize query config
 
-	queryConfig := &CloudQueryConfig{OcmConnection: ocmSdk, BackplaneConfiguration: backplaneConfiguration}
+	queryConfig := &QueryConfig{OcmConnection: ocmSdk, BackplaneConfiguration: backplaneConfiguration}
 
 	// ======== Get cloud console from backplane API ============
 	var consoleResponse *ConsoleResponse
@@ -212,10 +212,10 @@ func validateParams(argv []string) (err error) {
 }
 
 // getCloudConsole returns console response calling to public Backplane API
-func getCloudConsole(queryConfig *CloudQueryConfig, ocmToken string, clusterID string) (*ConsoleResponse, error) {
+func getCloudConsole(cfg *QueryConfig, ocmToken string, clusterID string) (*ConsoleResponse, error) {
 	logger.Debugln("Getting Cloud Console")
 
-	client, err := utils.DefaultClientUtils.GetBackplaneClient(queryConfig.BackplaneConfiguration.URL, ocmToken, queryConfig.BackplaneConfiguration.ProxyURL)
+	client, err := utils.DefaultClientUtils.GetBackplaneClient(cfg.BackplaneConfiguration.URL, ocmToken, cfg.BackplaneConfiguration.ProxyURL)
 	if err != nil {
 		return nil, err
 	}
