@@ -15,7 +15,7 @@ func TestGetBackplaneConfig(t *testing.T) {
 			t.Error(err)
 		}
 
-		if config.ProxyURL != userDefinedProxy {
+		if config.ProxyURL != nil && *config.ProxyURL != userDefinedProxy {
 			t.Errorf("expected to return the explicitly defined proxy %v instead of the default one %v", userDefinedProxy, config.ProxyURL)
 		}
 	})
@@ -94,7 +94,7 @@ func TestGetBackplaneConnection(t *testing.T) {
 	})
 
 	t.Run("should fail for empty proxy url", func(t *testing.T) {
-		config := BackplaneConfiguration{URL: "https://api-backplane.apps.openshiftapps.com", ProxyURL: ""}
+		config := BackplaneConfiguration{URL: "https://api-backplane.apps.openshiftapps.com", ProxyURL: nil}
 		err := config.CheckAPIConnection()
 
 		if err != nil {

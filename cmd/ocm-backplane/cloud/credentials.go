@@ -1,15 +1,12 @@
 package cloud
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/http"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
-	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
-	BackplaneApi "github.com/openshift/backplane-api/pkg/client"
+	"github.com/openshift-online/ocm-cli/pkg/ocm"
+	"github.com/openshift/backplane-cli/pkg/cli/config"
 	bpCredentials "github.com/openshift/backplane-cli/pkg/credentials"
 	"github.com/openshift/backplane-cli/pkg/utils"
 	logger "github.com/sirupsen/logrus"
@@ -87,34 +84,35 @@ func runCredentials(cmd *cobra.Command, argv []string) error {
 		"ID":   clusterID,
 		"Name": clusterName}).Infoln("Target cluster")
 
-	// ============Get Backplane URl ==========================
-	bpURL := ""
-	if credentialArgs.backplaneURL != "" {
-		bpURL = credentialArgs.backplaneURL
-	} else {
-		// Get Backplane configuration
-		bpConfig, err := GetBackplaneConfiguration()
-		if err != nil {
-			return fmt.Errorf("can't find backplane url: %w", err)
-		}
-
-		if bpConfig.URL == "" {
-			return errors.New("empty backplane url - check your backplane-cli configuration")
-		}
-		bpURL = bpConfig.URL
-		logger.Infof("Using backplane URL: %s\n", bpURL)
-	}
-
-	// ============ Get OCM Token ==========================
-	ocmToken, err := utils.DefaultOCMInterface.GetOCMAccessToken()
+	// Initialize backplane configuration
+	backplaneConfiguration, err := config.GetBackplaneConfiguration()
 	if err != nil {
-		return fmt.Errorf("failed to retrieve OCM token: %w", err)
+		return fmt.Errorf("unable to build backplane configuration: %w", err)
 	}
+
+	// ============Get Backplane URl ==========================
+	if credentialArgs.backplaneURL != "" { // Overwrite if parameter is set
+		backplaneConfiguration.URL = credentialArgs.backplaneURL
+	}
+
+	if backplaneConfiguration.URL == "" {
+		return errors.New("empty backplane url - check your backplane-cli configuration")
+	}
+	logger.Infof("Using backplane URL: %s\n", backplaneConfiguration.URL)
+
+	// Initialize OCM connection
+	ocmConnection, err := ocm.NewConnection().Build()
+	if err != nil {
+		return fmt.Errorf("unable to build ocm sdk: %w", err)
+	}
+	defer ocmConnection.Close()
 
 	// ======== Call Endpoint ==================================
 	logger.Debugln("Getting Cloud Credentials")
 
-	credsResp, err := getCloudCredentials(bpURL, ocmToken, cluster)
+	queryConfig := &QueryConfig{OcmConnection: ocmConnection, BackplaneConfiguration: backplaneConfiguration, Cluster: cluster}
+
+	credsResp, err := queryConfig.GetCloudCredentials()
 	if err != nil {
 		return fmt.Errorf("failed to get cloud credentials for cluster %v: %w", clusterID, err)
 	}
@@ -126,107 +124,6 @@ func runCredentials(cmd *cobra.Command, argv []string) error {
 
 	fmt.Println(output)
 	return nil
-}
-
-// getCloudCredentials returns Cloud Credentials Response
-func getCloudCredentials(backplaneURL string, ocmToken *string, cluster *cmv1.Cluster) (bpCredentials.Response, error) {
-	isolatedBackplane, err := isIsolatedBackplaneAccess(cluster)
-	if err != nil {
-		logger.Infof("failed to determine if the cluster is using isolated backplane access: %v", err)
-		logger.Infof("for more information, try ocm get /api/clusters_mgmt/v1/clusters/%s/sts_support_jump_role", cluster.ID())
-		logger.Infof("attempting to fallback to %s", OldFlowSupportRole)
-	}
-
-	if isolatedBackplane {
-		logger.Debugf("cluster is using isolated backplane")
-		targetCredentials, err := getIsolatedCredentials(cluster.ID(), ocmToken)
-		if err != nil {
-			// TODO: This fallback should be removed in the future
-			// TODO: when we are more confident in our ability to access clusters using the isolated flow
-			logger.Infof("failed to assume role with isolated backplane flow: %v", err)
-			logger.Infof("attempting to fallback to %s", OldFlowSupportRole)
-			return getCloudCredentialsFromBackplaneAPI(backplaneURL, ocmToken, cluster)
-		}
-
-		return &bpCredentials.AWSCredentialsResponse{
-			AccessKeyID:     targetCredentials.AccessKeyID,
-			SecretAccessKey: targetCredentials.SecretAccessKey,
-			SessionToken:    targetCredentials.SessionToken,
-			Expiration:      targetCredentials.Expires.String(),
-			Region:          cluster.Region().ID(),
-		}, nil
-	}
-
-	return getCloudCredentialsFromBackplaneAPI(backplaneURL, ocmToken, cluster)
-}
-
-func getCloudCredentialsFromBackplaneAPI(backplaneURL string, ocmToken *string, cluster *cmv1.Cluster) (bpCredentials.Response, error) {
-	client, err := utils.DefaultClientUtils.GetBackplaneClient(backplaneURL, ocmToken)
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := client.GetCloudCredentials(context.TODO(), cluster.ID())
-	if err != nil {
-		return nil, err
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, utils.TryPrintAPIError(resp, false)
-	}
-
-	logger.Debugln("Parsing response")
-
-	credsResp, err := BackplaneApi.ParseGetCloudCredentialsResponse(resp)
-	if err != nil {
-		return nil, fmt.Errorf("unable to parse response body from backplane:\n  Status Code: %d : err: %v", resp.StatusCode, err)
-	}
-
-	switch cluster.CloudProvider().ID() {
-	case "aws":
-		cliResp := &bpCredentials.AWSCredentialsResponse{}
-		if err := json.Unmarshal([]byte(*credsResp.JSON200.Credentials), cliResp); err != nil {
-			return nil, fmt.Errorf("unable to unmarshal AWS credentials response from backplane %s: %w", *credsResp.JSON200.Credentials, err)
-		}
-		cliResp.Region = cluster.Region().ID()
-		return cliResp, nil
-	case "gcp":
-		cliResp := &bpCredentials.GCPCredentialsResponse{}
-		if err := json.Unmarshal([]byte(*credsResp.JSON200.Credentials), cliResp); err != nil {
-			return nil, fmt.Errorf("unable to unmarshal GCP credentials response from backplane %s: %w", *credsResp.JSON200.Credentials, err)
-		}
-		return cliResp, nil
-	default:
-		return nil, fmt.Errorf("unsupported cloud provider: %s", cluster.CloudProvider().ID())
-	}
-}
-
-// GetAWSV2Config allows consumers to get an aws-sdk-go-v2 Config to programmatically access the AWS API
-func GetAWSV2Config(backplaneURL string, cluster *cmv1.Cluster) (aws.Config, error) {
-	ocmToken, err := utils.DefaultOCMInterface.GetOCMAccessToken()
-	if err != nil {
-		return aws.Config{}, fmt.Errorf("failed to retrieve OCM token: %w", err)
-	}
-
-	return GetAWSV2ConfigCustomOCMToken(backplaneURL, ocmToken, cluster)
-}
-
-// GetAWSV2ConfigCustomOCMToken allows consumers to get an aws-sdk-go-v2 Config using a custom OCM token to programmatically access the AWS API
-func GetAWSV2ConfigCustomOCMToken(backplaneURL string, ocmToken *string, cluster *cmv1.Cluster) (aws.Config, error) {
-	if cluster.CloudProvider().ID() != "aws" {
-		return aws.Config{}, fmt.Errorf("only supported for the aws cloud provider, this cluster has: %s", cluster.CloudProvider().ID())
-	}
-	creds, err := getCloudCredentials(backplaneURL, ocmToken, cluster)
-	if err != nil {
-		return aws.Config{}, err
-	}
-
-	awsCreds, ok := creds.(*bpCredentials.AWSCredentialsResponse)
-	if !ok {
-		return aws.Config{}, errors.New("unexpected error: failed to convert backplane creds to AWSCredentialsResponse")
-	}
-
-	return awsCreds.AWSV2Config()
 }
 
 // renderCloudCredentials displays the results of `ocm backplane cloud credentials` for AWS clusters

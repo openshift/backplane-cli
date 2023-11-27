@@ -50,19 +50,24 @@ func (r *AWSCredentialsResponse) AWSV2Config() (aws.Config, error) {
 		return aws.Config{}, fmt.Errorf("failed to load backplane config file: %w", err)
 	}
 
-	proxyURL, err := url.Parse(bpConfig.ProxyURL)
-	if err != nil {
-		return aws.Config{}, fmt.Errorf("failed to parse proxy_url from backplane config file: %w", err)
+	if bpConfig.ProxyURL != nil {
+		proxyURL, err := url.Parse(*bpConfig.ProxyURL)
+		if err != nil {
+			return aws.Config{}, fmt.Errorf("failed to parse proxy_url from backplane config file: %w", err)
+		}
+
+		httpClient := awshttp.NewBuildableClient().WithTransportOptions(func(tr *http.Transport) {
+			tr.Proxy = http.ProxyURL(proxyURL)
+		})
+
+		return config.LoadDefaultConfig(context.Background(),
+			config.WithHTTPClient(httpClient),
+			config.WithRegion(r.Region),
+			config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(r.AccessKeyID, r.SecretAccessKey, r.SessionToken)),
+		)
 	}
 
-	// Configure aws-sdk-go-v2 to use backplane's specified proxy
-	// https://aws.github.io/aws-sdk-go-v2/docs/configuring-sdk/custom-http/#configuring-a-proxy
-	httpClient := awshttp.NewBuildableClient().WithTransportOptions(func(tr *http.Transport) {
-		tr.Proxy = http.ProxyURL(proxyURL)
-	})
-
 	return config.LoadDefaultConfig(context.Background(),
-		config.WithHTTPClient(httpClient),
 		config.WithRegion(r.Region),
 		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(r.AccessKeyID, r.SecretAccessKey, r.SessionToken)),
 	)

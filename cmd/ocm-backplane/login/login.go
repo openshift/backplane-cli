@@ -108,8 +108,8 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 		logger.Debugf("Using backplane Proxy URL: %s\n", proxyURL)
 	}
 
-	if len(proxyURL) == 0 {
-		proxyURL = bpConfig.ProxyURL
+	if bpConfig.ProxyURL != nil {
+		proxyURL = *bpConfig.ProxyURL
 	}
 
 	clusterID, clusterName, err := utils.DefaultOCMInterface.GetTargetCluster(clusterKey)
@@ -271,9 +271,9 @@ func GetRestConfig(bp config.BackplaneConfiguration, clusterID string) (*rest.Co
 		BearerToken: *accessToken,
 	}
 
-	if bp.ProxyURL != "" {
+	if bp.ProxyURL != nil {
 		cfg.Proxy = func(*http.Request) (*url.URL, error) {
-			return url.Parse(bp.ProxyURL)
+			return url.Parse(*bp.ProxyURL)
 		}
 	}
 

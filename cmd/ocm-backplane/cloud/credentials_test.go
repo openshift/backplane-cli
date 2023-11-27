@@ -15,7 +15,6 @@ import (
 	. "github.com/onsi/gomega"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
-	"github.com/openshift/backplane-cli/pkg/cli/config"
 	"github.com/openshift/backplane-cli/pkg/client/mocks"
 	bpCredentials "github.com/openshift/backplane-cli/pkg/credentials"
 	"github.com/openshift/backplane-cli/pkg/info"
@@ -152,19 +151,6 @@ var _ = Describe("Cloud console command", func() {
 				mockOcmInterface.EXPECT().GetClusterInfoByID(gomock.Any()).Return(&cmv1.Cluster{}, errors.New("error")).AnyTimes()
 				Expect(runCredentials(&cobra.Command{}, []string{"cluster-key"})).To(Equal(
 					fmt.Errorf("failed to get cluster info for %s: %w", "foo", errors.New("error")),
-				))
-			})
-
-			It("returns an error if GetBackplaneURL returns an error and credentialArgs.backplaneURL is empty", func() {
-				GetBackplaneConfiguration = func() (bpConfig config.BackplaneConfiguration, err error) {
-					return config.BackplaneConfiguration{}, errors.New("error bp url")
-
-				}
-
-				mockOcmInterface.EXPECT().GetTargetCluster(gomock.Any()).Return("foo", "bar", nil).AnyTimes()
-				mockOcmInterface.EXPECT().GetClusterInfoByID(gomock.Any()).Return(&cmv1.Cluster{}, nil).AnyTimes()
-				Expect(runCredentials(&cobra.Command{}, []string{"cluster-key"})).To(Equal(
-					fmt.Errorf("can't find backplane url: %w", errors.New("error bp url")),
 				))
 			})
 

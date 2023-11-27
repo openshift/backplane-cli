@@ -4,13 +4,14 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
 	"io"
 	"net/http"
 	"net/url"
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -208,7 +209,7 @@ func TestAssumeRoleSequence(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := AssumeRoleSequence("", tt.args.seedClient, tt.args.roleArnSequence, "", tt.args.stsClientProviderFunc)
+			got, err := AssumeRoleSequence("", tt.args.seedClient, tt.args.roleArnSequence, nil, tt.args.stsClientProviderFunc)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("AssumeRoleSequence() error = %v, wantErr %v", err, tt.wantErr)
 				return

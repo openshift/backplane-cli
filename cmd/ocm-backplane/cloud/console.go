@@ -1,22 +1,18 @@
 package cloud
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/http"
 	"os"
 	"strconv"
 
-	"github.com/openshift/backplane-cli/pkg/awsutil"
+	"github.com/openshift-online/ocm-cli/pkg/ocm"
 
 	"github.com/pkg/browser"
 	logger "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"sigs.k8s.io/yaml"
-
-	BackplaneApi "github.com/openshift/backplane-api/pkg/client"
 
 	"github.com/openshift/backplane-cli/pkg/cli/config"
 	"github.com/openshift/backplane-cli/pkg/utils"
@@ -120,70 +116,42 @@ func runConsole(cmd *cobra.Command, argv []string) (err error) {
 		"ID":   clusterID,
 		"Name": clusterName}).Infoln("Target cluster")
 
-	// ============Get Backplane URl ==========================
-	bpURL := ""
-	if consoleArgs.backplaneURL != "" {
-		bpURL = consoleArgs.backplaneURL
-	} else {
-		// Get Backplane configuration
-		bpConfig, err := config.GetBackplaneConfiguration()
-		if err != nil {
-			return fmt.Errorf("can't find backplane url: %w", err)
-		}
-
-		if bpConfig.URL == "" {
-			return errors.New("empty backplane url - check your backplane-cli configuration")
-		}
-		bpURL = bpConfig.URL
-		logger.Infof("Using backplane URL: %s\n", bpURL)
-	}
-
-	// ============Get OCM token ==========================
-	ocmToken, err := utils.DefaultOCMInterface.GetOCMAccessToken()
+	// Initialize backplane configuration
+	backplaneConfiguration, err := config.GetBackplaneConfiguration()
 	if err != nil {
-		return fmt.Errorf("failed to retrieve OCM token: %w", err)
+		return fmt.Errorf("unable to build backplane configuration: %w", err)
 	}
+
+	// ============Get Backplane URl ==========================
+	if credentialArgs.backplaneURL != "" { // Overwrite if parameter is set
+		backplaneConfiguration.URL = credentialArgs.backplaneURL
+	}
+
+	if backplaneConfiguration.URL == "" {
+		return errors.New("empty backplane url - check your backplane-cli configuration")
+	}
+	logger.Infof("Using backplane URL: %s\n", backplaneConfiguration.URL)
+
+	// Initialize OCM connection
+	ocmConnection, err := ocm.NewConnection().Build()
+	if err != nil {
+		return fmt.Errorf("unable to build ocm sdk: %w", err)
+	}
+	defer ocmConnection.Close()
+
+	// Initialize query config
+
+	queryConfig := &QueryConfig{OcmConnection: ocmConnection, BackplaneConfiguration: backplaneConfiguration, Cluster: cluster}
 
 	// ======== Get cloud console from backplane API ============
-
-	var consoleResponse *ConsoleResponse
-	isolatedBackplane, err := isIsolatedBackplaneAccess(cluster)
+	consoleResponse, err := queryConfig.GetCloudConsole()
 	if err != nil {
-		return fmt.Errorf("failed to determine if cluster is using isolated backplane access: %w", err)
-	}
-	if isolatedBackplane {
-		targetCredentials, err := getIsolatedCredentials(clusterID, ocmToken)
-		if err != nil {
-			// TODO: This fallback should be removed in the future
-			// TODO: when we are more confident in our ability to access clusters using the isolated flow
-			logger.Infof("failed to assume role with isolated backplane flow: %v", err)
-			logger.Infof("attempting to fallback to %s", OldFlowSupportRole)
-			consoleResponse, err = getCloudConsole(bpURL, ocmToken, clusterID)
-			if err != nil {
-				return err
-			}
-		} else {
-			resp, err := awsutil.GetSigninToken(targetCredentials, cluster.Region().ID())
-			if err != nil {
-				return fmt.Errorf("failed to get signin token: %w", err)
-			}
-
-			signinFederationURL, err := awsutil.GetConsoleURL(resp.SigninToken, cluster.Region().ID())
-			if err != nil {
-				return fmt.Errorf("failed to generate console url: %w", err)
-			}
-			consoleResponse = &ConsoleResponse{ConsoleLink: signinFederationURL.String()}
-		}
-	} else {
-		consoleResponse, err = getCloudConsole(bpURL, ocmToken, clusterID)
-		if err != nil {
-			return err
-		}
+		return fmt.Errorf("failed to get cloud console for cluster %v: %w", clusterID, err)
 	}
 
 	err = renderCloudConsole(consoleResponse)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to render cloud console: %w", err)
 	}
 	return nil
 }
@@ -201,38 +169,6 @@ func validateParams(argv []string) (err error) {
 		return fmt.Errorf("expected exactly one cluster")
 	}
 	return nil
-}
-
-// getCloudConsole returns console response calling to public Backplane API
-func getCloudConsole(backplaneURL string, ocmToken *string, clusterID string) (*ConsoleResponse, error) {
-	logger.Debugln("Getting Cloud Console")
-
-	client, err := utils.DefaultClientUtils.GetBackplaneClient(backplaneURL, ocmToken)
-	if err != nil {
-		return nil, err
-	}
-	resp, err := client.GetCloudConsole(context.TODO(), clusterID)
-	if err != nil {
-		return nil, err
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, utils.TryPrintAPIError(resp, false)
-	}
-
-	credsResp, err := BackplaneApi.ParseGetCloudConsoleResponse(resp)
-	if err != nil {
-		return nil, fmt.Errorf("unable to parse response body from backplane:\n  Status Code: %d", resp.StatusCode)
-	}
-
-	if len(credsResp.Body) == 0 {
-		return nil, fmt.Errorf("empty response from backplane")
-	}
-
-	cliResp := &ConsoleResponse{}
-	cliResp.ConsoleLink = *credsResp.JSON200.ConsoleLink
-
-	return cliResp, nil
 }
 
 // renderCloudConsole output the data based output type

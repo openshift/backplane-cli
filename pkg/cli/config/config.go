@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"time"
 
+	logger "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 
 	"github.com/openshift/backplane-cli/pkg/info"
@@ -14,7 +15,7 @@ import (
 
 type BackplaneConfiguration struct {
 	URL              string
-	ProxyURL         string
+	ProxyURL         *string // Optional
 	SessionDirectory string
 	AssumeInitialArn string
 }
@@ -70,9 +71,16 @@ func GetBackplaneConfiguration() (bpConfig BackplaneConfiguration, err error) {
 	}
 
 	bpConfig.URL = viper.GetString("url")
-	bpConfig.ProxyURL = viper.GetString("proxy-url")
 	bpConfig.SessionDirectory = viper.GetString("session-dir")
 	bpConfig.AssumeInitialArn = viper.GetString("assume-initial-arn")
+
+	// proxyURL is optional
+	proxyURL := viper.GetString("proxy-url")
+	if proxyURL != "" {
+		bpConfig.ProxyURL = &proxyURL
+	} else {
+		logger.Warn("No proxy configuration available. This may result in failing commands as backplane-api is only available from select networks.")
+	}
 
 	return bpConfig, nil
 }
@@ -96,8 +104,8 @@ func (config BackplaneConfiguration) testHTTPRequestToBackplaneAPI() (bool, erro
 		Timeout: 5 * time.Second,
 	}
 
-	if config.ProxyURL != "" {
-		proxyURL, err := url.Parse(config.ProxyURL)
+	if config.ProxyURL != nil {
+		proxyURL, err := url.Parse(*config.ProxyURL)
 		if err != nil {
 			return false, err
 		}

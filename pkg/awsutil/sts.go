@@ -41,16 +41,20 @@ type AWSSigninTokenResponse struct {
 
 var httpGetFunc = http.Get
 
-func StsClientWithProxy(proxyURL string) (*sts.Client, error) {
+// Returns a new stsclient, proxy is optional.
+func StsClient(proxyURL *string) (*sts.Client, error) {
 	cfg := aws.Config{
 		Region: "us-east-1", // We don't care about region here, but the API still wants to see one set
-		HTTPClient: &http.Client{
+	}
+
+	if proxyURL != nil {
+		cfg.HTTPClient = &http.Client{
 			Transport: &http.Transport{
 				Proxy: func(*http.Request) (*url.URL, error) {
-					return url.Parse(proxyURL)
+					return url.Parse(*proxyURL)
 				},
 			},
-		},
+		}
 	}
 
 	return sts.NewFromConfig(cfg), nil
@@ -109,7 +113,7 @@ var DefaultSTSClientProviderFunc STSClientProviderFunc = func(optnFns ...func(op
 	return sts.NewFromConfig(cfg), nil
 }
 
-func AssumeRoleSequence(roleSessionName string, seedClient stscreds.AssumeRoleAPIClient, roleArnSequence []string, proxyURL string, stsClientProviderFunc STSClientProviderFunc) (aws.Credentials, error) {
+func AssumeRoleSequence(roleSessionName string, seedClient stscreds.AssumeRoleAPIClient, roleArnSequence []string, proxyURL *string, stsClientProviderFunc STSClientProviderFunc) (aws.Credentials, error) {
 	if len(roleArnSequence) == 0 {
 		return aws.Credentials{}, errors.New("role ARN sequence cannot be empty")
 	}
@@ -149,16 +153,23 @@ func AssumeRoleSequence(roleSessionName string, seedClient stscreds.AssumeRoleAP
 	return lastCredentials, nil
 }
 
-func createAssumeRoleSequenceClient(stsClientProviderFunc STSClientProviderFunc, creds aws.Credentials, proxyURL string) (stscreds.AssumeRoleAPIClient, error) {
+func createAssumeRoleSequenceClient(stsClientProviderFunc STSClientProviderFunc, creds aws.Credentials, proxyURL *string) (stscreds.AssumeRoleAPIClient, error) {
+	if proxyURL != nil {
+		return stsClientProviderFunc(
+			config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(creds.AccessKeyID, creds.SecretAccessKey, creds.SessionToken)),
+			config.WithHTTPClient(&http.Client{
+				Transport: &http.Transport{
+					Proxy: func(*http.Request) (*url.URL, error) {
+						return url.Parse(*proxyURL)
+					},
+				},
+			}),
+			config.WithRegion("us-east-1"), // We don't care about region here, but the API still wants to see one set
+		)
+	}
+
 	return stsClientProviderFunc(
 		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(creds.AccessKeyID, creds.SecretAccessKey, creds.SessionToken)),
-		config.WithHTTPClient(&http.Client{
-			Transport: &http.Transport{
-				Proxy: func(*http.Request) (*url.URL, error) {
-					return url.Parse(proxyURL)
-				},
-			},
-		}),
 		config.WithRegion("us-east-1"), // We don't care about region here, but the API still wants to see one set
 	)
 }

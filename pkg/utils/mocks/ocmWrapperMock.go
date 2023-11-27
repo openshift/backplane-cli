@@ -8,6 +8,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
+	sdk "github.com/openshift-online/ocm-sdk-go"
 	v1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 )
 
@@ -112,18 +113,18 @@ func (mr *MockOCMInterfaceMockRecorder) GetServiceCluster(arg0 interface{}) *gom
 }
 
 // GetStsSupportJumpRoleARN mocks base method.
-func (m *MockOCMInterface) GetStsSupportJumpRoleARN(arg0 string) (string, error) {
+func (m *MockOCMInterface) GetStsSupportJumpRoleARN(arg0 *sdk.Connection, arg1 string) (string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetStsSupportJumpRoleARN", arg0)
+	ret := m.ctrl.Call(m, "GetStsSupportJumpRoleARN", arg0, arg1)
 	ret0, _ := ret[0].(string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetStsSupportJumpRoleARN indicates an expected call of GetStsSupportJumpRoleARN.
-func (mr *MockOCMInterfaceMockRecorder) GetStsSupportJumpRoleARN(arg0 interface{}) *gomock.Call {
+func (mr *MockOCMInterfaceMockRecorder) GetStsSupportJumpRoleARN(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetStsSupportJumpRoleARN", reflect.TypeOf((*MockOCMInterface)(nil).GetStsSupportJumpRoleARN), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetStsSupportJumpRoleARN", reflect.TypeOf((*MockOCMInterface)(nil).GetStsSupportJumpRoleARN), arg0, arg1)
 }
 
 // GetTargetCluster mocks base method.

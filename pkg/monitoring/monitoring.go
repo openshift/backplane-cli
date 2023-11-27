@@ -134,8 +134,8 @@ func (c Client) RunMonitoring(monitoringType string) error {
 	if err != nil {
 		return err
 	}
-	if proxyURL != "" {
-		proxyURL, err := url.Parse(proxyURL)
+	if proxyURL != nil {
+		proxyURL, err := url.Parse(*proxyURL)
 		if err != nil {
 			return err
 		}
@@ -342,16 +342,13 @@ func serveURL(hasURL, hasNs bool, cfg *restclient.Config) (*url.URL, error) {
 }
 
 // getProxyURL returns the proxy url
-func getProxyURL() (proxyURL string, err error) {
+func getProxyURL() (proxyURL *string, err error) {
 	bpConfig, err := config.GetBackplaneConfiguration()
-
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	proxyURL = bpConfig.ProxyURL
-
-	return proxyURL, nil
+	return bpConfig.ProxyURL, nil
 }
 
 // validateClusterVersion checks the clusterversion based on namespace

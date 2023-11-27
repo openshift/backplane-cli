@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/openshift-online/ocm-cli/pkg/ocm"
+	ocmsdk "github.com/openshift-online/ocm-sdk-go"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	logger "github.com/sirupsen/logrus"
 
@@ -23,7 +24,7 @@ type OCMInterface interface {
 	GetClusterInfoByID(clusterID string) (*cmv1.Cluster, error)
 	IsProduction() (bool, error)
 	GetPullSecret() (string, error)
-	GetStsSupportJumpRoleARN(clusterID string) (string, error)
+	GetStsSupportJumpRoleARN(ocmConnection *ocmsdk.Connection, clusterID string) (string, error)
 }
 
 type DefaultOCMInterfaceImpl struct{}
@@ -262,14 +263,8 @@ func (*DefaultOCMInterfaceImpl) IsProduction() (bool, error) {
 	return connection.URL() == "https://api.openshift.com", nil
 }
 
-func (*DefaultOCMInterfaceImpl) GetStsSupportJumpRoleARN(clusterID string) (string, error) {
-	connection, err := ocm.NewConnection().Build()
-	if err != nil {
-		return "", fmt.Errorf("failed to create OCM connection: %v", err)
-	}
-	defer connection.Close()
-
-	response, err := connection.ClustersMgmt().V1().Clusters().Cluster(clusterID).StsSupportJumpRole().Get().Send()
+func (*DefaultOCMInterfaceImpl) GetStsSupportJumpRoleARN(ocmConnection *ocmsdk.Connection, clusterID string) (string, error) {
+	response, err := ocmConnection.ClustersMgmt().V1().Clusters().Cluster(clusterID).StsSupportJumpRole().Get().Send()
 	if err != nil {
 		return "", fmt.Errorf("failed to get STS Support Jump Role for cluster %v, %w", clusterID, err)
 	}
