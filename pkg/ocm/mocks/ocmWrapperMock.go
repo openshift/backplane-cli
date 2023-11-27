@@ -51,13 +51,14 @@ func (mr *MockOCMInterfaceMockRecorder) GetClusterInfoByID(arg0 interface{}) *go
 }
 
 // GetManagingCluster mocks base method.
-func (m *MockOCMInterface) GetManagingCluster(arg0 string) (string, string, error) {
+func (m *MockOCMInterface) GetManagingCluster(arg0 string) (string, string, bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetManagingCluster", arg0)
 	ret0, _ := ret[0].(string)
 	ret1, _ := ret[1].(string)
-	ret2, _ := ret[2].(error)
-	return ret0, ret1, ret2
+	ret2, _ := ret[2].(bool)
+	ret3, _ := ret[3].(error)
+	return ret0, ret1, ret2, ret3
 }
 
 // GetManagingCluster indicates an expected call of GetManagingCluster.

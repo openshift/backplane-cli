@@ -15,6 +15,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd/api"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+
 	"github.com/openshift/backplane-cli/pkg/backplaneapi"
 	backplaneapiMock "github.com/openshift/backplane-cli/pkg/backplaneapi/mocks"
 	"github.com/openshift/backplane-cli/pkg/client/mocks"
@@ -47,6 +48,7 @@ var _ = Describe("Login command", func() {
 		serviceClusterName string
 		fakeResp           *http.Response
 		ocmEnv             *cmv1.Environment
+		kubeConfigPath     string
 	)
 
 	BeforeEach(func() {
@@ -67,6 +69,7 @@ var _ = Describe("Login command", func() {
 		serviceClusterID = "hs-sc-123456"
 		serviceClusterName = "hs-sc-654321"
 		backplaneAPIURI = "https://shard.apps"
+		kubeConfigPath = "filepath"
 
 		mockClientWithResp.EXPECT().LoginClusterWithResponse(gomock.Any(), gomock.Any()).Return(nil, nil).Times(0)
 
@@ -249,7 +252,7 @@ var _ = Describe("Login command", func() {
 			globalOpts.Manager = true
 			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, testClusterID, nil)
-			mockOcmInterface.EXPECT().GetManagingCluster(trueClusterID).Return(managingClusterID, managingClusterID, nil)
+			mockOcmInterface.EXPECT().GetManagingCluster(trueClusterID).Return(managingClusterID, managingClusterID, true, nil)
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(managingClusterID)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil)
 			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken(backplaneAPIURI, testToken).Return(mockClient, nil)
@@ -267,6 +270,7 @@ var _ = Describe("Login command", func() {
 			mockOcmInterface.EXPECT().GetManagingCluster(trueClusterID).Return(
 				managingClusterID,
 				managingClusterID,
+				false,
 				fmt.Errorf("failed to find management cluster for cluster %s in %s env", testClusterID, "http://test.env"),
 			)
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(managingClusterID)).Return(false, nil).AnyTimes()
@@ -364,5 +368,23 @@ var _ = Describe("Login command", func() {
 			Expect(err).To(BeNil())
 
 		})
+
+		It("should fail if specify kubeconfigpath but not in multicluster mode", func() {
+			globalOpts.Manager = false
+			args.multiCluster = false
+			args.kubeConfigPath = kubeConfigPath
+
+			err := login.SetKubeConfigBasePath(args.kubeConfigPath)
+			Expect(err).To(BeNil())
+
+			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, testClusterID, nil)
+
+			err = runLogin(nil, []string{testClusterID})
+
+			Expect(err.Error()).Should(ContainSubstring("can't save the kube config into a specific location if multi-cluster is not enabled"))
+
+		})
+
 	})
 })

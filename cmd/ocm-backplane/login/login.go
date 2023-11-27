@@ -125,7 +125,11 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 
 	if globalOpts.Manager {
 		logger.WithField("Cluster ID", clusterID).Debugln("Finding managing cluster")
-		clusterID, clusterName, err = ocm.DefaultOCMInterface.GetManagingCluster(clusterID)
+		var isHostedControlPlane bool
+		targetClusterID := clusterID
+		targetClusterName := clusterName
+
+		clusterID, clusterName, isHostedControlPlane, err = ocm.DefaultOCMInterface.GetManagingCluster(clusterID)
 		if err != nil {
 			return err
 		}
@@ -133,6 +137,17 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 		logger.WithFields(logger.Fields{
 			"ID":   clusterID,
 			"Name": clusterName}).Infoln("Management cluster")
+
+		// Print the related namespace if login to manager cluster
+		var namespaces []string
+		namespaces, err = listNamespaces(targetClusterID, targetClusterName, isHostedControlPlane)
+		if err != nil {
+			return err
+		}
+		fmt.Println("A list of associated namespaces for your given cluster:")
+		for _, ns := range namespaces {
+			fmt.Println("	" + ns)
+		}
 	}
 
 	if globalOpts.Service {
@@ -153,7 +168,7 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 			return fmt.Errorf("can't save the kube config into a specific location if multi-cluster is not enabled. Please specify --multi flag")
 		}
 		if _, err := os.Stat(args.kubeConfigPath); errors.Is(err, os.ErrNotExist) {
-			return fmt.Errorf("kube config save path is not exist")
+			return fmt.Errorf("the save path for the kubeconfig does not exist")
 		}
 	}
 
@@ -353,4 +368,33 @@ func doLogin(api, clusterID, accessToken string) (string, error) {
 	}
 
 	return api + *loginResp.JSON200.ProxyUri, nil
+}
+
+func listNamespaces(clusterID, clusterName string, isHostedControlPlane bool) ([]string, error) {
+
+	env, err := ocm.DefaultOCMInterface.GetOCMEnvironment()
+	if err != nil {
+		return []string{}, err
+	}
+	envName := env.Name()
+
+	klusterletPrefix := "klusterlet-"
+	hivePrefix := fmt.Sprintf("uhc-%s-", envName)
+	hcpPrefix := fmt.Sprintf("ocm-%s-", envName)
+
+	var nsList []string
+
+	if isHostedControlPlane {
+		nsList = []string{
+			klusterletPrefix + clusterID,
+			hcpPrefix + clusterID,
+			hcpPrefix + clusterID + "-" + clusterName,
+		}
+	} else {
+		nsList = []string{
+			hivePrefix + clusterID,
+		}
+	}
+
+	return nsList, nil
 }
