@@ -31,7 +31,7 @@ var _ = Describe("getIsolatedCredentials", func() {
 		testAccessKeyID     string
 		testSecretAccessKey string
 		testSessionToken    string
-		queryConfig         QueryConfig
+		testQueryConfig     QueryConfig
 	)
 
 	BeforeEach(func() {
@@ -48,7 +48,19 @@ var _ = Describe("getIsolatedCredentials", func() {
 		testAccessKeyID = "test-access-key-id"
 		testSecretAccessKey = "test-secret-access-key"
 		testSessionToken = "test-session-token"
-		queryConfig = QueryConfig{OcmConnection: &sdk.Connection{}, BackplaneConfiguration: config.BackplaneConfiguration{URL: "test", AssumeInitialArn: "test"}}
+
+		stsBuilder := &cmv1.STSBuilder{}
+		stsBuilder.Enabled(true)
+
+		awsBuilder := &cmv1.AWSBuilder{}
+		awsBuilder.STS(stsBuilder)
+
+		clusterBuilder := cmv1.ClusterBuilder{}
+		clusterBuilder.AWS(awsBuilder)
+		clusterBuilder.ID(testClusterID)
+
+		cluster, _ := clusterBuilder.Build()
+		testQueryConfig = QueryConfig{OcmConnection: &sdk.Connection{}, BackplaneConfiguration: config.BackplaneConfiguration{URL: "test", AssumeInitialArn: "test"}, Cluster: cluster}
 	})
 
 	AfterEach(func() {
@@ -56,8 +68,13 @@ var _ = Describe("getIsolatedCredentials", func() {
 	})
 
 	Context("Execute getIsolatedCredentials", func() {
-		It("should fail if no argument is provided", func() {
-			_, err := getIsolatedCredentials("", &queryConfig, &testOcmToken)
+		It("should fail if empty cluster ID is provided", func() {
+			clusterBuilder := cmv1.ClusterBuilder{}
+			clusterBuilder.ID("")
+			cluster, _ := clusterBuilder.Build()
+			testQueryConfig.Cluster = cluster
+
+			_, err := testQueryConfig.getIsolatedCredentials(testOcmToken)
 			Expect(err).To(Equal(fmt.Errorf("must provide non-empty cluster ID")))
 		})
 		It("should fail if cannot create sts client with proxy", func() {
@@ -65,7 +82,7 @@ var _ = Describe("getIsolatedCredentials", func() {
 				return nil, errors.New(":(")
 			}
 
-			_, err := getIsolatedCredentials(testClusterID, &queryConfig, &testOcmToken)
+			_, err := testQueryConfig.getIsolatedCredentials(testOcmToken)
 			Expect(err.Error()).To(Equal("failed to create sts client: :("))
 		})
 		It("should fail if initial role cannot be assumed with JWT", func() {
@@ -76,7 +93,7 @@ var _ = Describe("getIsolatedCredentials", func() {
 				return aws.Credentials{}, errors.New("failure")
 			}
 
-			_, err := getIsolatedCredentials(testClusterID, &queryConfig, &testOcmToken)
+			_, err := testQueryConfig.getIsolatedCredentials(testOcmToken)
 			Expect(err.Error()).To(Equal("failed to assume role using JWT: failure"))
 		})
 		It("should fail if email cannot be pulled off JWT", func() {
@@ -93,7 +110,7 @@ var _ = Describe("getIsolatedCredentials", func() {
 				}, nil
 			}
 
-			_, err := getIsolatedCredentials(testClusterID, &queryConfig, &testOcmToken)
+			_, err := testQueryConfig.getIsolatedCredentials(testOcmToken)
 			Expect(err.Error()).To(Equal("unable to extract email from given token: no field email on given token"))
 		})
 		It("should fail if error creating backplane api client", func() {
@@ -110,9 +127,9 @@ var _ = Describe("getIsolatedCredentials", func() {
 			NewStaticCredentialsProvider = func(key, secret, session string) credentials.StaticCredentialsProvider {
 				return credentials.StaticCredentialsProvider{}
 			}
-			mockClientUtil.EXPECT().GetBackplaneClient(queryConfig.BackplaneConfiguration.URL, testOcmToken, nil).Return(nil, errors.New("foo")).Times(1)
+			mockClientUtil.EXPECT().GetBackplaneClient(testQueryConfig.BackplaneConfiguration.URL, testOcmToken, nil).Return(nil, errors.New("foo")).Times(1)
 
-			_, err := getIsolatedCredentials(testClusterID, &queryConfig, &testOcmToken)
+			_, err := testQueryConfig.getIsolatedCredentials(testOcmToken)
 			Expect(err.Error()).To(Equal("failed to create backplane client with access token: foo"))
 		})
 	})
