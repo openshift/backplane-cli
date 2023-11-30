@@ -10,6 +10,7 @@ reviewers:
   - Dee-6777
   - xiaoyu74
   - mjlshen
+  - typeid
 
 approvers:
   - wanghaoran1988
@@ -19,6 +20,7 @@ approvers:
   - supreeth7
   - bmeng
   - mjlshen
+  - typeid
 
 maintainers:
   - wanghaoran1988
