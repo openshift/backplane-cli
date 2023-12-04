@@ -44,6 +44,7 @@ import (
 	"k8s.io/client-go/rest"
 
 	"github.com/openshift/backplane-cli/pkg/cli/config"
+	"github.com/openshift/backplane-cli/pkg/ocm"
 	"github.com/openshift/backplane-cli/pkg/utils"
 )
 
@@ -318,7 +319,7 @@ func runConsole(cmd *cobra.Command, argv []string) (err error) {
 
 	// Get ocm access token
 	logger.Debugln("Finding ocm token")
-	ocmToken, err := utils.DefaultOCMInterface.GetOCMAccessToken()
+	ocmToken, err := ocm.DefaultOCMInterface.GetOCMAccessToken()
 	if err != nil {
 		return err
 	}
@@ -391,7 +392,7 @@ func runConsole(cmd *cobra.Command, argv []string) (err error) {
 		consoleArgs.image,
 	)
 
-	c, err := utils.DefaultOCMInterface.GetClusterInfoByID(clusterID)
+	c, err := ocm.DefaultOCMInterface.GetClusterInfoByID(clusterID)
 	if err != nil {
 		return err
 	}
@@ -561,7 +562,7 @@ func fetchPullSecretIfNotExist() (string, string, error) {
 		return "", "", err
 	}
 
-	response, err := utils.DefaultOCMInterface.GetPullSecret()
+	response, err := ocm.DefaultOCMInterface.GetPullSecret()
 	if err != nil {
 		return "", "", fmt.Errorf("failed to get pull secret from ocm: %v", err)
 	}
@@ -656,7 +657,7 @@ func isRunningHigherThan411() bool {
 	if err != nil {
 		return false
 	}
-	currentCluster, err := utils.DefaultOCMInterface.GetClusterInfoByID(currentClusterInfo.ClusterID)
+	currentCluster, err := ocm.DefaultOCMInterface.GetClusterInfoByID(currentClusterInfo.ClusterID)
 
 	if err != nil {
 		return false

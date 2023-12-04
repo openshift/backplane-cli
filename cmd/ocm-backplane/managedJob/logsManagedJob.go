@@ -11,6 +11,7 @@ import (
 
 	BackplaneApi "github.com/openshift/backplane-api/pkg/client"
 
+	"github.com/openshift/backplane-cli/pkg/backplaneapi"
 	"github.com/openshift/backplane-cli/pkg/cli/config"
 	"github.com/openshift/backplane-cli/pkg/utils"
 )
@@ -69,7 +70,7 @@ func newLogsManagedJobCmd() *cobra.Command {
 				backplaneHost = urlFlag
 			}
 
-			client, err := utils.DefaultClientUtils.MakeRawBackplaneAPIClient(backplaneHost)
+			client, err := backplaneapi.DefaultClientUtils.MakeRawBackplaneAPIClient(backplaneHost)
 			if err != nil {
 				return err
 			}

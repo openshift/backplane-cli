@@ -14,17 +14,19 @@ import (
 	. "github.com/onsi/gomega"
 	sdk "github.com/openshift-online/ocm-sdk-go"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	"github.com/openshift/backplane-cli/pkg/backplaneapi"
+	backplaneapiMock "github.com/openshift/backplane-cli/pkg/backplaneapi/mocks"
 	"github.com/openshift/backplane-cli/pkg/cli/config"
-	"github.com/openshift/backplane-cli/pkg/utils"
-	mocks2 "github.com/openshift/backplane-cli/pkg/utils/mocks"
+	"github.com/openshift/backplane-cli/pkg/ocm"
+	ocmMock "github.com/openshift/backplane-cli/pkg/ocm/mocks"
 )
 
 //nolint:gosec
 var _ = Describe("getIsolatedCredentials", func() {
 	var (
 		mockCtrl         *gomock.Controller
-		mockOcmInterface *mocks2.MockOCMInterface
-		mockClientUtil   *mocks2.MockClientUtils
+		mockOcmInterface *ocmMock.MockOCMInterface
+		mockClientUtil   *backplaneapiMock.MockClientUtils
 
 		testOcmToken        string
 		testClusterID       string
@@ -37,11 +39,11 @@ var _ = Describe("getIsolatedCredentials", func() {
 	BeforeEach(func() {
 		mockCtrl = gomock.NewController(GinkgoT())
 
-		mockOcmInterface = mocks2.NewMockOCMInterface(mockCtrl)
-		utils.DefaultOCMInterface = mockOcmInterface
+		mockOcmInterface = ocmMock.NewMockOCMInterface(mockCtrl)
+		ocm.DefaultOCMInterface = mockOcmInterface
 
-		mockClientUtil = mocks2.NewMockClientUtils(mockCtrl)
-		utils.DefaultClientUtils = mockClientUtil
+		mockClientUtil = backplaneapiMock.NewMockClientUtils(mockCtrl)
+		backplaneapi.DefaultClientUtils = mockClientUtil
 
 		testOcmToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiZW1haWwiOiJ0ZXN0QGZvby5jb20iLCJpYXQiOjE1MTYyMzkwMjJ9.5NG4wFhitEKZyzftSwU67kx4JVTEWcEoKhCl_AFp8T4"
 		testClusterID = "test123"
@@ -181,7 +183,7 @@ func TestIsIsolatedBackplaneAccess(t *testing.T) {
 var _ = Describe("isIsolatedBackplaneAccess", func() {
 	var (
 		mockCtrl         *gomock.Controller
-		mockOcmInterface *mocks2.MockOCMInterface
+		mockOcmInterface *ocmMock.MockOCMInterface
 
 		testClusterID string
 	)
@@ -189,8 +191,8 @@ var _ = Describe("isIsolatedBackplaneAccess", func() {
 	BeforeEach(func() {
 		mockCtrl = gomock.NewController(GinkgoT())
 
-		mockOcmInterface = mocks2.NewMockOCMInterface(mockCtrl)
-		utils.DefaultOCMInterface = mockOcmInterface
+		mockOcmInterface = ocmMock.NewMockOCMInterface(mockCtrl)
+		ocm.DefaultOCMInterface = mockOcmInterface
 
 		testClusterID = "test123"
 	})

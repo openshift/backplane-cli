@@ -13,10 +13,13 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/backplane-cli/pkg/backplaneapi"
+	backplaneapiMock "github.com/openshift/backplane-cli/pkg/backplaneapi/mocks"
 	"github.com/openshift/backplane-cli/pkg/client/mocks"
 	"github.com/openshift/backplane-cli/pkg/info"
+	"github.com/openshift/backplane-cli/pkg/ocm"
+	ocmMock "github.com/openshift/backplane-cli/pkg/ocm/mocks"
 	"github.com/openshift/backplane-cli/pkg/utils"
-	mocks2 "github.com/openshift/backplane-cli/pkg/utils/mocks"
 )
 
 const (
@@ -57,8 +60,8 @@ var _ = Describe("testJob create command", func() {
 	var (
 		mockCtrl         *gomock.Controller
 		mockClient       *mocks.MockClientInterface
-		mockOcmInterface *mocks2.MockOCMInterface
-		mockClientUtil   *mocks2.MockClientUtils
+		mockOcmInterface *ocmMock.MockOCMInterface
+		mockClientUtil   *backplaneapiMock.MockClientUtils
 
 		testClusterID string
 		testToken     string
@@ -82,11 +85,11 @@ var _ = Describe("testJob create command", func() {
 
 		_ = os.Chdir(tempDir)
 
-		mockOcmInterface = mocks2.NewMockOCMInterface(mockCtrl)
-		utils.DefaultOCMInterface = mockOcmInterface
+		mockOcmInterface = ocmMock.NewMockOCMInterface(mockCtrl)
+		ocm.DefaultOCMInterface = mockOcmInterface
 
-		mockClientUtil = mocks2.NewMockClientUtils(mockCtrl)
-		utils.DefaultClientUtils = mockClientUtil
+		mockClientUtil = backplaneapiMock.NewMockClientUtils(mockCtrl)
+		backplaneapi.DefaultClientUtils = mockClientUtil
 
 		testClusterID = "test123"
 		testToken = "hello123"

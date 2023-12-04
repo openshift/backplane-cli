@@ -14,10 +14,13 @@ import (
 	"k8s.io/client-go/tools/clientcmd/api"
 
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/login"
+	"github.com/openshift/backplane-cli/pkg/backplaneapi"
+	backplaneapiMock "github.com/openshift/backplane-cli/pkg/backplaneapi/mocks"
 	"github.com/openshift/backplane-cli/pkg/client/mocks"
 	"github.com/openshift/backplane-cli/pkg/info"
+	"github.com/openshift/backplane-cli/pkg/ocm"
+	ocmMock "github.com/openshift/backplane-cli/pkg/ocm/mocks"
 	"github.com/openshift/backplane-cli/pkg/utils"
-	mocks2 "github.com/openshift/backplane-cli/pkg/utils/mocks"
 )
 
 func MakeIoReader(s string) io.ReadCloser {
@@ -31,8 +34,8 @@ var _ = Describe("Logout command", func() {
 		mockCtrl           *gomock.Controller
 		mockClient         *mocks.MockClientInterface
 		mockClientWithResp *mocks.MockClientWithResponsesInterface
-		mockOcmInterface   *mocks2.MockOCMInterface
-		mockClientUtil     *mocks2.MockClientUtils
+		mockOcmInterface   *ocmMock.MockOCMInterface
+		mockClientUtil     *backplaneapiMock.MockClientUtils
 
 		testClusterID   string
 		testToken       string
@@ -52,11 +55,11 @@ var _ = Describe("Logout command", func() {
 		mockClient = mocks.NewMockClientInterface(mockCtrl)
 		mockClientWithResp = mocks.NewMockClientWithResponsesInterface(mockCtrl)
 
-		mockOcmInterface = mocks2.NewMockOCMInterface(mockCtrl)
-		utils.DefaultOCMInterface = mockOcmInterface
+		mockOcmInterface = ocmMock.NewMockOCMInterface(mockCtrl)
+		ocm.DefaultOCMInterface = mockOcmInterface
 
-		mockClientUtil = mocks2.NewMockClientUtils(mockCtrl)
-		utils.DefaultClientUtils = mockClientUtil
+		mockClientUtil = backplaneapiMock.NewMockClientUtils(mockCtrl)
+		backplaneapi.DefaultClientUtils = mockClientUtil
 
 		mockClientWithResp.EXPECT().LoginClusterWithResponse(gomock.Any(), gomock.Any()).Return(nil, nil).Times(0)
 

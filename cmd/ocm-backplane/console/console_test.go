@@ -17,8 +17,9 @@ import (
 	"k8s.io/client-go/tools/clientcmd/api"
 
 	"github.com/openshift/backplane-cli/pkg/info"
+	"github.com/openshift/backplane-cli/pkg/ocm"
+	ocmMock "github.com/openshift/backplane-cli/pkg/ocm/mocks"
 	"github.com/openshift/backplane-cli/pkg/utils"
-	mocks "github.com/openshift/backplane-cli/pkg/utils/mocks"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 
@@ -28,7 +29,7 @@ import (
 var _ = Describe("console command", func() {
 	var (
 		mockCtrl         *gomock.Controller
-		mockOcmInterface *mocks.MockOCMInterface
+		mockOcmInterface *ocmMock.MockOCMInterface
 
 		capturedCommands [][]string
 
@@ -42,8 +43,8 @@ var _ = Describe("console command", func() {
 
 	BeforeEach(func() {
 		mockCtrl = gomock.NewController(GinkgoT())
-		mockOcmInterface = mocks.NewMockOCMInterface(mockCtrl)
-		utils.DefaultOCMInterface = mockOcmInterface
+		mockOcmInterface = ocmMock.NewMockOCMInterface(mockCtrl)
+		ocm.DefaultOCMInterface = mockOcmInterface
 
 		os.Setenv("CONTAINER_ENGINE", PODMAN)
 

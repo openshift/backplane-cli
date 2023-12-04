@@ -24,6 +24,8 @@ import (
 
 	bpclient "github.com/openshift/backplane-api/pkg/client"
 
+	"github.com/openshift/backplane-cli/pkg/backplaneapi"
+	"github.com/openshift/backplane-cli/pkg/ocm"
 	"github.com/openshift/backplane-cli/pkg/utils"
 )
 
@@ -60,7 +62,7 @@ func newListScriptCmd() *cobra.Command {
 				backplaneHost = bpCluster.BackplaneHost
 			}
 
-			client, err := utils.DefaultClientUtils.MakeRawBackplaneAPIClient(backplaneHost)
+			client, err := backplaneapi.DefaultClientUtils.MakeRawBackplaneAPIClient(backplaneHost)
 			if err != nil {
 				return err
 			}
@@ -75,7 +77,7 @@ func newListScriptCmd() *cobra.Command {
 			}
 
 			// ======== Transform clusterKey to clusterID (clusterKey can be name, ID external ID) ========
-			clusterID, _, err := utils.DefaultOCMInterface.GetTargetCluster(clusterKey)
+			clusterID, _, err := ocm.DefaultOCMInterface.GetTargetCluster(clusterKey)
 			if err != nil {
 				return err
 			}

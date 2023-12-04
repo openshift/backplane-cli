@@ -1,4 +1,4 @@
-package utils
+package ocm
 
 import (
 	"fmt"
@@ -26,6 +26,10 @@ type OCMInterface interface {
 	GetPullSecret() (string, error)
 	GetStsSupportJumpRoleARN(ocmConnection *ocmsdk.Connection, clusterID string) (string, error)
 }
+
+const (
+	ClustersPageSize = 50
+)
 
 type DefaultOCMInterfaceImpl struct{}
 

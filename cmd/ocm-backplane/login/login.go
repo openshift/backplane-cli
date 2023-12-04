@@ -18,9 +18,11 @@ import (
 
 	BackplaneApi "github.com/openshift/backplane-api/pkg/client"
 
+	"github.com/openshift/backplane-cli/pkg/backplaneapi"
 	"github.com/openshift/backplane-cli/pkg/cli/config"
 	"github.com/openshift/backplane-cli/pkg/cli/globalflags"
 	"github.com/openshift/backplane-cli/pkg/login"
+	"github.com/openshift/backplane-cli/pkg/ocm"
 	"github.com/openshift/backplane-cli/pkg/utils"
 )
 
@@ -100,7 +102,7 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 	// Set proxy url to http client
 	proxyURL := globalOpts.ProxyURL
 	if proxyURL != "" {
-		err = utils.DefaultClientUtils.SetClientProxyURL(proxyURL)
+		err = backplaneapi.DefaultClientUtils.SetClientProxyURL(proxyURL)
 
 		if err != nil {
 			return err
@@ -112,7 +114,7 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 		proxyURL = *bpConfig.ProxyURL
 	}
 
-	clusterID, clusterName, err := utils.DefaultOCMInterface.GetTargetCluster(clusterKey)
+	clusterID, clusterName, err := ocm.DefaultOCMInterface.GetTargetCluster(clusterKey)
 	if err != nil {
 		return err
 	}
@@ -123,7 +125,7 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 
 	if globalOpts.Manager {
 		logger.WithField("Cluster ID", clusterID).Debugln("Finding managing cluster")
-		clusterID, clusterName, err = utils.DefaultOCMInterface.GetManagingCluster(clusterID)
+		clusterID, clusterName, err = ocm.DefaultOCMInterface.GetManagingCluster(clusterID)
 		if err != nil {
 			return err
 		}
@@ -135,7 +137,7 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 
 	if globalOpts.Service {
 		logger.WithField("Cluster ID", clusterID).Debugln("Finding service cluster")
-		clusterID, clusterName, err = utils.DefaultOCMInterface.GetServiceCluster(clusterID)
+		clusterID, clusterName, err = ocm.DefaultOCMInterface.GetServiceCluster(clusterID)
 		if err != nil {
 			return err
 		}
@@ -169,14 +171,14 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 
 	// Get ocm access token
 	logger.Debugln("Finding ocm token")
-	accessToken, err := utils.DefaultOCMInterface.GetOCMAccessToken()
+	accessToken, err := ocm.DefaultOCMInterface.GetOCMAccessToken()
 	if err != nil {
 		return err
 	}
 	logger.Debugln("Found OCM access token")
 
 	// Not great if there's an error checking if the cluster is hibernating, but ignore it for now and continue
-	if isHibernating, _ := utils.DefaultOCMInterface.IsClusterHibernating(clusterID); isHibernating {
+	if isHibernating, _ := ocm.DefaultOCMInterface.IsClusterHibernating(clusterID); isHibernating {
 		// If it is hibernating, don't try to connect as it will fail
 		return fmt.Errorf("cluster %s is hibernating, login failed", clusterKey)
 	}
@@ -185,7 +187,7 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 	bpAPIClusterURL, err := doLogin(bpURL, clusterID, *accessToken)
 	if err != nil {
 		// If login failed, we try to find out if the cluster is hibernating
-		isHibernating, _ := utils.DefaultOCMInterface.IsClusterHibernating(clusterID)
+		isHibernating, _ := ocm.DefaultOCMInterface.IsClusterHibernating(clusterID)
 		if isHibernating {
 			// Hibernating, print an error
 			return fmt.Errorf("cluster %s is hibernating, login failed", clusterKey)
@@ -251,12 +253,12 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 // GetRestConfig returns a client-go *rest.Config which can be used to programmatically interact with the
 // Kubernetes API of a provided clusterID
 func GetRestConfig(bp config.BackplaneConfiguration, clusterID string) (*rest.Config, error) {
-	cluster, err := utils.DefaultOCMInterface.GetClusterInfoByID(clusterID)
+	cluster, err := ocm.DefaultOCMInterface.GetClusterInfoByID(clusterID)
 	if err != nil {
 		return nil, err
 	}
 
-	accessToken, err := utils.DefaultOCMInterface.GetOCMAccessToken()
+	accessToken, err := ocm.DefaultOCMInterface.GetOCMAccessToken()
 	if err != nil {
 		return nil, err
 	}
@@ -322,7 +324,7 @@ func getUsernameFromJWT(token string) string {
 // doLogin returns the proxy url for the target cluster.
 func doLogin(api, clusterID, accessToken string) (string, error) {
 
-	client, err := utils.DefaultClientUtils.MakeRawBackplaneAPIClientWithAccessToken(api, accessToken)
+	client, err := backplaneapi.DefaultClientUtils.MakeRawBackplaneAPIClientWithAccessToken(api, accessToken)
 
 	if err != nil {
 		return "", fmt.Errorf("unable to create backplane api client")

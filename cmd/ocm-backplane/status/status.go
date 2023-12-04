@@ -21,6 +21,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/backplane-cli/pkg/ocm"
 	"github.com/openshift/backplane-cli/pkg/utils"
 )
 
@@ -42,7 +43,7 @@ func runStatus(cmd *cobra.Command, argv []string) error {
 		return err
 	}
 
-	clusterV1, err := utils.DefaultOCMInterface.GetClusterInfoByID(clusterInfo.ClusterID)
+	clusterV1, err := ocm.DefaultOCMInterface.GetClusterInfoByID(clusterInfo.ClusterID)
 	if err != nil {
 		return err
 	}

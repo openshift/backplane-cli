@@ -110,8 +110,8 @@ mock-gen:
 	mockgen -destination=./pkg/client/mocks/ClientMock.go -package=mocks github.com/openshift/backplane-api/pkg/client ClientInterface
 	mockgen -destination=./pkg/client/mocks/ClientWithResponsesMock.go -package=mocks github.com/openshift/backplane-api/pkg/client ClientWithResponsesInterface
 	mockgen -destination=./pkg/utils/mocks/ClusterMock.go -package=mocks github.com/openshift/backplane-cli/pkg/utils ClusterUtils
-	mockgen -destination=./pkg/utils/mocks/ocmWrapperMock.go -package=mocks github.com/openshift/backplane-cli/pkg/utils OCMInterface
-	mockgen -destination=./pkg/utils/mocks/clientUtilsMock.go -package=mocks github.com/openshift/backplane-cli/pkg/utils ClientUtils
+	mockgen -destination=./pkg/ocm/mocks/ocmWrapperMock.go -package=mocks github.com/openshift/backplane-cli/pkg/ocm OCMInterface
+	mockgen -destination=./pkg/backplaneapi/mocks/clientUtilsMock.go -package=mocks github.com/openshift/backplane-cli/pkg/backplaneapi ClientUtils
 	mockgen -destination=./pkg/cli/session/mocks/sessionMock.go -package=mocks github.com/openshift/backplane-cli/pkg/cli/session BackplaneSessionInterface
 	mockgen -destination=./pkg/utils/mocks/shellCheckerMock.go -package=mocks github.com/openshift/backplane-cli/pkg/utils ShellCheckerInterface
 

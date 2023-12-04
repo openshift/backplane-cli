@@ -9,6 +9,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 
 	"github.com/openshift/backplane-cli/pkg/cli/config"
+	"github.com/openshift/backplane-cli/pkg/ocm"
 )
 
 type BackplaneCluster struct {
@@ -74,7 +75,7 @@ func (s *DefaultClusterUtilsImpl) GetBackplaneClusterFromConfig() (BackplaneClus
 // GetBackplaneClusterFromClusterKey get the backplane cluster from the given cluster
 func (s *DefaultClusterUtilsImpl) GetBackplaneClusterFromClusterKey(clusterKey string) (BackplaneCluster, error) {
 	logger.WithField("SearchKey", clusterKey).Debugln("Finding target cluster")
-	clusterID, clusterName, err := DefaultOCMInterface.GetTargetCluster(clusterKey)
+	clusterID, clusterName, err := ocm.DefaultOCMInterface.GetTargetCluster(clusterKey)
 
 	if err != nil {
 		return BackplaneCluster{}, err

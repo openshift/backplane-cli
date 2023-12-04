@@ -13,11 +13,13 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/backplane-cli/pkg/backplaneapi"
+	backplaneapiMock "github.com/openshift/backplane-cli/pkg/backplaneapi/mocks"
 	"github.com/openshift/backplane-cli/pkg/cli/globalflags"
 	"github.com/openshift/backplane-cli/pkg/client/mocks"
 	"github.com/openshift/backplane-cli/pkg/info"
-	"github.com/openshift/backplane-cli/pkg/utils"
-	mocks2 "github.com/openshift/backplane-cli/pkg/utils/mocks"
+	"github.com/openshift/backplane-cli/pkg/ocm"
+	ocmMock "github.com/openshift/backplane-cli/pkg/ocm/mocks"
 )
 
 var _ = Describe("Backplane Session Unit test", func() {
@@ -25,8 +27,8 @@ var _ = Describe("Backplane Session Unit test", func() {
 		mockCtrl           *gomock.Controller
 		mockClient         *mocks.MockClientInterface
 		mockClientWithResp *mocks.MockClientWithResponsesInterface
-		mockOcmInterface   *mocks2.MockOCMInterface
-		mockClientUtil     *mocks2.MockClientUtils
+		mockOcmInterface   *ocmMock.MockOCMInterface
+		mockClientUtil     *backplaneapiMock.MockClientUtils
 
 		options   Options
 		bpSession BackplaneSession
@@ -45,11 +47,11 @@ var _ = Describe("Backplane Session Unit test", func() {
 		mockClient = mocks.NewMockClientInterface(mockCtrl)
 		mockClientWithResp = mocks.NewMockClientWithResponsesInterface(mockCtrl)
 
-		mockOcmInterface = mocks2.NewMockOCMInterface(mockCtrl)
-		utils.DefaultOCMInterface = mockOcmInterface
+		mockOcmInterface = ocmMock.NewMockOCMInterface(mockCtrl)
+		ocm.DefaultOCMInterface = mockOcmInterface
 
-		mockClientUtil = mocks2.NewMockClientUtils(mockCtrl)
-		utils.DefaultClientUtils = mockClientUtil
+		mockClientUtil = backplaneapiMock.NewMockClientUtils(mockCtrl)
+		backplaneapi.DefaultClientUtils = mockClientUtil
 
 		options = Options{
 			GlobalOpts: &globalflags.GlobalOptions{},

@@ -16,8 +16,10 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	BackplaneApi "github.com/openshift/backplane-api/pkg/client"
 	"github.com/openshift/backplane-cli/pkg/awsutil"
+	"github.com/openshift/backplane-cli/pkg/backplaneapi"
 	"github.com/openshift/backplane-cli/pkg/cli/config"
 	bpCredentials "github.com/openshift/backplane-cli/pkg/credentials"
+	"github.com/openshift/backplane-cli/pkg/ocm"
 	"github.com/openshift/backplane-cli/pkg/utils"
 	logger "github.com/sirupsen/logrus"
 )
@@ -98,7 +100,7 @@ func (cfg *QueryConfig) GetCloudConsole() (*ConsoleResponse, error) {
 func (cfg *QueryConfig) getCloudConsoleFromPublicAPI(ocmToken string) (*ConsoleResponse, error) {
 	logger.Debugln("Getting Cloud Console")
 
-	client, err := utils.DefaultClientUtils.GetBackplaneClient(cfg.BackplaneConfiguration.URL, ocmToken, cfg.BackplaneConfiguration.ProxyURL)
+	client, err := backplaneapi.DefaultClientUtils.GetBackplaneClient(cfg.BackplaneConfiguration.URL, ocmToken, cfg.BackplaneConfiguration.ProxyURL)
 	if err != nil {
 		return nil, err
 	}
@@ -164,7 +166,7 @@ func (cfg *QueryConfig) GetCloudCredentials() (bpCredentials.Response, error) {
 }
 
 func (cfg *QueryConfig) getCloudCredentialsFromBackplaneAPI(ocmToken string) (bpCredentials.Response, error) {
-	client, err := utils.DefaultClientUtils.GetBackplaneClient(cfg.BackplaneConfiguration.URL, ocmToken, cfg.BackplaneConfiguration.ProxyURL)
+	client, err := backplaneapi.DefaultClientUtils.GetBackplaneClient(cfg.BackplaneConfiguration.URL, ocmToken, cfg.BackplaneConfiguration.ProxyURL)
 	if err != nil {
 		return nil, err
 	}
@@ -237,7 +239,7 @@ func (cfg *QueryConfig) getIsolatedCredentials(ocmToken string) (aws.Credentials
 		return aws.Credentials{}, fmt.Errorf("failed to assume role using JWT: %w", err)
 	}
 
-	backplaneClient, err := utils.DefaultClientUtils.GetBackplaneClient(cfg.BackplaneConfiguration.URL, ocmToken, cfg.BackplaneConfiguration.ProxyURL)
+	backplaneClient, err := backplaneapi.DefaultClientUtils.GetBackplaneClient(cfg.BackplaneConfiguration.URL, ocmToken, cfg.BackplaneConfiguration.ProxyURL)
 	if err != nil {
 		return aws.Credentials{}, fmt.Errorf("failed to create backplane client with access token: %w", err)
 	}
@@ -280,7 +282,7 @@ func (cfg *QueryConfig) getIsolatedCredentials(ocmToken string) (aws.Credentials
 
 func isIsolatedBackplaneAccess(cluster *cmv1.Cluster, ocmConnection *ocmsdk.Connection) (bool, error) {
 	if cluster.AWS().STS().Enabled() {
-		stsSupportJumpRole, err := utils.DefaultOCMInterface.GetStsSupportJumpRoleARN(ocmConnection, cluster.ID())
+		stsSupportJumpRole, err := ocm.DefaultOCMInterface.GetStsSupportJumpRoleARN(ocmConnection, cluster.ID())
 		if err != nil {
 			return false, fmt.Errorf("failed to get sts support jump role ARN for cluster %v: %w", cluster.ID(), err)
 		}
