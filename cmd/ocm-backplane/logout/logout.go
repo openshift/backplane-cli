@@ -9,6 +9,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 
 	"github.com/openshift/backplane-cli/pkg/login"
+	"github.com/openshift/backplane-cli/pkg/ocm"
 	"github.com/openshift/backplane-cli/pkg/utils"
 )
 
@@ -28,7 +29,7 @@ func runLogout(cmd *cobra.Command, argv []string) error {
 
 	// Logout specific cluster
 	if len(argv) == 1 {
-		clusterID, _, err := utils.DefaultOCMInterface.GetTargetCluster(argv[0])
+		clusterID, _, err := ocm.DefaultOCMInterface.GetTargetCluster(argv[0])
 		if err != nil {
 			return err
 		}

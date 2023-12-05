@@ -9,7 +9,9 @@ import (
 
 	backplaneApi "github.com/openshift/backplane-api/pkg/client"
 
+	"github.com/openshift/backplane-cli/pkg/backplaneapi"
 	"github.com/openshift/backplane-cli/pkg/cli/config"
+	"github.com/openshift/backplane-cli/pkg/ocm"
 	"github.com/openshift/backplane-cli/pkg/utils"
 )
 
@@ -58,7 +60,7 @@ func runGetTestJob(cmd *cobra.Command, args []string) error {
 	}
 
 	// Check if the cluster is hibernating
-	isClusterHibernating, err := utils.DefaultOCMInterface.IsClusterHibernating(bpCluster.ClusterID)
+	isClusterHibernating, err := ocm.DefaultOCMInterface.IsClusterHibernating(bpCluster.ClusterID)
 	if err == nil && isClusterHibernating {
 		// Hibernating, print out error and skip
 		return fmt.Errorf("cluster %s is hibernating, not creating ManagedJob", bpCluster.ClusterID)
@@ -75,7 +77,7 @@ func runGetTestJob(cmd *cobra.Command, args []string) error {
 	// It is always 1 in length, enforced by cobra
 	testID := args[0]
 
-	client, err := utils.DefaultClientUtils.MakeRawBackplaneAPIClient(backplaneHost)
+	client, err := backplaneapi.DefaultClientUtils.MakeRawBackplaneAPIClient(backplaneHost)
 	if err != nil {
 		return err
 	}

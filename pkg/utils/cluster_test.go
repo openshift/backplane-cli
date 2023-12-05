@@ -11,8 +11,9 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 
 	"github.com/openshift/backplane-cli/pkg/info"
+	"github.com/openshift/backplane-cli/pkg/ocm"
+	ocmMock "github.com/openshift/backplane-cli/pkg/ocm/mocks"
 	"github.com/openshift/backplane-cli/pkg/utils"
-	"github.com/openshift/backplane-cli/pkg/utils/mocks"
 )
 
 const (
@@ -200,12 +201,12 @@ func TestGetClusterIDAndHostFromClusterURL(t *testing.T) {
 func TestGetBackplaneClusterFromClusterKey(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 
-	mockOcmInterface := mocks.NewMockOCMInterface(mockCtrl)
+	mockOcmInterface := ocmMock.NewMockOCMInterface(mockCtrl)
 
 	// So we can clean up at the end
-	tempDefaultOCMInterface := utils.DefaultOCMInterface
+	tempDefaultOCMInterface := ocm.DefaultOCMInterface
 
-	utils.DefaultOCMInterface = mockOcmInterface
+	ocm.DefaultOCMInterface = mockOcmInterface
 
 	t.Run("it returns a cluster struct from a valid cluster key", func(_ *testing.T) {
 		os.Setenv(info.BackplaneURLEnvName, "https://backplane-url.cluster-key.redhat.com")
@@ -228,5 +229,5 @@ func TestGetBackplaneClusterFromClusterKey(t *testing.T) {
 		}
 	})
 
-	utils.DefaultOCMInterface = tempDefaultOCMInterface
+	ocm.DefaultOCMInterface = tempDefaultOCMInterface
 }

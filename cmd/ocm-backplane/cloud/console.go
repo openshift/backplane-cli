@@ -7,7 +7,8 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/openshift-online/ocm-cli/pkg/ocm"
+	ocmsdk "github.com/openshift-online/ocm-cli/pkg/ocm"
+	"github.com/openshift/backplane-cli/pkg/ocm"
 
 	"github.com/pkg/browser"
 	logger "github.com/sirupsen/logrus"
@@ -102,12 +103,12 @@ func runConsole(cmd *cobra.Command, argv []string) (err error) {
 		clusterKey = clusterInfo.ClusterID
 	}
 
-	clusterID, clusterName, err := utils.DefaultOCMInterface.GetTargetCluster(clusterKey)
+	clusterID, clusterName, err := ocm.DefaultOCMInterface.GetTargetCluster(clusterKey)
 	if err != nil {
 		return err
 	}
 
-	cluster, err := utils.DefaultOCMInterface.GetClusterInfoByID(clusterID)
+	cluster, err := ocm.DefaultOCMInterface.GetClusterInfoByID(clusterID)
 	if err != nil {
 		return fmt.Errorf("failed to get cluster info for %s: %w", clusterID, err)
 	}
@@ -133,7 +134,7 @@ func runConsole(cmd *cobra.Command, argv []string) (err error) {
 	logger.Infof("Using backplane URL: %s\n", backplaneConfiguration.URL)
 
 	// Initialize OCM connection
-	ocmConnection, err := ocm.NewConnection().Build()
+	ocmConnection, err := ocmsdk.NewConnection().Build()
 	if err != nil {
 		return fmt.Errorf("unable to build ocm sdk: %w", err)
 	}
