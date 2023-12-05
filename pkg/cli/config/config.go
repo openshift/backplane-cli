@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"net/http"
 	"net/url"
 	"os"
@@ -11,6 +12,7 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/openshift/backplane-cli/pkg/info"
+	"github.com/openshift/backplane-cli/pkg/ocm"
 )
 
 type BackplaneConfiguration struct {
@@ -58,19 +60,30 @@ func GetBackplaneConfiguration() (bpConfig BackplaneConfiguration, err error) {
 		}
 	}
 
-	// Check if user has explicitly defined backplane URL; it has higher precedence over the config file
-	err = viper.BindEnv("url", info.BackplaneURLEnvName)
-	if err != nil {
-		return bpConfig, err
-	}
-
 	// Check if user has explicitly defined proxy; it has higher precedence over the config file
 	err = viper.BindEnv("proxy-url", info.BackplaneProxyEnvName)
 	if err != nil {
 		return bpConfig, err
 	}
 
-	bpConfig.URL = viper.GetString("url")
+	// Warn user if url defined in the config file
+	if viper.GetString("url") != "" {
+		logger.Warn("URL configuration is deprecated, Pls remove backplane config URL setting")
+	}
+
+	// Fetch backplane URL from ocm env
+	bpConfig.URL, err = bpConfig.GetBackplaneURL()
+	if err != nil {
+		return bpConfig, err
+	}
+
+	// Check if user has explicitly defined backplane URL via env; it has higher precedence over the ocm env URL
+	url, isURLViaEnv := os.LookupEnv(info.BackplaneURLEnvName)
+	if isURLViaEnv {
+		logger.Infof("backplane URL set via env vars: %s", url)
+		bpConfig.URL = url
+	}
+
 	bpConfig.SessionDirectory = viper.GetString("session-dir")
 	bpConfig.AssumeInitialArn = viper.GetString("assume-initial-arn")
 
@@ -83,6 +96,21 @@ func GetBackplaneConfiguration() (bpConfig BackplaneConfiguration, err error) {
 	}
 
 	return bpConfig, nil
+}
+
+// GetBackplaneURL returns API URL
+func (c *BackplaneConfiguration) GetBackplaneURL() (string, error) {
+
+	ocmEnv, err := ocm.DefaultOCMInterface.GetOCMEnvironment()
+	if err != nil {
+		return "", err
+	}
+	url, ok := ocmEnv.GetBackplaneURL()
+	if !ok {
+		return "", fmt.Errorf("no backplane API defined for %v", ocmEnv.Name())
+	}
+	logger.Infof("backplane URL fetch via OCM environment: %s", url)
+	return url, nil
 }
 
 // CheckAPIConnection validate API connection via configured proxy and VPN
@@ -112,7 +140,11 @@ func (config BackplaneConfiguration) testHTTPRequestToBackplaneAPI() (bool, erro
 		http.DefaultTransport = &http.Transport{Proxy: http.ProxyURL(proxyURL)}
 	}
 
-	req, err := http.NewRequest("HEAD", config.URL, nil)
+	url, err := config.GetBackplaneURL()
+	if err != nil {
+		return false, err
+	}
+	req, err := http.NewRequest("HEAD", url, nil)
 	if err != nil {
 		return false, err
 	}

@@ -13,6 +13,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/spf13/cobra"
 
+	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/backplane-cli/pkg/backplaneapi"
 	backplaneapiMock "github.com/openshift/backplane-cli/pkg/backplaneapi/mocks"
 	"github.com/openshift/backplane-cli/pkg/cli/globalflags"
@@ -40,6 +41,7 @@ var _ = Describe("Backplane Session Unit test", func() {
 		backplaneAPIUri string
 
 		fakeResp *http.Response
+		ocmEnv   *cmv1.Environment
 	)
 
 	BeforeEach(func() {
@@ -83,6 +85,7 @@ var _ = Describe("Backplane Session Unit test", func() {
 		fakeResp.Header.Add("Content-Type", "json")
 
 		os.Setenv(info.BackplaneURLEnvName, backplaneAPIUri)
+		ocmEnv, _ = cmv1.NewEnvironment().BackplaneURL("https://backplane.api").Build()
 	})
 
 	AfterEach(func() {
@@ -91,6 +94,7 @@ var _ = Describe("Backplane Session Unit test", func() {
 
 	Context("check Backplane session setup", func() {
 		It("Check backplane session default files", func() {
+			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetTargetCluster(options.Alias).Return("", "", errors.New("err")).AnyTimes()
 			err := bpSession.Setup()
 
@@ -113,6 +117,7 @@ var _ = Describe("Backplane Session Unit test", func() {
 		})
 
 		It("Check backplane session folder permissions", func() {
+			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetTargetCluster(options.Alias).Return("", "", errors.New("err")).AnyTimes()
 			err := bpSession.Setup()
 
@@ -135,6 +140,7 @@ var _ = Describe("Backplane Session Unit test", func() {
 		It("should fail for invalid cluster alias name ", func() {
 			options.Alias = "my-session"
 
+			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetTargetCluster(options.Alias).Return("", "", errors.New("err")).AnyTimes()
 
 			err := bpSession.RunCommand(cmd, []string{})
@@ -155,6 +161,7 @@ var _ = Describe("Backplane Session Unit test", func() {
 			options.Alias = ""
 			options.ClusterID = testClusterID
 
+			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
 			mockClientWithResp.EXPECT().LoginClusterWithResponse(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetTargetCluster(options.ClusterID).Return(trueClusterID, testClusterID, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetTargetCluster(trueClusterID).Return(trueClusterID, testClusterID, nil).AnyTimes()
@@ -172,6 +179,7 @@ var _ = Describe("Backplane Session Unit test", func() {
 			options.Alias = "test-env"
 			options.ClusterID = testClusterID
 
+			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
 			mockClientWithResp.EXPECT().LoginClusterWithResponse(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetTargetCluster(options.ClusterID).Return(trueClusterID, testClusterID, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetTargetCluster(trueClusterID).Return(trueClusterID, testClusterID, nil).AnyTimes()
@@ -211,6 +219,7 @@ var _ = Describe("Backplane Session Unit test", func() {
 			options.Alias = "my-session"
 			options.ClusterID = testClusterID
 
+			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
 			mockClientWithResp.EXPECT().LoginClusterWithResponse(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetTargetCluster(options.ClusterID).Return(trueClusterID, testClusterID, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetTargetCluster(trueClusterID).Return(trueClusterID, testClusterID, nil).AnyTimes()

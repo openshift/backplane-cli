@@ -12,6 +12,7 @@ import (
 	bpclient "github.com/openshift/backplane-api/pkg/client"
 	"github.com/spf13/cobra"
 
+	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/backplane-cli/pkg/backplaneapi"
 	backplaneapiMock "github.com/openshift/backplane-cli/pkg/backplaneapi/mocks"
 	"github.com/openshift/backplane-cli/pkg/client/mocks"
@@ -34,12 +35,10 @@ var _ = Describe("list script command", func() {
 		trueClusterID string
 		//testKubeCfg   api.Config
 		testJobID string
-
-		proxyURI string
-
-		fakeResp *http.Response
-
-		sut *cobra.Command
+		proxyURI  string
+		fakeResp  *http.Response
+		sut       *cobra.Command
+		ocmEnv    *cmv1.Environment
 	)
 
 	BeforeEach(func() {
@@ -82,6 +81,7 @@ var _ = Describe("list script command", func() {
 		fakeResp.Header.Add("Content-Type", "json")
 
 		os.Setenv(info.BackplaneURLEnvName, proxyURI)
+		ocmEnv, _ = cmv1.NewEnvironment().BackplaneURL("https://backplane.api").Build()
 	})
 
 	AfterEach(func() {
@@ -92,6 +92,7 @@ var _ = Describe("list script command", func() {
 
 	Context("list scripts", func() {
 		It("when running with a simple case should work as expected", func() {
+			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
 			// It should query for the internal cluster id first
 			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, testClusterID, nil)
 			// Then it will look for the backplane shard
@@ -108,6 +109,7 @@ var _ = Describe("list script command", func() {
 		})
 
 		It("should respect url flag", func() {
+			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
 			// Then it will look for the backplane shard
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
@@ -124,6 +126,7 @@ var _ = Describe("list script command", func() {
 		It("Should able use the current logged in cluster if non specified and retrieve from config file", func() {
 			err := utils.CreateTempKubeConfig(nil)
 			Expect(err).To(BeNil())
+			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq("configcluster")).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
 			mockClientUtil.EXPECT().MakeRawBackplaneAPIClient("https://api-backplane.apps.something.com").Return(mockClient, nil)
@@ -137,6 +140,7 @@ var _ = Describe("list script command", func() {
 		})
 
 		It("should fail when backplane did not return a 200", func() {
+			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, testClusterID, nil)
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
@@ -151,6 +155,7 @@ var _ = Describe("list script command", func() {
 		})
 
 		It("should not work when backplane returns a non parsable response with 200 return", func() {
+			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, testClusterID, nil)
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
@@ -166,6 +171,7 @@ var _ = Describe("list script command", func() {
 		})
 
 		It("should handle an empty list of scripts without errors", func() {
+			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, testClusterID, nil)
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()

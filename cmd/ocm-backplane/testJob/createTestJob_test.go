@@ -13,6 +13,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/spf13/cobra"
 
+	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/backplane-cli/pkg/backplaneapi"
 	backplaneapiMock "github.com/openshift/backplane-cli/pkg/backplaneapi/mocks"
 	"github.com/openshift/backplane-cli/pkg/client/mocks"
@@ -71,7 +72,8 @@ var _ = Describe("testJob create command", func() {
 
 		fakeResp *http.Response
 
-		sut *cobra.Command
+		sut    *cobra.Command
+		ocmEnv *cmv1.Environment
 	)
 
 	BeforeEach(func() {
@@ -111,6 +113,7 @@ var _ = Describe("testJob create command", func() {
 		}
 		fakeResp.Header.Add("Content-Type", "json")
 		os.Setenv(info.BackplaneURLEnvName, proxyURI)
+		ocmEnv, _ = cmv1.NewEnvironment().BackplaneURL("https://backplane.api").Build()
 	})
 
 	AfterEach(func() {
@@ -123,6 +126,7 @@ var _ = Describe("testJob create command", func() {
 
 	Context("create test job", func() {
 		It("when running with a simple case should work as expected", func() {
+			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
 			mockOcmInterface.EXPECT().IsProduction().Return(false, nil)
 			// It should query for the internal cluster id first
 			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, testClusterID, nil)
@@ -138,6 +142,7 @@ var _ = Describe("testJob create command", func() {
 		})
 
 		It("should respect url flag", func() {
+			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
 			mockOcmInterface.EXPECT().IsProduction().Return(false, nil)
 			// It should query for the internal cluster id first
 			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, testClusterID, nil)
@@ -153,9 +158,11 @@ var _ = Describe("testJob create command", func() {
 		})
 
 		It("should respect the base image when supplied as a flag", func() {
+
 			baseImgOverride := "quay.io/foo/bar"
 			mockOcmInterface.EXPECT().IsProduction().Return(false, nil)
 			// It should query for the internal cluster id first
+			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, testClusterID, nil)
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
 			mockClientUtil.EXPECT().MakeRawBackplaneAPIClient(proxyURI).Return(mockClient, nil)
@@ -170,6 +177,7 @@ var _ = Describe("testJob create command", func() {
 
 		It("Should able use the current logged in cluster if non specified and retrieve from config file", func() {
 			os.Setenv(info.BackplaneURLEnvName, "https://api-backplane.apps.something.com")
+			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
 			mockOcmInterface.EXPECT().IsProduction().Return(false, nil)
 			err := utils.CreateTempKubeConfig(nil)
 			Expect(err).To(BeNil())
@@ -185,6 +193,7 @@ var _ = Describe("testJob create command", func() {
 		})
 
 		It("should fail when backplane did not return a 200", func() {
+			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
 			mockOcmInterface.EXPECT().IsProduction().Return(false, nil)
 			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, testClusterID, nil)
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
@@ -199,6 +208,7 @@ var _ = Describe("testJob create command", func() {
 		})
 
 		It("should fail when backplane returns a non parsable response", func() {
+			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
 			mockOcmInterface.EXPECT().IsProduction().Return(false, nil)
 			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, testClusterID, nil)
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
@@ -214,6 +224,7 @@ var _ = Describe("testJob create command", func() {
 		})
 
 		It("should fail when metadata is not found/invalid", func() {
+			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
 			mockOcmInterface.EXPECT().IsProduction().Return(false, nil)
 			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, testClusterID, nil)
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
@@ -229,6 +240,7 @@ var _ = Describe("testJob create command", func() {
 		})
 
 		It("should fail when script file is not found/invalid", func() {
+			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
 			mockOcmInterface.EXPECT().IsProduction().Return(false, nil)
 			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, testClusterID, nil)
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
@@ -244,6 +256,7 @@ var _ = Describe("testJob create command", func() {
 		})
 
 		It("should not run in production environment", func() {
+			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
 			mockOcmInterface.EXPECT().IsProduction().Return(true, nil)
 
 			_ = os.Remove(path.Join(tempDir, "script.sh"))
@@ -283,6 +296,7 @@ echo_touch "Hello"
 			_ = os.WriteFile(path.Join(tempDir, "script.sh"), []byte(script), 0600)
 			_ = os.Mkdir(path.Join(tempDir, "scripts"), 0755)
 			_ = os.WriteFile(path.Join(tempDir, "scripts", "lib.sh"), []byte(lib), 0600)
+			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
 			mockOcmInterface.EXPECT().IsProduction().Return(false, nil)
 			// It should query for the internal cluster id first
 			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, testClusterID, nil)

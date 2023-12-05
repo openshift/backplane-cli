@@ -13,6 +13,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
 
+	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/login"
 	"github.com/openshift/backplane-cli/pkg/backplaneapi"
 	backplaneapiMock "github.com/openshift/backplane-cli/pkg/backplaneapi/mocks"
@@ -48,6 +49,7 @@ var _ = Describe("Logout command", func() {
 
 		kubeConfig                 api.Config
 		loggedInNotBackplaneConfig api.Config
+		ocmEnv                     *cmv1.Environment
 	)
 
 	BeforeEach(func() {
@@ -114,6 +116,7 @@ var _ = Describe("Logout command", func() {
 		}
 
 		os.Setenv(info.BackplaneURLEnvName, backplaneAPIURI)
+		ocmEnv, _ = cmv1.NewEnvironment().BackplaneURL("https://backplane.api").Build()
 	})
 
 	AfterEach(func() {
@@ -128,6 +131,7 @@ var _ = Describe("Logout command", func() {
 
 			err := utils.CreateTempKubeConfig(&kubeConfig)
 			Expect(err).To(BeNil())
+			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, testClusterID, nil).AnyTimes()
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()

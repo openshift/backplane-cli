@@ -40,6 +40,7 @@ var _ = Describe("Backplane Monitoring Unit test", func() {
 		clusterVersion412 *cmv1.Cluster
 		clusterVersion410 *cmv1.Cluster
 		client            Client
+		ocmEnv            *cmv1.Environment
 	)
 
 	BeforeEach(func() {
@@ -116,6 +117,7 @@ var _ = Describe("Backplane Monitoring Unit test", func() {
 		Expect(err).To(BeNil())
 
 		os.Setenv(info.BackplaneURLEnvName, backplaneAPIUri)
+		ocmEnv, _ = cmv1.NewEnvironment().BackplaneURL("https://backplane.api").Build()
 	})
 
 	AfterEach(func() {
@@ -134,6 +136,7 @@ var _ = Describe("Backplane Monitoring Unit test", func() {
 
 		It("should fail for cluster version greater than 4.11 and openshift monitoring namespace ", func() {
 
+			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
 			mockClientWithResp.EXPECT().LoginClusterWithResponse(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetTargetCluster(trueClusterID).Return(trueClusterID, testClusterID, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetClusterInfoByID(testClusterID).Return(clusterVersion412, nil).AnyTimes()
@@ -168,6 +171,7 @@ var _ = Describe("Backplane Monitoring Unit test", func() {
 		})
 
 		It("should serve thanos monitoring dashboard for cluster version greater than 4.11", func() {
+			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
 			mockClientWithResp.EXPECT().LoginClusterWithResponse(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetTargetCluster(trueClusterID).Return(trueClusterID, testClusterID, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetClusterInfoByID(testClusterID).Return(clusterVersion412, nil).AnyTimes()
@@ -191,6 +195,7 @@ var _ = Describe("Backplane Monitoring Unit test", func() {
 
 		It("should serve monitoring dashboard for cluster version lower than 4.11 and openshift monitoring namespace ", func() {
 
+			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
 			mockClientWithResp.EXPECT().LoginClusterWithResponse(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetTargetCluster(trueClusterID).Return(trueClusterID, testClusterID, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetClusterInfoByID(testClusterID).Return(clusterVersion410, nil).AnyTimes()
