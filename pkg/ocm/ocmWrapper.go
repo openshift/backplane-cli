@@ -25,6 +25,7 @@ type OCMInterface interface {
 	IsProduction() (bool, error)
 	GetPullSecret() (string, error)
 	GetStsSupportJumpRoleARN(ocmConnection *ocmsdk.Connection, clusterID string) (string, error)
+	GetOCMEnvironment() (*cmv1.Environment, error)
 }
 
 const (
@@ -273,6 +274,23 @@ func (*DefaultOCMInterfaceImpl) GetStsSupportJumpRoleARN(ocmConnection *ocmsdk.C
 		return "", fmt.Errorf("failed to get STS Support Jump Role for cluster %v, %w", clusterID, err)
 	}
 	return response.Body().RoleArn(), nil
+}
+
+// GetBackplaneURL returns the Backplane API URL based on the OCM env
+func (*DefaultOCMInterfaceImpl) GetOCMEnvironment() (*cmv1.Environment, error) {
+	// Create the client for the OCM API
+	connection, err := ocm.NewConnection().Build()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create OCM connection: %v", err)
+	}
+	defer connection.Close()
+
+	responseEnv, err := connection.ClustersMgmt().V1().Environment().Get().Send()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get cluster environment %w", err)
+	}
+
+	return responseEnv.Body(), nil
 }
 
 func getClusters(client *cmv1.ClustersClient, clusterKey string) ([]*cmv1.Cluster, error) {

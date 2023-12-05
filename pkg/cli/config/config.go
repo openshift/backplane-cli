@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"net/http"
 	"net/url"
 	"os"
@@ -11,6 +12,7 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/openshift/backplane-cli/pkg/info"
+	"github.com/openshift/backplane-cli/pkg/ocm"
 )
 
 type BackplaneConfiguration struct {
@@ -58,19 +60,28 @@ func GetBackplaneConfiguration() (bpConfig BackplaneConfiguration, err error) {
 		}
 	}
 
-	// Check if user has explicitly defined backplane URL; it has higher precedence over the config file
-	err = viper.BindEnv("url", info.BackplaneURLEnvName)
-	if err != nil {
-		return bpConfig, err
-	}
-
 	// Check if user has explicitly defined proxy; it has higher precedence over the config file
 	err = viper.BindEnv("proxy-url", info.BackplaneProxyEnvName)
 	if err != nil {
 		return bpConfig, err
 	}
 
-	bpConfig.URL = viper.GetString("url")
+	// Warn user if url defined in the config file
+	if viper.GetString("url") != "" {
+		logger.Warn("Manual URL configuration is deprecated, please remove URL key from Backplane configuration")
+	}
+
+	// Check if user has explicitly defined backplane URL via env; it has higher precedence over the ocm env URL
+	url, ok := getBackplaneEnv(info.BackplaneURLEnvName)
+	if ok {
+		bpConfig.URL = url
+	} else {
+		// Fetch backplane URL from ocm env
+		if bpConfig.URL, err = bpConfig.GetBackplaneURL(); err != nil {
+			return bpConfig, err
+		}
+	}
+
 	bpConfig.SessionDirectory = viper.GetString("session-dir")
 	bpConfig.AssumeInitialArn = viper.GetString("assume-initial-arn")
 
@@ -83,6 +94,31 @@ func GetBackplaneConfiguration() (bpConfig BackplaneConfiguration, err error) {
 	}
 
 	return bpConfig, nil
+}
+
+// GetBackplaneURL returns API URL
+func (config *BackplaneConfiguration) GetBackplaneURL() (string, error) {
+
+	ocmEnv, err := ocm.DefaultOCMInterface.GetOCMEnvironment()
+	if err != nil {
+		return "", err
+	}
+	url, ok := ocmEnv.GetBackplaneURL()
+	if !ok {
+		return "", fmt.Errorf("the requested API endpoint is not available for the OCM environment: %v", ocmEnv.Name())
+	}
+	logger.Infof("Backplane URL retrieved via OCM environment: %s", url)
+	return url, nil
+}
+
+// getBackplaneEnv retrieves the value of the environment variable named by the key
+func getBackplaneEnv(key string) (string, bool) {
+	val, ok := os.LookupEnv(key)
+	if ok {
+		logger.Infof("Backplane key %s set via env vars: %s", key, val)
+		return val, ok
+	}
+	return "", false
 }
 
 // CheckAPIConnection validate API connection via configured proxy and VPN

@@ -14,6 +14,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
 
+	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/backplane-cli/pkg/backplaneapi"
 	backplaneapiMock "github.com/openshift/backplane-cli/pkg/backplaneapi/mocks"
 	"github.com/openshift/backplane-cli/pkg/client/mocks"
@@ -45,6 +46,7 @@ var _ = Describe("Login command", func() {
 		serviceClusterID   string
 		serviceClusterName string
 		fakeResp           *http.Response
+		ocmEnv             *cmv1.Environment
 	)
 
 	BeforeEach(func() {
@@ -80,6 +82,8 @@ var _ = Describe("Login command", func() {
 		clientcmd.UseModifyConfigLock = false
 
 		globalOpts.BackplaneURL = backplaneAPIURI
+
+		ocmEnv, _ = cmv1.NewEnvironment().BackplaneURL("https://dummy.api").Build()
 	})
 
 	AfterEach(func() {
@@ -95,6 +99,7 @@ var _ = Describe("Login command", func() {
 	Context("check ocm token", func() {
 
 		It("Should fail when failed to get OCM token", func() {
+			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, testClusterID, nil)
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(nil, errors.New("err")).AnyTimes()
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
@@ -108,6 +113,7 @@ var _ = Describe("Login command", func() {
 			err := utils.CreateTempKubeConfig(nil)
 			Expect(err).To(BeNil())
 			globalOpts.ProxyURL = "https://squid.myproxy.com"
+			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
 			mockClientUtil.EXPECT().SetClientProxyURL(globalOpts.ProxyURL).Return(nil)
 			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, testClusterID, nil)
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
@@ -132,6 +138,7 @@ var _ = Describe("Login command", func() {
 			err := utils.CreateTempKubeConfig(nil)
 			Expect(err).To(BeNil())
 			globalOpts.BackplaneURL = "https://sadge.app"
+			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, testClusterID, nil)
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil)
@@ -154,6 +161,7 @@ var _ = Describe("Login command", func() {
 			err := utils.CreateTempKubeConfig(nil)
 			Expect(err).To(BeNil())
 			globalOpts.ProxyURL = "https://squid.myproxy.com"
+			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
 			mockClientUtil.EXPECT().SetClientProxyURL(globalOpts.ProxyURL).Return(nil)
 			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, testClusterID, nil)
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
@@ -176,11 +184,21 @@ var _ = Describe("Login command", func() {
 		})
 
 		It("should fail if unable to create api client", func() {
+			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, testClusterID, nil)
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil)
 			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken(backplaneAPIURI, testToken).Return(nil, errors.New("err"))
 
+			err := runLogin(nil, []string{testClusterID})
+
+			Expect(err).ToNot(BeNil())
+		})
+
+		It("should fail if ocm env backplane url is empty", func() {
+			ocmEnv, _ = cmv1.NewEnvironment().Build()
+
+			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
 			err := runLogin(nil, []string{testClusterID})
 
 			Expect(err).ToNot(BeNil())
@@ -196,6 +214,7 @@ var _ = Describe("Login command", func() {
 		It("when running with a simple case should work as expected", func() {
 			err := utils.CreateTempKubeConfig(nil)
 			Expect(err).To(BeNil())
+			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, testClusterID, nil)
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil)
@@ -215,6 +234,7 @@ var _ = Describe("Login command", func() {
 		})
 
 		It("Should fail when trying to find a non existent cluster", func() {
+			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
 
@@ -227,6 +247,7 @@ var _ = Describe("Login command", func() {
 
 		It("should return the managing cluster if one is requested", func() {
 			globalOpts.Manager = true
+			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, testClusterID, nil)
 			mockOcmInterface.EXPECT().GetManagingCluster(trueClusterID).Return(managingClusterID, managingClusterID, nil)
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(managingClusterID)).Return(false, nil).AnyTimes()
@@ -241,6 +262,7 @@ var _ = Describe("Login command", func() {
 
 		It("should failed if managing cluster not exist in same env", func() {
 			globalOpts.Manager = true
+			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, testClusterID, nil)
 			mockOcmInterface.EXPECT().GetManagingCluster(trueClusterID).Return(
 				managingClusterID,
@@ -261,6 +283,7 @@ var _ = Describe("Login command", func() {
 
 		It("should return the service cluster if hosted cluster is given", func() {
 			globalOpts.Service = true
+			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, testClusterID, nil)
 			mockOcmInterface.EXPECT().GetServiceCluster(trueClusterID).Return(serviceClusterID, serviceClusterName, nil)
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(serviceClusterID)).Return(false, nil).AnyTimes()
@@ -277,6 +300,7 @@ var _ = Describe("Login command", func() {
 			err := utils.CreateTempKubeConfig(nil)
 			Expect(err).To(BeNil())
 			globalOpts.ProxyURL = "https://squid.myproxy.com"
+			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
 			mockClientUtil.EXPECT().SetClientProxyURL(globalOpts.ProxyURL).Return(nil)
 			mockOcmInterface.EXPECT().GetTargetCluster("configcluster").Return(testClusterID, "dummy_cluster", nil)
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(testClusterID)).Return(false, nil).AnyTimes()
@@ -299,6 +323,7 @@ var _ = Describe("Login command", func() {
 
 			err := utils.CreateTempKubeConfig(nil)
 			Expect(err).To(BeNil())
+			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, testClusterID, nil)
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil)
@@ -326,6 +351,7 @@ var _ = Describe("Login command", func() {
 			_, err = login.CreateClusterKubeConfig(trueClusterID, utils.GetDefaultKubeConfig())
 			Expect(err).To(BeNil())
 
+			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, testClusterID, nil)
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil)
