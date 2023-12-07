@@ -99,7 +99,7 @@ func GetBackplaneConfiguration() (bpConfig BackplaneConfiguration, err error) {
 }
 
 // GetBackplaneURL returns API URL
-func (c *BackplaneConfiguration) GetBackplaneURL() (string, error) {
+func (config *BackplaneConfiguration) GetBackplaneURL() (string, error) {
 
 	ocmEnv, err := ocm.DefaultOCMInterface.GetOCMEnvironment()
 	if err != nil {
