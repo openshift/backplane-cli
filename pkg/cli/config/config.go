@@ -96,6 +96,16 @@ func GetBackplaneConfiguration() (bpConfig BackplaneConfiguration, err error) {
 	return bpConfig, nil
 }
 
+func GetConfigDirctory() (string, error) {
+	bpConfigFilePath, err := GetConfigFilePath()
+	if err != nil {
+		return "", err
+	}
+	configDirectory := filepath.Dir(bpConfigFilePath)
+
+	return configDirectory, nil
+}
+
 // GetBackplaneURL returns API URL
 func (config *BackplaneConfiguration) GetBackplaneURL() (string, error) {
 
