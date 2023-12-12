@@ -59,54 +59,66 @@ var (
 
 // RunCommand setup session and allows to execute commands
 func (e *BackplaneSession) RunCommand(cmd *cobra.Command, args []string) error {
+	// Set Alias
 	if len(args) > 0 {
 		e.Options.Alias = args[0]
 	}
 	if e.Options.ClusterID == "" && e.Options.Alias == "" {
 		return fmt.Errorf("ClusterID or Alias required")
 	}
-
 	if e.Options.Alias == "" {
 		log.Println("No Alias set, using cluster ID")
 		e.Options.Alias = e.Options.ClusterID
 	}
-
-	// Verify validity of the ClusterID
 	clusterKey := e.Options.Alias
 	if e.Options.ClusterID != "" {
 		clusterKey = e.Options.ClusterID
 	}
-
 	clusterID, clusterName, err := ocm.DefaultOCMInterface.GetTargetCluster(clusterKey)
-
 	if err != nil {
-		return fmt.Errorf("invalid cluster Id %s", clusterKey)
-	}
-
-	clusterInfo, err := ocm.DefaultOCMInterface.GetClusterInfoByID(clusterID)
-	if err != nil {
-		return fmt.Errorf("failed to get cluster %s", clusterID)
+		return fmt.Errorf("failed to find cluster %s, %v", clusterKey, err)
 	}
 
 	// set cluster options
 	e.Options.ClusterName = clusterName
 	e.Options.ClusterID = clusterID
+
+	if e.Options.GlobalOpts.Manager && e.Options.GlobalOpts.Service {
+		return fmt.Errorf("only one of --manager or --service can be specified")
+	}
 	if e.Options.GlobalOpts.Manager {
-		clusterID, clusterName, err = ocm.DefaultOCMInterface.GetManagingCluster(clusterID)
+		clusterID, clusterName, err := ocm.DefaultOCMInterface.GetManagingCluster(clusterKey)
 		e.Options.Alias = clusterID
 		if err != nil {
 			return err
 		}
 
-		fmt.Printf("Switching to management cluster ID: %v, Name: %v\n", clusterID, clusterName)
+		fmt.Printf("Login to management cluster ID: %v, Name: %v\n", clusterID, clusterName)
 	}
-	if clusterInfo.Hypershift().Enabled() {
-		managementClusterID, managementClusterName, err := ocm.DefaultOCMInterface.GetManagingCluster(clusterID)
+	if e.Options.GlobalOpts.Service {
+		clusterID, clusterName, err := ocm.DefaultOCMInterface.GetServiceCluster(clusterKey)
+		e.Options.Alias = clusterID
 		if err != nil {
-			return fmt.Errorf("failed to get Management Cluster for %s", clusterID)
+			return err
 		}
-		e.Options.ManagementClusterID = managementClusterID
-		e.Options.managementClusterName = managementClusterName
+
+		fmt.Printf("Login to Service Cluster ID: %v, Name: %v\n", clusterID, clusterName)
+	}
+
+	// Always login to management cluster, when it's classic OSD, it will login to the cluster and hive clsuter
+	managementClusterID, managementClusterName, err := ocm.DefaultOCMInterface.GetManagingCluster(clusterID)
+	if err != nil {
+		return fmt.Errorf("failed to get Management Cluster for %s", clusterID)
+	}
+	e.Options.ManagementClusterID = managementClusterID
+	e.Options.managementClusterName = managementClusterName
+	clusterInfo, err := ocm.DefaultOCMInterface.GetClusterInfoByID(clusterID)
+	if err != nil {
+		return fmt.Errorf("failed to get cluster %s", clusterID)
+	}
+	// If it's HCP, service cluster is the cluster that manage Management Cluster, so we need to login to service cluster
+	if clusterInfo.Hypershift().Enabled() {
+
 		serviceClusterID, serviceClusterName, err := ocm.DefaultOCMInterface.GetServiceCluster(clusterID)
 		if err != nil {
 			return fmt.Errorf("failed to get Service Cluster for %s", clusterID)
@@ -441,20 +453,22 @@ func (e *BackplaneSession) initClusterLogin(cmd *cobra.Command) error {
 		log.Println("Logging into cluster " + e.Options.ClusterID)
 		err = login.LoginCmd.RunE(cmd, []string{e.Options.ClusterID})
 		if err != nil {
-			return fmt.Errorf("error occurred when login to the cluster %v", err)
+			return fmt.Errorf("error occurred when login to the cluster: %v", err)
 		}
-		log.Println("Logging into cluster " + e.Options.ManagementClusterID)
+
 		if e.Options.ManagementClusterID != "" {
+			log.Println("Logging into management cluster " + e.Options.ManagementClusterID)
 			err = login.LoginCmd.RunE(cmd, []string{e.Options.ManagementClusterID})
 			if err != nil {
-				return fmt.Errorf("error occurred when login to the management cluster %v", err)
+				return fmt.Errorf("error occurred when login to the management cluster: %v", err)
 			}
 		}
-		log.Println("Logging into cluster " + e.Options.ServiceClusterID)
+
 		if e.Options.ServiceClusterID != "" {
+			log.Println("Logging into service cluster " + e.Options.ServiceClusterID)
 			err = login.LoginCmd.RunE(cmd, []string{e.Options.ServiceClusterID})
 			if err != nil {
-				return fmt.Errorf("error occurred when login to the service cluster %v", err)
+				return fmt.Errorf("error occurred when login to the service cluster: %v", err)
 			}
 		}
 	}
@@ -468,10 +482,11 @@ func (e *BackplaneSession) printSessionHeader() {
 	fmt.Println("*          Backplane Session                                           *")
 	fmt.Println("*                                                                      *")
 	fmt.Println("*Help:                                                                 *")
-	fmt.Println("* type \"exit\" to terminate the current session                         *")
-	fmt.Println("* You can use oc commands to interact with cluster                     *")
+	fmt.Println("* type \"exit\" to terminate the current session                       *")
+	fmt.Println("* You can use oc commands to interact with cluster, and oc-mc          *")
+	fmt.Println("* for management cluster, oc-sc for service acluster.				  	*")
 	fmt.Println("*                                                                      *")
 	fmt.Println("* If the session is not initialized in the cluster env automatically   *")
-	fmt.Println("* then executes \"source .ocenv\" enable it manually                     *")
+	fmt.Println("* then executes \"source .ocenv\" enable it manually                   *")
 	fmt.Println("========================================================================")
 }
