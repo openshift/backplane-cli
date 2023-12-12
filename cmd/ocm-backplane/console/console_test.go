@@ -39,6 +39,7 @@ var _ = Describe("console command", func() {
 		proxyURL    string
 		clusterInfo *cmv1.Cluster
 		testKubeCfg api.Config
+		ocmEnv      *cmv1.Environment
 	)
 
 	BeforeEach(func() {
@@ -125,6 +126,7 @@ var _ = Describe("console command", func() {
 		dirName, _ := os.MkdirTemp("", ".kube")
 
 		pullSecretConfigDirectory = dirName
+		ocmEnv, _ = cmv1.NewEnvironment().BackplaneURL("https://dummy.api").Build()
 	})
 
 	AfterEach(func() {
@@ -178,6 +180,7 @@ var _ = Describe("console command", func() {
 		It("should start console server", func() {
 			setupConfig()
 
+			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetPullSecret().Return(pullSecret, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetClusterInfoByID(clusterID).Return(clusterInfo, nil).AnyTimes()
@@ -196,6 +199,7 @@ var _ = Describe("console command", func() {
 			testKubeCfg.CurrentContext = "custom-context"
 			setupConfig()
 
+			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetPullSecret().Return(pullSecret, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetClusterInfoByID(clusterID).Return(clusterInfo, nil).AnyTimes()
@@ -213,6 +217,7 @@ var _ = Describe("console command", func() {
 			testKubeCfg.CurrentContext = "undefined-context"
 			setupConfig()
 
+			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetPullSecret().Return(pullSecret, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetClusterInfoByID(clusterID).Return(clusterInfo, nil).AnyTimes()
