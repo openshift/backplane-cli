@@ -285,7 +285,7 @@ func runMonitoringContainer(name string, configFilename string, containerEngine 
 		"run",
 		"--rm",
 		"-d",
-		"-v", fmt.Sprintf("%s:/etc/nginx/nginx.conf:z", configFilePath),
+		"--mount", fmt.Sprintf("type=bind,source=%s,destination=/etc/nginx/nginx.conf,relabel=shared", configFilePath),
 		"--network", containerNetwork,
 		"--name", name,
 	}
