@@ -31,6 +31,23 @@ const (
 
 	// GitHub Host
 	GitHubHost = "github.com"
+
+	// Nginx configuration template for monitoring-plugin
+	MonitoringPluginNginxConfigTemplate = `
+	error_log /dev/stdout info;
+	events {}
+	http {
+  	include            /etc/nginx/mime.types;
+  	default_type       application/octet-stream;
+  	keepalive_timeout  65;
+  	server {
+    	listen              %s;
+    	root                /usr/share/nginx/html;
+  	}
+	}
+	`
+
+	MonitoringPluginNginxConfigFilename = "monitoring-plugin-nginx.conf"
 )
 
 var (
