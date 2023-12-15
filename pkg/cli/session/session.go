@@ -77,7 +77,8 @@ func (e *BackplaneSession) RunCommand(cmd *cobra.Command, args []string) error {
 	}
 
 	if e.Options.GlobalOpts.Manager {
-		clusterID, clusterName, err = ocm.DefaultOCMInterface.GetManagingCluster(clusterID)
+		clusterID, clusterName, _, err = ocm.DefaultOCMInterface.GetManagingCluster(clusterID)
+
 		e.Options.Alias = clusterID
 		if err != nil {
 			return err

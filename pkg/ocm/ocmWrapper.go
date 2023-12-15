@@ -18,7 +18,7 @@ import (
 type OCMInterface interface {
 	IsClusterHibernating(clusterID string) (bool, error)
 	GetTargetCluster(clusterKey string) (clusterID, clusterName string, err error)
-	GetManagingCluster(clusterKey string) (clusterID, clusterName string, err error)
+	GetManagingCluster(clusterKey string) (clusterID, clusterName string, isHostedControlPlane bool, err error)
 	GetOCMAccessToken() (*string, error)
 	GetServiceCluster(clusterKey string) (clusterID, clusterName string, err error)
 	GetClusterInfoByID(clusterID string) (*cmv1.Cluster, error)
@@ -85,14 +85,15 @@ func (*DefaultOCMInterfaceImpl) GetTargetCluster(clusterKey string) (clusterID, 
 
 // GetManagingCluster returns the managing cluster (hive shard or hypershift management cluster)
 // for the given clusterID
-func (o *DefaultOCMInterfaceImpl) GetManagingCluster(targetClusterID string) (clusterID, clusterName string, err error) {
+func (o *DefaultOCMInterfaceImpl) GetManagingCluster(targetClusterID string) (clusterID, clusterName string, isHostedControlPlane bool, err error) {
 	// Create the client for the OCM API:
 	connection, err := ocm.NewConnection().Build()
 	if err != nil {
-		return "", "", fmt.Errorf("failed to create OCM connection: %v", err)
+		return "", "", false, fmt.Errorf("failed to create OCM connection: %v", err)
 	}
 	defer connection.Close()
 
+	isHostedControlPlane = false
 	var managingCluster string
 	// Check if cluster has hypershift enabled
 	hypershiftResp, err := connection.ClustersMgmt().V1().Clusters().
@@ -102,13 +103,14 @@ func (o *DefaultOCMInterfaceImpl) GetManagingCluster(targetClusterID string) (cl
 		Send()
 	if err == nil && hypershiftResp != nil {
 		managingCluster = hypershiftResp.Body().ManagementCluster()
+		isHostedControlPlane = true
 	} else {
 		// Get the client for the resource that manages the collection of clusters:
 		clusterCollection := connection.ClustersMgmt().V1().Clusters()
 		resource := clusterCollection.Cluster(targetClusterID).ProvisionShard()
 		response, err := resource.Get().Send()
 		if err != nil {
-			return "", "", fmt.Errorf("failed to find management cluster for cluster %s: %v", targetClusterID, err)
+			return "", "", isHostedControlPlane, fmt.Errorf("failed to find management cluster for cluster %s: %v", targetClusterID, err)
 		}
 		shard := response.Body()
 		hiveAPI := shard.HiveConfig().Server()
@@ -120,23 +122,23 @@ func (o *DefaultOCMInterfaceImpl) GetManagingCluster(targetClusterID string) (cl
 			Send()
 
 		if err != nil {
-			return "", "", fmt.Errorf("failed to find management cluster for cluster %s: %v", targetClusterID, err)
+			return "", "", isHostedControlPlane, fmt.Errorf("failed to find management cluster for cluster %s: %v", targetClusterID, err)
 		}
 		if mcResp.Items().Len() == 0 {
-			return "", "", fmt.Errorf("failed to find management cluster for cluster %s in %s env", targetClusterID, connection.URL())
+			return "", "", isHostedControlPlane, fmt.Errorf("failed to find management cluster for cluster %s in %s env", targetClusterID, connection.URL())
 		}
 		managingCluster = mcResp.Items().Get(0).Name()
 	}
 
 	if managingCluster == "" {
-		return "", "", fmt.Errorf("failed to lookup managing cluster for cluster %s", targetClusterID)
+		return "", "", isHostedControlPlane, fmt.Errorf("failed to lookup managing cluster for cluster %s", targetClusterID)
 	}
 
 	mcid, _, err := o.GetTargetCluster(managingCluster)
 	if err != nil {
-		return "", "", fmt.Errorf("failed to lookup managing cluster %s: %v", managingCluster, err)
+		return "", "", isHostedControlPlane, fmt.Errorf("failed to lookup managing cluster %s: %v", managingCluster, err)
 	}
-	return mcid, managingCluster, nil
+	return mcid, managingCluster, isHostedControlPlane, nil
 }
 
 // GetServiceCluster gets the service cluster for a given hpyershift hosted cluster
