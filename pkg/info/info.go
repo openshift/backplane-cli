@@ -8,10 +8,11 @@ import (
 
 const (
 	// Environment Variables
-	BackplaneURLEnvName        = "BACKPLANE_URL"
-	BackplaneProxyEnvName      = "HTTPS_PROXY"
-	BackplaneConfigPathEnvName = "BACKPLANE_CONFIG"
-	BackplaneKubeconfigEnvName = "KUBECONFIG"
+	BackplaneURLEnvName          = "BACKPLANE_URL"
+	BackplaneProxyEnvName        = "HTTPS_PROXY"
+	BackplaneConfigPathEnvName   = "BACKPLANE_CONFIG"
+	BackplaneKubeconfigEnvName   = "KUBECONFIG"
+	BackplaneURLDeprecateEnvName = "BACKPLANE_URL_DEPRECATE"
 
 	// Configuration
 	BackplaneConfigDefaultFilePath = ".config/backplane"

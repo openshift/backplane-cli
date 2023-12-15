@@ -68,7 +68,10 @@ func GetBackplaneConfiguration() (bpConfig BackplaneConfiguration, err error) {
 
 	// Warn user if url defined in the config file
 	if viper.GetString("url") != "" {
-		logger.Warn("Manual URL configuration is deprecated, please remove URL key from Backplane configuration")
+		if _, ok := getBackplaneEnv(info.BackplaneURLDeprecateEnvName); !ok {
+			logger.Warn("Manual URL configuration is deprecated, please remove URL key from Backplane configuration")
+			os.Setenv(info.BackplaneURLDeprecateEnvName, "ok")
+		}
 	}
 
 	// Check if user has explicitly defined backplane URL via env; it has higher precedence over the ocm env URL
