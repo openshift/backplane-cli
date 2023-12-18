@@ -18,6 +18,7 @@ import (
 
 	"github.com/openshift/backplane-cli/pkg/backplaneapi"
 	backplaneapiMock "github.com/openshift/backplane-cli/pkg/backplaneapi/mocks"
+	"github.com/openshift/backplane-cli/pkg/cli/config"
 	"github.com/openshift/backplane-cli/pkg/client/mocks"
 	"github.com/openshift/backplane-cli/pkg/login"
 	"github.com/openshift/backplane-cli/pkg/ocm"
@@ -33,22 +34,24 @@ func MakeIoReader(s string) io.ReadCloser {
 var _ = Describe("Login command", func() {
 
 	var (
-		mockCtrl           *gomock.Controller
-		mockClient         *mocks.MockClientInterface
-		mockClientWithResp *mocks.MockClientWithResponsesInterface
-		mockOcmInterface   *ocmMock.MockOCMInterface
-		mockClientUtil     *backplaneapiMock.MockClientUtils
-
-		testClusterID      string
-		testToken          string
-		trueClusterID      string
-		managingClusterID  string
-		backplaneAPIURI    string
-		serviceClusterID   string
-		serviceClusterName string
-		fakeResp           *http.Response
-		ocmEnv             *cmv1.Environment
-		kubeConfigPath     string
+		mockCtrl               *gomock.Controller
+		mockClient             *mocks.MockClientInterface
+		mockClientWithResp     *mocks.MockClientWithResponsesInterface
+		mockOcmInterface       *ocmMock.MockOCMInterface
+		mockClientUtil         *backplaneapiMock.MockClientUtils
+    
+		testClusterID          string
+		testToken              string
+		trueClusterID          string
+		managingClusterID      string
+		backplaneAPIURI        string
+		serviceClusterID       string
+		serviceClusterName     string
+		fakeResp               *http.Response
+		ocmEnv                 *cmv1.Environment
+		kubeConfigPath         string
+		mockCluster            *cmv1.Cluster
+		backplaneConfiguration config.BackplaneConfiguration
 	)
 
 	BeforeEach(func() {
@@ -87,6 +90,10 @@ var _ = Describe("Login command", func() {
 		globalOpts.BackplaneURL = backplaneAPIURI
 
 		ocmEnv, _ = cmv1.NewEnvironment().BackplaneURL("https://dummy.api").Build()
+
+		mockCluster = &cmv1.Cluster{}
+		
+		backplaneConfiguration = config.BackplaneConfiguration{URL: backplaneAPIURI}
 	})
 
 	AfterEach(func() {
@@ -383,6 +390,42 @@ var _ = Describe("Login command", func() {
 			err = runLogin(nil, []string{testClusterID})
 
 			Expect(err.Error()).Should(ContainSubstring("can't save the kube config into a specific location if multi-cluster is not enabled"))
+
+		})
+
+	})
+
+	Context("check GetRestConfigAsUser", func() {
+
+		It("check config creation with username and without elevationReasons",func () {
+			mockOcmInterface.EXPECT().GetClusterInfoByID(testClusterID).Return(mockCluster, nil)
+			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil)
+			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken(backplaneAPIURI, testToken).Return(mockClient, nil)
+			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(testClusterID)).Return(fakeResp, nil)
+
+			username := "test-user"
+
+			config, err := GetRestConfigAsUser(backplaneConfiguration, testClusterID, username)
+			Expect(err).To(BeNil())
+			Expect(config.Impersonate.UserName).To(Equal(username))
+			Expect(len(config.Impersonate.Extra["reason"])).To(Equal(0))
+
+		})
+
+		It("check config creation with username and elevationReasons",func () {
+			mockOcmInterface.EXPECT().GetClusterInfoByID(testClusterID).Return(mockCluster, nil)
+			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil)
+			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken(backplaneAPIURI, testToken).Return(mockClient, nil)
+			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(testClusterID)).Return(fakeResp, nil)
+
+			username := "test-user"
+			elevationReasons := []string{"reason1", "reason2"}
+
+			config, err := GetRestConfigAsUser(backplaneConfiguration, testClusterID, username, elevationReasons...)
+			Expect(err).To(BeNil())
+			Expect(config.Impersonate.UserName).To(Equal(username))
+			Expect(config.Impersonate.Extra["reason"][0]).To(Equal(elevationReasons[0]))
+			Expect(config.Impersonate.Extra["reason"][1]).To(Equal(elevationReasons[1]))
 
 		})
 
