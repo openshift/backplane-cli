@@ -397,7 +397,7 @@ var _ = Describe("Login command", func() {
 
 	Context("check GetRestConfigAsUser", func() {
 
-		It("should fail if generated config do not contains provided username without elevationReasons",func () {
+		It("check config creation with username and without elevationReasons",func () {
 			mockOcmInterface.EXPECT().GetClusterInfoByID(testClusterID).Return(mockCluster, nil)
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil)
 			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken(backplaneAPIURI, testToken).Return(mockClient, nil)
@@ -412,7 +412,7 @@ var _ = Describe("Login command", func() {
 
 		})
 
-		It("should fail if generated config do not contains provided username/elevationReasons",func () {
+		It("check config creation with username and elevationReasons",func () {
 			mockOcmInterface.EXPECT().GetClusterInfoByID(testClusterID).Return(mockCluster, nil)
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil)
 			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken(backplaneAPIURI, testToken).Return(mockClient, nil)
