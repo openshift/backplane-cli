@@ -299,13 +299,20 @@ func GetRestConfig(bp config.BackplaneConfiguration, clusterID string) (*rest.Co
 
 // GetRestConfigAsUser returns a client-go *rest.Config like GetRestConfig, but supports configuring an
 // impersonation username. Commonly, this is "backplane-cluster-admin"
-func GetRestConfigAsUser(bp config.BackplaneConfiguration, clusterID, username string) (*rest.Config, error) {
+// best practice would be to add at least one elevationReason in order to justity the impersonation
+func GetRestConfigAsUser(bp config.BackplaneConfiguration, clusterID, username string, elevationReasons ...string) (*rest.Config, error) {
 	cfg, err := GetRestConfig(bp, clusterID)
 	if err != nil {
 		return nil, err
 	}
 
-	cfg.Impersonate = rest.ImpersonationConfig{UserName: username}
+	cfg.Impersonate = rest.ImpersonationConfig{
+		UserName: username,
+	}
+
+	if len(elevationReasons) > 0 {
+		cfg.Impersonate.Extra = map[string][]string{"reason": elevationReasons}
+	}
 
 	return cfg, nil
 }
