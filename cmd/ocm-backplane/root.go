@@ -28,12 +28,13 @@ import (
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/elevate"
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/login"
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/logout"
-	"github.com/openshift/backplane-cli/cmd/ocm-backplane/managedJob"
+	managedjob "github.com/openshift/backplane-cli/cmd/ocm-backplane/managedJob"
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/monitoring"
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/script"
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/session"
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/status"
-	"github.com/openshift/backplane-cli/cmd/ocm-backplane/testJob"
+	testjob "github.com/openshift/backplane-cli/cmd/ocm-backplane/testJob"
+	"github.com/openshift/backplane-cli/cmd/ocm-backplane/troubleshoot"
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/upgrade"
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/version"
 	"github.com/openshift/backplane-cli/pkg/cli/globalflags"
@@ -78,4 +79,5 @@ func init() {
 	rootCmd.AddCommand(upgrade.UpgradeCmd)
 	rootCmd.AddCommand(version.VersionCmd)
 	rootCmd.AddCommand(monitoring.MonitoringCmd)
+	rootCmd.AddCommand(troubleshoot.NewTroubleshootCmd())
 }
