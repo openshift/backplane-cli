@@ -15,9 +15,9 @@ git config user.name "CI release"
 git config user.email "ci-test@release.com"
 
 # Ensure working on the latest main
-git fetch origin
-git checkout origin/main
+git fetch upstream
+git checkout upstream/main
 
 # Tagging the release
 git tag -a "v${VERSION}" -m "Release v${VERSION}"
-git push origin "v${VERSION}"
+git push upstream "v${VERSION}"
