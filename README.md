@@ -118,6 +118,12 @@ Logging into multiple clusters via different terminal instances.
   $ export KUBECONFIG= <cluster-id-1-kube-config-path>
   ```
 
+  you can also directly run
+
+  ```
+  $ source <(ocm backplane login <cluster-id-1> --multi)
+  ```
+
 - How to log into the second cluster
 
   ```

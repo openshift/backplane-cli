@@ -23,10 +23,12 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/Masterminds/semver"
@@ -44,6 +46,8 @@ import (
 	"k8s.io/client-go/rest"
 
 	"github.com/openshift/backplane-cli/pkg/cli/config"
+	"github.com/openshift/backplane-cli/pkg/info"
+	"github.com/openshift/backplane-cli/pkg/ocm"
 	"github.com/openshift/backplane-cli/pkg/utils"
 )
 
@@ -70,10 +74,17 @@ var (
 
 	// Pull Secret saving directory
 	pullSecretConfigDirectory string
+	containerNetwork          string
 )
 
 // Environment variable that indicates if open by browser is set as default
 const EnvBrowserDefault = "BACKPLANE_DEFAULT_OPEN_BROWSER"
+
+// Minimum required version for monitoring-plugin container
+const versionForMonitoringPlugin = "4.14"
+
+// Minimum required version to use backend service for plugins
+const versionForConsolePluginsBackendService = "4.12"
 
 // ConsoleCmd represents the console command
 var ConsoleCmd = &cobra.Command{
@@ -213,6 +224,142 @@ func checkAndFindContainerURL(containerName string, containerEngine string) (err
 	return nil
 }
 
+// setupMonitoringNginxConfig sets up a nginx configuration because
+// the monitoring container runs a nginx to accept requests
+func setupMonitoringNginxConfig(port string) (err error) {
+	// setup the config file path
+	var configDirectory string
+	if configDirectory, err = config.GetConfigDirctory(); err != nil {
+		return err
+	}
+
+	configFilename := filepath.Join(configDirectory, info.MonitoringPluginNginxConfigFilename)
+
+	// Check if file already exists, if it does remove it
+	if _, err = os.Stat(configFilename); !os.IsNotExist(err) {
+		err = os.Remove(configFilename)
+		if err != nil {
+			return err
+		}
+	}
+
+	config := fmt.Sprintf(info.MonitoringPluginNginxConfigTemplate, port)
+
+	if err = os.WriteFile(configFilename, []byte(config), 0600); err != nil {
+		return err
+	}
+
+	// change permission as a work around to gosec
+	if err = os.Chmod(configFilename, 0640); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// runMonitoringContainer runs the monitoring plugin in the same network as the console container
+func runMonitoringContainer(name string, configFilename string, containerEngine string, restConfig *rest.Config) error {
+	logger.Debugln("Querying the cluster for monitoring-plugin image")
+	image, err := getMonitoringPluginImageFromCluster(restConfig)
+	if err != nil {
+		return err
+	}
+	logger.Infof("Using monitoring-plugin image %s\n", image)
+
+	// get the monitoring plugin nginx config
+	configDirectory, err := config.GetConfigDirctory()
+	if err != nil {
+		return err
+	}
+	configFilePath := filepath.Join(configDirectory, "monitoring-plugin-nginx.conf")
+
+	// Check if file already exists, if it does not, stop
+	if _, err = os.Stat(configFilePath); !os.IsNotExist(err) {
+		if err != nil {
+			return fmt.Errorf("failed to find the monitoring plugin nginx configuration: %s", err)
+		}
+	}
+
+	engPullArgs := []string{"pull", "--quiet"}
+	engRunArgs := []string{
+		"run",
+		"--rm",
+		"-d",
+		"--mount", fmt.Sprintf("type=bind,source=%s,destination=/etc/nginx/nginx.conf,relabel=shared", configFilePath),
+		"--network", containerNetwork,
+		"--name", name,
+	}
+
+	if containerEngine == PODMAN {
+		engPullArgs = append(engPullArgs,
+			"--authfile", configFilename,
+			"--platform=linux/amd64", // always run linux/amd64 image; fix for podman for macOS
+		)
+		engRunArgs = append(engRunArgs,
+			"--authfile", configFilename,
+			"--platform=linux/amd64", // always run linux/amd64 image; fix for podman for macOS
+		)
+	}
+
+	if containerEngine == DOCKER {
+		// in docker, --config should be made first
+		engPullArgs = append(
+			[]string{"--config", configDirectory},
+			engPullArgs...,
+		)
+		engRunArgs = append(
+			[]string{"--config", configDirectory},
+			engRunArgs...,
+		)
+	}
+
+	// use image
+	engPullArgs = append(engPullArgs,
+		image,
+	)
+	engRunArgs = append(engRunArgs,
+		image,
+	)
+
+	logger.WithField("Command", fmt.Sprintf("`%s %s`", containerEngine, strings.Join(engPullArgs, " "))).Infoln("Pulling image")
+	pullCmd := createCommand(containerEngine, engPullArgs...)
+	pullCmd.Stderr = os.Stderr
+	pullCmd.Stdout = nil
+	err = pullCmd.Run()
+	if err != nil {
+		return err
+	}
+
+	logger.WithField("Command", fmt.Sprintf("`%s %s`", containerEngine, strings.Join(engRunArgs, " "))).Infoln("Running container")
+	runCmd := createCommand(containerEngine, engRunArgs...)
+	runCmd.Stderr = os.Stderr
+	runCmd.Stdout = nil
+
+	err = runCmd.Run()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+type postTerminationAction func() error
+
+func execActionOnTermination(action postTerminationAction) error {
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+	done := make(chan bool, 1)
+
+	sig := <-sigs
+	fmt.Println(sig)
+	done <- true
+	err := action()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func runConsole(cmd *cobra.Command, argv []string) (err error) {
 	// Check if env variable 'BACKPLANE_DEFAULT_OPEN_BROWSER' is set
 	if env, ok := os.LookupEnv(EnvBrowserDefault); ok {
@@ -295,7 +442,7 @@ func runConsole(cmd *cobra.Command, argv []string) (err error) {
 	// Get image
 	if len(consoleArgs.image) == 0 {
 		logger.Debugln("Querying the cluster for console image")
-		consoleArgs.image, err = getImageFromCluster(config)
+		consoleArgs.image, err = getConsoleImageFromCluster(config)
 		if err != nil {
 			return err
 		}
@@ -318,7 +465,7 @@ func runConsole(cmd *cobra.Command, argv []string) (err error) {
 
 	// Get ocm access token
 	logger.Debugln("Finding ocm token")
-	ocmToken, err := utils.DefaultOCMInterface.GetOCMAccessToken()
+	ocmToken, err := ocm.DefaultOCMInterface.GetOCMAccessToken()
 	if err != nil {
 		return err
 	}
@@ -338,6 +485,13 @@ func runConsole(cmd *cobra.Command, argv []string) (err error) {
 		"--rm",
 		"--name", consoleContainerName,
 		"-p", fmt.Sprintf("127.0.0.1:%s:%s", consoleArgs.port, consoleArgs.port),
+	}
+
+	if isRunningHigherOrEqualTo(versionForMonitoringPlugin) {
+		// detaching because we have to run further command in this case
+		engRunArgs = append(engRunArgs,
+			"-d",
+		)
 	}
 
 	if containerEngine == DOCKER {
@@ -369,18 +523,24 @@ func runConsole(cmd *cobra.Command, argv []string) (err error) {
 		return err
 	}
 
-	if proxyURL != "" {
+	if proxyURL != nil {
 		engRunArgs = append(engRunArgs,
-			"--env", fmt.Sprintf("HTTPS_PROXY=%s", proxyURL),
+			"--env", fmt.Sprintf("HTTPS_PROXY=%s", *proxyURL),
 		)
 	}
 
 	// For docker on linux, we need to use host network,
 	// otherwise it won't go through the sshuttle.
+	if isRunningHigherOrEqualTo(versionForMonitoringPlugin) {
+		containerNetwork = fmt.Sprintf("container:console-%s", clusterID)
+	}
 	if runtime.GOOS == "linux" && containerEngine == DOCKER {
-		logger.Debugln("using host network for docker running on linux")
+		logger.Debugln("Using host network for docker running on linux")
+		// update network name for monitoring-plugin
+		containerNetwork = "host"
+
 		engRunArgs = append(engRunArgs,
-			"--network", "host",
+			"--network", containerNetwork,
 		)
 		// listen to loopback only for security
 		bridgeListen = fmt.Sprintf("http://127.0.0.1:%s", consoleArgs.port)
@@ -391,7 +551,7 @@ func runConsole(cmd *cobra.Command, argv []string) (err error) {
 		consoleArgs.image,
 	)
 
-	c, err := utils.DefaultOCMInterface.GetClusterInfoByID(clusterID)
+	c, err := ocm.DefaultOCMInterface.GetClusterInfoByID(clusterID)
 	if err != nil {
 		return err
 	}
@@ -414,6 +574,24 @@ func runConsole(cmd *cobra.Command, argv []string) (err error) {
 	if p.ID() == "rosa" {
 		branding = "ocp"
 		documentationURL = "https://docs.openshift.com/rosa/"
+	}
+
+	if isRunningHigherOrEqualTo(versionForMonitoringPlugin) {
+		monitoringContainerPortInt, err := utils.GetFreePort()
+		if err != nil {
+			return fmt.Errorf("failed looking up a free port: %s", err)
+		}
+		monitoringContainerPort := strconv.Itoa(monitoringContainerPortInt)
+
+		err = setupMonitoringNginxConfig(monitoringContainerPort)
+		if err != nil {
+			return fmt.Errorf("failed setting up nginx configuration for monitoring container: %s", err)
+		}
+
+		engRunArgs = append(engRunArgs,
+			"--env", fmt.Sprintf("BRIDGE_PLUGINS=monitoring-plugin=http://127.0.0.1:%s", monitoringContainerPort),
+		)
+		logger.Infoln(fmt.Sprintf("Using port %s for monitoring-plugin", monitoringContainerPort))
 	}
 
 	// Run the console container
@@ -456,7 +634,7 @@ func runConsole(cmd *cobra.Command, argv []string) (err error) {
 
 	if consoleArgs.openBrowser {
 		go func() {
-			err := wait.PollImmediate(time.Second, 5*time.Second, func() (bool, error) {
+			err := wait.PollUntilContextTimeout(context.Background(), time.Second, 5*time.Second, true, func(context.Context) (bool, error) {
 				return utils.CheckHealth(fmt.Sprintf("%s/health", consoleURL)), nil
 			})
 			if err != nil {
@@ -479,6 +657,48 @@ func runConsole(cmd *cobra.Command, argv []string) (err error) {
 		containerCmd.Stdout = nil
 	}
 	err = containerCmd.Run()
+
+	if isRunningHigherOrEqualTo(versionForMonitoringPlugin) {
+		monitoringPluginContainername := fmt.Sprintf("monitoring-plugin-%s", clusterID)
+		err = runMonitoringContainer(monitoringPluginContainername, configFilename, containerEngine, config)
+		if err != nil {
+			return err
+		}
+
+		err = execActionOnTermination(func() error {
+			// forcing order of removal as the order is not deterministic between container engines
+			containersToCleanUp := []string{
+				monitoringPluginContainername,
+				consoleContainerName,
+			}
+
+			for _, c := range containersToCleanUp {
+				engStopArgs := []string{
+					"container",
+					"stop",
+					c,
+				}
+
+				stopCmd := createCommand(containerEngine, engStopArgs...)
+				stopCmd.Stderr = os.Stderr
+				stopCmd.Stdout = nil
+
+				err = stopCmd.Run()
+
+				if err != nil {
+					return fmt.Errorf("failed to stop container %s: %s", c, err)
+				}
+
+				logger.Infoln(fmt.Sprintf("Container removed: %s", c))
+			}
+
+			return nil
+		})
+
+		if err != nil {
+			return err
+		}
+	}
 
 	return err
 }
@@ -509,21 +729,18 @@ func replaceConsoleURL(original string) (string, error) {
 	return original, nil
 }
 
-// Get the proxy url
-func getProxyURL() (proxyURL string, err error) {
+// getProxyURL returns the proxy url
+func getProxyURL() (proxyURL *string, err error) {
 	bpConfig, err := config.GetBackplaneConfiguration()
-
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	proxyURL = bpConfig.ProxyURL
-
-	return proxyURL, nil
+	return bpConfig.ProxyURL, nil
 }
 
-// getImageFromCluster get the image from the console deployment
-func getImageFromCluster(config *rest.Config) (string, error) {
+// getConsoleImageFromCluster get the image from the console deployment
+func getConsoleImageFromCluster(config *rest.Config) (string, error) {
 	clientSet, err := createClientSet(config)
 	if err != nil {
 		return "", err
@@ -540,6 +757,27 @@ func getImageFromCluster(config *rest.Config) (string, error) {
 		}
 	}
 	return "", fmt.Errorf("could not find console container spec in console deployment")
+}
+
+// getMonitoringPluginImageFromCluster get the monitoring plugin image from deployment
+func getMonitoringPluginImageFromCluster(config *rest.Config) (string, error) {
+	clientSet, err := createClientSet(config)
+	if err != nil {
+		return "", err
+	}
+
+	deploymentsClient := clientSet.AppsV1().Deployments("openshift-monitoring")
+	result, getErr := deploymentsClient.Get(context.TODO(), "monitoring-plugin", metav1.GetOptions{})
+	if getErr != nil {
+		return "", fmt.Errorf("failed to get monitoring-plugin deployment: %v", getErr)
+	}
+	for _, container := range result.Spec.Template.Spec.Containers {
+		if container.Name == "monitoring-plugin" {
+			return container.Image, nil
+		}
+	}
+	return "", fmt.Errorf("could not find monitoring-plugin container spec in monitoring-plugin deployment")
+
 }
 
 // fetchPullSecretIfNotExist will check if there's a pull secrect file
@@ -564,7 +802,7 @@ func fetchPullSecretIfNotExist() (string, string, error) {
 		return "", "", err
 	}
 
-	response, err := utils.DefaultOCMInterface.GetPullSecret()
+	response, err := ocm.DefaultOCMInterface.GetPullSecret()
 	if err != nil {
 		return "", "", fmt.Errorf("failed to get pull secret from ocm: %v", err)
 	}
@@ -653,24 +891,33 @@ func isConsolePluginEnabled(config *rest.Config, consolePlugin string) (bool, er
 	return false, nil
 }
 
-// isRunningHigherThan411 checks the running cluster is higher than 411
-func isRunningHigherThan411() bool {
+// isRunningHigherOrEqualTo check if the cluster is running higher or equal to target version
+func isRunningHigherOrEqualTo(targetVersionStr string) bool {
+	var (
+		clusterVersion *semver.Version
+		targetVersion  *semver.Version
+	)
+
 	currentClusterInfo, err := utils.DefaultClusterUtils.GetBackplaneClusterFromConfig()
 	if err != nil {
 		return false
 	}
-	currentCluster, err := utils.DefaultOCMInterface.GetClusterInfoByID(currentClusterInfo.ClusterID)
+	currentCluster, err := ocm.DefaultOCMInterface.GetClusterInfoByID(currentClusterInfo.ClusterID)
 
 	if err != nil {
 		return false
 	}
-	clusterVersion := currentCluster.OpenshiftVersion()
-	if clusterVersion != "" {
-		version, err := semver.NewVersion(clusterVersion)
-		if err != nil {
+
+	clusterVersionStr := currentCluster.OpenshiftVersion()
+	if clusterVersionStr != "" {
+		if clusterVersion, err = semver.NewVersion(clusterVersionStr); err != nil {
 			return false
 		}
-		if version.Minor() >= 12 {
+		if targetVersion, err = semver.NewVersion(targetVersionStr); err != nil {
+			return false
+		}
+
+		if clusterVersion.Equal(targetVersion) || clusterVersion.GreaterThan(targetVersion) {
 			return true
 		}
 	}
@@ -682,7 +929,7 @@ func loadConsolePlugins(config *rest.Config) (string, error) {
 	var consolePlugins string
 	var err error
 
-	if isRunningHigherThan411() {
+	if isRunningHigherOrEqualTo(versionForConsolePluginsBackendService) {
 		consolePlugins, err = getConsolePluginFromCluster(config)
 		if err != nil {
 			return "", err

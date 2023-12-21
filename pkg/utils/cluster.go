@@ -5,11 +5,11 @@ import (
 	"net/url"
 	"regexp"
 
-	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	logger "github.com/sirupsen/logrus"
 	"k8s.io/client-go/tools/clientcmd"
 
 	"github.com/openshift/backplane-cli/pkg/cli/config"
+	"github.com/openshift/backplane-cli/pkg/ocm"
 )
 
 type BackplaneCluster struct {
@@ -22,7 +22,6 @@ type ClusterUtils interface {
 	GetClusterIDAndHostFromClusterURL(clusterURL string) (string, string, error)
 	GetBackplaneClusterFromConfig() (BackplaneCluster, error)
 	GetBackplaneClusterFromClusterKey(clusterKey string) (BackplaneCluster, error)
-	GetCloudProvider(cluster *cmv1.Cluster) string
 	GetBackplaneCluster(params ...string) (BackplaneCluster, error)
 }
 
@@ -76,7 +75,7 @@ func (s *DefaultClusterUtilsImpl) GetBackplaneClusterFromConfig() (BackplaneClus
 // GetBackplaneClusterFromClusterKey get the backplane cluster from the given cluster
 func (s *DefaultClusterUtilsImpl) GetBackplaneClusterFromClusterKey(clusterKey string) (BackplaneCluster, error) {
 	logger.WithField("SearchKey", clusterKey).Debugln("Finding target cluster")
-	clusterID, clusterName, err := DefaultOCMInterface.GetTargetCluster(clusterKey)
+	clusterID, clusterName, err := ocm.DefaultOCMInterface.GetTargetCluster(clusterKey)
 
 	if err != nil {
 		return BackplaneCluster{}, err
@@ -108,9 +107,4 @@ func (s *DefaultClusterUtilsImpl) GetBackplaneCluster(params ...string) (Backpla
 		return s.GetBackplaneClusterFromClusterKey(params[0])
 	}
 	return s.GetBackplaneClusterFromConfig()
-}
-
-// GetCloudProvider gets the cluster's cloud provider
-func (s *DefaultClusterUtilsImpl) GetCloudProvider(cluster *cmv1.Cluster) string {
-	return cluster.CloudProvider().ID()
 }

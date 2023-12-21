@@ -7,6 +7,9 @@ import (
 	"os/exec"
 	"testing"
 
+	"github.com/golang/mock/gomock"
+	"github.com/openshift/backplane-cli/pkg/utils"
+	mocks2 "github.com/openshift/backplane-cli/pkg/utils/mocks"
 	"k8s.io/client-go/tools/clientcmd/api"
 )
 
@@ -109,7 +112,7 @@ func TestAddElevationReasonToRawKubeconfig(t *testing.T) {
 }
 
 func TestRunElevate(t *testing.T) {
-	t.Run("It errors if we cannot load the kubeconfig", func(t *testing.T) {
+	t.Run("It returns an error if we cannot load the kubeconfig", func(t *testing.T) {
 		ExecCmd = exec.Command
 		OsRemove = os.Remove
 		ReadKubeConfigRaw = func() (api.Config, error) {
@@ -120,7 +123,7 @@ func TestRunElevate(t *testing.T) {
 		}
 	})
 
-	t.Run("It errors if kubeconfig has no current context", func(t *testing.T) {
+	t.Run("It returns an error if kubeconfig has no current context", func(t *testing.T) {
 		ExecCmd = exec.Command
 		OsRemove = os.Remove
 		ReadKubeConfigRaw = func() (api.Config, error) {
@@ -131,7 +134,7 @@ func TestRunElevate(t *testing.T) {
 		}
 	})
 
-	t.Run("It errors if the exec command errors", func(t *testing.T) {
+	t.Run("It returns an error if the exec command has errors", func(t *testing.T) {
 		ExecCmd = fakeExecCommandError
 		OsRemove = os.Remove
 		ReadKubeConfigRaw = func() (api.Config, error) {
@@ -197,4 +200,32 @@ func TestRunElevate(t *testing.T) {
 			t.Errorf("Expected no errors, got %v", err)
 		}
 	})
+
+	t.Run("It returns an error when SHELL environment variable is empty and /bin/bash is invalid", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+
+		mockShellChecker := mocks2.NewMockShellCheckerInterface(mockCtrl)
+		mockShellChecker.EXPECT().IsValidShell("").Return(false).AnyTimes()
+		mockShellChecker.EXPECT().IsValidShell("/bin/bash").Return(false).Times(1)
+
+		// Inject the mockShellChecker into the actual code
+		originalShellChecker := utils.ShellChecker
+		defer func() { utils.ShellChecker = originalShellChecker }()
+		utils.ShellChecker = mockShellChecker
+
+		os.Setenv("SHELL", "")
+		defer os.Unsetenv("SHELL")
+
+		// Run the elevate command with the SHELL environment variable empty
+		err := RunElevate([]string{"elevate-reason", "oc", "get", "pods"})
+
+		expectedErrorMsg := "both the SHELL environment variable and /bin/bash are not set or invalid. Please ensure a valid shell is set in your environment"
+		if err == nil {
+			t.Errorf("expected an error when SHELL environment variable is empty and /bin/bash is invalid, got nil")
+		} else if err.Error() != expectedErrorMsg {
+			t.Errorf("expected error message to be: '%s', but got: '%s'", expectedErrorMsg, err.Error())
+		}
+	})
+
 }

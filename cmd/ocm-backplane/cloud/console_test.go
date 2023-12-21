@@ -8,28 +8,26 @@ import (
 
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
 	log "github.com/sirupsen/logrus"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
 
+	"github.com/openshift/backplane-cli/pkg/backplaneapi"
+	backplaneapiMock "github.com/openshift/backplane-cli/pkg/backplaneapi/mocks"
 	"github.com/openshift/backplane-cli/pkg/client/mocks"
 	"github.com/openshift/backplane-cli/pkg/info"
-	"github.com/openshift/backplane-cli/pkg/utils"
-	mocks2 "github.com/openshift/backplane-cli/pkg/utils/mocks"
+	"github.com/openshift/backplane-cli/pkg/ocm"
+	ocmMock "github.com/openshift/backplane-cli/pkg/ocm/mocks"
 )
 
 var _ = Describe("Cloud console command", func() {
 
 	var (
 		mockCtrl           *gomock.Controller
-		mockClient         *mocks.MockClientInterface
 		mockClientWithResp *mocks.MockClientWithResponsesInterface
-		mockOcmInterface   *mocks2.MockOCMInterface
-		mockClientUtil     *mocks2.MockClientUtils
+		mockOcmInterface   *ocmMock.MockOCMInterface
+		mockClientUtil     *backplaneapiMock.MockClientUtils
 
-		testClusterID    string
-		trueClusterID    string
 		proxyURI         string
 		consoleAWSURL    string
 		consoleGcloudURL string
@@ -40,17 +38,14 @@ var _ = Describe("Cloud console command", func() {
 
 	BeforeEach(func() {
 		mockCtrl = gomock.NewController(GinkgoT())
-		mockClient = mocks.NewMockClientInterface(mockCtrl)
 		mockClientWithResp = mocks.NewMockClientWithResponsesInterface(mockCtrl)
 
-		mockOcmInterface = mocks2.NewMockOCMInterface(mockCtrl)
-		utils.DefaultOCMInterface = mockOcmInterface
+		mockOcmInterface = ocmMock.NewMockOCMInterface(mockCtrl)
+		ocm.DefaultOCMInterface = mockOcmInterface
 
-		mockClientUtil = mocks2.NewMockClientUtils(mockCtrl)
-		utils.DefaultClientUtils = mockClientUtil
+		mockClientUtil = backplaneapiMock.NewMockClientUtils(mockCtrl)
+		backplaneapi.DefaultClientUtils = mockClientUtil
 
-		testClusterID = "test123"
-		trueClusterID = "trueID123"
 		proxyURI = "https://shard.apps"
 		consoleAWSURL = "https://signin.aws.amazon.com/federation?Action=login"
 		consoleGcloudURL = "https://cloud.google.com/"
@@ -89,84 +84,5 @@ var _ = Describe("Cloud console command", func() {
 	AfterEach(func() {
 		os.Setenv(info.BackplaneURLEnvName, "")
 		mockCtrl.Finish()
-	})
-
-	Context("Execute cloud console command", func() {
-		It("should return AWS cloud console", func() {
-			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, testClusterID, nil)
-			mockClientUtil.EXPECT().GetBackplaneClient(proxyURI).Return(mockClient, nil).AnyTimes()
-			mockClient.EXPECT().GetCloudConsole(gomock.Any(), trueClusterID).Return(fakeAWSResp, nil)
-
-			err := runConsole(nil, []string{testClusterID})
-
-			Expect(err).To(BeNil())
-		})
-
-		It("should return GCP cloud console", func() {
-			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, testClusterID, nil)
-			mockClientUtil.EXPECT().GetBackplaneClient(proxyURI).Return(mockClient, nil).AnyTimes()
-			mockClient.EXPECT().GetCloudConsole(gomock.Any(), trueClusterID).Return(fakeGCloudResp, nil)
-			err := runConsole(nil, []string{testClusterID})
-
-			Expect(err).To(BeNil())
-		})
-
-	})
-
-	Context("get Cloud Console", func() {
-		It("should return AWS cloud URL", func() {
-			mockClient.EXPECT().GetCloudConsole(gomock.Any(), trueClusterID).Return(fakeAWSResp, nil)
-			mockClientUtil.EXPECT().GetBackplaneClient(proxyURI).Return(mockClient, nil).AnyTimes()
-			cloudResponse, err := getCloudConsole(proxyURI, trueClusterID)
-			Expect(err).To(BeNil())
-
-			Expect(cloudResponse.ConsoleLink).To(Equal(consoleAWSURL))
-
-		})
-
-		It("should return Gcloud cloud URL", func() {
-
-			mockClientUtil.EXPECT().GetBackplaneClient(proxyURI).Return(mockClient, nil).AnyTimes()
-			mockClient.EXPECT().GetCloudConsole(gomock.Any(), trueClusterID).Return(fakeGCloudResp, nil)
-			cloudResponse, err := getCloudConsole(proxyURI, trueClusterID)
-			Expect(err).To(BeNil())
-
-			Expect(cloudResponse.ConsoleLink).To(Equal(consoleGcloudURL))
-
-		})
-
-		It("should fail when AWS Unavailable", func() {
-			fakeAWSResp.StatusCode = http.StatusInternalServerError
-
-			mockClient.EXPECT().GetCloudConsole(gomock.Any(), trueClusterID).Return(fakeAWSResp, nil)
-			mockClientUtil.EXPECT().GetBackplaneClient(proxyURI).Return(mockClient, nil).AnyTimes()
-			_, err := getCloudConsole(proxyURI, trueClusterID)
-			Expect(err).NotTo(BeNil())
-
-			Expect(err.Error()).Should(ContainSubstring("error from backplane: \n Status Code: 500\n"))
-
-		})
-
-		It("should fail when GCP Unavailable", func() {
-			fakeGCloudResp.StatusCode = http.StatusInternalServerError
-			mockClientUtil.EXPECT().GetBackplaneClient(proxyURI).Return(mockClient, nil).AnyTimes()
-			mockClient.EXPECT().GetCloudConsole(gomock.Any(), trueClusterID).Return(fakeGCloudResp, nil)
-			_, err := getCloudConsole(proxyURI, trueClusterID)
-			Expect(err).NotTo(BeNil())
-
-			Expect(err.Error()).Should(ContainSubstring("error from backplane: \n Status Code: 500\n"))
-
-		})
-
-		It("should fail for unauthorized BP-API", func() {
-			fakeAWSResp.StatusCode = http.StatusUnauthorized
-			mockClientUtil.EXPECT().GetBackplaneClient(proxyURI).Return(mockClient, nil).AnyTimes()
-			mockClient.EXPECT().GetCloudConsole(gomock.Any(), trueClusterID).Return(fakeAWSResp, nil)
-			_, err := getCloudConsole(proxyURI, trueClusterID)
-			Expect(err).NotTo(BeNil())
-
-			Expect(err.Error()).Should(ContainSubstring("error from backplane: \n Status Code: 401\n"))
-
-		})
 	})
 })

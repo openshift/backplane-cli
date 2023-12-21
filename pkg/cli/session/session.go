@@ -16,7 +16,7 @@ import (
 	"github.com/openshift/backplane-cli/pkg/cli/config"
 	"github.com/openshift/backplane-cli/pkg/cli/globalflags"
 	"github.com/openshift/backplane-cli/pkg/info"
-	"github.com/openshift/backplane-cli/pkg/utils"
+	"github.com/openshift/backplane-cli/pkg/ocm"
 )
 
 // BackplaneSessionInterface abstract backplane session functions
@@ -70,14 +70,15 @@ func (e *BackplaneSession) RunCommand(cmd *cobra.Command, args []string) error {
 		clusterKey = e.Options.ClusterID
 	}
 
-	clusterID, clusterName, err := utils.DefaultOCMInterface.GetTargetCluster(clusterKey)
+	clusterID, clusterName, err := ocm.DefaultOCMInterface.GetTargetCluster(clusterKey)
 
 	if err != nil {
 		return fmt.Errorf("invalid cluster Id %s", clusterKey)
 	}
 
 	if e.Options.GlobalOpts.Manager {
-		clusterID, clusterName, err = utils.DefaultOCMInterface.GetManagingCluster(clusterID)
+		clusterID, clusterName, _, err = ocm.DefaultOCMInterface.GetManagingCluster(clusterID)
+
 		e.Options.Alias = clusterID
 		if err != nil {
 			return err
@@ -87,7 +88,7 @@ func (e *BackplaneSession) RunCommand(cmd *cobra.Command, args []string) error {
 	}
 
 	if e.Options.GlobalOpts.Service {
-		clusterID, clusterName, err = utils.DefaultOCMInterface.GetServiceCluster(clusterID)
+		clusterID, clusterName, err = ocm.DefaultOCMInterface.GetServiceCluster(clusterID)
 		e.Options.Alias = clusterID
 		if err != nil {
 			return err

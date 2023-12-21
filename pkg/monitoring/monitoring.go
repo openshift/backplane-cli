@@ -21,6 +21,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 
 	"github.com/openshift/backplane-cli/pkg/cli/config"
+	"github.com/openshift/backplane-cli/pkg/ocm"
 	"github.com/openshift/backplane-cli/pkg/utils"
 )
 
@@ -85,7 +86,7 @@ func (c Client) RunMonitoring(monitoringType string) error {
 		return err
 	}
 	// creates OCM access token
-	accessToken, err := utils.DefaultOCMInterface.GetOCMAccessToken()
+	accessToken, err := ocm.DefaultOCMInterface.GetOCMAccessToken()
 	if err != nil {
 		return err
 	}
@@ -134,8 +135,8 @@ func (c Client) RunMonitoring(monitoringType string) error {
 	if err != nil {
 		return err
 	}
-	if proxyURL != "" {
-		proxyURL, err := url.Parse(proxyURL)
+	if proxyURL != nil {
+		proxyURL, err := url.Parse(*proxyURL)
 		if err != nil {
 			return err
 		}
@@ -311,7 +312,7 @@ func serveURL(hasURL, hasNs bool, cfg *restclient.Config) (*url.URL, error) {
 		if err != nil {
 			return nil, err
 		}
-		currentCluster, err := utils.DefaultOCMInterface.GetClusterInfoByID(currentClusterInfo.ClusterID)
+		currentCluster, err := ocm.DefaultOCMInterface.GetClusterInfoByID(currentClusterInfo.ClusterID)
 		if err != nil {
 			return nil, err
 		}
@@ -342,16 +343,13 @@ func serveURL(hasURL, hasNs bool, cfg *restclient.Config) (*url.URL, error) {
 }
 
 // getProxyURL returns the proxy url
-func getProxyURL() (proxyURL string, err error) {
+func getProxyURL() (proxyURL *string, err error) {
 	bpConfig, err := config.GetBackplaneConfiguration()
-
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	proxyURL = bpConfig.ProxyURL
-
-	return proxyURL, nil
+	return bpConfig.ProxyURL, nil
 }
 
 // validateClusterVersion checks the clusterversion based on namespace
@@ -363,7 +361,7 @@ func validateClusterVersion(monitoringName string) error {
 			return err
 		}
 
-		currentCluster, err := utils.DefaultOCMInterface.GetClusterInfoByID(currentClusterInfo.ClusterID)
+		currentCluster, err := ocm.DefaultOCMInterface.GetClusterInfoByID(currentClusterInfo.ClusterID)
 		if err != nil {
 			return err
 		}

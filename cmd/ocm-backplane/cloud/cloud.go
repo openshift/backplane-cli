@@ -18,8 +18,6 @@ var CloudCmd = &cobra.Command{
 func init() {
 	CloudCmd.AddCommand(CredentialsCmd)
 	CloudCmd.AddCommand(ConsoleCmd)
-	CloudCmd.AddCommand(TokenCmd)
-	CloudCmd.AddCommand(AssumeCmd)
 }
 
 func help(cmd *cobra.Command, _ []string) {

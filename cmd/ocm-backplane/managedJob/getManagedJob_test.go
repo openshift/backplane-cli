@@ -12,10 +12,13 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
 
+	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	"github.com/openshift/backplane-cli/pkg/backplaneapi"
+	backplaneapiMock "github.com/openshift/backplane-cli/pkg/backplaneapi/mocks"
 	"github.com/openshift/backplane-cli/pkg/client/mocks"
 	"github.com/openshift/backplane-cli/pkg/info"
-	"github.com/openshift/backplane-cli/pkg/utils"
-	mocks2 "github.com/openshift/backplane-cli/pkg/utils/mocks"
+	"github.com/openshift/backplane-cli/pkg/ocm"
+	ocmMock "github.com/openshift/backplane-cli/pkg/ocm/mocks"
 )
 
 var _ = Describe("managedJob get command", func() {
@@ -23,8 +26,8 @@ var _ = Describe("managedJob get command", func() {
 	var (
 		mockCtrl         *gomock.Controller
 		mockClient       *mocks.MockClientInterface
-		mockOcmInterface *mocks2.MockOCMInterface
-		mockClientUtil   *mocks2.MockClientUtils
+		mockOcmInterface *ocmMock.MockOCMInterface
+		mockClientUtil   *backplaneapiMock.MockClientUtils
 
 		testClusterID string
 		testToken     string
@@ -35,18 +38,19 @@ var _ = Describe("managedJob get command", func() {
 		fakeResp         *http.Response
 		fakeRespMultiple *http.Response
 
-		sut *cobra.Command
+		sut    *cobra.Command
+		ocmEnv *cmv1.Environment
 	)
 
 	BeforeEach(func() {
 		mockCtrl = gomock.NewController(GinkgoT())
 		mockClient = mocks.NewMockClientInterface(mockCtrl)
 
-		mockOcmInterface = mocks2.NewMockOCMInterface(mockCtrl)
-		utils.DefaultOCMInterface = mockOcmInterface
+		mockOcmInterface = ocmMock.NewMockOCMInterface(mockCtrl)
+		ocm.DefaultOCMInterface = mockOcmInterface
 
-		mockClientUtil = mocks2.NewMockClientUtils(mockCtrl)
-		utils.DefaultClientUtils = mockClientUtil
+		mockClientUtil = backplaneapiMock.NewMockClientUtils(mockCtrl)
+		backplaneapi.DefaultClientUtils = mockClientUtil
 
 		testClusterID = "test123"
 		testToken = "hello123"
@@ -120,6 +124,7 @@ var _ = Describe("managedJob get command", func() {
 		_ = clientcmd.ModifyConfig(clientcmd.NewDefaultPathOptions(), api.Config{}, true)
 
 		os.Setenv(info.BackplaneURLEnvName, proxyURI)
+		ocmEnv, _ = cmv1.NewEnvironment().BackplaneURL("https://dummy.api").Build()
 	})
 
 	AfterEach(func() {
@@ -129,6 +134,7 @@ var _ = Describe("managedJob get command", func() {
 
 	Context("get a single managed job", func() {
 		It("when running with a simple case should work as expected for single job", func() {
+			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
 			// It should query for the internal cluster id first
 			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, testClusterID, nil)
 			// Then it will look for the backplane shard
@@ -144,6 +150,7 @@ var _ = Describe("managedJob get command", func() {
 		})
 
 		It("should respect url flag", func() {
+			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, testClusterID, nil)
 			// Then it will look for the backplane shard
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
@@ -158,6 +165,7 @@ var _ = Describe("managedJob get command", func() {
 		})
 
 		It("should fail when backplane did not return a 200", func() {
+			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, testClusterID, nil)
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
@@ -171,6 +179,7 @@ var _ = Describe("managedJob get command", func() {
 		})
 
 		It("should not work when backplane returns a non parsable response", func() {
+			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, testClusterID, nil)
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
@@ -187,6 +196,7 @@ var _ = Describe("managedJob get command", func() {
 
 	Context("get a all managed jobs", func() {
 		It("when running with a simple case should work as expected", func() {
+			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
 			// It should query for the internal cluster id first
 			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, testClusterID, nil)
 			// Then it will look for the backplane shard
@@ -202,6 +212,7 @@ var _ = Describe("managedJob get command", func() {
 		})
 
 		It("should respect url flag", func() {
+			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, testClusterID, nil)
 			// Then it will look for the backplane shard
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
@@ -216,6 +227,7 @@ var _ = Describe("managedJob get command", func() {
 		})
 
 		It("should fail when backplane did not return a 200", func() {
+			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, testClusterID, nil)
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
@@ -229,6 +241,7 @@ var _ = Describe("managedJob get command", func() {
 		})
 
 		It("should not work when backplane returns a non parsable response", func() {
+			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, testClusterID, nil)
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()

@@ -9,9 +9,12 @@ import (
 	"time"
 
 	BackplaneApi "github.com/openshift/backplane-api/pkg/client"
+	logger "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/util/wait"
 
+	"github.com/openshift/backplane-cli/pkg/backplaneapi"
+	"github.com/openshift/backplane-cli/pkg/ocm"
 	"github.com/openshift/backplane-cli/pkg/utils"
 )
 
@@ -80,7 +83,7 @@ func runCreateManagedJob(cmd *cobra.Command, args []string) (err error) {
 	}
 
 	// Check if the cluster is hibernating
-	isClusterHibernating, err := utils.DefaultOCMInterface.IsClusterHibernating(bpCluster.ClusterID)
+	isClusterHibernating, err := ocm.DefaultOCMInterface.IsClusterHibernating(bpCluster.ClusterID)
 	if err == nil && isClusterHibernating {
 		// Hibernating, print out error and skip
 		return fmt.Errorf("cluster %s is hibernating, not creating ManagedJob", bpCluster.ClusterID)
@@ -95,7 +98,7 @@ func runCreateManagedJob(cmd *cobra.Command, args []string) (err error) {
 	}
 
 	// get raw backplane API client
-	client, err := utils.DefaultClientUtils.MakeRawBackplaneAPIClient(backplaneHost)
+	client, err := backplaneapi.DefaultClientUtils.MakeRawBackplaneAPIClient(backplaneHost)
 	if err != nil {
 		return err
 	}
@@ -175,7 +178,7 @@ func createJob(client BackplaneApi.ClientInterface) (*BackplaneApi.Job, error) {
 	// create job request
 	createJob := BackplaneApi.CreateJobJSONRequestBody{
 		CanonicalName: &options.canonicalName,
-		Parameters: &jobParams,
+		Parameters:    &jobParams,
 	}
 
 	// call create end point
@@ -183,6 +186,11 @@ func createJob(client BackplaneApi.ClientInterface) (*BackplaneApi.Job, error) {
 
 	if err != nil {
 		return nil, err
+	}
+
+	// Check for the warning header and display it if found.
+	if warningMsg := resp.Header.Get("Backplane-Warning"); warningMsg != "" {
+		logger.Warnf("warning: %s", warningMsg)
 	}
 
 	if resp.StatusCode != http.StatusOK {
@@ -208,7 +216,7 @@ func createJob(client BackplaneApi.ClientInterface) (*BackplaneApi.Job, error) {
 // waitForCreateJob timeouts after 10 min
 func waitForCreateJob(client BackplaneApi.ClientInterface, job *BackplaneApi.Job) (statusMessage string, err error) {
 
-	pollErr := wait.PollImmediate(10*time.Second, time.Duration(600)*time.Second, func() (bool, error) {
+	pollErr := wait.PollUntilContextTimeout(context.Background(), 10*time.Second, time.Duration(600)*time.Second, true, func(context.Context) (bool, error) {
 		fmt.Printf(".")
 
 		// Get the current job
@@ -236,7 +244,7 @@ func waitForCreateJob(client BackplaneApi.ClientInterface, job *BackplaneApi.Job
 // fetchJobLogs stream the log of the job to the console output when the job status is Running, Succeeded or Failed
 func fetchJobLogs(client BackplaneApi.ClientInterface, job *BackplaneApi.Job) error {
 
-	pollErr := wait.PollImmediate(5*time.Second, 1*time.Minute, func() (bool, error) {
+	pollErr := wait.PollUntilContextTimeout(context.Background(), 5*time.Second, 1*time.Minute, true, func(context.Context) (bool, error) {
 		fmt.Printf(".")
 
 		// Get the current job

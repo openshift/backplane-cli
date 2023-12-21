@@ -9,6 +9,9 @@ import (
 	"net/url"
 	"reflect"
 	"testing"
+	"time"
+
+	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -36,12 +39,14 @@ func defaultSuccessMockSTSClient() STSRoleAssumerMock {
 			AccessKeyId:     aws.String("test-access-key-id"),
 			SecretAccessKey: aws.String("test-secret-access-key"),
 			SessionToken:    aws.String("test-session-token"),
+			Expiration:      aws.Time(time.UnixMilli(1)),
 		},
 	}, &sts.AssumeRoleWithWebIdentityOutput{
 		Credentials: &types.Credentials{
 			AccessKeyId:     aws.String("test-access-key-id"),
 			SecretAccessKey: aws.String("test-secret-access-key"),
 			SessionToken:    aws.String("test-session-token"),
+			Expiration:      aws.Time(time.UnixMilli(1)),
 		},
 	}, nil)
 }
@@ -62,12 +67,12 @@ func TestAssumeRoleWithJWT(t *testing.T) {
 	type args struct {
 		jwt       string
 		roleArn   string
-		stsClient STSRoleWithWebIdentityAssumer
+		stsClient stscreds.AssumeRoleWithWebIdentityAPIClient
 	}
 	tests := []struct {
 		name    string
 		args    args
-		want    *types.Credentials
+		want    aws.Credentials
 		wantErr bool
 	}{
 		{
@@ -94,10 +99,13 @@ func TestAssumeRoleWithJWT(t *testing.T) {
 				roleArn:   "arn:aws:iam::1234567890:role/read-only",
 				stsClient: defaultSuccessMockSTSClient(),
 			},
-			want: &types.Credentials{
-				AccessKeyId:     aws.String("test-access-key-id"),
-				SecretAccessKey: aws.String("test-secret-access-key"),
-				SessionToken:    aws.String("test-session-token"),
+			want: aws.Credentials{
+				AccessKeyID:     "test-access-key-id",
+				SecretAccessKey: "test-secret-access-key",
+				SessionToken:    "test-session-token",
+				Source:          "WebIdentityCredentials",
+				CanExpire:       true,
+				Expires:         time.UnixMilli(1),
 			},
 		},
 	}
@@ -118,8 +126,8 @@ func TestAssumeRoleWithJWT(t *testing.T) {
 func TestAssumeRole(t *testing.T) {
 	tests := []struct {
 		name      string
-		stsClient STSRoleAssumer
-		want      *types.Credentials
+		stsClient stscreds.AssumeRoleAPIClient
+		want      aws.Credentials
 		wantErr   bool
 	}{
 		{
@@ -130,10 +138,13 @@ func TestAssumeRole(t *testing.T) {
 		{
 			name:      "Successfully assumes role",
 			stsClient: defaultSuccessMockSTSClient(),
-			want: &types.Credentials{
-				AccessKeyId:     aws.String("test-access-key-id"),
-				SecretAccessKey: aws.String("test-secret-access-key"),
-				SessionToken:    aws.String("test-session-token"),
+			want: aws.Credentials{
+				AccessKeyID:     "test-access-key-id",
+				SecretAccessKey: "test-secret-access-key",
+				SessionToken:    "test-session-token",
+				Source:          "AssumeRoleProvider",
+				CanExpire:       true,
+				Expires:         time.UnixMilli(1),
 			},
 		},
 	}
@@ -153,14 +164,14 @@ func TestAssumeRole(t *testing.T) {
 
 func TestAssumeRoleSequence(t *testing.T) {
 	type args struct {
-		seedClient            STSRoleAssumer
+		seedClient            stscreds.AssumeRoleAPIClient
 		roleArnSequence       []string
 		stsClientProviderFunc STSClientProviderFunc
 	}
 	tests := []struct {
 		name    string
 		args    args
-		want    *types.Credentials
+		want    aws.Credentials
 		wantErr bool
 	}{
 		{
@@ -182,20 +193,23 @@ func TestAssumeRoleSequence(t *testing.T) {
 			args: args{
 				seedClient:      defaultSuccessMockSTSClient(),
 				roleArnSequence: []string{"a"},
-				stsClientProviderFunc: func(optFns ...func(*config.LoadOptions) error) (STSRoleAssumer, error) {
+				stsClientProviderFunc: func(optFns ...func(*config.LoadOptions) error) (stscreds.AssumeRoleAPIClient, error) {
 					return defaultSuccessMockSTSClient(), nil
 				},
 			},
-			want: &types.Credentials{
-				AccessKeyId:     aws.String("test-access-key-id"),
-				SecretAccessKey: aws.String("test-secret-access-key"),
-				SessionToken:    aws.String("test-session-token"),
+			want: aws.Credentials{
+				AccessKeyID:     "test-access-key-id",
+				SecretAccessKey: "test-secret-access-key",
+				SessionToken:    "test-session-token",
+				Source:          "AssumeRoleProvider",
+				CanExpire:       true,
+				Expires:         time.UnixMilli(1),
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := AssumeRoleSequence("", tt.args.seedClient, tt.args.roleArnSequence, "", tt.args.stsClientProviderFunc)
+			got, err := AssumeRoleSequence("", tt.args.seedClient, tt.args.roleArnSequence, nil, tt.args.stsClientProviderFunc)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("AssumeRoleSequence() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -208,11 +222,12 @@ func TestAssumeRoleSequence(t *testing.T) {
 }
 
 func TestGetSigninToken(t *testing.T) {
-	awsCredentials := &types.Credentials{
-		AccessKeyId:     aws.String("testAccessKeyId"),
-		SecretAccessKey: aws.String("testSecretAccessKey"),
-		SessionToken:    aws.String("testSessionToken"),
+	awsCredentials := aws.Credentials{
+		AccessKeyID:     "testAccessKeyId",
+		SecretAccessKey: "testSecretAccessKey",
+		SessionToken:    "testSessionToken",
 	}
+	region := "us-east-1"
 	tests := []struct {
 		name        string
 		httpGetFunc func(url string) (resp *http.Response, err error)
@@ -263,7 +278,7 @@ func TestGetSigninToken(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			httpGetFunc = tt.httpGetFunc
-			got, err := GetSigninToken(awsCredentials)
+			got, err := GetSigninToken(awsCredentials, region)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GetSigninToken() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -287,7 +302,7 @@ func TestGetConsoleUrl(t *testing.T) {
 			signinToken: "the_token",
 			want: &url.URL{
 				Scheme:   "https",
-				Host:     "signin.aws.amazon.com",
+				Host:     "us-east-1.signin.aws.amazon.com",
 				Path:     "/federation",
 				RawQuery: "Action=login&Destination=https%3A%2F%2Fconsole.aws.amazon.com%2F&Issuer=Red+Hat+SRE&SigninToken=the_token",
 			},
@@ -295,7 +310,7 @@ func TestGetConsoleUrl(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := GetConsoleURL(tt.signinToken)
+			got, err := GetConsoleURL(tt.signinToken, "us-east-1")
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GetConsoleURL() error = %v, wantErr %v", err, tt.wantErr)
 				return

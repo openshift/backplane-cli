@@ -97,7 +97,7 @@ func SaveKubeConfig(clusterID string, config api.Config, isMulti bool, kubePath 
 
 		if kubePath == "" {
 			// Inform how to setup kube config
-			fmt.Printf("Execute the following command to log into the cluster %s \n", clusterID)
+			fmt.Printf("# Execute the following command to log into the cluster %s \n", clusterID)
 			fmt.Println("export " + info.BackplaneKubeconfigEnvName + "=" + path)
 		}
 

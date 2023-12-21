@@ -1,22 +1,18 @@
 package cloud
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/http"
 
+	ocmsdk "github.com/openshift-online/ocm-cli/pkg/ocm"
+	"github.com/openshift/backplane-cli/pkg/cli/config"
+	bpCredentials "github.com/openshift/backplane-cli/pkg/credentials"
+	"github.com/openshift/backplane-cli/pkg/ocm"
+	"github.com/openshift/backplane-cli/pkg/utils"
 	logger "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"sigs.k8s.io/yaml"
-
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/credentials"
-	BackplaneApi "github.com/openshift/backplane-api/pkg/client"
-
-	"github.com/openshift/backplane-cli/pkg/utils"
 )
 
 var GetBackplaneClusterFromConfig = utils.DefaultClusterUtils.GetBackplaneClusterFromConfig
@@ -24,69 +20,6 @@ var GetBackplaneClusterFromConfig = utils.DefaultClusterUtils.GetBackplaneCluste
 var credentialArgs struct {
 	backplaneURL string
 	output       string
-}
-
-type CredentialsResponse interface {
-	// String returns a friendly message outlining how users can setup cloud environment access
-	String() string
-
-	// fmtExport sets environment variables for users to export to setup cloud environment access
-	fmtExport() string
-}
-
-type AWSCredentialsResponse struct {
-	AccessKeyID     string `json:"AccessKeyID" yaml:"AccessKeyID"`
-	SecretAccessKey string `json:"SecretAccessKey" yaml:"SecretAccessKey"`
-	SessionToken    string `json:"SessionToken" yaml:"SessionToken"`
-	Region          string `json:"Region" yaml:"Region"`
-	Expiration      string `json:"Expiration" yaml:"Expiration"`
-}
-
-type GCPCredentialsResponse struct {
-	ProjectID string `json:"project_id" yaml:"project_id"`
-}
-
-const (
-	// format strings for printing AWS credentials as a string or as environment variables
-	awsCredentialsStringFormat = `Temporary Credentials:
-  AccessKeyID: %s
-  SecretAccessKey: %s
-  SessionToken: %s
-  Region: %s
-  Expires: %s`
-	awsExportFormat = `export AWS_ACCESS_KEY_ID=%s
-export AWS_SECRET_ACCESS_KEY=%s
-export AWS_SESSION_TOKEN=%s
-export AWS_DEFAULT_REGION=%s`
-
-	// format strings for printing GCP credentials as a string or as environment variables
-	gcpCredentialsStringFormat = `If this is your first time, run "gcloud auth login" and then
-gcloud config set project %s`
-	gcpExportFormat = `export CLOUDSDK_CORE_PROJECT=%s`
-)
-
-func (r *AWSCredentialsResponse) String() string {
-	return fmt.Sprintf(awsCredentialsStringFormat, r.AccessKeyID, r.SecretAccessKey, r.SessionToken, r.Region, r.Expiration)
-}
-
-func (r *AWSCredentialsResponse) fmtExport() string {
-	return fmt.Sprintf(awsExportFormat, r.AccessKeyID, r.SecretAccessKey, r.SessionToken, r.Region)
-}
-
-// AWSV2Config returns an aws-sdk-go-v2 config that can be used to programmatically access the AWS API
-func (r *AWSCredentialsResponse) AWSV2Config() (aws.Config, error) {
-	return config.LoadDefaultConfig(context.TODO(),
-		config.WithRegion(r.Region),
-		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(r.AccessKeyID, r.SecretAccessKey, r.SessionToken)),
-	)
-}
-
-func (r *GCPCredentialsResponse) String() string {
-	return fmt.Sprintf(gcpCredentialsStringFormat, r.ProjectID)
-}
-
-func (r *GCPCredentialsResponse) fmtExport() string {
-	return fmt.Sprintf(gcpExportFormat, r.ProjectID)
 }
 
 // CredentialsCmd represents the cloud credentials command
@@ -138,139 +71,67 @@ func runCredentials(cmd *cobra.Command, argv []string) error {
 		return fmt.Errorf("expected exactly one cluster")
 	}
 
-	clusterID, clusterName, err := utils.DefaultOCMInterface.GetTargetCluster(clusterKey)
+	clusterID, clusterName, err := ocm.DefaultOCMInterface.GetTargetCluster(clusterKey)
 	if err != nil {
 		return err
 	}
 
-	cluster, err := utils.DefaultOCMInterface.GetClusterInfoByID(clusterID)
+	cluster, err := ocm.DefaultOCMInterface.GetClusterInfoByID(clusterID)
 	if err != nil {
 		return fmt.Errorf("failed to get cluster info for %s: %w", clusterID, err)
 	}
-
-	cloudProvider := utils.DefaultClusterUtils.GetCloudProvider(cluster)
 
 	logger.WithFields(logger.Fields{
 		"ID":   clusterID,
 		"Name": clusterName}).Infoln("Target cluster")
 
-	// ============Get Backplane URl ==========================
-	bpURL := ""
-	if credentialArgs.backplaneURL != "" {
-		bpURL = credentialArgs.backplaneURL
-	} else {
-		// Get Backplane configuration
-		bpConfig, err := GetBackplaneConfiguration()
-		if err != nil {
-			return fmt.Errorf("can't find backplane url: %w", err)
-		}
-
-		if bpConfig.URL == "" {
-			return errors.New("empty backplane url - check your backplane-cli configuration")
-		}
-		bpURL = bpConfig.URL
-		logger.Infof("Using backplane URL: %s\n", bpURL)
+	// Initialize backplane configuration
+	backplaneConfiguration, err := config.GetBackplaneConfiguration()
+	if err != nil {
+		return fmt.Errorf("unable to build backplane configuration: %w", err)
 	}
+
+	// ============Get Backplane URl ==========================
+	if credentialArgs.backplaneURL != "" { // Overwrite if parameter is set
+		backplaneConfiguration.URL = credentialArgs.backplaneURL
+	}
+
+	if backplaneConfiguration.URL == "" {
+		return errors.New("empty backplane url - check your backplane-cli configuration")
+	}
+	logger.Infof("Using backplane URL: %s\n", backplaneConfiguration.URL)
+
+	// Initialize OCM connection
+	ocmConnection, err := ocmsdk.NewConnection().Build()
+	if err != nil {
+		return fmt.Errorf("unable to build ocm sdk: %w", err)
+	}
+	defer ocmConnection.Close()
 
 	// ======== Call Endpoint ==================================
 	logger.Debugln("Getting Cloud Credentials")
 
-	credsResp, err := getCloudCredential(bpURL, clusterID)
+	queryConfig := &QueryConfig{OcmConnection: ocmConnection, BackplaneConfiguration: backplaneConfiguration, Cluster: cluster}
+
+	credsResp, err := queryConfig.GetCloudCredentials()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get cloud credentials for cluster %v: %w", clusterID, err)
 	}
 
-	// ======== Render cloud credentials =======================
-	switch cloudProvider {
-	case "aws":
-		cliResp := &AWSCredentialsResponse{}
-		if err := json.Unmarshal([]byte(*credsResp.JSON200.Credentials), cliResp); err != nil {
-			return fmt.Errorf("unable to unmarshal AWS credentials response from backplane %s: %w", *credsResp.JSON200.Credentials, err)
-		}
-		cliResp.Region = *credsResp.JSON200.Region
-		creds, err := renderCloudCredentials(credentialArgs.output, cliResp)
-		if err != nil {
-			return err
-		}
-		fmt.Println(creds)
-		return nil
-	case "gcp":
-		cliResp := &GCPCredentialsResponse{}
-		if err := json.Unmarshal([]byte(*credsResp.JSON200.Credentials), cliResp); err != nil {
-			return fmt.Errorf("unable to unmarshal GCP credentials response from backplane %s: %w", *credsResp.JSON200.Credentials, err)
-		}
-		creds, err := renderCloudCredentials(credentialArgs.output, cliResp)
-		if err != nil {
-			return err
-		}
-		fmt.Println(creds)
-		return nil
-	default:
-		return fmt.Errorf("unsupported cloud provider: %s", cloudProvider)
-	}
-}
-
-// GetAWSV2Config allows consumers to get an aws-sdk-go-v2 Config to programmatically access the AWS API
-func GetAWSV2Config(backplaneURL string, clusterID string) (aws.Config, error) {
-	cluster, err := utils.DefaultOCMInterface.GetClusterInfoByID(clusterID)
+	output, err := renderCloudCredentials(credentialArgs.output, credsResp)
 	if err != nil {
-		return aws.Config{}, err
+		return fmt.Errorf("failed to render credentials: %w", err)
 	}
 
-	cloudProvider := utils.DefaultClusterUtils.GetCloudProvider(cluster)
-	if cloudProvider != "aws" {
-		return aws.Config{}, fmt.Errorf("only supported for the aws cloud provider, this cluster has: %s", cloudProvider)
-	}
-
-	resp, err := getCloudCredential(backplaneURL, clusterID)
-	if err != nil {
-		return aws.Config{}, err
-	}
-
-	credsResp := &AWSCredentialsResponse{}
-	if err := json.Unmarshal([]byte(*resp.JSON200.Credentials), credsResp); err != nil {
-		return aws.Config{}, fmt.Errorf("unable to unmarshal AWS credentials response from backplane %s: %w", *resp.JSON200.Credentials, err)
-	}
-	credsResp.Region = *resp.JSON200.Region
-
-	return credsResp.AWSV2Config()
-}
-
-// getCloudCredential returns Cloud Credentials Response
-func getCloudCredential(backplaneURL string, clusterID string) (*BackplaneApi.GetCloudCredentialsResponse, error) {
-	client, err := utils.DefaultClientUtils.GetBackplaneClient(backplaneURL)
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := client.GetCloudCredentials(context.TODO(), clusterID)
-
-	if err != nil {
-		return nil, err
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, utils.TryPrintAPIError(resp, false)
-	}
-
-	logger.Debugln("Parsing response")
-
-	credsResp, err := BackplaneApi.ParseGetCloudCredentialsResponse(resp)
-	if err != nil {
-		return nil, fmt.Errorf("unable to parse response body from backplane:\n  Status Code: %d : err: %v", resp.StatusCode, err)
-	}
-
-	if len(credsResp.Body) == 0 {
-		return nil, fmt.Errorf("empty response from backplane")
-	}
-	return credsResp, nil
+	fmt.Println(output)
+	return nil
 }
 
 // renderCloudCredentials displays the results of `ocm backplane cloud credentials` for AWS clusters
-func renderCloudCredentials(outputFormat string, creds CredentialsResponse) (string, error) {
+func renderCloudCredentials(outputFormat string, creds bpCredentials.Response) (string, error) {
 	switch outputFormat {
 	case "env":
-		return creds.fmtExport(), nil
+		return creds.FmtExport(), nil
 	case "yaml":
 		yamlBytes, err := yaml.Marshal(creds)
 		if err != nil {

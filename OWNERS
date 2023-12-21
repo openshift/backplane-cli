@@ -7,6 +7,10 @@ reviewers:
   - bmeng
   - samanthajayasinghe
   - hectorakemp
+  - Dee-6777
+  - xiaoyu74
+  - mjlshen
+  - typeid
 
 approvers:
   - wanghaoran1988
@@ -15,6 +19,9 @@ approvers:
   - feichashao
   - supreeth7
   - bmeng
+  - mjlshen
+  - typeid
+  - samanthajayasinghe
 
 maintainers:
   - wanghaoran1988
@@ -22,3 +29,4 @@ maintainers:
   - supreeth7
   - MitaliBhalla
   - bmeng
+  - samanthajayasinghe

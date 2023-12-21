@@ -18,9 +18,11 @@ import (
 
 	BackplaneApi "github.com/openshift/backplane-api/pkg/client"
 
+	"github.com/openshift/backplane-cli/pkg/backplaneapi"
 	"github.com/openshift/backplane-cli/pkg/cli/config"
 	"github.com/openshift/backplane-cli/pkg/cli/globalflags"
 	"github.com/openshift/backplane-cli/pkg/login"
+	"github.com/openshift/backplane-cli/pkg/ocm"
 	"github.com/openshift/backplane-cli/pkg/utils"
 )
 
@@ -100,7 +102,7 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 	// Set proxy url to http client
 	proxyURL := globalOpts.ProxyURL
 	if proxyURL != "" {
-		err = utils.DefaultClientUtils.SetClientProxyURL(proxyURL)
+		err = backplaneapi.DefaultClientUtils.SetClientProxyURL(proxyURL)
 
 		if err != nil {
 			return err
@@ -108,11 +110,11 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 		logger.Debugf("Using backplane Proxy URL: %s\n", proxyURL)
 	}
 
-	if len(proxyURL) == 0 {
-		proxyURL = bpConfig.ProxyURL
+	if bpConfig.ProxyURL != nil {
+		proxyURL = *bpConfig.ProxyURL
 	}
 
-	clusterID, clusterName, err := utils.DefaultOCMInterface.GetTargetCluster(clusterKey)
+	clusterID, clusterName, err := ocm.DefaultOCMInterface.GetTargetCluster(clusterKey)
 	if err != nil {
 		return err
 	}
@@ -123,7 +125,11 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 
 	if globalOpts.Manager {
 		logger.WithField("Cluster ID", clusterID).Debugln("Finding managing cluster")
-		clusterID, clusterName, err = utils.DefaultOCMInterface.GetManagingCluster(clusterID)
+		var isHostedControlPlane bool
+		targetClusterID := clusterID
+		targetClusterName := clusterName
+
+		clusterID, clusterName, isHostedControlPlane, err = ocm.DefaultOCMInterface.GetManagingCluster(clusterID)
 		if err != nil {
 			return err
 		}
@@ -131,11 +137,22 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 		logger.WithFields(logger.Fields{
 			"ID":   clusterID,
 			"Name": clusterName}).Infoln("Management cluster")
+
+		// Print the related namespace if login to manager cluster
+		var namespaces []string
+		namespaces, err = listNamespaces(targetClusterID, targetClusterName, isHostedControlPlane)
+		if err != nil {
+			return err
+		}
+		fmt.Println("A list of associated namespaces for your given cluster:")
+		for _, ns := range namespaces {
+			fmt.Println("	" + ns)
+		}
 	}
 
 	if globalOpts.Service {
 		logger.WithField("Cluster ID", clusterID).Debugln("Finding service cluster")
-		clusterID, clusterName, err = utils.DefaultOCMInterface.GetServiceCluster(clusterID)
+		clusterID, clusterName, err = ocm.DefaultOCMInterface.GetServiceCluster(clusterID)
 		if err != nil {
 			return err
 		}
@@ -151,7 +168,7 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 			return fmt.Errorf("can't save the kube config into a specific location if multi-cluster is not enabled. Please specify --multi flag")
 		}
 		if _, err := os.Stat(args.kubeConfigPath); errors.Is(err, os.ErrNotExist) {
-			return fmt.Errorf("kube config save path is not exist")
+			return fmt.Errorf("the save path for the kubeconfig does not exist")
 		}
 	}
 
@@ -169,14 +186,14 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 
 	// Get ocm access token
 	logger.Debugln("Finding ocm token")
-	accessToken, err := utils.DefaultOCMInterface.GetOCMAccessToken()
+	accessToken, err := ocm.DefaultOCMInterface.GetOCMAccessToken()
 	if err != nil {
 		return err
 	}
 	logger.Debugln("Found OCM access token")
 
 	// Not great if there's an error checking if the cluster is hibernating, but ignore it for now and continue
-	if isHibernating, _ := utils.DefaultOCMInterface.IsClusterHibernating(clusterID); isHibernating {
+	if isHibernating, _ := ocm.DefaultOCMInterface.IsClusterHibernating(clusterID); isHibernating {
 		// If it is hibernating, don't try to connect as it will fail
 		return fmt.Errorf("cluster %s is hibernating, login failed", clusterKey)
 	}
@@ -185,7 +202,7 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 	bpAPIClusterURL, err := doLogin(bpURL, clusterID, *accessToken)
 	if err != nil {
 		// If login failed, we try to find out if the cluster is hibernating
-		isHibernating, _ := utils.DefaultOCMInterface.IsClusterHibernating(clusterID)
+		isHibernating, _ := ocm.DefaultOCMInterface.IsClusterHibernating(clusterID)
 		if isHibernating {
 			// Hibernating, print an error
 			return fmt.Errorf("cluster %s is hibernating, login failed", clusterKey)
@@ -251,12 +268,12 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 // GetRestConfig returns a client-go *rest.Config which can be used to programmatically interact with the
 // Kubernetes API of a provided clusterID
 func GetRestConfig(bp config.BackplaneConfiguration, clusterID string) (*rest.Config, error) {
-	cluster, err := utils.DefaultOCMInterface.GetClusterInfoByID(clusterID)
+	cluster, err := ocm.DefaultOCMInterface.GetClusterInfoByID(clusterID)
 	if err != nil {
 		return nil, err
 	}
 
-	accessToken, err := utils.DefaultOCMInterface.GetOCMAccessToken()
+	accessToken, err := ocm.DefaultOCMInterface.GetOCMAccessToken()
 	if err != nil {
 		return nil, err
 	}
@@ -271,9 +288,9 @@ func GetRestConfig(bp config.BackplaneConfiguration, clusterID string) (*rest.Co
 		BearerToken: *accessToken,
 	}
 
-	if bp.ProxyURL != "" {
+	if bp.ProxyURL != nil {
 		cfg.Proxy = func(*http.Request) (*url.URL, error) {
-			return url.Parse(bp.ProxyURL)
+			return url.Parse(*bp.ProxyURL)
 		}
 	}
 
@@ -282,13 +299,20 @@ func GetRestConfig(bp config.BackplaneConfiguration, clusterID string) (*rest.Co
 
 // GetRestConfigAsUser returns a client-go *rest.Config like GetRestConfig, but supports configuring an
 // impersonation username. Commonly, this is "backplane-cluster-admin"
-func GetRestConfigAsUser(bp config.BackplaneConfiguration, clusterID, username string) (*rest.Config, error) {
+// best practice would be to add at least one elevationReason in order to justity the impersonation
+func GetRestConfigAsUser(bp config.BackplaneConfiguration, clusterID, username string, elevationReasons ...string) (*rest.Config, error) {
 	cfg, err := GetRestConfig(bp, clusterID)
 	if err != nil {
 		return nil, err
 	}
 
-	cfg.Impersonate = rest.ImpersonationConfig{UserName: username}
+	cfg.Impersonate = rest.ImpersonationConfig{
+		UserName: username,
+	}
+
+	if len(elevationReasons) > 0 {
+		cfg.Impersonate.Extra = map[string][]string{"reason": elevationReasons}
+	}
 
 	return cfg, nil
 }
@@ -322,7 +346,7 @@ func getUsernameFromJWT(token string) string {
 // doLogin returns the proxy url for the target cluster.
 func doLogin(api, clusterID, accessToken string) (string, error) {
 
-	client, err := utils.DefaultClientUtils.MakeRawBackplaneAPIClientWithAccessToken(api, accessToken)
+	client, err := backplaneapi.DefaultClientUtils.MakeRawBackplaneAPIClientWithAccessToken(api, accessToken)
 
 	if err != nil {
 		return "", fmt.Errorf("unable to create backplane api client")
@@ -351,4 +375,33 @@ func doLogin(api, clusterID, accessToken string) (string, error) {
 	}
 
 	return api + *loginResp.JSON200.ProxyUri, nil
+}
+
+func listNamespaces(clusterID, clusterName string, isHostedControlPlane bool) ([]string, error) {
+
+	env, err := ocm.DefaultOCMInterface.GetOCMEnvironment()
+	if err != nil {
+		return []string{}, err
+	}
+	envName := env.Name()
+
+	klusterletPrefix := "klusterlet-"
+	hivePrefix := fmt.Sprintf("uhc-%s-", envName)
+	hcpPrefix := fmt.Sprintf("ocm-%s-", envName)
+
+	var nsList []string
+
+	if isHostedControlPlane {
+		nsList = []string{
+			klusterletPrefix + clusterID,
+			hcpPrefix + clusterID,
+			hcpPrefix + clusterID + "-" + clusterName,
+		}
+	} else {
+		nsList = []string{
+			hivePrefix + clusterID,
+		}
+	}
+
+	return nsList, nil
 }
