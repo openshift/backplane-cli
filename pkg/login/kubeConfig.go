@@ -37,21 +37,18 @@ func CreateClusterKubeConfig(clusterID string, kubeConfig api.Config) (string, e
 
 	// Write kube config if file not exist
 	filename := filepath.Join(path, "config")
-	_, err = os.Stat(filename)
-	if errors.Is(err, os.ErrNotExist) {
-		f, err := os.Create(filename)
-		if err != nil {
-			return "", err
-		}
-		err = clientcmd.WriteToFile(kubeConfig, f.Name())
+	f, err := os.Create(filename)
+	if err != nil {
+		return "", err
+	}
+	err = clientcmd.WriteToFile(kubeConfig, f.Name())
 
-		if err != nil {
-			return "", err
-		}
-		err = f.Close()
-		if err != nil {
-			return "", err
-		}
+	if err != nil {
+		return "", err
+	}
+	err = f.Close()
+	if err != nil {
+		return "", err
 	}
 
 	// set kube config env with temp kube config file
