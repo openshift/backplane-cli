@@ -35,7 +35,7 @@ func CreateClusterKubeConfig(clusterID string, kubeConfig api.Config) (string, e
 		}
 	}
 
-	// Write kube config if file not exist
+	// Write kube config
 	filename := filepath.Join(path, "config")
 	f, err := os.Create(filename)
 	if err != nil {
