@@ -3,6 +3,7 @@ package login
 import (
 	"errors"
 	"os"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -37,18 +38,28 @@ var _ = Describe("Login Kube Config test", func() {
 	})
 
 	Context("save kubeconfig ", func() {
-		It("should save cluster kube config in cluster folder", func() {
+		It("should save cluster kube config in cluster folder, and replace it on second call", func() {
 
 			err := SetKubeConfigBasePath(kubePath)
 			Expect(err).To(BeNil())
-			path, err := CreateClusterKubeConfig(testClusterID, kubeConfig)
 
+			path, err := CreateClusterKubeConfig(testClusterID, kubeConfig)
 			Expect(err).To(BeNil())
 			Expect(path).Should(ContainSubstring(testClusterID))
 
 			//check file is exist
-			_, err = os.Stat(path)
+			firstStat, err := os.Stat(path)
 			Expect(err).To(BeNil())
+
+			time.Sleep(1 * time.Second)
+			path, err = CreateClusterKubeConfig(testClusterID, kubeConfig)
+			Expect(err).To(BeNil())
+			Expect(path).Should(ContainSubstring(testClusterID))
+
+			//check file has been replaced
+			secondStat, err := os.Stat(path)
+			Expect(err).To(BeNil())
+			Expect(firstStat).ToNot(Equal(secondStat))
 		})
 	})
 

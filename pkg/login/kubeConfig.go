@@ -41,18 +41,16 @@ func CreateClusterKubeConfig(clusterID string, kubeConfig api.Config) (string, e
 	if err != nil {
 		return "", err
 	}
-	err = clientcmd.WriteToFile(kubeConfig, f.Name())
+	defer func() {
+		f.Close()
+	}()
 
-	if err != nil {
-		return "", err
-	}
-	err = f.Close()
+	err = clientcmd.WriteToFile(kubeConfig, f.Name())
 	if err != nil {
 		return "", err
 	}
 
 	// set kube config env with temp kube config file
-
 	err = os.Setenv(info.BackplaneKubeconfigEnvName, filename)
 	if err != nil {
 		return "", err
