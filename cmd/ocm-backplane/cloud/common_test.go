@@ -202,6 +202,19 @@ var _ = Describe("isIsolatedBackplaneAccess", func() {
 	})
 
 	Context("Execute isIsolatedBackplaneAccess", func() {
+		It("returns true immediately if the cluster is hypershift enabled", func() {
+			hyperShiftBuilder := &cmv1.HypershiftBuilder{}
+			hyperShiftBuilder.Enabled(true)
+
+			clusterBuilder := cmv1.ClusterBuilder{}
+			clusterBuilder.Hypershift(hyperShiftBuilder)
+
+			cluster, _ := clusterBuilder.Build()
+			result, err := isIsolatedBackplaneAccess(cluster, nil)
+
+			Expect(result).To(Equal(true))
+			Expect(err).To(BeNil())
+		})
 		It("returns an error if fails to get STS Support Jump Role from OCM for STS enabled cluster", func() {
 			mockOcmInterface.EXPECT().GetStsSupportJumpRoleARN(&sdk.Connection{}, testClusterID).Return("", errors.New("oops"))
 
