@@ -2,17 +2,17 @@ package cloud
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 
 	ocmsdk "github.com/openshift-online/ocm-cli/pkg/ocm"
+	logger "github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
+	"sigs.k8s.io/yaml"
+
 	"github.com/openshift/backplane-cli/pkg/cli/config"
 	bpCredentials "github.com/openshift/backplane-cli/pkg/credentials"
 	"github.com/openshift/backplane-cli/pkg/ocm"
 	"github.com/openshift/backplane-cli/pkg/utils"
-	logger "github.com/sirupsen/logrus"
-	"github.com/spf13/cobra"
-	"sigs.k8s.io/yaml"
 )
 
 var GetBackplaneClusterFromConfig = utils.DefaultClusterUtils.GetBackplaneClusterFromConfig
@@ -94,10 +94,6 @@ func runCredentials(cmd *cobra.Command, argv []string) error {
 	// ============Get Backplane URl ==========================
 	if credentialArgs.backplaneURL != "" { // Overwrite if parameter is set
 		backplaneConfiguration.URL = credentialArgs.backplaneURL
-	}
-
-	if backplaneConfiguration.URL == "" {
-		return errors.New("empty backplane url - check your backplane-cli configuration")
 	}
 	logger.Infof("Using backplane URL: %s\n", backplaneConfiguration.URL)
 
