@@ -56,7 +56,7 @@ func (cfg *QueryConfig) GetAWSV2Config() (aws.Config, error) {
 	return awsCreds.AWSV2Config()
 }
 
-// GetCloudCredentials returns Cloud Credentials Response
+// GetCloudConsole returns Cloud Credentials Response
 func (cfg *QueryConfig) GetCloudConsole() (*ConsoleResponse, error) {
 	ocmToken, _, err := cfg.OcmConnection.Tokens()
 	if err != nil {
@@ -281,6 +281,10 @@ func (cfg *QueryConfig) getIsolatedCredentials(ocmToken string) (aws.Credentials
 }
 
 func isIsolatedBackplaneAccess(cluster *cmv1.Cluster, ocmConnection *ocmsdk.Connection) (bool, error) {
+	if cluster.Hypershift().Enabled() {
+		return true, nil
+	}
+
 	if cluster.AWS().STS().Enabled() {
 		stsSupportJumpRole, err := ocm.DefaultOCMInterface.GetStsSupportJumpRoleARN(ocmConnection, cluster.ID())
 		if err != nil {
