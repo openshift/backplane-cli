@@ -2,12 +2,12 @@ package cloud
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"strconv"
 
 	ocmsdk "github.com/openshift-online/ocm-cli/pkg/ocm"
+
 	"github.com/openshift/backplane-cli/pkg/ocm"
 
 	"github.com/pkg/browser"
@@ -126,10 +126,6 @@ func runConsole(cmd *cobra.Command, argv []string) (err error) {
 	// ============Get Backplane URl ==========================
 	if credentialArgs.backplaneURL != "" { // Overwrite if parameter is set
 		backplaneConfiguration.URL = credentialArgs.backplaneURL
-	}
-
-	if backplaneConfiguration.URL == "" {
-		return errors.New("empty backplane url - check your backplane-cli configuration")
 	}
 	logger.Infof("Using backplane URL: %s\n", backplaneConfiguration.URL)
 
