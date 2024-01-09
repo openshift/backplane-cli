@@ -31,8 +31,9 @@ const EnvPs1 = "KUBE_PS1_CLUSTER_FUNCTION"
 
 var (
 	args struct {
-		multiCluster   bool
-		kubeConfigPath string
+		multiCluster     bool
+		kubeConfigPath   string
+		defaultNamespace string
 	}
 
 	globalOpts = &globalflags.GlobalOptions{}
@@ -70,6 +71,13 @@ func init() {
 		"kube-path",
 		"",
 		"Save kube configuration in the specific path when login to multi clusters.",
+	)
+
+	flags.StringVar(
+		&args.defaultNamespace,
+		"defaultns",
+		"openshift-backplane-srep",
+		"Sets a default namespace for SRE to run commands like oc debug node/xxx",
 	)
 
 }
@@ -144,9 +152,12 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 		if err != nil {
 			return err
 		}
+		fmt.Println("You set")
 		fmt.Println("A list of associated namespaces for your given cluster:")
 		for _, ns := range namespaces {
+
 			fmt.Println("	" + ns)
+
 		}
 	}
 
@@ -250,7 +261,8 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 
 	targetContext.AuthInfo = targetUserNickName
 	targetContext.Cluster = clusterName
-	targetContext.Namespace = "default"
+
+	targetContext.Namespace = args.defaultNamespace
 	targetContextNickName := getContextNickname(targetContext.Namespace, targetContext.Cluster, targetContext.AuthInfo)
 
 	// Put user, cluster, context into rawconfig
