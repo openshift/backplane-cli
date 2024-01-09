@@ -2,6 +2,7 @@ package cloud
 
 import (
 	"context"
+	//nolint:gosec
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -24,14 +25,17 @@ import (
 	logger "github.com/sirupsen/logrus"
 )
 
-const OldFlowSupportRole = "role/RH-Technical-Support-Access"
+const (
+	OldFlowSupportRole  = "role/RH-Technical-Support-Access"
+	CustomerRoleArnName = "Target-Role-Arn"
+)
 
 var StsClient = awsutil.StsClient
 var AssumeRoleWithJWT = awsutil.AssumeRoleWithJWT
 var NewStaticCredentialsProvider = credentials.NewStaticCredentialsProvider
 var AssumeRoleSequence = awsutil.AssumeRoleSequence
 
-// Wrapper for the configuration needed for cloud requests
+// QueryConfig Wrapper for the configuration needed for cloud requests
 type QueryConfig struct {
 	config.BackplaneConfiguration
 	OcmConnection *ocmsdk.Connection
@@ -207,7 +211,8 @@ func (cfg *QueryConfig) getCloudCredentialsFromBackplaneAPI(ocmToken string) (bp
 }
 
 type assumeChainResponse struct {
-	AssumptionSequence []namedRoleArn `json:"assumptionSequence"`
+	AssumptionSequence      []namedRoleArn `json:"assumptionSequence"`
+	CustomerRoleSessionName string         `json:"customerRoleSessionName"`
 }
 
 type namedRoleArn struct {
@@ -263,9 +268,15 @@ func (cfg *QueryConfig) getIsolatedCredentials(ocmToken string) (aws.Credentials
 		return aws.Credentials{}, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
 
-	roleAssumeSequence := make([]string, 0, len(roleChainResponse.AssumptionSequence))
-	for _, namedRoleArn := range roleChainResponse.AssumptionSequence {
-		roleAssumeSequence = append(roleAssumeSequence, namedRoleArn.Arn)
+	assumeRoleArnSessionSequence := make([]awsutil.RoleArnSession, 0, len(roleChainResponse.AssumptionSequence))
+	for _, namedRoleArnEntry := range roleChainResponse.AssumptionSequence {
+		roleArnSession := awsutil.RoleArnSession{RoleArn: namedRoleArnEntry.Arn}
+		if namedRoleArnEntry.Name == CustomerRoleArnName {
+			roleArnSession.RoleSessionName = roleChainResponse.CustomerRoleSessionName
+		} else {
+			roleArnSession.RoleSessionName = email
+		}
+		assumeRoleArnSessionSequence = append(assumeRoleArnSessionSequence, roleArnSession)
 	}
 
 	seedClient := sts.NewFromConfig(aws.Config{
@@ -273,7 +284,7 @@ func (cfg *QueryConfig) getIsolatedCredentials(ocmToken string) (aws.Credentials
 		Credentials: NewStaticCredentialsProvider(seedCredentials.AccessKeyID, seedCredentials.SecretAccessKey, seedCredentials.SessionToken),
 	})
 
-	targetCredentials, err := AssumeRoleSequence(email, seedClient, roleAssumeSequence, cfg.BackplaneConfiguration.ProxyURL, awsutil.DefaultSTSClientProviderFunc)
+	targetCredentials, err := AssumeRoleSequence(seedClient, assumeRoleArnSessionSequence, cfg.BackplaneConfiguration.ProxyURL, awsutil.DefaultSTSClientProviderFunc)
 	if err != nil {
 		return aws.Credentials{}, fmt.Errorf("failed to assume role sequence: %w", err)
 	}
