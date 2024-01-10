@@ -161,10 +161,10 @@ var _ = Describe("Login command", func() {
 
 			cfg, err := utils.ReadKubeconfigRaw()
 			Expect(err).To(BeNil())
-			Expect(cfg.CurrentContext).To(Equal("default/test123/anonymous"))
+			Expect(cfg.CurrentContext).To(Equal("openshift-backplane-srep/test123/anonymous"))
 			Expect(len(cfg.Contexts)).To(Equal(1))
-			Expect(cfg.Contexts["default/test123/anonymous"].Cluster).To(Equal(testClusterID))
-			Expect(cfg.Contexts["default/test123/anonymous"].Namespace).To(Equal("default"))
+			Expect(cfg.Contexts["openshift-backplane-srep/test123/anonymous"].Cluster).To(Equal(testClusterID))
+			Expect(cfg.Contexts["openshift-backplane-srep/test123/anonymous"].Namespace).To(Equal("openshift-backplane-srep"))
 		})
 
 		It("should use the specified proxy url if passed", func() {
@@ -186,11 +186,11 @@ var _ = Describe("Login command", func() {
 			cfg, err := utils.ReadKubeconfigRaw()
 
 			Expect(err).To(BeNil())
-			Expect(cfg.CurrentContext).To(Equal("default/test123/anonymous"))
+			Expect(cfg.CurrentContext).To(Equal("openshift-backplane-srep/test123/anonymous"))
 			Expect(len(cfg.Contexts)).To(Equal(1))
-			Expect(cfg.Contexts["default/test123/anonymous"].Cluster).To(Equal(testClusterID))
+			Expect(cfg.Contexts["openshift-backplane-srep/test123/anonymous"].Cluster).To(Equal(testClusterID))
 			Expect(cfg.Clusters[testClusterID].ProxyURL).To(Equal(globalOpts.ProxyURL))
-			Expect(cfg.Contexts["default/test123/anonymous"].Namespace).To(Equal("default"))
+			Expect(cfg.Contexts["openshift-backplane-srep/test123/anonymous"].Namespace).To(Equal("openshift-backplane-srep"))
 		})
 
 		It("should fail if unable to create api client", func() {
@@ -237,10 +237,10 @@ var _ = Describe("Login command", func() {
 
 			cfg, err := utils.ReadKubeconfigRaw()
 			Expect(err).To(BeNil())
-			Expect(cfg.CurrentContext).To(Equal("default/test123/anonymous"))
+			Expect(cfg.CurrentContext).To(Equal("openshift-backplane-srep/test123/anonymous"))
 			Expect(len(cfg.Contexts)).To(Equal(1))
-			Expect(cfg.Contexts["default/test123/anonymous"].Cluster).To(Equal(testClusterID))
-			Expect(cfg.Contexts["default/test123/anonymous"].Namespace).To(Equal("default"))
+			Expect(cfg.Contexts["openshift-backplane-srep/test123/anonymous"].Cluster).To(Equal(testClusterID))
+			Expect(cfg.Contexts["openshift-backplane-srep/test123/anonymous"].Namespace).To(Equal("openshift-backplane-srep"))
 		})
 
 		It("Should fail when trying to find a non existent cluster", func() {
@@ -326,8 +326,8 @@ var _ = Describe("Login command", func() {
 			cfg, err := utils.ReadKubeconfigRaw()
 			Expect(err).To(BeNil())
 
-			Expect(cfg.Contexts["default/test123/anonymous"].Cluster).To(Equal("dummy_cluster"))
-			Expect(cfg.Contexts["default/test123/anonymous"].Namespace).To(Equal("default"))
+			Expect(cfg.Contexts["openshift-backplane-srep/test123/anonymous"].Cluster).To(Equal("dummy_cluster"))
+			Expect(cfg.Contexts["openshift-backplane-srep/test123/anonymous"].Namespace).To(Equal("openshift-backplane-srep"))
 		})
 
 		It("should fail when a proxy or backplane url is unreachable", func() {
