@@ -154,9 +154,7 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 		}
 		fmt.Println("A list of associated namespaces for your given cluster:")
 		for _, ns := range namespaces {
-
 			fmt.Println("	" + ns)
-
 		}
 	}
 
