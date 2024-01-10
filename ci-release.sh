@@ -10,6 +10,12 @@ if [ -z "$VERSION" ]; then
     exit 1
 fi
 
+# Check if the tag already exists in the repository
+if git rev-parse "v$VERSION" >/dev/null 2>&1; then
+    echo "Error: Tag v$VERSION already exists. Aborting release."
+    exit 1
+fi
+
 # Git configurations
 git config user.name "CI release"
 git config user.email "ci-test@release.com"
