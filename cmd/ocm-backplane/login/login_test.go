@@ -34,12 +34,12 @@ func MakeIoReader(s string) io.ReadCloser {
 var _ = Describe("Login command", func() {
 
 	var (
-		mockCtrl               *gomock.Controller
-		mockClient             *mocks.MockClientInterface
-		mockClientWithResp     *mocks.MockClientWithResponsesInterface
-		mockOcmInterface       *ocmMock.MockOCMInterface
-		mockClientUtil         *backplaneapiMock.MockClientUtils
-    
+		mockCtrl           *gomock.Controller
+		mockClient         *mocks.MockClientInterface
+		mockClientWithResp *mocks.MockClientWithResponsesInterface
+		mockOcmInterface   *ocmMock.MockOCMInterface
+		mockClientUtil     *backplaneapiMock.MockClientUtils
+
 		testClusterID          string
 		testToken              string
 		trueClusterID          string
@@ -92,7 +92,7 @@ var _ = Describe("Login command", func() {
 		ocmEnv, _ = cmv1.NewEnvironment().BackplaneURL("https://dummy.api").Build()
 
 		mockCluster = &cmv1.Cluster{}
-		
+
 		backplaneConfiguration = config.BackplaneConfiguration{URL: backplaneAPIURI}
 	})
 
@@ -397,7 +397,7 @@ var _ = Describe("Login command", func() {
 
 	Context("check GetRestConfigAsUser", func() {
 
-		It("check config creation with username and without elevationReasons",func () {
+		It("check config creation with username and without elevationReasons", func() {
 			mockOcmInterface.EXPECT().GetClusterInfoByID(testClusterID).Return(mockCluster, nil)
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil)
 			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken(backplaneAPIURI, testToken).Return(mockClient, nil)
@@ -412,7 +412,7 @@ var _ = Describe("Login command", func() {
 
 		})
 
-		It("check config creation with username and elevationReasons",func () {
+		It("check config creation with username and elevationReasons", func() {
 			mockOcmInterface.EXPECT().GetClusterInfoByID(testClusterID).Return(mockCluster, nil)
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil)
 			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken(backplaneAPIURI, testToken).Return(mockClient, nil)
