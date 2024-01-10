@@ -31,9 +31,9 @@ const EnvPs1 = "KUBE_PS1_CLUSTER_FUNCTION"
 
 var (
 	args struct {
+		defaultNamespace string
 		multiCluster     bool
 		kubeConfigPath   string
-		defaultNamespace string
 	}
 
 	globalOpts = &globalflags.GlobalOptions{}
@@ -152,7 +152,6 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 		if err != nil {
 			return err
 		}
-		fmt.Println("You set")
 		fmt.Println("A list of associated namespaces for your given cluster:")
 		for _, ns := range namespaces {
 
@@ -261,7 +260,6 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 
 	targetContext.AuthInfo = targetUserNickName
 	targetContext.Cluster = clusterName
-
 	targetContext.Namespace = args.defaultNamespace
 	targetContextNickName := getContextNickname(targetContext.Namespace, targetContext.Cluster, targetContext.AuthInfo)
 
