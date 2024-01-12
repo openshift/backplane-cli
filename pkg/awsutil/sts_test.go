@@ -150,7 +150,7 @@ func TestAssumeRole(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := AssumeRole("", tt.stsClient, "")
+			got, err := AssumeRole(tt.stsClient, "", "")
 			if (err != nil) != tt.wantErr {
 				t.Errorf("AssumeRole() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -165,7 +165,7 @@ func TestAssumeRole(t *testing.T) {
 func TestAssumeRoleSequence(t *testing.T) {
 	type args struct {
 		seedClient            stscreds.AssumeRoleAPIClient
-		roleArnSequence       []string
+		roleArnSequence       []RoleArnSession
 		stsClientProviderFunc STSClientProviderFunc
 	}
 	tests := []struct {
@@ -184,7 +184,7 @@ func TestAssumeRoleSequence(t *testing.T) {
 		{
 			name: "role arn sequence is empty",
 			args: args{
-				roleArnSequence: []string{},
+				roleArnSequence: []RoleArnSession{},
 			},
 			wantErr: true,
 		},
@@ -192,7 +192,7 @@ func TestAssumeRoleSequence(t *testing.T) {
 			name: "single role arn in sequence",
 			args: args{
 				seedClient:      defaultSuccessMockSTSClient(),
-				roleArnSequence: []string{"a"},
+				roleArnSequence: []RoleArnSession{{RoleArn: "a"}},
 				stsClientProviderFunc: func(optFns ...func(*config.LoadOptions) error) (stscreds.AssumeRoleAPIClient, error) {
 					return defaultSuccessMockSTSClient(), nil
 				},
@@ -209,7 +209,7 @@ func TestAssumeRoleSequence(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := AssumeRoleSequence("", tt.args.seedClient, tt.args.roleArnSequence, nil, tt.args.stsClientProviderFunc)
+			got, err := AssumeRoleSequence(tt.args.seedClient, tt.args.roleArnSequence, nil, tt.args.stsClientProviderFunc)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("AssumeRoleSequence() error = %v, wantErr %v", err, tt.wantErr)
 				return
