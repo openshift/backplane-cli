@@ -455,7 +455,7 @@ func (o *consoleOptions) getPlugins() (string, error) {
 }
 
 func (o *consoleOptions) runConsoleContainer(ce containerEngineInterface) error {
-	clusterID, err := getClusterId()
+	clusterID, err := getClusterID()
 	if err != nil {
 		return err
 	}
@@ -540,8 +540,7 @@ func (o *consoleOptions) runConsoleContainer(ce containerEngineInterface) error 
 		"-listen", bridgeListen,
 	}
 
-	ce.runConsoleContainer(consoleContainerName, o.port, containerArgs, envVars)
-	return nil
+	return ce.runConsoleContainer(consoleContainerName, o.port, containerArgs, envVars)
 }
 
 func (o *consoleOptions) runMonitorPlugin(ce containerEngineInterface) error {
@@ -552,9 +551,12 @@ func (o *consoleOptions) runMonitorPlugin(ce containerEngineInterface) error {
 	}
 	// Setup nginx configurations
 	config := fmt.Sprintf(info.MonitoringPluginNginxConfigTemplate, o.monitorPluginPort)
-	ce.putFileToMount(info.MonitoringPluginNginxConfigFilename, []byte(config))
+	err := ce.putFileToMount(info.MonitoringPluginNginxConfigFilename, []byte(config))
+	if err != nil {
+		return nil
+	}
 
-	clusterID, err := getClusterId()
+	clusterID, err := getClusterID()
 	if err != nil {
 		return err
 	}
@@ -562,8 +564,7 @@ func (o *consoleOptions) runMonitorPlugin(ce containerEngineInterface) error {
 	pluginContainerName := fmt.Sprintf("monitoring-plugin-%s", clusterID)
 
 	pluginArgs := []string{o.monitorPluginImage}
-	ce.runMonitorPlugin(pluginContainerName, consoleContainerName, info.MonitoringPluginNginxConfigFilename, pluginArgs)
-	return nil
+	return ce.runMonitorPlugin(pluginContainerName, consoleContainerName, info.MonitoringPluginNginxConfigFilename, pluginArgs)
 }
 
 // print the console URL and pop a browser if required
@@ -595,7 +596,7 @@ func (o *consoleOptions) printURL() error {
 }
 
 func (o *consoleOptions) cleanUp(ce containerEngineInterface) error {
-	clusterID, err := getClusterId()
+	clusterID, err := getClusterID()
 	if err != nil {
 		return err
 	}
@@ -624,8 +625,8 @@ func (o *consoleOptions) cleanUp(ce containerEngineInterface) error {
 	return err
 }
 
-// getClusterId returns the current cluster id in current kubeconfig
-func getClusterId() (string, error) {
+// getClusterID returns the current cluster id in current kubeconfig
+func getClusterID() (string, error) {
 	currentClusterInfo, err := utils.DefaultClusterUtils.GetBackplaneClusterFromConfig()
 	if err != nil {
 		return "", err
