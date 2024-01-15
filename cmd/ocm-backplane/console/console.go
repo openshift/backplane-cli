@@ -332,7 +332,7 @@ func (o *consoleOptions) getContainerEngineImpl() (containerEngineInterface, err
 	} else if runtime.GOOS == LINUX && containerEngine == DOCKER {
 		containerEngineImpl = &dockerLinux{}
 	} else if runtime.GOOS == MACOS && containerEngine == DOCKER {
-		logger.Warnln("Docker on MacOS is no longer maintained, please switch to podman on MacOS")
+		logger.Warnln("Docker on MacOS is not tested")
 		containerEngineImpl = &dockerMac{}
 	}
 	return containerEngineImpl, nil
@@ -562,7 +562,6 @@ func (o *consoleOptions) runMonitorPlugin(ce containerEngineInterface) error {
 	pluginContainerName := fmt.Sprintf("monitoring-plugin-%s", clusterID)
 
 	pluginArgs := []string{o.monitorPluginImage}
-	// TODO replace it with engine specific implementation
 	ce.runMonitorPlugin(pluginContainerName, consoleContainerName, info.MonitoringPluginNginxConfigFilename, pluginArgs)
 	return nil
 }
@@ -966,12 +965,12 @@ func generalDockerPullImage(imageName string) error {
 	return nil
 }
 
-// podman-pull for Linux
+// docker-pull for Linux
 func (ce *dockerLinux) pullImage(imageName string) error {
 	return generalDockerPullImage(imageName)
 }
 
-// podman-pull for Mac
+// docker-pull for Mac
 func (ce *dockerMac) pullImage(imageName string) error {
 	return generalDockerPullImage(imageName)
 }
