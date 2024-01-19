@@ -27,6 +27,7 @@ var (
 		url           string
 		raw           bool
 		logs          bool
+		manager       string
 	}
 )
 
@@ -62,6 +63,13 @@ func newCreateManagedJobCmd() *cobra.Command {
 		"",
 		false,
 		"Fetch logs from the pod for the running job")
+
+	cmd.Flags().StringVarP(
+		&options.manager,
+		"manager",
+		"",
+		"",
+		"Run the job on given specified manager --manager <shard/hive id>")
 
 	return cmd
 }
