@@ -50,6 +50,7 @@ var _ = Describe("Login command", func() {
 		fakeResp               *http.Response
 		ocmEnv                 *cmv1.Environment
 		kubeConfigPath         string
+		defaultNamespace       string
 		mockCluster            *cmv1.Cluster
 		backplaneConfiguration config.BackplaneConfiguration
 	)
@@ -73,6 +74,7 @@ var _ = Describe("Login command", func() {
 		serviceClusterName = "hs-sc-654321"
 		backplaneAPIURI = "https://shard.apps"
 		kubeConfigPath = "filepath"
+		defaultNamespace = "openshift-backplane-srep"
 
 		mockClientWithResp.EXPECT().LoginClusterWithResponse(gomock.Any(), gomock.Any()).Return(nil, nil).Times(0)
 
