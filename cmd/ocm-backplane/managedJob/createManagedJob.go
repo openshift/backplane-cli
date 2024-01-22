@@ -85,7 +85,15 @@ func runCreateManagedJob(cmd *cobra.Command, args []string) (err error) {
 	}
 
 	// ======== Initialize backplaneURL ========
-	bpCluster, err := utils.DefaultClusterUtils.GetBackplaneCluster(options.clusterID)
+	// check if manager option is used or not
+	var id_base_cluster string
+	if len(options.manager) != 0 {
+		id_base_cluster = options.manager
+		fmt.Println("Manager id is %s", id_base_cluster)
+	} else {
+		id_base_cluster = options.clusterID
+	}
+	bpCluster, err := utils.DefaultClusterUtils.GetBackplaneCluster(id_base_cluster)
 	if err != nil {
 		return err
 	}
