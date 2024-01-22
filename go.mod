@@ -15,7 +15,7 @@ require (
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.31.1
 	github.com/openshift-online/ocm-cli v0.1.66
-	github.com/openshift-online/ocm-sdk-go v0.1.392
+	github.com/openshift-online/ocm-sdk-go v0.1.393
 	github.com/openshift/backplane-api v0.0.0-20230919035427-a52e4ae498fb
 	github.com/openshift/client-go v0.0.0-20221019143426-16aed247da5c
 	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8
@@ -102,6 +102,7 @@ require (
 	github.com/prometheus/procfs v0.8.0 // indirect
 	github.com/sagikazarmark/locafero v0.4.0 // indirect
 	github.com/sagikazarmark/slog-shim v0.1.0 // indirect
+	github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966 // indirect
 	github.com/sourcegraph/conc v0.3.0 // indirect
 	github.com/spf13/afero v1.11.0 // indirect
 	github.com/spf13/cast v1.6.0 // indirect
