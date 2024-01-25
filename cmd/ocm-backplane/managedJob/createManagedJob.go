@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	BackplaneApi "github.com/openshift/backplane-api/pkg/client"
@@ -27,7 +28,7 @@ var (
 		url           string
 		raw           bool
 		logs          bool
-		manager       string
+		manager       bool
 	}
 )
 
@@ -64,12 +65,12 @@ func newCreateManagedJobCmd() *cobra.Command {
 		false,
 		"Fetch logs from the pod for the running job")
 
-	cmd.Flags().StringVarP(
+	cmd.Flags().BoolVarP(
 		&options.manager,
 		"manager",
 		"",
-		"",
-		"Run the job on given specified manager --manager <shard/hive id>")
+		false,
+		"Run the job on manager/hive shar if flag is set --manager")
 
 	return cmd
 }
@@ -85,17 +86,22 @@ func runCreateManagedJob(cmd *cobra.Command, args []string) (err error) {
 	}
 
 	// ======== Initialize backplaneURL ========
-	// check if manager option is used or not
-	var id_base_cluster string
-	if len(options.manager) != 0 {
-		id_base_cluster = options.manager
-		fmt.Println("Manager id is %s", id_base_cluster)
-	} else {
-		id_base_cluster = options.clusterID
-	}
-	bpCluster, err := utils.DefaultClusterUtils.GetBackplaneCluster(id_base_cluster)
+	bpCluster, err := utils.DefaultClusterUtils.GetBackplaneCluster(options.clusterID)
 	if err != nil {
 		return err
+	}
+	if options.manager {
+		if strings.Contains(bpCluster.ClusterURL, "api.stage") {
+			return fmt.Errorf("The bplane url is %s, This option works only for Prod env", bpCluster.ClusterURL)
+		} else {
+			fmt.Println("not a staging")
+			mcid, clusterName, _, err := ocm.DefaultOCMInterface.GetManagingCluster(bpCluster.ClusterID)
+			if err == nil {
+				bpCluster, err = utils.DefaultClusterUtils.GetBackplaneCluster(mcid)
+			} else {
+				return fmt.Errorf("The cluster id is %s Manager id: %s and name: %s \nerror is %s", bpCluster.ClusterID, mcid, clusterName, err)
+			}
+		}
 	}
 
 	// Check if the cluster is hibernating
@@ -106,9 +112,7 @@ func runCreateManagedJob(cmd *cobra.Command, args []string) (err error) {
 	}
 
 	backplaneHost := bpCluster.BackplaneHost
-	clusterID := bpCluster.ClusterID
-	options.clusterID = clusterID
-
+	options.clusterID = bpCluster.ClusterID
 	if options.url != "" {
 		backplaneHost = options.url
 	}
