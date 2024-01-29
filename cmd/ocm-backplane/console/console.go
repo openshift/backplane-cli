@@ -71,6 +71,7 @@ type consoleOptions struct {
 	url                 string
 	openBrowser         bool
 	enablePlugins       bool
+	needMonitorPlugin   bool
 	monitorPluginPort   string
 	monitorPluginImage  string
 }
@@ -217,6 +218,12 @@ func (o *consoleOptions) run(cmd *cobra.Command, argv []string) error {
 	if err != nil {
 		return err
 	}
+
+	err = o.determineNeedMonitorPlugin()
+	if err != nil {
+		return err
+	}
+
 	err = o.determineMonitorPluginPort()
 	if err != nil {
 		return err
@@ -375,9 +382,20 @@ func (o *consoleOptions) pullConsoleImage(ce containerEngineInterface) error {
 	return ce.pullImage(o.image)
 }
 
+func (o *consoleOptions) determineNeedMonitorPlugin() error {
+	if isRunningHigherOrEqualTo(versionForMonitoringPlugin) {
+		logger.Debugln("monitoring plugin is needed")
+		o.needMonitorPlugin = true
+		return nil
+	} else {
+		logger.Debugln("monitoring plugin is not needed")
+		o.needMonitorPlugin = false
+		return nil
+	}
+}
+
 func (o *consoleOptions) determineMonitorPluginPort() error {
-	// we don't need this for lower than 4.14
-	if !isRunningHigherOrEqualTo(versionForMonitoringPlugin) {
+	if !o.needMonitorPlugin {
 		logger.Debugln("monitoring plugin is not needed, not to assign monitoring plugin port")
 		return nil
 	}
@@ -392,7 +410,7 @@ func (o *consoleOptions) determineMonitorPluginPort() error {
 
 func (o *consoleOptions) determineMonitorPluginImage(config *rest.Config) error {
 	// we don't need this for lower than 4.14
-	if !isRunningHigherOrEqualTo(versionForMonitoringPlugin) {
+	if !o.needMonitorPlugin {
 		logger.Debugln("monitoring plugin is not needed, not to get monitoring plugin image")
 		return nil
 	}
@@ -410,8 +428,7 @@ func (o *consoleOptions) determineMonitorPluginImage(config *rest.Config) error 
 }
 
 func (o *consoleOptions) pullMonitorPluginImage(ce containerEngineInterface) error {
-	// we don't need this for lower than 4.14
-	if !isRunningHigherOrEqualTo(versionForMonitoringPlugin) {
+	if !o.needMonitorPlugin {
 		logger.Debugln("monitoring plugin is not needed, not to pull monitoring plugin image")
 		return nil
 	}
@@ -446,7 +463,7 @@ func (o *consoleOptions) getPlugins() (string, error) {
 		plugins = append(plugins, consolePlugins...)
 	}
 	// monitoring plugin
-	if isRunningHigherOrEqualTo(versionForMonitoringPlugin) {
+	if o.needMonitorPlugin {
 		logger.Debugln("monitoring plugin is needed, adding the monitoring plugin parameter to console container")
 		plugins = append(plugins, fmt.Sprintf("monitoring-plugin=http://127.0.0.1:%s", o.monitorPluginPort))
 	}
@@ -544,8 +561,7 @@ func (o *consoleOptions) runConsoleContainer(ce containerEngineInterface) error 
 }
 
 func (o *consoleOptions) runMonitorPlugin(ce containerEngineInterface) error {
-	// we don't need this for lower than 4.14
-	if !isRunningHigherOrEqualTo(versionForMonitoringPlugin) {
+	if !o.needMonitorPlugin {
 		logger.Debugln("monitoring plugin is not needed, not to run monitoring plugin")
 		return nil
 	}
@@ -604,8 +620,8 @@ func (o *consoleOptions) cleanUp(ce containerEngineInterface) error {
 	containersToCleanUp := []string{}
 
 	// forcing order of removal as the order is not deterministic between container engines
-	if isRunningHigherOrEqualTo(versionForMonitoringPlugin) {
-		logger.Debugln("monitoring plugin is not needed, no need to clean up monitoring plugin")
+	if o.needMonitorPlugin {
+		logger.Debugln("monitoring plugin is needed, need to clean up monitoring plugin first")
 		containersToCleanUp = append(containersToCleanUp, fmt.Sprintf("monitoring-plugin-%s", clusterID))
 	}
 	containersToCleanUp = append(containersToCleanUp, fmt.Sprintf("console-%s", clusterID))
@@ -823,7 +839,6 @@ func GetConfigDirectory() (string, error) {
 	return pullSecretConfigDirectory, nil
 }
 
-// FIXME: this function are called many times, we should avoid calling OCM api every time.
 // isRunningHigherOrEqualTo check if the cluster is running higher or equal to target version
 func isRunningHigherOrEqualTo(targetVersionStr string) bool {
 	var (
@@ -1166,6 +1181,7 @@ func (ce *podmanLinux) putFileToMount(filename string, content []byte) error {
 
 	// Check if file already exists, if it does remove it
 	if _, err = os.Stat(dstFileName); !os.IsNotExist(err) {
+		logger.Debugf("remove existing file %s", dstFileName)
 		err = os.Remove(dstFileName)
 		if err != nil {
 			return err
@@ -1173,11 +1189,13 @@ func (ce *podmanLinux) putFileToMount(filename string, content []byte) error {
 	}
 
 	if err = os.WriteFile(dstFileName, content, 0600); err != nil {
+		logger.Debugf("wrote file %s", dstFileName)
 		return err
 	}
 
 	// change permission as a work around to gosec
 	if err = os.Chmod(dstFileName, 0640); err != nil {
+		logger.Debugf("change permission to 0640 for %s", dstFileName)
 		return err
 	}
 
@@ -1213,6 +1231,7 @@ func dockerPutFileToMount(filename string, content []byte) error {
 
 	// Check if file already exists, if it does remove it
 	if _, err = os.Stat(dstFileName); !os.IsNotExist(err) {
+		logger.Debugf("remove existing file %s", dstFileName)
 		err = os.Remove(dstFileName)
 		if err != nil {
 			return err
@@ -1220,11 +1239,13 @@ func dockerPutFileToMount(filename string, content []byte) error {
 	}
 
 	if err = os.WriteFile(dstFileName, content, 0600); err != nil {
+		logger.Debugf("wrote file %s", dstFileName)
 		return err
 	}
 
 	// change permission as a work around to gosec
 	if err = os.Chmod(dstFileName, 0644); err != nil {
+		logger.Debugf("change permission to 0644 for %s", dstFileName)
 		return err
 	}
 

@@ -176,7 +176,9 @@ var _ = Describe("console command", func() {
 			setupConfig()
 			mockOcmInterface.EXPECT().GetClusterInfoByID(clusterID).Return(clusterInfo, nil).AnyTimes()
 			o := consoleOptions{}
-			err := o.determineMonitorPluginPort()
+			err := o.determineNeedMonitorPlugin()
+			Expect(err).To(BeNil())
+			err = o.determineMonitorPluginPort()
 			Expect(err).To(BeNil())
 			Expect(len(o.monitorPluginPort)).To(Equal(0))
 		})
@@ -185,7 +187,9 @@ var _ = Describe("console command", func() {
 			setupConfig()
 			mockOcmInterface.EXPECT().GetClusterInfoByID(clusterID).Return(clusterInfo, nil).AnyTimes()
 			o := consoleOptions{}
-			err := o.determineMonitorPluginImage(nil)
+			err := o.determineNeedMonitorPlugin()
+			Expect(err).To(BeNil())
+			err = o.determineMonitorPluginImage(nil)
 			Expect(err).To(BeNil())
 			Expect(len(o.monitorPluginImage)).To(Equal(0))
 		})
@@ -194,6 +198,8 @@ var _ = Describe("console command", func() {
 			setupConfig()
 			mockOcmInterface.EXPECT().GetClusterInfoByID(clusterID).Return(clusterInfo, nil).AnyTimes()
 			o := consoleOptions{}
+			err := o.determineNeedMonitorPlugin()
+			Expect(err).To(BeNil())
 			plugins, err := o.getPlugins()
 			Expect(err).To(BeNil())
 			Expect(plugins).ToNot(ContainSubstring("monitoring-plugin"))
@@ -212,7 +218,9 @@ var _ = Describe("console command", func() {
 			setupConfig()
 			mockOcmInterface.EXPECT().GetClusterInfoByID(clusterID).Return(clusterInfo, nil).AnyTimes()
 			o := consoleOptions{}
-			err := o.determineMonitorPluginPort()
+			err := o.determineNeedMonitorPlugin()
+			Expect(err).To(BeNil())
+			err = o.determineMonitorPluginPort()
 			Expect(err).To(BeNil())
 			Expect(len(o.monitorPluginPort)).ToNot(Equal(0))
 		})
@@ -239,7 +247,9 @@ var _ = Describe("console command", func() {
 			setupConfig()
 			mockOcmInterface.EXPECT().GetClusterInfoByID(clusterID).Return(clusterInfo, nil).AnyTimes()
 			o := consoleOptions{}
-			err := o.determineMonitorPluginImage(nil)
+			err := o.determineNeedMonitorPlugin()
+			Expect(err).To(BeNil())
+			err = o.determineMonitorPluginImage(nil)
 			Expect(err).To(BeNil())
 			Expect(o.monitorPluginImage).To(Equal("testrepo.com/test/monitorplugin:latest"))
 		})
@@ -248,6 +258,8 @@ var _ = Describe("console command", func() {
 			setupConfig()
 			mockOcmInterface.EXPECT().GetClusterInfoByID(clusterID).Return(clusterInfo, nil).AnyTimes()
 			o := consoleOptions{}
+			err := o.determineNeedMonitorPlugin()
+			Expect(err).To(BeNil())
 			plugins, err := o.getPlugins()
 			Expect(err).To(BeNil())
 			Expect(plugins).To(ContainSubstring("monitoring-plugin"))
