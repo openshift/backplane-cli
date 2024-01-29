@@ -131,6 +131,26 @@ Logging into multiple clusters via different terminal instances.
   $ export KUBECONFIG= <cluster-id-2-kube-config-path>
   ```
 
+### Login through PagerDuty incident link or ID
+
+- [Generate a User Token REST API Key](https://support.pagerduty.com/docs/api-access-keys#generate-a-user-token-rest-api-key) and save it into backplane config file.
+  ```
+  $ ocm backplane config set pd-key <api-key>
+  ```
+  Replace `<api-key>` with the actual User Token REST API Key obtained from PagerDuty.
+
+- To log in using the PagerDuty incident link, use the following command:
+  ```
+  $ ocm backplane login --pd https://redhat.pagerduty.com/incidents/<incident-id>
+  ```
+  Replace `<incident-id>` with the specific incident ID you want to access.
+
+- Alternatively, if you have the incident ID, you can use the following command:
+  ```
+  $ ocm backplane login --pd <incident-id>
+  ```
+  Replace `<incident-id>` with the specific incident ID you want to access.
+
 ## Console
 
 - Login to the target cluster via backplane as the above.
