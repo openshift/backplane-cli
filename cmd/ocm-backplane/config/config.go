@@ -5,9 +5,10 @@ import (
 )
 
 const (
-	ProxyURLConfigVar = "proxy-url"
-	URLConfigVar      = "url"
-	SessionConfigVar  = "session-dir"
+	ProxyURLConfigVar     = "proxy-url"
+	URLConfigVar          = "url"
+	SessionConfigVar      = "session-dir"
+	PagerDutyAPIConfigVar = "pd-key"
 )
 
 func NewConfigCmd() *cobra.Command {
@@ -21,6 +22,7 @@ The following variables are supported:
 url         Backplane API URL
 proxy-url   Squid proxy URL
 session-dir Backplane CLI session directory
+pd-key      PagerDuty API User Key
 `,
 		SilenceUsage: true,
 	}

@@ -20,6 +20,7 @@ type BackplaneConfiguration struct {
 	ProxyURL         *string // Optional
 	SessionDirectory string
 	AssumeInitialArn string
+	PagerDutyAPIKey  string // Optional
 }
 
 // GetConfigFilePath returns the Backplane CLI configuration filepath
@@ -84,6 +85,7 @@ func GetBackplaneConfiguration() (bpConfig BackplaneConfiguration, err error) {
 
 	bpConfig.SessionDirectory = viper.GetString("session-dir")
 	bpConfig.AssumeInitialArn = viper.GetString("assume-initial-arn")
+	bpConfig.PagerDutyAPIKey = viper.GetString("pd-key")
 
 	// proxyURL is optional
 	proxyURL := viper.GetString("proxy-url")

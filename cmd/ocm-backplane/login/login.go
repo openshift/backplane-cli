@@ -9,6 +9,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/PagerDuty/go-pagerduty"
 	"github.com/golang-jwt/jwt/v4"
 	logger "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -33,6 +34,7 @@ var (
 	args struct {
 		multiCluster   bool
 		kubeConfigPath string
+		pd             string
 	}
 
 	globalOpts = &globalflags.GlobalOptions{}
@@ -45,8 +47,19 @@ var (
 		using OCM token. The backplane api will return a proxy url for
 		target cluster. The url will be written to kubeconfig, so we can
 		run oc command later to operate the target cluster.`,
-		Example:      " backplane login <id>\n backplane login %test%\n backplane login <external_id>",
-		Args:         cobra.ExactArgs(1),
+		Example: " backplane login <id>\n backplane login %test%\n backplane login <external_id>",
+		Args: func(cmd *cobra.Command, args []string) error {
+			if cmd.Flags().Lookup("pd").Changed {
+				if err := cobra.ExactArgs(0)(cmd, args); err != nil {
+					return err
+				}
+			} else {
+				if err := cobra.ExactArgs(1)(cmd, args); err != nil {
+					return err
+				}
+			}
+			return nil
+		},
 		RunE:         runLogin,
 		SilenceUsage: true,
 	}
@@ -72,6 +85,60 @@ func init() {
 		"Save kube configuration in the specific path when login to multi clusters.",
 	)
 
+	flags.StringVar(
+		&args.pd,
+		"pd",
+		"",
+		"Login using PagerDuty (incident id or) html_url.",
+	)
+}
+
+func getClusterIDFromAlertList(alertList *pagerduty.ListAlertsResponse) (string, error) {
+	if len(alertList.Alerts) > 0 {
+		prevClusterID, err := getClusterIDFromAlert(&alertList.Alerts[0])
+		if err != nil {
+			return "", err
+		}
+
+		// Check if all alerts in the list have the same cluster ID
+		for _, alert := range alertList.Alerts {
+			currentAlert := alert
+			if currentClusterID, err := getClusterIDFromAlert(&currentAlert); err != nil {
+				return "", err
+			} else if currentClusterID != prevClusterID {
+				return "", fmt.Errorf("not all alerts have the same cluster ID")
+			}
+		}
+
+		return prevClusterID, nil
+	}
+
+	return "", fmt.Errorf("unable to retrieve list of pagerduty alerts")
+}
+
+// getClusterIDFromAlert extracts the cluster ID from a PagerDuty incident alert.
+// It expects the alert's body to have a specific structure with CEF details.
+func getClusterIDFromAlert(alert *pagerduty.IncidentAlert) (string, error) {
+	clusterID, ok := alert.Body["cef_details"].(map[string]interface{})["details"].(map[string]interface{})["cluster_id"].(string)
+	if !ok {
+		return "", fmt.Errorf("unable to retrieve cluster_id from pagerduty alert")
+	}
+	return clusterID, nil
+}
+
+func getClusterID(pdClient *pagerduty.Client, incidentID string) (string, error) {
+
+	incidentAlerts, err := pdClient.ListIncidentAlerts(incidentID)
+	if err != nil {
+		return "", err
+	}
+
+	clusterID, err := getClusterIDFromAlertList(incidentAlerts)
+	if err != nil {
+		return "", err
+	}
+
+	return clusterID, nil
 }
 
 func runLogin(cmd *cobra.Command, argv []string) (err error) {
@@ -79,24 +146,43 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 
 	utils.CheckBackplaneVersion(cmd)
 
-	// Get The cluster ID
-	if len(argv) == 1 {
-		// if explicitly one cluster key given, use it to log in.
-		clusterKey = argv[0]
-		logger.WithField("Search Key", clusterKey).Debugln("Finding target cluster")
-	} else if len(argv) == 0 {
-		// if no args given, try to log into the cluster that the user is logged into
-		clusterInfo, err := utils.DefaultClusterUtils.GetBackplaneClusterFromConfig()
-		if err != nil {
-			return err
-		}
-		clusterKey = clusterInfo.ClusterID
-	}
-
 	// Get Backplane configuration
-	bpConfig, err := config.GetBackplaneConfiguration()
+	bpConfig, _ := config.GetBackplaneConfiguration()
 	if err != nil {
 		return err
+	}
+
+	// Currently go-pagerduty pkg does not include incident id validation.
+	if args.pd != "" {
+		pdClient := pagerduty.NewClient(bpConfig.PagerDutyAPIKey)
+		if strings.Contains(args.pd, "redhat.pagerduty.com/incidents/") {
+			incidentID := args.pd[strings.LastIndex(args.pd, "/")+1:]
+			clusterKey, err = getClusterID(pdClient, incidentID)
+			if err != nil {
+				logger.Errorf("unable to retrieve cluster_id")
+			}
+		} else {
+			clusterKey, err = getClusterID(pdClient, args.pd)
+			if err != nil {
+				logger.Errorf("unable to retrieve cluster_id")
+			}
+		}
+	}
+
+	// Retrieve the cluster ID only if it hasn't been populated by PagerDuty.
+	if clusterKey == "" {
+		if len(argv) == 1 {
+			// if explicitly one cluster key given, use it to log in.
+			clusterKey = argv[0]
+			logger.WithField("Search Key", clusterKey).Debugln("Finding target cluster")
+		} else if len(argv) == 0 {
+			// if no args given, try to log into the cluster that the user is logged into
+			clusterInfo, err := utils.DefaultClusterUtils.GetBackplaneClusterFromConfig()
+			if err != nil {
+				return err
+			}
+			clusterKey = clusterInfo.ClusterID
+		}
 	}
 
 	// Set proxy url to http client

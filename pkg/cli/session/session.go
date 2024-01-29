@@ -399,9 +399,15 @@ func (e *BackplaneSession) initClusterLogin(cmd *cobra.Command) error {
 		if err != nil {
 			return fmt.Errorf("error occurred when setting multi flag %v", err)
 		}
+
 		err = login.LoginCmd.Flags().Set("kube-path", e.Path)
 		if err != nil {
 			return fmt.Errorf("error occurred when kube-path flag %v", err)
+		}
+
+		err = login.LoginCmd.Flags().Set("pd", e.Path)
+		if err != nil {
+			return fmt.Errorf("error occurred when setting pd flag %v", err)
 		}
 
 		// Execute login command
