@@ -221,6 +221,15 @@ type namedRoleArn struct {
 }
 
 func (cfg *QueryConfig) getIsolatedCredentials(ocmToken string) (aws.Credentials, error) {
+	const (
+		productionOCMUrl            = "https://api.openshift.com"
+		productionAssumeInitialArn  = "arn:aws:iam::922711891673:role/SRE-Support-Role"
+		stagingOCMUrl               = "https://api.stage.openshift.com"
+		stagingAssumeInitialArn     = "arn:aws:iam::277304166082:role/SRE-Support-Role"
+		integrationOCMUrl           = "https://api.integration.openshift.com"
+		integrationAssumeInitialArn = "arn:aws:iam::277304166082:role/SRE-Support-Role"
+	)
+
 	if cfg.Cluster.ID() == "" {
 		return aws.Credentials{}, errors.New("must provide non-empty cluster ID")
 	}
@@ -231,7 +240,20 @@ func (cfg *QueryConfig) getIsolatedCredentials(ocmToken string) (aws.Credentials
 	}
 
 	if cfg.BackplaneConfiguration.AssumeInitialArn == "" {
-		return aws.Credentials{}, errors.New("backplane config is missing required `assume-initial-arn` property")
+		// If not provided as an override, attempt to automatically set this based on OCM url
+		switch cfg.OcmConnection.URL() {
+		case productionOCMUrl:
+			cfg.BackplaneConfiguration.AssumeInitialArn = productionAssumeInitialArn
+		case stagingOCMUrl:
+			cfg.BackplaneConfiguration.AssumeInitialArn = stagingAssumeInitialArn
+		case integrationOCMUrl:
+			cfg.BackplaneConfiguration.AssumeInitialArn = integrationAssumeInitialArn
+		default:
+			logger.Infof("failed to automatically set assume-initial-arn based on OCM url: %s", cfg.OcmConnection.URL())
+			return aws.Credentials{}, errors.New("backplane config is missing required `assume-initial-arn` property")
+		}
+
+		logger.Debugf("set assume-initial-arn to: %s", cfg.BackplaneConfiguration.AssumeInitialArn)
 	}
 
 	initialClient, err := StsClient(cfg.BackplaneConfiguration.ProxyURL)
