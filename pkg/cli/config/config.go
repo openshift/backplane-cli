@@ -86,7 +86,9 @@ func GetBackplaneConfiguration() (bpConfig BackplaneConfiguration, err error) {
 	bpConfig.AssumeInitialArn = viper.GetString("assume-initial-arn")
 
 	// proxyURL is optional
-	proxyURL := viper.GetString("proxy-url")
+	proxyInConfigFile := viper.GetStringSlice("proxy-url")
+	proxyURL := bpConfig.getFirstWorkingProxyURL(proxyInConfigFile)
+
 	if proxyURL != "" {
 		bpConfig.ProxyURL = &proxyURL
 	} else {
@@ -94,6 +96,41 @@ func GetBackplaneConfiguration() (bpConfig BackplaneConfiguration, err error) {
 	}
 
 	return bpConfig, nil
+}
+
+var clientDo = func(client *http.Client, req *http.Request) (*http.Response, error) {
+	return client.Do(req)
+}
+
+
+func (config *BackplaneConfiguration) getFirstWorkingProxyURL(s []string) (string) {
+	bpURL := config.URL + "/healthz"
+	logger.Infof("bpUrl: %s", bpURL)
+
+	client := &http.Client{
+		Timeout: 2 * time.Second,
+	}
+
+	for _, p := range s {
+		proxyURL, err := url.ParseRequestURI(p)
+		if err != nil {
+			logger.Debugf("proxy-url: '%v' could not be parsed.", p)
+			continue
+		}
+
+		client.Transport = &http.Transport{Proxy: http.ProxyURL(proxyURL)}
+		req, _ := http.NewRequest("GET", bpURL, nil)
+		resp, err := clientDo(client, req)
+
+		if err != nil {
+			logger.Infof("Proxy: %s returned an error: %s", proxyURL, err)
+			continue
+		}
+		if resp.StatusCode == http.StatusOK {
+			return p
+		}
+	}
+	return ""
 }
 
 func GetConfigDirctory() (string, error) {
