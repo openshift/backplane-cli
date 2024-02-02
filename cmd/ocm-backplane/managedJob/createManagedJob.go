@@ -103,12 +103,8 @@ func runCreateManagedJob(cmd *cobra.Command, args []string) (err error) {
 			if !ok {
 				return fmt.Errorf("could not get product information")
 			}
-			//fmt.Printf("the ID is %s", p.ID())
-			return fmt.Errorf("The product id is %s and bplane url is %s for cluster: %s\nThe feature is not available for OSD and ROSA", p.ID(), bpCluster.ClusterURL, clusterName, err)
+			return fmt.Errorf("The product id is %s and bplane url is %s for cluster: %s\nThe feature is not available for OSD and ROSA", p.ID(), bpCluster.ClusterURL, clusterName)
 		}
-		/*if strings.Contains(bpCluster.ClusterURL, "api.stage") {
-			return fmt.Errorf("The bplane url is %s, This option works only for Prod env", bpCluster.ClusterURL)
-		}*/
 	}
 
 	// Check if the cluster is hibernating
