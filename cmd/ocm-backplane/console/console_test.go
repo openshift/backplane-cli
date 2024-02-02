@@ -2,7 +2,6 @@ package console
 
 import (
 	"os"
-	"path/filepath"
 
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
@@ -16,14 +15,13 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd/api"
 
+	"os/exec"
+
+	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/backplane-cli/pkg/info"
 	"github.com/openshift/backplane-cli/pkg/ocm"
 	ocmMock "github.com/openshift/backplane-cli/pkg/ocm/mocks"
 	"github.com/openshift/backplane-cli/pkg/utils"
-
-	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
-
-	"os/exec"
 )
 
 var _ = Describe("console command", func() {
@@ -33,13 +31,10 @@ var _ = Describe("console command", func() {
 
 		capturedCommands [][]string
 
-		testToken   string
 		pullSecret  string
 		clusterID   string
 		proxyURL    string
-		clusterInfo *cmv1.Cluster
 		testKubeCfg api.Config
-		ocmEnv      *cmv1.Environment
 	)
 
 	BeforeEach(func() {
@@ -49,24 +44,6 @@ var _ = Describe("console command", func() {
 
 		os.Setenv("CONTAINER_ENGINE", PODMAN)
 
-		createClientSet = func(c *rest.Config) (kubernetes.Interface, error) {
-			return testclient.NewSimpleClientset(&appsv1.DeploymentList{Items: []appsv1.Deployment{{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: "openshift-console",
-					Name:      "console",
-				},
-				Spec: appsv1.DeploymentSpec{
-					Template: corev1.PodTemplateSpec{
-						Spec: corev1.PodSpec{
-							Containers: []corev1.Container{{
-								Name:  "console",
-								Image: "testrepo.com/test/console:latest",
-							}},
-						},
-					},
-				},
-			}}}), nil
-		}
 		capturedCommands = nil
 		createCommand = func(prog string, args ...string) *exec.Cmd {
 			command := []string{prog}
@@ -75,17 +52,7 @@ var _ = Describe("console command", func() {
 
 			return exec.Command("true")
 		}
-		clusterInfo, _ = cmv1.NewCluster().
-			CloudProvider(cmv1.NewCloudProvider().ID("aws")).
-			Product(cmv1.NewProduct().ID("dedicated")).
-			AdditionalTrustBundle("REDACTED").
-			Proxy(cmv1.NewProxy().HTTPProxy("http://my.proxy:80").HTTPSProxy("https://my.proxy:443")).Build()
 
-		consoleArgs.port = "12345"
-
-		ConsoleCmd.SetArgs([]string{"console"})
-
-		testToken = "hello123"
 		pullSecret = "testpullsecret"
 		clusterID = "cluster123"
 		proxyURL = "https://my.proxy:443"
@@ -126,7 +93,6 @@ var _ = Describe("console command", func() {
 		dirName, _ := os.MkdirTemp("", ".kube")
 
 		pullSecretConfigDirectory = dirName
-		ocmEnv, _ = cmv1.NewEnvironment().BackplaneURL("https://dummy.api").Build()
 	})
 
 	AfterEach(func() {
@@ -143,90 +109,189 @@ var _ = Describe("console command", func() {
 		Expect(err).To(BeNil())
 	}
 
-	checkCapturedCommands := func() {
-		Expect(len(capturedCommands)).To(Equal(3))
-
-		configDir, err := GetConfigDirectory()
-		Expect(err).To(BeNil())
-		authFile := filepath.Join(configDir, "config.json")
-
-		Expect(capturedCommands[1]).To(Equal([]string{
-			"podman", "pull", "--quiet", "--authfile", authFile, "--platform=linux/amd64", "testrepo.com/test/console:latest",
-		}))
-		Expect(capturedCommands[2]).To(Equal([]string{
-			"podman", "run", "--rm", "--name", "console-cluster123", "-p", "127.0.0.1:12345:12345", "--authfile", authFile, "--platform=linux/amd64",
-			"--env", "HTTPS_PROXY=" + proxyURL, "testrepo.com/test/console:latest", "/opt/bridge/bin/bridge", "--public-dir=/opt/bridge/static", "-base-address", "http://127.0.0.1:12345", "-branding", "dedicated",
-			"-documentation-base-url", "https://docs.openshift.com/dedicated/4/", "-user-settings-location", "localstorage", "-user-auth", "disabled", "-k8s-mode",
-			"off-cluster", "-k8s-auth", "bearer-token", "-k8s-mode-off-cluster-endpoint", "https://api-backplane.apps.something.com/backplane/cluster/cluster123",
-			"-k8s-mode-off-cluster-alertmanager", "https://api-backplane.apps.something.com/backplane/alertmanager/cluster123", "-k8s-mode-off-cluster-thanos",
-			"https://api-backplane.apps.something.com/backplane/thanos/cluster123", "-k8s-auth-bearer-token", testToken, "-listen", "http://0.0.0.0:12345",
-		}))
-
-	}
-
-	// This test verifies that the console container is still started the same way after issuing a
-	// 'oc project <namespace id>' command.
-	//
-	// In particular this test checks that the name of container started by the 'ocm backplane console'
-	// command is based on the cluster id and not on the supposed cluster name extracted from kube config.
-	//
-	// Indeed 'oc' client is actually connected to the hive cluster which proxy commands to the targeted
-	// OSD cluster.
-	// Issuing a 'oc project <namespace id>' will create a new context with a new cluster in kube config...
-	// but the name of the newly created cluster config will be based on the hive cluster URL:
-	// - Which does not contain any bit of information concerning the OSD cluster name.
-	// - Which contains ':' char which is an invalid char in a container name.
-	Context("when backplane login has just been done", func() {
-		It("should start console server", func() {
+	Context("when console command executes", func() {
+		It("should read the openbrowser variable from environment variables", func() {
 			setupConfig()
-
-			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
-			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
-			mockOcmInterface.EXPECT().GetPullSecret().Return(pullSecret, nil).AnyTimes()
-			mockOcmInterface.EXPECT().GetClusterInfoByID(clusterID).Return(clusterInfo, nil).AnyTimes()
-
-			err := runConsole(nil, []string{clusterID})
-
+			os.Setenv(EnvBrowserDefault, "true")
+			o := consoleOptions{}
+			err := o.determineOpenBrowser()
+			os.Setenv(EnvBrowserDefault, "")
 			Expect(err).To(BeNil())
+			Expect(o.openBrowser).To(BeTrue())
+		})
 
-			checkCapturedCommands()
+		It("should use the specified port for listen", func() {
+			setupConfig()
+			o := consoleOptions{port: "5555"}
+			err := o.determineListenPort()
+			Expect(err).To(BeNil())
+			Expect(o.port).To(Equal("5555"))
+		})
+
+		It("should pick a random port for listen if not specified", func() {
+			setupConfig()
+			o := consoleOptions{}
+			err := o.determineListenPort()
+			Expect(err).To(BeNil())
+			Expect(len(o.port)).ToNot(Equal(0))
+		})
+
+		It("should fetch the console image from the cluster", func() {
+			createClientSet = func(c *rest.Config) (kubernetes.Interface, error) {
+				return testclient.NewSimpleClientset(&appsv1.DeploymentList{Items: []appsv1.Deployment{{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: ConsoleNS,
+						Name:      ConsoleDeployment,
+					},
+					Spec: appsv1.DeploymentSpec{
+						Template: corev1.PodTemplateSpec{
+							Spec: corev1.PodSpec{
+								Containers: []corev1.Container{{
+									Name:  "console",
+									Image: "testrepo.com/test/console:latest",
+								}},
+							},
+						},
+					},
+				}}}), nil
+			}
+			setupConfig()
+			o := consoleOptions{}
+			// for testing, we don't need a real rest.Config
+			err := o.determineImage(nil)
+			Expect(err).To(BeNil())
+			Expect(o.image).To(Equal("testrepo.com/test/console:latest"))
 		})
 	})
 
-	Context("when namespace is no more the default one", func() {
-		It("should start console server", func() {
+	Context("For cluster version below 4.14", func() {
+		clusterInfo, _ := cmv1.NewCluster().
+			CloudProvider(cmv1.NewCloudProvider().ID("aws")).
+			Product(cmv1.NewProduct().ID("dedicated")).
+			AdditionalTrustBundle("REDACTED").
+			Proxy(cmv1.NewProxy().HTTPProxy("http://my.proxy:80").HTTPSProxy("https://my.proxy:443")).
+			OpenshiftVersion("4.13.0").Build()
 
-			testKubeCfg.CurrentContext = "custom-context"
+		It("should not assgin a port for monitoring plugin", func() {
 			setupConfig()
-
-			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
-			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
-			mockOcmInterface.EXPECT().GetPullSecret().Return(pullSecret, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetClusterInfoByID(clusterID).Return(clusterInfo, nil).AnyTimes()
-
-			err := runConsole(nil, []string{clusterID})
-
+			o := consoleOptions{}
+			err := o.determineNeedMonitorPlugin()
 			Expect(err).To(BeNil())
-			Expect(len(capturedCommands)).To(Equal(3))
+			err = o.determineMonitorPluginPort()
+			Expect(err).To(BeNil())
+			Expect(len(o.monitorPluginPort)).To(Equal(0))
+		})
+
+		It("should not lookup the monitoring plugin image", func() {
+			setupConfig()
+			mockOcmInterface.EXPECT().GetClusterInfoByID(clusterID).Return(clusterInfo, nil).AnyTimes()
+			o := consoleOptions{}
+			err := o.determineNeedMonitorPlugin()
+			Expect(err).To(BeNil())
+			err = o.determineMonitorPluginImage(nil)
+			Expect(err).To(BeNil())
+			Expect(len(o.monitorPluginImage)).To(Equal(0))
+		})
+
+		It("should not add monitoring plugin to console arguments", func() {
+			setupConfig()
+			mockOcmInterface.EXPECT().GetClusterInfoByID(clusterID).Return(clusterInfo, nil).AnyTimes()
+			o := consoleOptions{}
+			err := o.determineNeedMonitorPlugin()
+			Expect(err).To(BeNil())
+			plugins, err := o.getPlugins()
+			Expect(err).To(BeNil())
+			Expect(plugins).ToNot(ContainSubstring("monitoring-plugin"))
 		})
 	})
 
-	Context("when kube config is invalid", func() {
-		It("should not start console server", func() {
+	Context("For cluster version above 4.14", func() {
+		clusterInfo, _ := cmv1.NewCluster().
+			CloudProvider(cmv1.NewCloudProvider().ID("aws")).
+			Product(cmv1.NewProduct().ID("dedicated")).
+			AdditionalTrustBundle("REDACTED").
+			Proxy(cmv1.NewProxy().HTTPProxy("http://my.proxy:80").HTTPSProxy("https://my.proxy:443")).
+			OpenshiftVersion("4.14.8").Build()
 
-			testKubeCfg.CurrentContext = "undefined-context"
+		It("should assgin a port for monitoring plugin", func() {
 			setupConfig()
-
-			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
-			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
-			mockOcmInterface.EXPECT().GetPullSecret().Return(pullSecret, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetClusterInfoByID(clusterID).Return(clusterInfo, nil).AnyTimes()
+			o := consoleOptions{}
+			err := o.determineNeedMonitorPlugin()
+			Expect(err).To(BeNil())
+			err = o.determineMonitorPluginPort()
+			Expect(err).To(BeNil())
+			Expect(len(o.monitorPluginPort)).ToNot(Equal(0))
+		})
 
-			err := runConsole(nil, []string{clusterID})
+		It("should lookup the monitoring plugin image from cluster", func() {
+			createClientSet = func(c *rest.Config) (kubernetes.Interface, error) {
+				return testclient.NewSimpleClientset(&appsv1.DeploymentList{Items: []appsv1.Deployment{{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: MonitoringNS,
+						Name:      MonitoringPluginDeployment,
+					},
+					Spec: appsv1.DeploymentSpec{
+						Template: corev1.PodTemplateSpec{
+							Spec: corev1.PodSpec{
+								Containers: []corev1.Container{{
+									Name:  "monitoring-plugin",
+									Image: "testrepo.com/test/monitorplugin:latest",
+								}},
+							},
+						},
+					},
+				}}}), nil
+			}
+			setupConfig()
+			mockOcmInterface.EXPECT().GetClusterInfoByID(clusterID).Return(clusterInfo, nil).AnyTimes()
+			o := consoleOptions{}
+			err := o.determineNeedMonitorPlugin()
+			Expect(err).To(BeNil())
+			err = o.determineMonitorPluginImage(nil)
+			Expect(err).To(BeNil())
+			Expect(o.monitorPluginImage).To(Equal("testrepo.com/test/monitorplugin:latest"))
+		})
 
-			Expect(err).ToNot(BeNil())
-			Expect(err.Error()).To(Equal("invalid configuration: [context was not found for specified context: undefined-context, cluster has no server defined]"))
-			Expect(len(capturedCommands)).To(Equal(0))
+		It("should add monitoring plugin to console arguments", func() {
+			setupConfig()
+			mockOcmInterface.EXPECT().GetClusterInfoByID(clusterID).Return(clusterInfo, nil).AnyTimes()
+			o := consoleOptions{}
+			err := o.determineNeedMonitorPlugin()
+			Expect(err).To(BeNil())
+			plugins, err := o.getPlugins()
+			Expect(err).To(BeNil())
+			Expect(plugins).To(ContainSubstring("monitoring-plugin"))
+		})
+	})
+
+	Context("when running podman on MacOS", func() {
+		ce := podmanMac{}
+		It("should put the file via ssh to the VM", func() {
+			capturedCommands = nil
+			err := ce.putFileToMount("testfile", []byte("test"))
+			Expect(err).To(BeNil())
+			Expect(len(capturedCommands)).To(Equal(1))
+			command := capturedCommands[0]
+			// executing with bash -c xxxx
+			Expect(len(command)).To(Equal(3))
+			Expect(command[2]).To(ContainSubstring("ssh"))
+		})
+	})
+
+	Context("when running docker", func() {
+		ce := dockerLinux{}
+		It("should specify the --config option right after the subcommand", func() {
+			mockOcmInterface.EXPECT().GetPullSecret().Return(pullSecret, nil).AnyTimes()
+			capturedCommands = nil
+			err := ce.pullImage("testimage")
+			Expect(err).To(BeNil())
+			Expect(len(capturedCommands)).To(Equal(1))
+			command := capturedCommands[0]
+			// executing docker --config xxxx pull
+			Expect(len(command)).To(BeNumerically(">", 3))
+			Expect(command[1]).To(ContainSubstring("config"))
 		})
 	})
 })
