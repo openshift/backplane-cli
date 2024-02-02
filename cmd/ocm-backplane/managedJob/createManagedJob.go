@@ -6,7 +6,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"strings"
 	"time"
 
 	BackplaneApi "github.com/openshift/backplane-api/pkg/client"
@@ -70,7 +69,7 @@ func newCreateManagedJobCmd() *cobra.Command {
 		"manager",
 		"",
 		false,
-		"Run the job on manager/hive shar if flag is set --manager")
+		"Run the job on manager/hive shard if flag is set --manager")
 
 	return cmd
 }
@@ -90,18 +89,26 @@ func runCreateManagedJob(cmd *cobra.Command, args []string) (err error) {
 	if err != nil {
 		return err
 	}
+
 	if options.manager {
-		if strings.Contains(bpCluster.ClusterURL, "api.stage") {
-			return fmt.Errorf("The bplane url is %s, This option works only for Prod env", bpCluster.ClusterURL)
+		mcid, clusterName, _, err := ocm.DefaultOCMInterface.GetManagingCluster(bpCluster.ClusterID)
+		if err == nil {
+			bpCluster, err = utils.DefaultClusterUtils.GetBackplaneCluster(mcid)
 		} else {
-			fmt.Println("not a staging")
-			mcid, clusterName, _, err := ocm.DefaultOCMInterface.GetManagingCluster(bpCluster.ClusterID)
-			if err == nil {
-				bpCluster, err = utils.DefaultClusterUtils.GetBackplaneCluster(mcid)
-			} else {
-				return fmt.Errorf("The cluster id is %s Manager id: %s and name: %s \nerror is %s", bpCluster.ClusterID, mcid, clusterName, err)
+			c, err := ocm.DefaultOCMInterface.GetClusterInfoByID(bpCluster.ClusterID)
+			if err != nil {
+				return err
 			}
+			p, ok := c.GetProduct()
+			if !ok {
+				return fmt.Errorf("could not get product information")
+			}
+			//fmt.Printf("the ID is %s", p.ID())
+			return fmt.Errorf("The product id is %s and bplane url is %s for cluster: %s\nThe feature is not available for OSD and ROSA", p.ID(), bpCluster.ClusterURL, clusterName, err)
 		}
+		/*if strings.Contains(bpCluster.ClusterURL, "api.stage") {
+			return fmt.Errorf("The bplane url is %s, This option works only for Prod env", bpCluster.ClusterURL)
+		}*/
 	}
 
 	// Check if the cluster is hibernating
