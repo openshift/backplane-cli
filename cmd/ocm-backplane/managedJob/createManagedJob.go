@@ -94,6 +94,9 @@ func runCreateManagedJob(cmd *cobra.Command, args []string) (err error) {
 		mcid, clusterName, _, err := ocm.DefaultOCMInterface.GetManagingCluster(bpCluster.ClusterID)
 		if err == nil {
 			bpCluster, err = utils.DefaultClusterUtils.GetBackplaneCluster(mcid)
+			if err != nil {
+				return err
+			}
 		} else {
 			c, err := ocm.DefaultOCMInterface.GetClusterInfoByID(bpCluster.ClusterID)
 			if err != nil {
@@ -103,7 +106,7 @@ func runCreateManagedJob(cmd *cobra.Command, args []string) (err error) {
 			if !ok {
 				return fmt.Errorf("could not get product information")
 			}
-			return fmt.Errorf("The product id is %s and bplane url is %s for cluster: %s\nThe feature is not available for OSD and ROSA", p.ID(), bpCluster.ClusterURL, clusterName)
+			return fmt.Errorf("product id is %s and bplane url is %s for cluster: %s\nThe feature is not available for OSD and ROSA", p.ID(), bpCluster.ClusterURL, clusterName)
 		}
 	}
 
