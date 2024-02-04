@@ -50,9 +50,9 @@ var (
 	printf = func(format string, a ...any) {
 		fmt.Printf(format, a...)
 	}
-	// execute oc subcommands in OS
-	execOC = func(subcommands string) ([]byte, error) {
-		return exec.Command("bash", "-c", "oc "+subcommands).Output()
+	// execute oc get proxy commands in OS
+	execOCProxy = func() ([]byte, error) {
+		return exec.Command("bash", "-c", "oc config view -o jsonpath='{.clusters[0].cluster.proxy-url}'").Output()
 	}
 )
 
@@ -97,8 +97,7 @@ func (o *troubleshootOptions) checkOC() error {
 	// https://github.com/openshift/oc/blob/master/vendor/k8s.io/kubectl/pkg/cmd/config/view.go
 	hasProxy := false
 	proxyURL := ""
-	getOCProxyCmd := "config view -o jsonpath='{.clusters[0].cluster.proxy-url}'"
-	getOCProxyOutput, err := execOC(getOCProxyCmd)
+	getOCProxyOutput, err := execOCProxy()
 	if err != nil {
 		printWrong("Failed to get proxy in OC configuration: %v\n", err)
 	} else {

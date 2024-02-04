@@ -157,7 +157,7 @@ var _ = Describe("troubleshoot command", func() {
 		})
 		It("should print the proxy url in oc config", func() {
 			// the github CI doesn't have the OC command, need to mock it.
-			execOC = func(subcommands string) ([]byte, error) {
+			execOCProxy = func() ([]byte, error) {
 				return []byte("https://proxy.example.com"), nil
 			}
 			err := utils.CreateTempKubeConfig(&testKubeConfig)
