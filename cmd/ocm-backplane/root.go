@@ -34,7 +34,6 @@ import (
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/session"
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/status"
 	testjob "github.com/openshift/backplane-cli/cmd/ocm-backplane/testJob"
-	"github.com/openshift/backplane-cli/cmd/ocm-backplane/troubleshoot"
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/upgrade"
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/version"
 	"github.com/openshift/backplane-cli/pkg/cli/globalflags"
@@ -79,5 +78,4 @@ func init() {
 	rootCmd.AddCommand(upgrade.UpgradeCmd)
 	rootCmd.AddCommand(version.VersionCmd)
 	rootCmd.AddCommand(monitoring.MonitoringCmd)
-	rootCmd.AddCommand(troubleshoot.NewTroubleshootCmd())
 }
