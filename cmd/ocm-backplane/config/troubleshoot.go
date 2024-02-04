@@ -35,19 +35,25 @@ func newTroubleshootCmd() *cobra.Command {
 
 var (
 	// print info when the thing is correct
-	printCorrect = func(format string, a ...any) (n int, err error) {
-		return fmt.Printf("[V] "+format, a...)
+	printCorrect = func(format string, a ...any) {
+		fmt.Printf("[V] "+format, a...)
 	}
 	// print info when the thing is wrong
-	printWrong = func(format string, a ...any) (n int, err error) {
-		return fmt.Printf("[X] "+format, a...)
+	printWrong = func(format string, a ...any) {
+		fmt.Printf("[X] "+format, a...)
 	}
 	// print info when the thing is not wrong but need attention
-	printNotice = func(format string, a ...any) (n int, err error) {
-		return fmt.Printf("[-] "+format, a...)
+	printNotice = func(format string, a ...any) {
+		fmt.Printf("[-] "+format, a...)
 	}
 	// normal printf
-	printf = fmt.Printf
+	printf = func(format string, a ...any) {
+		fmt.Printf(format, a...)
+	}
+	// execute oc subcommands in OS
+	execOC = func(subcommands string) ([]byte, error) {
+		return exec.Command("bash", "-c", "oc "+subcommands).Output()
+	}
 )
 
 // Print backplane-cli related info
@@ -91,8 +97,8 @@ func (o *troubleshootOptions) checkOC() error {
 	// https://github.com/openshift/oc/blob/master/vendor/k8s.io/kubectl/pkg/cmd/config/view.go
 	hasProxy := false
 	proxyURL := ""
-	getOCProxyCmd := "oc config view -o jsonpath='{.clusters[0].cluster.proxy-url}'"
-	getOCProxyOutput, err := exec.Command("bash", "-c", getOCProxyCmd).Output()
+	getOCProxyCmd := "config view -o jsonpath='{.clusters[0].cluster.proxy-url}'"
+	getOCProxyOutput, err := execOC(getOCProxyCmd)
 	if err != nil {
 		printWrong("Failed to get proxy in OC configuration: %v\n", err)
 	} else {

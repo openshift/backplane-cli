@@ -65,25 +65,21 @@ var _ = Describe("troubleshoot command", func() {
 		printedNotices = []string{}
 		printedNormals = []string{}
 
-		printCorrect = func(format string, a ...any) (n int, err error) {
+		printCorrect = func(format string, a ...any) {
 			content := fmt.Sprintf(format, a...)
 			printedCorrects = append(printedCorrects, content)
-			return len(content), nil
 		}
-		printWrong = func(format string, a ...any) (n int, err error) {
+		printWrong = func(format string, a ...any) {
 			content := fmt.Sprintf(format, a...)
 			printedWrongs = append(printedWrongs, content)
-			return len(content), nil
 		}
-		printNotice = func(format string, a ...any) (n int, err error) {
+		printNotice = func(format string, a ...any) {
 			content := fmt.Sprintf(format, a...)
 			printedNotices = append(printedNotices, content)
-			return len(content), nil
 		}
-		printf = func(format string, a ...any) (n int, err error) {
+		printf = func(format string, a ...any) {
 			content := fmt.Sprintf(format, a...)
 			printedNormals = append(printedNormals, content)
-			return len(content), nil
 		}
 	})
 	AfterEach(func() {})
@@ -160,6 +156,10 @@ var _ = Describe("troubleshoot command", func() {
 			Expect(printedCorrects[0]).To(ContainSubstring("https://backplane.example.com/backplane/cluster/dummycluster"))
 		})
 		It("should print the proxy url in oc config", func() {
+			// the github CI doesn't have the OC command, need to mock it.
+			execOC = func(subcommands string) ([]byte, error) {
+				return []byte("https://proxy.example.com"), nil
+			}
 			err := utils.CreateTempKubeConfig(&testKubeConfig)
 			Expect(err).To(BeNil())
 			o := troubleshootOptions{}
