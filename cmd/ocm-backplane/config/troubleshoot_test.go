@@ -91,7 +91,8 @@ var _ = Describe("troubleshoot command", func() {
 		It("should print error if backplane configuration is wrong", func() {
 			setupBPconfig(wrongBPConfig)
 			o := troubleshootOptions{}
-			o.checkBPCli()
+			err := o.checkBPCli()
+			Expect(err).To(BeNil())
 			Expect(len(printedWrongs)).To(Equal(1))
 			Expect(printedWrongs[0]).To(ContainSubstring("Failed to read backplane-cli config file"))
 		})
@@ -99,7 +100,8 @@ var _ = Describe("troubleshoot command", func() {
 			setupBPconfig(goodBPConfig)
 			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
 			o := troubleshootOptions{}
-			o.checkBPCli()
+			err := o.checkBPCli()
+			Expect(err).To(BeNil())
 			Expect(len(printedCorrects)).To(Equal(2))
 			Expect(printedCorrects[1]).To(ContainSubstring("http://example:8888"))
 		})
@@ -108,14 +110,16 @@ var _ = Describe("troubleshoot command", func() {
 		It("should print error if anything wrong", func() {
 			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(nil, fmt.Errorf("something wrong")).AnyTimes()
 			o := troubleshootOptions{}
-			o.checkOCM()
+			err := o.checkOCM()
+			Expect(err).To(BeNil())
 			Expect(len(printedWrongs)).To(Equal(1))
 			Expect(printedWrongs[0]).To(ContainSubstring("something wrong"))
 		})
 		It("should print the backplane url of the current OCM environment", func() {
 			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
 			o := troubleshootOptions{}
-			o.checkOCM()
+			err := o.checkOCM()
+			Expect(err).To(BeNil())
 			Expect(len(printedCorrects)).To(Equal(1))
 			Expect(printedCorrects[0]).To(ContainSubstring("https://backplane.example.com"))
 		})
@@ -142,20 +146,25 @@ var _ = Describe("troubleshoot command", func() {
 		It("should print error if anything wrong in oc config", func() {
 			os.Setenv("KUBECONFIG", "/fake/path")
 			o := troubleshootOptions{}
-			o.checkOC()
+			err := o.checkOC()
+			Expect(err).To(BeNil())
 			Expect(printedWrongs[0]).To(ContainSubstring("Failed to get OC configuration"))
 		})
 		It("should print the server url in oc config", func() {
-			utils.CreateTempKubeConfig(&testKubeConfig)
+			err := utils.CreateTempKubeConfig(&testKubeConfig)
+			Expect(err).To(BeNil())
 			o := troubleshootOptions{}
-			o.checkOC()
+			err = o.checkOC()
+			Expect(err).To(BeNil())
 			Expect(len(printedCorrects)).To(BeNumerically(">=", 1))
 			Expect(printedCorrects[0]).To(ContainSubstring("https://backplane.example.com/backplane/cluster/dummycluster"))
 		})
 		It("should print the proxy url in oc config", func() {
-			utils.CreateTempKubeConfig(&testKubeConfig)
+			err := utils.CreateTempKubeConfig(&testKubeConfig)
+			Expect(err).To(BeNil())
 			o := troubleshootOptions{}
-			o.checkOC()
+			err = o.checkOC()
+			Expect(err).To(BeNil())
 			Expect(len(printedCorrects)).To(BeNumerically(">=", 2))
 			Expect(printedCorrects[1]).To(ContainSubstring("https://proxy.example.com"))
 		})
