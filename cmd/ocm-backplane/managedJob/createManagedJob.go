@@ -91,8 +91,7 @@ func runCreateManagedJob(cmd *cobra.Command, args []string) (err error) {
 	}
 
 	if options.manager {
-		mcid, clusterName, _, err := ocm.DefaultOCMInterface.GetManagingCluster(bpCluster.ClusterID)
-		if err == nil {
+		if mcid, clusterName, _, err := ocm.DefaultOCMInterface.GetManagingCluster(bpCluster.ClusterID); err == nil {
 			bpCluster, err = utils.DefaultClusterUtils.GetBackplaneCluster(mcid)
 			if err != nil {
 				return err
