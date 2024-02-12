@@ -105,7 +105,7 @@ func runCreateManagedJob(cmd *cobra.Command, args []string) (err error) {
 			if !ok {
 				return fmt.Errorf("could not get product information")
 			}
-			return fmt.Errorf("product id is %s and bplane url is %s for cluster: %s\nThe feature is not available for OSD and ROSA", p.ID(), bpCluster.ClusterURL, clusterName)
+			return fmt.Errorf("product id is %s and bplane url is %s for cluster: %s\nThe feature is not available for OSD and ROSA, when not using in PRODUCTION", p.ID(), bpCluster.ClusterURL, clusterName)
 		}
 	}
 
