@@ -46,9 +46,12 @@ func setConfig(cmd *cobra.Command, args []string) error {
 		if proxyURL != "" {
 			bpConfig.ProxyURL = &proxyURL
 		}
+		pagerDutyAPIKey := viper.GetString("pd-key")
+		if pagerDutyAPIKey != "" {
+			bpConfig.PagerDutyAPIKey = pagerDutyAPIKey
+		}
 
 		bpConfig.SessionDirectory = viper.GetString("session-dir")
-		bpConfig.PagerDutyAPIKey = viper.GetString("pd-key")
 	}
 
 	// create config directory if it doesn't exist
@@ -92,7 +95,7 @@ func setConfig(cmd *cobra.Command, args []string) error {
 
 	viper.SetConfigType("json")
 	viper.Set(URLConfigVar, bpConfig.URL)
-	viper.Set(ProxyURLConfigVar, bpConfig.ProxyURL)
+	viper.Set(ProxyURLConfigVar, &bpConfig.ProxyURL)
 	viper.Set(SessionConfigVar, bpConfig.SessionDirectory)
 	viper.Set(PagerDutyAPIConfigVar, bpConfig.PagerDutyAPIKey)
 

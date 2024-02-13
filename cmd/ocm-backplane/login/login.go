@@ -117,11 +117,30 @@ func getClusterIDFromAlertList(alertList *pagerduty.ListAlertsResponse) (string,
 }
 
 // getClusterIDFromAlert extracts the cluster ID from a PagerDuty incident alert.
-// It expects the alert's body to have a specific structure with CEF details.
+// It expects the alert's body to have a Common Event Format.
 func getClusterIDFromAlert(alert *pagerduty.IncidentAlert) (string, error) {
-	clusterID, ok := alert.Body["cef_details"].(map[string]interface{})["details"].(map[string]interface{})["cluster_id"].(string)
-	if !ok {
-		return "", fmt.Errorf("unable to retrieve cluster_id from pagerduty alert")
+	if alert == nil || alert.Body == nil {
+		return "", fmt.Errorf("given alert or it's body is empty")
+	}
+
+	cefDetails, ok := alert.Body["cef_details"].(map[string]interface{})
+	if !ok || cefDetails == nil {
+		return "", fmt.Errorf("missing or invalid Common Event Format Details of given alert")
+	}
+
+	detailsValue, ok := cefDetails["details"]
+	if !ok || detailsValue == nil {
+		return "", fmt.Errorf("missing or invalid 'details' field in Common Event Format Details")
+	}
+
+	details, ok := detailsValue.(map[string]interface{})
+	if !ok || details == nil {
+		return "", fmt.Errorf("'details' field is not a map[string]interface{} in Common Event Format Details")
+	}
+
+	clusterID, ok := details["cluster_id"].(string)
+	if !ok || clusterID == "" {
+		return "", fmt.Errorf("missing or invalid 'cluster_id' field in CEF details")
 	}
 	return clusterID, nil
 }
@@ -159,12 +178,12 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 			incidentID := args.pd[strings.LastIndex(args.pd, "/")+1:]
 			clusterKey, err = getClusterID(pdClient, incidentID)
 			if err != nil {
-				logger.Errorf("unable to retrieve cluster_id")
+				return err
 			}
 		} else {
 			clusterKey, err = getClusterID(pdClient, args.pd)
 			if err != nil {
-				logger.Errorf("unable to retrieve cluster_id")
+				return err
 			}
 		}
 	}
