@@ -29,5 +29,6 @@ pd-key      PagerDuty API User Key
 
 	cmd.AddCommand(newGetCmd())
 	cmd.AddCommand(newSetCmd())
+	cmd.AddCommand(newTroubleshootCmd())
 	return cmd
 }

@@ -1,4 +1,4 @@
-package console
+package config
 
 import (
 	"testing"
@@ -9,5 +9,5 @@ import (
 
 func TestIt(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Console Test Suite")
+	RunSpecs(t, "Config Test Suite")
 }
