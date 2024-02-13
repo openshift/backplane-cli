@@ -484,7 +484,7 @@ var _ = Describe("Login command", func() {
 		})
 
 		// NOTE: truePagerDutyAPITkn can't access given incidents
-		FIt("should fail to extract cluster ID when the 'details' field under Common Event Format Details is missing or invalid", func() {
+		It("should fail to extract cluster ID when the 'details' field under Common Event Format Details is missing or invalid", func() {
 			// add code (old alert versions?)
 
 			args.pd = falsePagerDutyAlert
