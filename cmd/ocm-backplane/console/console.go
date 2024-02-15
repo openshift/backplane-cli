@@ -218,12 +218,10 @@ func (o *consoleOptions) run(cmd *cobra.Command, argv []string) error {
 	if err != nil {
 		return err
 	}
-
 	err = o.determineNeedMonitorPlugin()
 	if err != nil {
 		return err
 	}
-
 	err = o.determineMonitorPluginPort()
 	if err != nil {
 		return err
@@ -249,6 +247,11 @@ func (o *consoleOptions) run(cmd *cobra.Command, argv []string) error {
 	if err != nil {
 		return err
 	}
+	// If this is a test scenario, we throw an error as opposed of keeping this function in a infinite loop
+	if len(argv) != 0 && argv[0] == "console_GO_test" {
+		return fmt.Errorf("test concluded sucessfully")
+	}
+
 	err = o.cleanUp(ce)
 	if err != nil {
 		return err
@@ -329,6 +332,7 @@ func (o *consoleOptions) getContainerEngineImpl() (containerEngineInterface, err
 	if !valid {
 		return nil, fmt.Errorf("failed to validate container engine: %s", containerEngine)
 	}
+
 	logger.Infof("Using container engine %s\n", containerEngine)
 
 	var containerEngineImpl containerEngineInterface
