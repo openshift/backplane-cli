@@ -27,6 +27,7 @@ var (
 		url           string
 		raw           bool
 		logs          bool
+		manager       bool
 	}
 )
 
@@ -63,6 +64,13 @@ func newCreateManagedJobCmd() *cobra.Command {
 		false,
 		"Fetch logs from the pod for the running job")
 
+	cmd.Flags().BoolVarP(
+		&options.manager,
+		"manager",
+		"",
+		false,
+		"Run the job on manager/hive shard if flag is set --manager")
+
 	return cmd
 }
 
@@ -82,6 +90,25 @@ func runCreateManagedJob(cmd *cobra.Command, args []string) (err error) {
 		return err
 	}
 
+	if options.manager {
+		if mcid, clusterName, _, err := ocm.DefaultOCMInterface.GetManagingCluster(bpCluster.ClusterID); err == nil {
+			bpCluster, err = utils.DefaultClusterUtils.GetBackplaneCluster(mcid)
+			if err != nil {
+				return err
+			}
+		} else {
+			c, err := ocm.DefaultOCMInterface.GetClusterInfoByID(bpCluster.ClusterID)
+			if err != nil {
+				return err
+			}
+			p, ok := c.GetProduct()
+			if !ok {
+				return fmt.Errorf("could not get product information")
+			}
+			return fmt.Errorf("product id is %s and bplane url is %s for cluster: %s\nThe feature is not available for OSD and ROSA, when not using in PRODUCTION", p.ID(), bpCluster.ClusterURL, clusterName)
+		}
+	}
+
 	// Check if the cluster is hibernating
 	isClusterHibernating, err := ocm.DefaultOCMInterface.IsClusterHibernating(bpCluster.ClusterID)
 	if err == nil && isClusterHibernating {
@@ -90,9 +117,7 @@ func runCreateManagedJob(cmd *cobra.Command, args []string) (err error) {
 	}
 
 	backplaneHost := bpCluster.BackplaneHost
-	clusterID := bpCluster.ClusterID
-	options.clusterID = clusterID
-
+	options.clusterID = bpCluster.ClusterID
 	if options.url != "" {
 		backplaneHost = options.url
 	}

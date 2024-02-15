@@ -2,6 +2,7 @@ package ocm
 
 import (
 	"fmt"
+	"net/http"
 	"strings"
 
 	"github.com/openshift-online/ocm-cli/pkg/ocm"
@@ -289,7 +290,21 @@ func (*DefaultOCMInterfaceImpl) GetOCMEnvironment() (*cmv1.Environment, error) {
 
 	responseEnv, err := connection.ClustersMgmt().V1().Environment().Get().Send()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get cluster environment %w", err)
+		// Check if the error indicates a forbidden status
+		var isForbidden bool
+		if responseEnv != nil {
+			isForbidden = responseEnv.Status() == http.StatusForbidden || (responseEnv.Error() != nil && responseEnv.Error().Status() == http.StatusForbidden)
+		}
+
+		// Construct error message based on whether the error is related to permissions
+		var errorMessage string
+		if isForbidden {
+			errorMessage = "user does not have enough permissions to fetch the OCM environment resource. Please ensure you have the necessary permissions or try exporting the BACKPLANE_URL environment variable."
+		} else {
+			errorMessage = "failed to fetch OCM cluster environment resource"
+		}
+
+		return nil, fmt.Errorf("%s: %w", errorMessage, err)
 	}
 
 	return responseEnv.Body(), nil
