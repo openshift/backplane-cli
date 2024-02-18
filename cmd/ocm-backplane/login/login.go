@@ -185,7 +185,7 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 	}
 
 	logger.Debugf("Using backplane URL: %s\n", bpURL)
-	backplanehost, err := getbackplanehost(bpURL)
+	backplanehost, err := getBackplaneHost(bpURL)
 	if err != nil {
 		return err
 	}
@@ -413,8 +413,8 @@ func listNamespaces(clusterID, clusterName string, isHostedControlPlane bool) ([
 	return nsList, nil
 }
 
-// getBackPlanehost returns the DNS/CNAME resolution of the ocm backplane URL
-func getbackplanehost(backplaneURL string) (string, error) {
+// getBackplaneHost returns the DNS/CNAME resolution of the ocm backplane URL
+func getBackplaneHost(backplaneURL string) (string, error) {
 	backplanedomain, err := url.Parse(backplaneURL)
 	if err != nil {
 		return "", fmt.Errorf("unable to extract the fqdn from the %s", backplaneURL)
