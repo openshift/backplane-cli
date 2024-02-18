@@ -15,14 +15,14 @@ require (
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.31.1
 	github.com/openshift-online/ocm-cli v0.1.66
-	github.com/openshift-online/ocm-sdk-go v0.1.398
+	github.com/openshift-online/ocm-sdk-go v0.1.401
 	github.com/openshift/backplane-api v0.0.0-20230919035427-a52e4ae498fb
 	github.com/openshift/client-go v0.0.0-20221019143426-16aed247da5c
 	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/viper v1.18.2
-	golang.org/x/term v0.16.0
+	golang.org/x/term v0.17.0
 	gopkg.in/AlecAivazis/survey.v1 v1.8.8
 	k8s.io/api v0.28.3
 	k8s.io/apimachinery v0.28.3
@@ -116,7 +116,7 @@ require (
 	golang.org/x/net v0.19.0 // indirect
 	golang.org/x/oauth2 v0.15.0 // indirect
 	golang.org/x/sync v0.5.0 // indirect
-	golang.org/x/sys v0.16.0 // indirect
+	golang.org/x/sys v0.17.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
