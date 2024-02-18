@@ -187,10 +187,12 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 	logger.Debugf("Using backplane URL: %s\n", bpURL)
 	backplanehost, err := getBackplaneHost(bpURL)
 	if err != nil {
-		return err
+		logger.Errorf(err.Error())
+	} else {
+		logger.Debugf("Backplane URL resolves to %s \n", backplanehost)
+		logger.Debugf("Please refer to https://source.redhat.com/groups/public/sre/wiki/backplane_troubleshooting to figure out the associated backplane server")
 	}
-	logger.Debugf("Backplane URL resolves to %s \n", backplanehost)
-	logger.Debugf("Please refer to https://source.redhat.com/groups/public/sre/wiki/backplane_troubleshooting to figure out the associated backplane server")
+
 	// Get ocm access token
 	logger.Debugln("Finding ocm token")
 	accessToken, err := ocm.DefaultOCMInterface.GetOCMAccessToken()
