@@ -22,7 +22,7 @@ import (
 
 const (
 	AwsFederatedSigninEndpointTemplate = "https://%v.signin.aws.amazon.com/federation"
-	AwsConsoleURL                      = "https://console.aws.amazon.com/"
+	AwsConsoleURLTemplate              = "https://%v.console.aws.amazon.com/"
 	DefaultIssuer                      = "Red Hat SRE"
 
 	assumeRoleMaxRetries   = 3
@@ -229,7 +229,7 @@ func GetSigninToken(awsCredentials aws.Credentials, region string) (*AWSSigninTo
 func GetConsoleURL(signinToken string, region string) (*url.URL, error) {
 	signinParams := url.Values{}
 	signinParams.Add("Action", "login")
-	signinParams.Add("Destination", AwsConsoleURL)
+	signinParams.Add("Destination", fmt.Sprintf(AwsConsoleURLTemplate, region))
 	signinParams.Add("Issuer", DefaultIssuer)
 	signinParams.Add("SigninToken", signinToken)
 
