@@ -185,11 +185,11 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 	}
 
 	logger.Debugf("Using backplane URL: %s\n", bpURL)
-	backplanehost, err := getBackplaneCNAME(bpURL)
+	backplaneResolution, err := getBackplaneCNAME(bpURL)
 	if err != nil {
 		logger.Warn(err.Error())
 	} else {
-		logger.Debugf("Backplane URL resolves to %s \n", backplanehost)
+		logger.Debugf("Backplane URL resolves to %s \n", backplaneResolution)
 		logger.Debugf("Please refer to https://source.redhat.com/groups/public/sre/wiki/backplane_troubleshooting to figure out the associated backplane server")
 	}
 
