@@ -417,11 +417,11 @@ func listNamespaces(clusterID, clusterName string, isHostedControlPlane bool) ([
 
 // getBackplaneCNAME returns the DNS/CNAME resolution of the ocm backplane URL
 func getBackplaneCNAME(backplaneURL string) (string, error) {
-	backplanedomain, err := url.Parse(backplaneURL)
+	backplaneDomain, err := url.Parse(backplaneURL)
 	if err != nil {
 		return "", fmt.Errorf("unable to extract the fqdn from the %s", backplaneURL)
 	}
-	fqdn := backplanedomain.Hostname()
+	fqdn := backplaneDomain.Hostname()
 	resolution, err := net.LookupCNAME(fqdn)
 	if err != nil {
 		return "", fmt.Errorf("unable to resolve the %s", fqdn)
