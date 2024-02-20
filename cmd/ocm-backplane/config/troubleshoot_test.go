@@ -8,6 +8,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	"github.com/openshift/backplane-cli/pkg/cli/config"
 	"github.com/openshift/backplane-cli/pkg/ocm"
 	ocmMock "github.com/openshift/backplane-cli/pkg/ocm/mocks"
 	"github.com/openshift/backplane-cli/pkg/utils"
@@ -96,6 +97,11 @@ var _ = Describe("troubleshoot command", func() {
 			setupBPconfig(goodBPConfig)
 			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
 			o := troubleshootOptions{}
+			getBackplaneConfiguration = func() (bpConfig config.BackplaneConfiguration, err error) {
+				result := "http://example:8888"
+				bpConfig.ProxyURL = &result
+				return bpConfig,nil
+			}
 			err := o.checkBPCli()
 			Expect(err).To(BeNil())
 			Expect(len(printedCorrects)).To(Equal(2))
