@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -84,6 +85,7 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 		// if explicitly one cluster key given, use it to log in.
 		clusterKey = argv[0]
 		logger.WithField("Search Key", clusterKey).Debugln("Finding target cluster")
+
 	} else if len(argv) == 0 {
 		// if no args given, try to log into the cluster that the user is logged into
 		clusterInfo, err := utils.DefaultClusterUtils.GetBackplaneClusterFromConfig()
@@ -183,6 +185,13 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 	}
 
 	logger.Debugf("Using backplane URL: %s\n", bpURL)
+	backplaneResolution, err := getBackplaneCNAME(bpURL)
+	if err != nil {
+		logger.Warn(err.Error())
+	} else {
+		logger.Debugf("Backplane URL resolves to %s \n", backplaneResolution)
+		logger.Debugf("To know the associated Backplane instance please refer to the Backplane Source wiki")
+	}
 
 	// Get ocm access token
 	logger.Debugln("Finding ocm token")
@@ -404,4 +413,18 @@ func listNamespaces(clusterID, clusterName string, isHostedControlPlane bool) ([
 	}
 
 	return nsList, nil
+}
+
+// getBackplaneCNAME returns the DNS/CNAME resolution of the ocm backplane URL
+func getBackplaneCNAME(backplaneURL string) (string, error) {
+	backplaneDomain, err := url.Parse(backplaneURL)
+	if err != nil {
+		return "", fmt.Errorf("unable to extract the fqdn from the %s", backplaneURL)
+	}
+	fqdn := backplaneDomain.Hostname()
+	resolution, err := net.LookupCNAME(fqdn)
+	if err != nil {
+		return "", fmt.Errorf("unable to resolve the %s", fqdn)
+	}
+	return resolution, nil
 }
