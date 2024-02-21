@@ -56,6 +56,8 @@ var (
 	}
 )
 
+var getBackplaneConfiguration = config.GetBackplaneConfiguration
+
 // Print backplane-cli related info
 func (o *troubleshootOptions) checkBPCli() error {
 	configFilePath, err := config.GetConfigFilePath()
@@ -64,7 +66,7 @@ func (o *troubleshootOptions) checkBPCli() error {
 	} else {
 		printCorrect("backplane-cli configuration path: %s\n", configFilePath)
 	}
-	currentBPConfig, err := config.GetBackplaneConfiguration()
+	currentBPConfig, err := getBackplaneConfiguration()
 	if err != nil {
 		printWrong("Failed to read backplane-cli config file: %v\n", err)
 	} else {

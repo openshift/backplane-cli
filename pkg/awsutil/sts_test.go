@@ -304,7 +304,7 @@ func TestGetConsoleUrl(t *testing.T) {
 				Scheme:   "https",
 				Host:     "us-east-1.signin.aws.amazon.com",
 				Path:     "/federation",
-				RawQuery: "Action=login&Destination=https%3A%2F%2Fconsole.aws.amazon.com%2F&Issuer=Red+Hat+SRE&SigninToken=the_token",
+				RawQuery: "Action=login&Destination=https%3A%2F%2Fus-east-1.console.aws.amazon.com%2F&Issuer=Red+Hat+SRE&SigninToken=the_token",
 			},
 		},
 	}
