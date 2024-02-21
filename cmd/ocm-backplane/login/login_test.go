@@ -245,6 +245,28 @@ var _ = Describe("Login command", func() {
 			Expect(cfg.Contexts["openshift-backplane-srep/test123/anonymous"].Namespace).To(Equal("openshift-backplane-srep"))
 		})
 
+		It("when the namespace of the context is not passed as an argument", func() {
+			err := utils.CreateTempKubeConfig(nil)
+			Expect(err).To(BeNil())
+			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, testClusterID, nil)
+			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil)
+			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken(backplaneAPIURI, testToken).Return(mockClient, nil)
+			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(trueClusterID)).Return(fakeResp, nil)
+
+			err = runLogin(nil, []string{testClusterID})
+
+			Expect(err).To(BeNil())
+
+			cfg, err := utils.ReadKubeconfigRaw()
+			Expect(err).To(BeNil())
+			Expect(cfg.CurrentContext).To(Equal("openshift-backplane-srep/test123/anonymous"))
+			Expect(len(cfg.Contexts)).To(Equal(1))
+			Expect(cfg.Contexts["openshift-backplane-srep/test123/anonymous"].Cluster).To(Equal(testClusterID))
+			Expect(cfg.Contexts["openshift-backplane-srep/test123/anonymous"].Namespace).To(Equal(defaultNamespace))
+		})
+
 		It("Should fail when trying to find a non existent cluster", func() {
 			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
