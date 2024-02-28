@@ -115,5 +115,6 @@ func newLogsManagedJobCmd() *cobra.Command {
 		},
 	}
 	cmd.PersistentFlags().BoolP("follow", "f", false, "Specify if logs should be streamed")
+	cmd.PersistentFlags().Bool("manager", false, "Fetch the logs directly from the hive/MC")
 	return cmd
 }
