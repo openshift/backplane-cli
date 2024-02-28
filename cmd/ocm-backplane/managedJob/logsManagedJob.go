@@ -69,9 +69,8 @@ func newLogsManagedJobCmd() *cobra.Command {
 			}
 
 			if managerFlag {
-				if mcid, clusterName, _, err := ocm.DefaultOCMInterface.GetManagingCluster(bpCluster.ClusterID); err == nil {
+				if mcid, _, _, err := ocm.DefaultOCMInterface.GetManagingCluster(bpCluster.ClusterID); err == nil {
 					bpCluster, err = utils.DefaultClusterUtils.GetBackplaneCluster(mcid)
-					_ = clusterName
 					if err != nil {
 						return err
 					}
