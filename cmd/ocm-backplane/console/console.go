@@ -567,9 +567,8 @@ func (o *consoleOptions) runMonitorPlugin(ce containerEngineInterface) error {
 	}
 	// Setup nginx configurations
 	config := fmt.Sprintf(info.MonitoringPluginNginxConfigTemplate, o.monitorPluginPort)
-	err := ce.putFileToMount(info.MonitoringPluginNginxConfigFilename, []byte(config))
-	if err != nil {
-		return nil
+	if err := ce.putFileToMount(info.MonitoringPluginNginxConfigFilename, []byte(config)); err != nil {
+		return err
 	}
 
 	clusterID, err := getClusterID()
@@ -1209,7 +1208,7 @@ func (ce *podmanMac) putFileToMount(filename string, content []byte) error {
 	// To do so, we encode the content, send it to VM via ssh then decode it.
 	dstFilename := filepath.Join("/tmp/", filename)
 	contentEncoded := base64.StdEncoding.EncodeToString(content)
-	writeConfigCmd := fmt.Sprintf("podman machine ssh \"echo %s | base64 -d > %s \"", contentEncoded, dstFilename)
+	writeConfigCmd := fmt.Sprintf("podman machine ssh $(podman machine info --format {{.Host.CurrentMachine}}) \"echo %s | base64 -d > %s \"", contentEncoded, dstFilename)
 	logger.Debugf("Executing: %s\n", writeConfigCmd)
 	writeConfigOutput, err := createCommand("bash", "-c", writeConfigCmd).CombinedOutput()
 	if err != nil {
