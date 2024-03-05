@@ -55,6 +55,19 @@ func RunElevate(argv []string) error {
 		return err
 	}
 
+	// As WriteKubeconfigToFile(utils.CreateTempKubeConfig) is overriding KUBECONFIG,
+	// we need to store its definition in order to redefine it to its original (value or unset) when we do not need it anymore
+	oldKubeconfigPath, oldKubeconfigDefined := os.LookupEnv("KUBECONFIG")
+	defer func() {
+		if oldKubeconfigDefined {
+			logger.Debugln("Will set KUBECONFIG variable to original", oldKubeconfigPath)
+			os.Setenv("KUBECONFIG", oldKubeconfigPath)
+		} else {
+			logger.Debugln("Will unset KUBECONFIG variable")
+			os.Unsetenv("KUBECONFIG")
+		}
+	}()
+
 	err = WriteKubeconfigToFile(&config)
 	if err != nil {
 		return err
@@ -90,7 +103,7 @@ func RunElevate(argv []string) error {
 
 	kubeconfigPath, _ := os.LookupEnv("KUBECONFIG")
 	defer func() {
-		logger.Debugln("Command error; Cleaning up temporary kubeconfig")
+		logger.Debugln("Cleaning up temporary kubeconfig", kubeconfigPath)
 		err := OsRemove(kubeconfigPath)
 		if err != nil {
 			fmt.Println(err)

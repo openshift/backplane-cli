@@ -13,6 +13,7 @@ import (
 
 	"github.com/openshift/backplane-cli/pkg/backplaneapi"
 	"github.com/openshift/backplane-cli/pkg/cli/config"
+	"github.com/openshift/backplane-cli/pkg/ocm"
 	"github.com/openshift/backplane-cli/pkg/utils"
 )
 
@@ -45,6 +46,11 @@ func newLogsManagedJobCmd() *cobra.Command {
 				return err
 			}
 
+			managerFlag, err := cmd.Flags().GetBool("manager")
+			if err != nil {
+				return err
+			}
+
 			// ======== Parsing Args ========
 			if len(args) < 1 {
 				return fmt.Errorf("missing managedjob name as an argument")
@@ -56,10 +62,21 @@ func newLogsManagedJobCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+
 			bpCluster, err := utils.DefaultClusterUtils.GetBackplaneCluster(clusterKey)
 			if err != nil {
 				return err
 			}
+
+			if managerFlag {
+				if mcid, _, _, err := ocm.DefaultOCMInterface.GetManagingCluster(bpCluster.ClusterID); err == nil {
+					bpCluster, err = utils.DefaultClusterUtils.GetBackplaneCluster(mcid)
+					if err != nil {
+						return err
+					}
+				}
+			}
+
 			backplaneHost := bpConfig.URL
 			if err != nil {
 				return err
@@ -97,5 +114,6 @@ func newLogsManagedJobCmd() *cobra.Command {
 		},
 	}
 	cmd.PersistentFlags().BoolP("follow", "f", false, "Specify if logs should be streamed")
+	cmd.PersistentFlags().Bool("manager", false, "Fetch the logs directly from the hive/MC")
 	return cmd
 }
