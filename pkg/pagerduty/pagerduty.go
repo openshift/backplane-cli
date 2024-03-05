@@ -39,12 +39,21 @@ func NewWithToken(authToken string, options ...pagerduty.ClientOptions) (*RealPa
 }
 
 func (c *RealPagerDutyClient) GetClusterIDFromAlertList(alertList *pagerduty.ListAlertsResponse) (string, error) {
-	if len(alertList.Alerts) > 0 {
+	if len(alertList.Alerts) == 0 {
+		return "", fmt.Errorf("no alerts found for the given incident ID")
+
+	} else if len(alertList.Alerts) == 1 {
+		clusterID, err := c.GetClusterIDFromAlert(&alertList.Alerts[0])
+		if err != nil {
+			return "", err
+		}
+		return clusterID, nil
+
+	} else if len(alertList.Alerts) > 1 {
 		prevClusterID, err := c.GetClusterIDFromAlert(&alertList.Alerts[0])
 		if err != nil {
 			return "", err
 		}
-
 		// Check if all alerts in the list have the same cluster ID
 		for _, alert := range alertList.Alerts {
 			currentAlert := alert
@@ -54,7 +63,6 @@ func (c *RealPagerDutyClient) GetClusterIDFromAlertList(alertList *pagerduty.Lis
 				return "", fmt.Errorf("not all alerts have the same cluster ID")
 			}
 		}
-
 		return prevClusterID, nil
 	}
 

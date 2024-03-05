@@ -47,7 +47,7 @@ var (
 		using OCM token. The backplane api will return a proxy url for
 		target cluster. The url will be written to kubeconfig, so we can
 		run oc command later to operate the target cluster.`,
-		Example: " backplane login <id>\n backplane login %test%\n backplane login <external_id>",
+		Example: " backplane login <id>\n backplane login %test%\n backplane login <external_id>\n backplane login --pd <incident-id>",
 		Args: func(cmd *cobra.Command, args []string) error {
 			if cmd.Flags().Lookup("pd").Changed {
 				if err := cobra.ExactArgs(0)(cmd, args); err != nil {
