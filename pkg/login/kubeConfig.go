@@ -1,6 +1,7 @@
 package login
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -110,6 +111,8 @@ func SaveKubeConfig(clusterID string, config api.Config, isMulti bool, kubePath 
 		}
 	}
 	logger.Debugln("Wrote Kube configuration")
+	conf, _ := json.Marshal(config)
+	logger.Debugln(string(conf))
 	return nil
 }
 

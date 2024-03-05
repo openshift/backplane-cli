@@ -308,7 +308,7 @@ func inlineLibrarySourceFiles(script string, scriptPath string) (string, error) 
 	}
 	libraryEncoded := base64.StdEncoding.EncodeToString([]byte(fileBody))
 
-	inlinedFunction := "base64 -d <<< " + libraryEncoded + " > ./lib.sh\nsource ./lib.sh\n"
+	inlinedFunction := "base64 -d <<< " + libraryEncoded + " > /tmp/lib.sh\nsource /tmp/lib.sh\n"
 
 	inlinedScript := strings.Replace(script, match, inlinedFunction, 1)
 
