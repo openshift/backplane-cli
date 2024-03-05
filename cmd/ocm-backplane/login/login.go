@@ -9,7 +9,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/PagerDuty/go-pagerduty"
 	"github.com/golang-jwt/jwt/v4"
 	logger "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -24,6 +23,7 @@ import (
 	"github.com/openshift/backplane-cli/pkg/cli/globalflags"
 	"github.com/openshift/backplane-cli/pkg/login"
 	"github.com/openshift/backplane-cli/pkg/ocm"
+	"github.com/openshift/backplane-cli/pkg/pagerduty"
 	"github.com/openshift/backplane-cli/pkg/utils"
 )
 
@@ -89,75 +89,8 @@ func init() {
 		&args.pd,
 		"pd",
 		"",
-		"Login using PagerDuty (incident id or) html_url.",
+		"Login using PagerDuty incident id or html_url.",
 	)
-}
-
-func getClusterIDFromAlertList(alertList *pagerduty.ListAlertsResponse) (string, error) {
-	if len(alertList.Alerts) > 0 {
-		prevClusterID, err := getClusterIDFromAlert(&alertList.Alerts[0])
-		if err != nil {
-			return "", err
-		}
-
-		// Check if all alerts in the list have the same cluster ID
-		for _, alert := range alertList.Alerts {
-			currentAlert := alert
-			if currentClusterID, err := getClusterIDFromAlert(&currentAlert); err != nil {
-				return "", err
-			} else if currentClusterID != prevClusterID {
-				return "", fmt.Errorf("not all alerts have the same cluster ID")
-			}
-		}
-
-		return prevClusterID, nil
-	}
-
-	return "", fmt.Errorf("unable to retrieve list of pagerduty alerts")
-}
-
-// getClusterIDFromAlert extracts the cluster ID from a PagerDuty incident alert.
-// It expects the alert's body to have a Common Event Format.
-func getClusterIDFromAlert(alert *pagerduty.IncidentAlert) (string, error) {
-	if alert == nil || alert.Body == nil {
-		return "", fmt.Errorf("given alert or it's body is empty")
-	}
-
-	cefDetails, ok := alert.Body["cef_details"].(map[string]interface{})
-	if !ok || cefDetails == nil {
-		return "", fmt.Errorf("missing or invalid Common Event Format Details of given alert")
-	}
-
-	detailsValue, ok := cefDetails["details"]
-	if !ok || detailsValue == nil {
-		return "", fmt.Errorf("missing or invalid 'details' field in Common Event Format Details")
-	}
-
-	details, ok := detailsValue.(map[string]interface{})
-	if !ok || details == nil {
-		return "", fmt.Errorf("'details' field is not a map[string]interface{} in Common Event Format Details")
-	}
-
-	clusterID, ok := details["cluster_id"].(string)
-	if !ok || clusterID == "" {
-		return "", fmt.Errorf("missing or invalid 'cluster_id' field in CEF details")
-	}
-	return clusterID, nil
-}
-
-func getClusterID(pdClient *pagerduty.Client, incidentID string) (string, error) {
-
-	incidentAlerts, err := pdClient.ListIncidentAlerts(incidentID)
-	if err != nil {
-		return "", err
-	}
-
-	clusterID, err := getClusterIDFromAlertList(incidentAlerts)
-	if err != nil {
-		return "", err
-	}
-
-	return clusterID, nil
 }
 
 func runLogin(cmd *cobra.Command, argv []string) (err error) {
@@ -166,22 +99,25 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 	utils.CheckBackplaneVersion(cmd)
 
 	// Get Backplane configuration
-	bpConfig, _ := config.GetBackplaneConfiguration()
+	bpConfig, err := config.GetBackplaneConfiguration()
 	if err != nil {
 		return err
 	}
 
 	// Currently go-pagerduty pkg does not include incident id validation.
 	if args.pd != "" {
-		pdClient := pagerduty.NewClient(bpConfig.PagerDutyAPIKey)
+		pdClient, err := pagerduty.NewWithToken(bpConfig.PagerDutyAPIKey)
+		if err != nil {
+			return fmt.Errorf("could not initialize the client: %w", err)
+		}
 		if strings.Contains(args.pd, "redhat.pagerduty.com/incidents/") {
 			incidentID := args.pd[strings.LastIndex(args.pd, "/")+1:]
-			clusterKey, err = getClusterID(pdClient, incidentID)
+			clusterKey, err = pdClient.GetClusterID(incidentID)
 			if err != nil {
 				return err
 			}
 		} else {
-			clusterKey, err = getClusterID(pdClient, args.pd)
+			clusterKey, err = pdClient.GetClusterID(args.pd)
 			if err != nil {
 				return err
 			}

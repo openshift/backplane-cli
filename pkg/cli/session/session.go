@@ -405,11 +405,6 @@ func (e *BackplaneSession) initClusterLogin(cmd *cobra.Command) error {
 			return fmt.Errorf("error occurred when kube-path flag %v", err)
 		}
 
-		err = login.LoginCmd.Flags().Set("pd", e.Path)
-		if err != nil {
-			return fmt.Errorf("error occurred when setting pd flag %v", err)
-		}
-
 		// Execute login command
 		err = login.LoginCmd.RunE(cmd, []string{e.Options.ClusterID})
 		if err != nil {

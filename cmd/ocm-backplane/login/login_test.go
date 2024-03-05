@@ -58,7 +58,6 @@ var _ = Describe("Login command", func() {
 		truePagerDutyAPITkn      string
 		falsePagerDutyIncidentID string
 		truePagerDutyIncidentID  string
-		falsePagerDutyAlert      string
 		bpConfigPath             string
 	)
 
@@ -86,7 +85,6 @@ var _ = Describe("Login command", func() {
 		truePagerDutyAPITkn = "y_NbAkKc66ryYTWUXYEu"
 		falsePagerDutyIncidentID = "incident123"
 		truePagerDutyIncidentID = "Q0ZNH7TDQBOO54"
-		falsePagerDutyAlert = "PLGBS4H"
 
 		mockClientWithResp.EXPECT().LoginClusterWithResponse(gomock.Any(), gomock.Any()).Return(nil, nil).Times(0)
 
@@ -417,11 +415,9 @@ var _ = Describe("Login command", func() {
 
 			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
 
-			// Create a temporary JSON configuration file in the user's home directory for testing purposes.
-			// TODO: Ensure that the test does not rely on external dependencies or state. Mock or stub these dependencies to make the test more isolated and reliable.
-			homeDir, err := os.UserHomeDir()
-			Expect(err).To(BeNil())
-			bpConfigPath = filepath.Join(homeDir, ".config/backplane/mock.json")
+			// Create a temporary JSON configuration file in the temp directory for testing purposes.
+			tempDir := os.TempDir()
+			bpConfigPath = filepath.Join(tempDir, "mock.json")
 			tempFile, err := os.Create(bpConfigPath)
 			Expect(err).To(BeNil())
 
@@ -454,11 +450,9 @@ var _ = Describe("Login command", func() {
 
 			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
 
-			// Create a temporary JSON configuration file in the user's home directory for testing purposes.
-			// TODO: Ensure that the test does not rely on external dependencies or state. Mock or stub these dependencies to make the test more isolated and reliable.
-			homeDir, err := os.UserHomeDir()
-			Expect(err).To(BeNil())
-			bpConfigPath = filepath.Join(homeDir, ".config/backplane/mock.json")
+			// Create a temporary JSON configuration file in the temp directory for testing purposes.
+			tempDir := os.TempDir()
+			bpConfigPath = filepath.Join(tempDir, "mock.json")
 			tempFile, err := os.Create(bpConfigPath)
 			Expect(err).To(BeNil())
 
@@ -482,47 +476,6 @@ var _ = Describe("Login command", func() {
 
 			Expect(err.Error()).Should(ContainSubstring("status code 404"))
 		})
-
-		// NOTE: truePagerDutyAPITkn can't access given incidents
-		It("should fail to extract cluster ID when the 'details' field under Common Event Format Details is missing or invalid", func() {
-			// add code (old alert versions?)
-
-			args.pd = falsePagerDutyAlert
-
-			err := utils.CreateTempKubeConfig(nil)
-			Expect(err).To(BeNil())
-
-			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
-
-			// Create a temporary JSON configuration file in the user's home directory for testing purposes.
-			// TODO: Ensure that the test does not rely on external dependencies or state. Mock or stub these dependencies to make the test more isolated and reliable.
-			homeDir, err := os.UserHomeDir()
-			Expect(err).To(BeNil())
-			bpConfigPath = filepath.Join(homeDir, ".config/backplane/mock.json")
-			tempFile, err := os.Create(bpConfigPath)
-			Expect(err).To(BeNil())
-
-			testData := config.BackplaneConfiguration{
-				URL:              backplaneAPIURI,
-				ProxyURL:         new(string),
-				SessionDirectory: "",
-				AssumeInitialArn: "",
-				PagerDutyAPIKey:  truePagerDutyAPITkn,
-			}
-
-			// Marshal the testData into JSON format and write it to tempFile.
-			jsonData, err := json.Marshal(testData)
-			Expect(err).To(BeNil())
-			_, err = tempFile.Write(jsonData)
-			Expect(err).To(BeNil())
-
-			os.Setenv("BACKPLANE_CONFIG", bpConfigPath)
-
-			err = runLogin(nil, nil)
-
-			Expect(err.Error()).Should(ContainSubstring("missing or invalid 'details' field"))
-		})
-
 	})
 
 	Context("check GetRestConfigAsUser", func() {
