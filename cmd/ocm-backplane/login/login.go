@@ -77,30 +77,39 @@ func init() {
 
 func runLogin(cmd *cobra.Command, argv []string) (err error) {
 	var clusterKey string
-
+	logger.Debugf("Running Login Command ...")
+	logger.Debugf("Checking Backplane Version")
 	utils.CheckBackplaneVersion(cmd)
 
+	logger.Debugf("Extracting Backplane Cluster ID")
 	// Get The cluster ID
 	if len(argv) == 1 {
 		// if explicitly one cluster key given, use it to log in.
+		logger.Debugf("Cluster Key is given in argument")
 		clusterKey = argv[0]
 		logger.WithField("Search Key", clusterKey).Debugln("Finding target cluster")
 
 	} else if len(argv) == 0 {
 		// if no args given, try to log into the cluster that the user is logged into
+		logger.Debugf("Finding Clustrer Key from current cluster")
 		clusterInfo, err := utils.DefaultClusterUtils.GetBackplaneClusterFromConfig()
 		if err != nil {
 			return err
 		}
 		clusterKey = clusterInfo.ClusterID
+		logger.Debugf("Backplane Cluster Infromation data extracted: %+v\n", clusterInfo)
 	}
+	logger.Debugf("Backplane Cluster Key is: %v \n", clusterKey)
 
+	logger.Debugf("Extracting Backplane configuration")
 	// Get Backplane configuration
 	bpConfig, err := config.GetBackplaneConfiguration()
 	if err != nil {
 		return err
 	}
+	logger.Debugf("Backplane Config File Contains is: %v \n", bpConfig)
 
+	logger.Debugln("Setting Proxy URL from global options")
 	// Set proxy url to http client
 	proxyURL := globalOpts.ProxyURL
 	if proxyURL != "" {
@@ -114,8 +123,11 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 
 	if bpConfig.ProxyURL != nil {
 		proxyURL = *bpConfig.ProxyURL
+		logger.Debugln("backplane configuration file also contains a proxy url, using that one instead")
+		logger.Debugf("New backplane Proxy URL: %s\n", proxyURL)
 	}
 
+	logger.Debugln("Extracting target cluster ID and name")
 	clusterID, clusterName, err := ocm.DefaultOCMInterface.GetTargetCluster(clusterKey)
 	if err != nil {
 		return err
@@ -136,10 +148,14 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 			return err
 		}
 
+		logger.Debugf("Managing clusterID is : %v \n", clusterID)
+		logger.Debugf("Managing cluster name is : %v \n", clusterName)
+
 		logger.WithFields(logger.Fields{
 			"ID":   clusterID,
 			"Name": clusterName}).Infoln("Management cluster")
 
+		logger.Debugln("Finding K8s namespaces")
 		// Print the related namespace if login to manager cluster
 		var namespaces []string
 		namespaces, err = listNamespaces(targetClusterID, targetClusterName, isHostedControlPlane)
@@ -158,12 +174,15 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 		if err != nil {
 			return err
 		}
+		logger.Debugf("Service clusterID is : %v \n", clusterID)
+		logger.Debugf("Service cluster name is : %v \n", clusterName)
 
 		logger.WithFields(logger.Fields{
 			"ID":   clusterID,
 			"Name": clusterName}).Infoln("Service cluster")
 	}
 
+	logger.Debugln("Validating K8s Config Path")
 	// validate kubeconfig save path when login into multi clusters
 	if args.kubeConfigPath != "" {
 		if !args.multiCluster {
@@ -174,6 +193,7 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 		}
 	}
 
+	logger.Debugln("Extracting backplane URL")
 	// Get Backplane URL
 	bpURL := globalOpts.BackplaneURL
 	if bpURL == "" {
@@ -194,19 +214,22 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 	}
 
 	// Get ocm access token
-	logger.Debugln("Finding ocm token")
 	accessToken, err := ocm.DefaultOCMInterface.GetOCMAccessToken()
 	if err != nil {
 		return err
 	}
-	logger.Debugln("Found OCM access token")
 
+	logger.Debugln("Check for Cluster Hibernation")
 	// Not great if there's an error checking if the cluster is hibernating, but ignore it for now and continue
 	if isHibernating, _ := ocm.DefaultOCMInterface.IsClusterHibernating(clusterID); isHibernating {
 		// If it is hibernating, don't try to connect as it will fail
 		return fmt.Errorf("cluster %s is hibernating, login failed", clusterKey)
 	}
 
+	logger.WithFields(logger.Fields{
+		"bpURL":     bpURL,
+		"clusterID": clusterID,
+	}).Debugln("Query backplane-api for proxy url of our target cluster")
 	// Query backplane-api for proxy url
 	bpAPIClusterURL, err := doLogin(bpURL, clusterID, *accessToken)
 	if err != nil {
@@ -226,13 +249,16 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 	}
 	logger.WithField("URL", bpAPIClusterURL).Debugln("Proxy")
 
+	logger.Debugln("Generating a new K8s cluster config file")
 	cf := genericclioptions.NewConfigFlags(true)
 	rc, err := cf.ToRawKubeConfigLoader().RawConfig()
 	if err != nil {
 		return err
 	}
-	// Check PS1 env is set or not
+	logger.Debugf("API Config Generated %+v \n", rc)
 
+	logger.Debugln("Check for PS1 ENV varible")
+	// Check PS1 env is set or not
 	EnvPs1, ok := os.LookupEnv(EnvPs1)
 	if !ok {
 		logger.Warn("Env KUBE_PS1_CLUSTER_FUNCTION is not detected. It is recommended to set PS1 to learn which cluster you are operating on, refer https://github.com/openshift/backplane-cli/blob/main/docs/PS1-setup.md", EnvPs1)
@@ -268,7 +294,8 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 	rc.Contexts[targetContextNickName] = targetContext
 	rc.CurrentContext = targetContextNickName
 
-	// Save the config.
+	logger.Debugln("Saving new API config")
+	// Save the config
 	err = login.SaveKubeConfig(clusterID, rc, args.multiCluster, args.kubeConfigPath)
 
 	return err
