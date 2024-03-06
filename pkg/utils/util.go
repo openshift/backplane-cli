@@ -44,7 +44,7 @@ var (
 		Contexts: map[string]*api.Context{
 			"openshift-backplane-srep/test123/anonymous": {
 				Cluster:   "dummy_cluster",
-				Namespace: "default",
+				Namespace: "openshift-backplane-srep",
 			},
 		},
 		CurrentContext: "openshift-backplane-srep/test123/anonymous",
