@@ -64,6 +64,12 @@ type podmanMac struct{}
 type dockerLinux struct{}
 type dockerMac struct{}
 
+type execActionOnTermInterface interface {
+	execActionOnTerminationFunction(action postTerminationAction) error
+}
+
+type execActionOnTermStruct struct{}
+
 type consoleOptions struct {
 	image               string
 	port                string
@@ -74,6 +80,7 @@ type consoleOptions struct {
 	needMonitorPlugin   bool
 	monitorPluginPort   string
 	monitorPluginImage  string
+	terminationFunction execActionOnTermInterface
 }
 
 // envVar for environment variable passing to container
@@ -128,7 +135,7 @@ var (
 )
 
 func newConsoleOptions() *consoleOptions {
-	return &consoleOptions{}
+	return &consoleOptions{terminationFunction: &execActionOnTermStruct{}}
 }
 
 func NewConsoleCmd() *cobra.Command {
@@ -218,12 +225,10 @@ func (o *consoleOptions) run(cmd *cobra.Command, argv []string) error {
 	if err != nil {
 		return err
 	}
-
 	err = o.determineNeedMonitorPlugin()
 	if err != nil {
 		return err
 	}
-
 	err = o.determineMonitorPluginPort()
 	if err != nil {
 		return err
@@ -329,6 +334,7 @@ func (o *consoleOptions) getContainerEngineImpl() (containerEngineInterface, err
 	if !valid {
 		return nil, fmt.Errorf("failed to validate container engine: %s", containerEngine)
 	}
+
 	logger.Infof("Using container engine %s\n", containerEngine)
 
 	var containerEngineImpl containerEngineInterface
@@ -625,7 +631,13 @@ func (o *consoleOptions) cleanUp(ce containerEngineInterface) error {
 	}
 	containersToCleanUp = append(containersToCleanUp, fmt.Sprintf("console-%s", clusterID))
 
-	err = execActionOnTermination(func() error {
+	// If for whatever reason the user did not call the proper function to create a console option
+	// And the Cleanup method is called without a termination function defined
+	if o.terminationFunction == nil {
+		o.terminationFunction = &execActionOnTermStruct{}
+	}
+
+	err = o.terminationFunction.execActionOnTerminationFunction(func() error {
 		for _, c := range containersToCleanUp {
 			err := ce.stopContainer(c)
 			if err != nil {
@@ -901,11 +913,10 @@ func replaceConsoleURL(containerURL string, userProvidedURL string) (string, err
 type postTerminationAction func() error
 
 // keep the program running in frontend and wait for ctrl-c
-func execActionOnTermination(action postTerminationAction) error {
+func (e *execActionOnTermStruct) execActionOnTerminationFunction(action postTerminationAction) error {
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 	done := make(chan bool, 1)
-
 	sig := <-sigs
 	fmt.Println(sig)
 	done <- true

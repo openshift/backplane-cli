@@ -2,10 +2,13 @@ package console
 
 import (
 	"os"
+	"reflect"
 
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -34,6 +37,7 @@ var _ = Describe("console command", func() {
 		pullSecret  string
 		clusterID   string
 		proxyURL    string
+		fakeToken   string
 		testKubeCfg api.Config
 	)
 
@@ -56,6 +60,7 @@ var _ = Describe("console command", func() {
 		pullSecret = "testpullsecret"
 		clusterID = "cluster123"
 		proxyURL = "https://my.proxy:443"
+		fakeToken = "faketokenpleaseignore"
 
 		testKubeCfg = api.Config{
 			Kind:        "Config",
@@ -110,7 +115,7 @@ var _ = Describe("console command", func() {
 	}
 
 	Context("when console command executes", func() {
-		It("should read the openbrowser variable from environment variables", func() {
+		It("should read the openbrowser variable from environment variables and it is true", func() {
 			setupConfig()
 			os.Setenv(EnvBrowserDefault, "true")
 			o := consoleOptions{}
@@ -118,6 +123,24 @@ var _ = Describe("console command", func() {
 			os.Setenv(EnvBrowserDefault, "")
 			Expect(err).To(BeNil())
 			Expect(o.openBrowser).To(BeTrue())
+		})
+
+		It("should read the openbrowser variable from environment variables and it is false", func() {
+			setupConfig()
+			os.Setenv(EnvBrowserDefault, "false")
+			o := consoleOptions{}
+			err := o.determineOpenBrowser()
+			os.Setenv(EnvBrowserDefault, "")
+			Expect(err).To(BeNil())
+			Expect(o.openBrowser).To(BeFalse())
+		})
+
+		It("should read the openbrowser variable from environment variables and we it is undefined", func() {
+			setupConfig()
+			os.Setenv(EnvBrowserDefault, "")
+			o := consoleOptions{}
+			err := o.determineOpenBrowser()
+			Expect(err).To(MatchError(ContainSubstring("unable to parse boolean value from environment variable")))
 		})
 
 		It("should use the specified port for listen", func() {
@@ -133,6 +156,14 @@ var _ = Describe("console command", func() {
 			o := consoleOptions{}
 			err := o.determineListenPort()
 			Expect(err).To(BeNil())
+			Expect(len(o.port)).ToNot(Equal(0))
+		})
+
+		It("should throw an error when port is not an integer", func() {
+			setupConfig()
+			o := consoleOptions{port: "verysusport"}
+			err := o.determineListenPort()
+			Expect(err).To(MatchError("port should be an integer"))
 			Expect(len(o.port)).ToNot(Equal(0))
 		})
 
@@ -292,6 +323,125 @@ var _ = Describe("console command", func() {
 			// executing docker --config xxxx pull
 			Expect(len(command)).To(BeNumerically(">", 3))
 			Expect(command[1]).To(ContainSubstring("config"))
+		})
+	})
+
+	Context("An container is created to run the console, prior to doing that we need to check if container distro is supported", func() {
+
+		ced := &dockerLinux{}
+		cep := &podmanLinux{}
+
+		// Consider refactoring the following function as it isn't being used
+		It("Check for the existance of a invalid container engine", func() {
+			vld, err := validateContainerEngine("Foo Bar")
+			Expect(vld).To(BeFalse())
+			Expect(err).To(MatchError(ContainSubstring("container engine can only be one of")))
+		})
+
+		// For some strange reason reflect of cei returns a pointer
+
+		It("In the case we explicitly specify Podman, the code should return support for Podman", func() {
+			oldpath := createPathPodman()
+			o := consoleOptions{}
+			o.containerEngineFlag = PODMAN
+			cei, err := o.getContainerEngineImpl()
+			Expect(err).To(BeNil())
+			Expect(reflect.TypeOf(cei) == reflect.TypeOf(cep)).To(BeTrue())
+			removePath(oldpath)
+		})
+
+		It("In the case we explicitly specify Docker, the code should return support for Docker", func() {
+			oldpath := createPathDocker()
+			o := consoleOptions{}
+			o.containerEngineFlag = DOCKER
+			cei1, err1 := o.getContainerEngineImpl()
+			Expect(err1).To(BeNil())
+			Expect(reflect.TypeOf(cei1) == reflect.TypeOf(ced)).To(BeTrue())
+			removePath(oldpath)
+		})
+
+		It("Test if environment varible could be read by the code to identify what container engine to use", func() {
+			oldpath := createPathPodman()
+			o := consoleOptions{}
+			os.Setenv("CONTAINER_ENGINE", PODMAN)
+			o.containerEngineFlag = ""
+			cei2, err2 := o.getContainerEngineImpl()
+			Expect(err2).To(BeNil())
+			Expect(reflect.TypeOf(cei2) == reflect.TypeOf(cep)).To(BeTrue())
+			removePath(oldpath)
+		})
+
+		It("Test the situation where the environment varible is something else", func() {
+			o := consoleOptions{}
+			o.containerEngineFlag = "FOO"
+			os.Setenv("BACKPLANE_DEFAULT_OPEN_BROWSER", "FALSE")
+			_, err4 := o.getContainerEngineImpl()
+			Expect(err4).To(MatchError(ContainSubstring("container engine can only be one of podman|docker")))
+			os.Setenv("BACKPLANE_DEFAULT_OPEN_BROWSER", "")
+		})
+	})
+
+	// Putting everything together, we could call the .run function to test the particular functionality
+	Context("Once we have validated container runtimes, we need to start the containers in which the console resides", func() {
+
+		It("Prior to running the console we need to create a cobra.command object and verify the flag entries are created", func() {
+			consoleCmd := NewConsoleCmd()
+			flags := consoleCmd.Flags()
+			Expect(reflect.TypeOf(flags) == reflect.TypeOf(&pflag.FlagSet{})).To(BeTrue())
+		})
+
+		It("The run function checks configurations and runs the container", func() {
+			// createPathPodman()
+			oldpath := createPathDocker()
+			// Create a new client set or deployment to be read
+			createClientSet = func(c *rest.Config) (kubernetes.Interface, error) {
+				return testclient.NewSimpleClientset(&appsv1.DeploymentList{Items: []appsv1.Deployment{{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: ConsoleNS,
+						Name:      ConsoleDeployment,
+					},
+					Spec: appsv1.DeploymentSpec{
+						Template: corev1.PodTemplateSpec{
+							Spec: corev1.PodSpec{
+								Containers: []corev1.Container{{
+									Name:  "console",
+									Image: "testrepo.com/test/console:latest",
+								}},
+							},
+						},
+					},
+				}}}), nil
+			}
+
+			// Define a Cluster info, 4.13 since we're not testing monitoring in this scenario
+			clusterInfo, _ := cmv1.NewCluster().
+				CloudProvider(cmv1.NewCloudProvider().ID("aws")).
+				Product(cmv1.NewProduct().ID("dedicated")).
+				AdditionalTrustBundle("REDACTED").
+				Proxy(cmv1.NewProxy().HTTPProxy("http://my.proxy:80").HTTPSProxy("https://my.proxy:443")).
+				OpenshiftVersion("4.13.0").Build()
+
+			// Set Browser opening to false
+			os.Setenv("BACKPLANE_DEFAULT_OPEN_BROWSER", "FALSE")
+			setupConfig()
+
+			// Set some mock varibles,
+			mockOcmInterface.EXPECT().GetPullSecret().Return(pullSecret, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetClusterInfoByID(clusterID).Return(clusterInfo, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&fakeToken, nil).AnyTimes()
+			// Create a new ocmEnvironment for mock use
+			ocmEnvironment, _ := cmv1.NewEnvironment().BackplaneURL("fakeBackPlaneUrl").Build()
+			// Tell mockOCM interface to return ocnEnvironment
+			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnvironment, nil).AnyTimes()
+			o := consoleOptions{terminationFunction: &execActionOnTermMockStruct{}}
+			o.port = "1337"
+			o.url = "http://127.0.0.2:1447"
+			o.openBrowser = false
+			o.containerEngineFlag = DOCKER
+			err1 := o.run(&cobra.Command{}, []string{})
+			Expect(err1).To(BeNil())
+			os.Setenv("BACKPLANE_DEFAULT_OPEN_BROWSER", "")
+			removePath(oldpath)
 		})
 	})
 })
