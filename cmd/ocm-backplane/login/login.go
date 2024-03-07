@@ -74,9 +74,10 @@ func init() {
 		"Save kube configuration in the specific path when login to multi clusters.",
 	)
 
-	flags.StringVar(
+	flags.StringVarP(
 		&args.defaultNamespace,
-		"defaultns",
+		"namespace",
+		"n",
 		"openshift-backplane-srep",
 		"Sets a default namespace for SRE to run commands like oc debug node/xxx",
 	)
