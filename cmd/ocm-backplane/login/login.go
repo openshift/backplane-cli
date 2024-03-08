@@ -107,15 +107,15 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 		return err
 	}
 	logger.Debugf("Backplane Config File Contains is: %v \n", bpConfig)
-  
-  logger.Debugf("Extracting Backplane Cluster ID")
+
+	logger.Debugf("Extracting Backplane Cluster ID")
 	// Currently go-pagerduty pkg does not include incident id validation.
 	if args.pd != "" {
 		pdClient, err := pagerduty.NewWithToken(bpConfig.PagerDutyAPIKey)
 		if err != nil {
 			return fmt.Errorf("could not initialize the client: %w", err)
 		}
-		if strings.Contains(args.pd, "redhat.pagerduty.com/incidents/") {
+		if strings.Contains(args.pd, "/incidents/") {
 			incidentID := args.pd[strings.LastIndex(args.pd, "/")+1:]
 			clusterKey, err = pdClient.GetClusterID(incidentID)
 			if err != nil {

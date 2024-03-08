@@ -38,18 +38,19 @@ func NewWithToken(authToken string, options ...pagerduty.ClientOptions) (*RealPa
 	return &c, nil
 }
 
+// GetClusterIDFromAlertList retrieves the cluster ID from a list of PagerDuty alerts,
+// ensuring they have the same cluster ID or return an error if inconsistent or no alerts found.
 func (c *RealPagerDutyClient) GetClusterIDFromAlertList(alertList *pagerduty.ListAlertsResponse) (string, error) {
-	if len(alertList.Alerts) == 0 {
+	switch len(alertList.Alerts) {
+	case 0:
 		return "", fmt.Errorf("no alerts found for the given incident ID")
-
-	} else if len(alertList.Alerts) == 1 {
+	case 1:
 		clusterID, err := c.GetClusterIDFromAlert(&alertList.Alerts[0])
 		if err != nil {
 			return "", err
 		}
 		return clusterID, nil
-
-	} else if len(alertList.Alerts) > 1 {
+	default:
 		prevClusterID, err := c.GetClusterIDFromAlert(&alertList.Alerts[0])
 		if err != nil {
 			return "", err
@@ -65,11 +66,9 @@ func (c *RealPagerDutyClient) GetClusterIDFromAlertList(alertList *pagerduty.Lis
 		}
 		return prevClusterID, nil
 	}
-
-	return "", fmt.Errorf("unable to retrieve list of pagerduty alerts")
 }
 
-// getClusterIDFromAlert extracts the cluster ID from a PagerDuty incident alert.
+// GetClusterIDFromAlert extracts the cluster ID from a PagerDuty incident alert.
 // It expects the alert's body to have a Common Event Format.
 func (c *RealPagerDutyClient) GetClusterIDFromAlert(alert *pagerduty.IncidentAlert) (string, error) {
 	if alert == nil || alert.Body == nil {
@@ -98,6 +97,7 @@ func (c *RealPagerDutyClient) GetClusterIDFromAlert(alert *pagerduty.IncidentAle
 	return clusterID, nil
 }
 
+// GetClusterID retrieves the cluster ID associated with the given incident ID.
 func (c *RealPagerDutyClient) GetClusterID(incidentID string) (string, error) {
 	incidentAlerts, err := c.PdClient.ListIncidentAlertsWithContext(context.TODO(), incidentID, pagerduty.ListIncidentAlertsOptions{})
 	if err != nil {

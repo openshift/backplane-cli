@@ -95,7 +95,7 @@ func setConfig(cmd *cobra.Command, args []string) error {
 
 	viper.SetConfigType("json")
 	viper.Set(URLConfigVar, bpConfig.URL)
-	viper.Set(ProxyURLConfigVar, &bpConfig.ProxyURL)
+	viper.Set(ProxyURLConfigVar, bpConfig.ProxyURL)
 	viper.Set(SessionConfigVar, bpConfig.SessionDirectory)
 	viper.Set(PagerDutyAPIConfigVar, bpConfig.PagerDutyAPIKey)
 
