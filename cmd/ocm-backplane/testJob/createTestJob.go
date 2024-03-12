@@ -77,6 +77,13 @@ Example usage:
 	)
 
 	cmd.Flags().StringP(
+		"source-dir",
+		"s",
+		"",
+		"Optional source dir for the example script",
+	)
+
+	cmd.Flags().StringP(
 		"base-image-override",
 		"i",
 		"",
@@ -130,6 +137,12 @@ func runCreateTestJob(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	// Source Dir override flag
+	sourceDirFlag, err := cmd.Flags().GetString("source-dir")
+	if err != nil {
+		return err
+	}
+
 	// raw flag
 	rawFlag, err := cmd.Flags().GetBool("raw")
 	if err != nil {
@@ -172,7 +185,12 @@ func runCreateTestJob(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	cj, err := createTestScriptFromFiles(dryRun)
+	sourceDir := "./"
+	if sourceDirFlag != "" {
+		sourceDir = sourceDirFlag + "/"
+	}
+
+	cj, err := createTestScriptFromFiles(sourceDir, dryRun)
 	if err != nil {
 		return err
 	}
@@ -208,11 +226,27 @@ func runCreateTestJob(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func createTestScriptFromFiles(dryRun bool) (*backplaneApi.CreateTestScriptRunJSONRequestBody, error) {
+func checkDirectory(dir string) bool {
+	info, err := os.Stat(dir)
+	if os.IsNotExist(err) {
+		return false
+	}
+
+	return info.IsDir()
+}
+
+func createTestScriptFromFiles(sourceDir string, dryRun bool) (*backplaneApi.CreateTestScriptRunJSONRequestBody, error) {
+
+	if !checkDirectory(sourceDir) {
+		return nil, fmt.Errorf("the specified source dir does not exist or it is not a directory")
+	}
+
+	metaFile := sourceDir + "metadata.yaml"
+
 	// Read the yaml file from cwd
-	yamlFile, err := os.ReadFile("metadata.yaml")
+	yamlFile, err := os.ReadFile(metaFile)
 	if err != nil {
-		logger.Errorf("Error reading metadata yaml: %v, ensure you are in a script directory", err)
+		logger.Errorf("Error reading metadata yaml: %v, ensure either you are in a script directory or you have specified the correct source dir", err)
 		return nil, err
 	}
 
@@ -223,17 +257,20 @@ func createTestScriptFromFiles(dryRun bool) (*backplaneApi.CreateTestScriptRunJS
 		logger.Errorf("Error reading metadata: %v", err)
 		return nil, err
 	}
-	fileBody, err := os.ReadFile(scriptMeta.File)
+
+	scriptFile := sourceDir + scriptMeta.File
+
+	fileBody, err := os.ReadFile(scriptFile)
 
 	fileBodyStr := string(fileBody)
 
 	// if something like bin/bash or bin/sh at start, read
 	if err != nil {
-		logger.Errorf("unable to read file %s, make sure this file exists", scriptMeta.File)
+		logger.Errorf("unable to read file %s, make sure this file exists", scriptFile)
 		return nil, err
 	}
 
-	fileBodyStr, err = inlineLibrarySourceFiles(fileBodyStr, scriptMeta.File)
+	fileBodyStr, err = inlineLibrarySourceFiles(fileBodyStr, scriptFile)
 	if err != nil {
 		return nil, err
 	}
