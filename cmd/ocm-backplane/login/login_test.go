@@ -1,11 +1,13 @@
 package login
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/golang/mock/gomock"
@@ -34,24 +36,29 @@ func MakeIoReader(s string) io.ReadCloser {
 var _ = Describe("Login command", func() {
 
 	var (
-		mockCtrl               *gomock.Controller
-		mockClient             *mocks.MockClientInterface
-		mockClientWithResp     *mocks.MockClientWithResponsesInterface
-		mockOcmInterface       *ocmMock.MockOCMInterface
-		mockClientUtil         *backplaneapiMock.MockClientUtils
-    
-		testClusterID          string
-		testToken              string
-		trueClusterID          string
-		managingClusterID      string
-		backplaneAPIURI        string
-		serviceClusterID       string
-		serviceClusterName     string
-		fakeResp               *http.Response
-		ocmEnv                 *cmv1.Environment
-		kubeConfigPath         string
-		mockCluster            *cmv1.Cluster
-		backplaneConfiguration config.BackplaneConfiguration
+		mockCtrl           *gomock.Controller
+		mockClient         *mocks.MockClientInterface
+		mockClientWithResp *mocks.MockClientWithResponsesInterface
+		mockOcmInterface   *ocmMock.MockOCMInterface
+		mockClientUtil     *backplaneapiMock.MockClientUtils
+
+		testClusterID            string
+		testToken                string
+		trueClusterID            string
+		managingClusterID        string
+		backplaneAPIURI          string
+		serviceClusterID         string
+		serviceClusterName       string
+		fakeResp                 *http.Response
+		ocmEnv                   *cmv1.Environment
+		kubeConfigPath           string
+		mockCluster              *cmv1.Cluster
+		backplaneConfiguration   config.BackplaneConfiguration
+		falsePagerDutyAPITkn     string
+		truePagerDutyAPITkn      string
+		falsePagerDutyIncidentID string
+		truePagerDutyIncidentID  string
+		bpConfigPath             string
 	)
 
 	BeforeEach(func() {
@@ -73,6 +80,11 @@ var _ = Describe("Login command", func() {
 		serviceClusterName = "hs-sc-654321"
 		backplaneAPIURI = "https://shard.apps"
 		kubeConfigPath = "filepath"
+		falsePagerDutyAPITkn = "token123"
+		// nolint:gosec truePagerDutyAPIToken refers to the Test API Token provided by https://developer.pagerduty.com/api-reference
+		truePagerDutyAPITkn = "y_NbAkKc66ryYTWUXYEu"
+		falsePagerDutyIncidentID = "incident123"
+		truePagerDutyIncidentID = "Q0ZNH7TDQBOO54"
 
 		mockClientWithResp.EXPECT().LoginClusterWithResponse(gomock.Any(), gomock.Any()).Return(nil, nil).Times(0)
 
@@ -92,7 +104,7 @@ var _ = Describe("Login command", func() {
 		ocmEnv, _ = cmv1.NewEnvironment().BackplaneURL("https://dummy.api").Build()
 
 		mockCluster = &cmv1.Cluster{}
-		
+
 		backplaneConfiguration = config.BackplaneConfiguration{URL: backplaneAPIURI}
 	})
 
@@ -102,6 +114,8 @@ var _ = Describe("Login command", func() {
 		globalOpts.BackplaneURL = ""
 		globalOpts.ProxyURL = ""
 		os.Setenv("HTTPS_PROXY", "")
+		os.Unsetenv("BACKPLANE_CONFIG")
+		os.Remove(bpConfigPath)
 		mockCtrl.Finish()
 		utils.RemoveTempKubeConfig()
 	})
@@ -393,11 +407,81 @@ var _ = Describe("Login command", func() {
 
 		})
 
+		It("should fail to create PD API client and return HTTP status code 401 when unauthorized", func() {
+			args.pd = truePagerDutyIncidentID
+
+			err := utils.CreateTempKubeConfig(nil)
+			Expect(err).To(BeNil())
+
+			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
+
+			// Create a temporary JSON configuration file in the temp directory for testing purposes.
+			tempDir := os.TempDir()
+			bpConfigPath = filepath.Join(tempDir, "mock.json")
+			tempFile, err := os.Create(bpConfigPath)
+			Expect(err).To(BeNil())
+
+			testData := config.BackplaneConfiguration{
+				URL:              backplaneAPIURI,
+				ProxyURL:         new(string),
+				SessionDirectory: "",
+				AssumeInitialArn: "",
+				PagerDutyAPIKey:  falsePagerDutyAPITkn,
+			}
+
+			// Marshal the testData into JSON format and write it to tempFile.
+			jsonData, err := json.Marshal(testData)
+			Expect(err).To(BeNil())
+			_, err = tempFile.Write(jsonData)
+			Expect(err).To(BeNil())
+
+			os.Setenv("BACKPLANE_CONFIG", bpConfigPath)
+
+			err = runLogin(nil, nil)
+
+			Expect(err.Error()).Should(ContainSubstring("status code 401"))
+		})
+
+		It("should fail to find a non existent PD Incident and return HTTP status code 404 when the requested resource is not found", func() {
+			args.pd = falsePagerDutyIncidentID
+
+			err := utils.CreateTempKubeConfig(nil)
+			Expect(err).To(BeNil())
+
+			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
+
+			// Create a temporary JSON configuration file in the temp directory for testing purposes.
+			tempDir := os.TempDir()
+			bpConfigPath = filepath.Join(tempDir, "mock.json")
+			tempFile, err := os.Create(bpConfigPath)
+			Expect(err).To(BeNil())
+
+			testData := config.BackplaneConfiguration{
+				URL:              backplaneAPIURI,
+				ProxyURL:         new(string),
+				SessionDirectory: "",
+				AssumeInitialArn: "",
+				PagerDutyAPIKey:  truePagerDutyAPITkn,
+			}
+
+			// Marshal the testData into JSON format and write it to tempFile.
+			jsonData, err := json.Marshal(testData)
+			Expect(err).To(BeNil())
+			_, err = tempFile.Write(jsonData)
+			Expect(err).To(BeNil())
+
+			os.Setenv("BACKPLANE_CONFIG", bpConfigPath)
+
+			err = runLogin(nil, nil)
+
+			Expect(err.Error()).Should(ContainSubstring("status code 404"))
+		})
+
 	})
 
 	Context("check GetRestConfigAsUser", func() {
 
-		It("check config creation with username and without elevationReasons",func () {
+		It("check config creation with username and without elevationReasons", func() {
 			mockOcmInterface.EXPECT().GetClusterInfoByID(testClusterID).Return(mockCluster, nil)
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil)
 			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken(backplaneAPIURI, testToken).Return(mockClient, nil)
@@ -412,7 +496,7 @@ var _ = Describe("Login command", func() {
 
 		})
 
-		It("check config creation with username and elevationReasons",func () {
+		It("check config creation with username and elevationReasons", func() {
 			mockOcmInterface.EXPECT().GetClusterInfoByID(testClusterID).Return(mockCluster, nil)
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil)
 			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken(backplaneAPIURI, testToken).Return(mockClient, nil)

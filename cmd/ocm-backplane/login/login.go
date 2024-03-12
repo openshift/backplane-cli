@@ -24,6 +24,7 @@ import (
 	"github.com/openshift/backplane-cli/pkg/cli/globalflags"
 	"github.com/openshift/backplane-cli/pkg/login"
 	"github.com/openshift/backplane-cli/pkg/ocm"
+	"github.com/openshift/backplane-cli/pkg/pagerduty"
 	"github.com/openshift/backplane-cli/pkg/utils"
 )
 
@@ -34,6 +35,7 @@ var (
 	args struct {
 		multiCluster   bool
 		kubeConfigPath string
+		pd             string
 	}
 
 	globalOpts = &globalflags.GlobalOptions{}
@@ -46,8 +48,19 @@ var (
 		using OCM token. The backplane api will return a proxy url for
 		target cluster. The url will be written to kubeconfig, so we can
 		run oc command later to operate the target cluster.`,
-		Example:      " backplane login <id>\n backplane login %test%\n backplane login <external_id>",
-		Args:         cobra.ExactArgs(1),
+		Example: " backplane login <id>\n backplane login %test%\n backplane login <external_id>\n backplane login --pd <incident-id>",
+		Args: func(cmd *cobra.Command, args []string) error {
+			if cmd.Flags().Lookup("pd").Changed {
+				if err := cobra.ExactArgs(0)(cmd, args); err != nil {
+					return err
+				}
+			} else {
+				if err := cobra.ExactArgs(1)(cmd, args); err != nil {
+					return err
+				}
+			}
+			return nil
+		},
 		RunE:         runLogin,
 		SilenceUsage: true,
 	}
@@ -73,6 +86,12 @@ func init() {
 		"Save kube configuration in the specific path when login to multi clusters.",
 	)
 
+	flags.StringVar(
+		&args.pd,
+		"pd",
+		"",
+		"Login using PagerDuty incident id or html_url.",
+	)
 }
 
 func runLogin(cmd *cobra.Command, argv []string) (err error) {
@@ -81,8 +100,36 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 	logger.Debugf("Checking Backplane Version")
 	utils.CheckBackplaneVersion(cmd)
 
+	logger.Debugf("Extracting Backplane configuration")
+	// Get Backplane configuration
+	bpConfig, err := config.GetBackplaneConfiguration()
+	if err != nil {
+		return err
+	}
+	logger.Debugf("Backplane Config File Contains is: %v \n", bpConfig)
+
 	logger.Debugf("Extracting Backplane Cluster ID")
-	// Get The cluster ID
+	// Currently go-pagerduty pkg does not include incident id validation.
+	if args.pd != "" {
+		pdClient, err := pagerduty.NewWithToken(bpConfig.PagerDutyAPIKey)
+		if err != nil {
+			return fmt.Errorf("could not initialize the client: %w", err)
+		}
+		if strings.Contains(args.pd, "/incidents/") {
+			incidentID := args.pd[strings.LastIndex(args.pd, "/")+1:]
+			clusterKey, err = pdClient.GetClusterID(incidentID)
+			if err != nil {
+				return err
+			}
+		} else {
+			clusterKey, err = pdClient.GetClusterID(args.pd)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	// Get the cluster ID only if it hasn't been populated by PagerDuty.
 	if len(argv) == 1 {
 		// if explicitly one cluster key given, use it to log in.
 		logger.Debugf("Cluster Key is given in argument")
@@ -100,14 +147,6 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 		logger.Debugf("Backplane Cluster Infromation data extracted: %+v\n", clusterInfo)
 	}
 	logger.Debugf("Backplane Cluster Key is: %v \n", clusterKey)
-
-	logger.Debugf("Extracting Backplane configuration")
-	// Get Backplane configuration
-	bpConfig, err := config.GetBackplaneConfiguration()
-	if err != nil {
-		return err
-	}
-	logger.Debugf("Backplane Config File Contains is: %v \n", bpConfig)
 
 	logger.Debugln("Setting Proxy URL from global options")
 	// Set proxy url to http client

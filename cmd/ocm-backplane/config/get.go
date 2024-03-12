@@ -38,12 +38,15 @@ func getConfig(cmd *cobra.Command, args []string) error {
 		fmt.Printf("%s: %s\n", ProxyURLConfigVar, proxyURL)
 	case SessionConfigVar:
 		fmt.Printf("%s: %s\n", SessionConfigVar, config.SessionDirectory)
+	case PagerDutyAPIConfigVar:
+		fmt.Printf("%s: %s\n", PagerDutyAPIConfigVar, config.PagerDutyAPIKey)
 	case "all":
 		fmt.Printf("%s: %s\n", URLConfigVar, config.URL)
 		fmt.Printf("%s: %s\n", ProxyURLConfigVar, proxyURL)
 		fmt.Printf("%s: %s\n", SessionConfigVar, config.SessionDirectory)
+		fmt.Printf("%s: %s\n", PagerDutyAPIConfigVar, config.PagerDutyAPIKey)
 	default:
-		return fmt.Errorf("supported config variables are %s, %s & %s", URLConfigVar, ProxyURLConfigVar, SessionConfigVar)
+		return fmt.Errorf("supported config variables are %s, %s, %s & %s", URLConfigVar, ProxyURLConfigVar, SessionConfigVar, PagerDutyAPIConfigVar)
 	}
 
 	return nil
