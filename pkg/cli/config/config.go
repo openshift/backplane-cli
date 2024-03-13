@@ -86,10 +86,6 @@ func GetBackplaneConfiguration() (bpConfig BackplaneConfiguration, err error) {
 	bpConfig.SessionDirectory = viper.GetString("session-dir")
 	bpConfig.AssumeInitialArn = viper.GetString("assume-initial-arn")
 
-	if bpConfig.AssumeInitialArn == "" {
-		logger.Warn("assume-initial-arn is not defined in the backplane config file, if you recently updated or if your arn isn't recorded in OCM, please consider putting it into the backplane config file: " + filePath)
-	}
-
 	// proxyURL is optional
 	proxyInConfigFile := viper.GetStringSlice("proxy-url")
 	proxyURL := bpConfig.getFirstWorkingProxyURL(proxyInConfigFile)

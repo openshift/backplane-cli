@@ -439,6 +439,10 @@ func doLogin(api, clusterID, accessToken string) (string, error) {
 		return "", err
 	}
 
+	if resp.StatusCode == http.StatusForbidden {
+		logger.Warn("Warning, you have incorrect previelges to access this particular resource, if you're loggin into an AWS cluster, please ensure that your arn is set correctly in OCM or consider setting the assume-initial-arn field in your backplane config file")
+	}
+
 	if resp.StatusCode != http.StatusOK {
 		return "", utils.TryPrintAPIError(resp, false)
 	}
