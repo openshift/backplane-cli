@@ -47,6 +47,11 @@ func setConfig(cmd *cobra.Command, args []string) error {
 			bpConfig.ProxyURL = &proxyURL
 		}
 
+		pagerDutyAPIKey := viper.GetString("pd-key")
+		if pagerDutyAPIKey != "" {
+			bpConfig.PagerDutyAPIKey = pagerDutyAPIKey
+		}
+
 		bpConfig.SessionDirectory = viper.GetString("session-dir")
 	}
 
@@ -83,14 +88,17 @@ func setConfig(cmd *cobra.Command, args []string) error {
 		bpConfig.ProxyURL = &args[1]
 	case SessionConfigVar:
 		bpConfig.SessionDirectory = args[1]
+	case PagerDutyAPIConfigVar:
+		bpConfig.PagerDutyAPIKey = args[1]
 	default:
-		return fmt.Errorf("supported config variables are %s, %s & %s", URLConfigVar, ProxyURLConfigVar, SessionConfigVar)
+		return fmt.Errorf("supported config variables are %s, %s, %s & %s", URLConfigVar, ProxyURLConfigVar, SessionConfigVar, PagerDutyAPIConfigVar)
 	}
 
 	viper.SetConfigType("json")
 	viper.Set(URLConfigVar, bpConfig.URL)
 	viper.Set(ProxyURLConfigVar, bpConfig.ProxyURL)
 	viper.Set(SessionConfigVar, bpConfig.SessionDirectory)
+	viper.Set(PagerDutyAPIConfigVar, bpConfig.PagerDutyAPIKey)
 
 	err = viper.WriteConfigAs(configPath)
 	if err != nil {

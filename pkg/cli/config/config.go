@@ -16,10 +16,11 @@ import (
 )
 
 type BackplaneConfiguration struct {
-	URL              string
-	ProxyURL         *string // Optional
-	SessionDirectory string
-	AssumeInitialArn string
+	URL              string  `json:"url"`
+	ProxyURL         *string `json:"proxy-url"` // Optional
+	SessionDirectory string  `json:"session-dir"`
+	AssumeInitialArn string  `json:"assume-initial-arn"`
+	PagerDutyAPIKey  string  `json:"pd-key"`
 }
 
 // GetConfigFilePath returns the Backplane CLI configuration filepath
@@ -94,6 +95,13 @@ func GetBackplaneConfiguration() (bpConfig BackplaneConfiguration, err error) {
 		logger.Warn("No proxy configuration available. This may result in failing commands as backplane-api is only available from select networks.")
 	}
 
+	pagerDutyAPIKey := viper.GetString("pd-key")
+	if pagerDutyAPIKey != "" {
+		bpConfig.PagerDutyAPIKey = pagerDutyAPIKey
+	} else {
+		logger.Warn("No PagerDuty API Key configuration available. This will result in failure of `ocm-backplane login --pd <incident-id>` command.")
+	}
+
 	return bpConfig, nil
 }
 
@@ -101,8 +109,7 @@ var clientDo = func(client *http.Client, req *http.Request) (*http.Response, err
 	return client.Do(req)
 }
 
-
-func (config *BackplaneConfiguration) getFirstWorkingProxyURL(s []string) (string) {
+func (config *BackplaneConfiguration) getFirstWorkingProxyURL(s []string) string {
 	bpURL := config.URL + "/healthz"
 
 	client := &http.Client{
