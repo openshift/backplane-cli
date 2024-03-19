@@ -83,10 +83,7 @@ func GetBackplaneConfiguration() (bpConfig BackplaneConfiguration, err error) {
 		}
 	}
 
-	bpConfig.SessionDirectory = viper.GetString("session-dir")
-	bpConfig.AssumeInitialArn = viper.GetString("assume-initial-arn")
-
-	// proxyURL is optional
+	// proxyURL is required
 	proxyInConfigFile := viper.GetStringSlice("proxy-url")
 	proxyURL := bpConfig.getFirstWorkingProxyURL(proxyInConfigFile)
 	if proxyURL != "" {
@@ -95,11 +92,15 @@ func GetBackplaneConfiguration() (bpConfig BackplaneConfiguration, err error) {
 		logger.Warn("No proxy configuration available. This may result in failing commands as backplane-api is only available from select networks.")
 	}
 
+	bpConfig.SessionDirectory = viper.GetString("session-dir")
+	bpConfig.AssumeInitialArn = viper.GetString("assume-initial-arn")
+
+	// pagerDuty token is optional
 	pagerDutyAPIKey := viper.GetString("pd-key")
 	if pagerDutyAPIKey != "" {
 		bpConfig.PagerDutyAPIKey = pagerDutyAPIKey
 	} else {
-		logger.Warn("No PagerDuty API Key configuration available. This will result in failure of `ocm-backplane login --pd <incident-id>` command.")
+		logger.Info("No PagerDuty API Key configuration available. This will result in failure of `ocm-backplane login --pd <incident-id>` command.")
 	}
 
 	return bpConfig, nil
