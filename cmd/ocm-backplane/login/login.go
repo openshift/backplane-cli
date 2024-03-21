@@ -33,9 +33,9 @@ const EnvPs1 = "KUBE_PS1_CLUSTER_FUNCTION"
 
 var (
 	args struct {
-		multiCluster   bool
-		kubeConfigPath string
-		pd             string
+		multiCluster     bool
+		kubeConfigPath   string
+		pd               string
 		defaultNamespace string
 	}
 
@@ -93,6 +93,7 @@ func init() {
 		"",
 		"Login using PagerDuty incident id or html_url.",
 	)
+	flags.StringVarP(
 		&args.defaultNamespace,
 		"namespace",
 		"n",
