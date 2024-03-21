@@ -89,12 +89,12 @@ var _ = Describe("Logout command", func() {
 				},
 			},
 			Contexts: map[string]*api.Context{
-				"default/test123/anonymous": {
+				"openshift-backplane-srep/test123/anonymous": {
 					Cluster:   "dummy_cluster",
-					Namespace: "default",
+					Namespace: "openshift-backplane-srep",
 				},
 			},
-			CurrentContext: "default/test123/anonymous",
+			CurrentContext: "openshift-backplane-srep/test123/anonymous",
 		}
 
 		loggedInNotBackplaneConfig = api.Config{
@@ -107,12 +107,12 @@ var _ = Describe("Logout command", func() {
 				},
 			},
 			Contexts: map[string]*api.Context{
-				"default/myopenshiftcluster/example.openshift": {
+				"openshift-backplane-srep/myopenshiftcluster/example.openshift": {
 					Cluster:   "myopenshiftcluster",
-					Namespace: "default",
+					Namespace: "openshift-backplane-srep",
 				},
 			},
-			CurrentContext: "default/myopenshiftcluster/example.openshift",
+			CurrentContext: "openshift-backplane-srep/myopenshiftcluster/example.openshift",
 		}
 
 		os.Setenv(info.BackplaneURLEnvName, backplaneAPIURI)

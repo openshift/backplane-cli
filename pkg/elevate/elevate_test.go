@@ -66,12 +66,12 @@ func TestAddElevationReasonToRawKubeconfig(t *testing.T) {
 					},
 				},
 				Contexts: map[string]*api.Context{
-					"default/test123/anonymous": {
+					"openshift-backplane-srep/test123/anonymous": {
 						Cluster:   "dummy_cluster",
-						Namespace: "default",
+						Namespace: "openshift-backplane-srep",
 					},
 				},
-				CurrentContext: "default/test123/anonymous",
+				CurrentContext: "openshift-backplane-srep/test123/anonymous",
 			},
 			"Production cluster",
 		); err == nil {
@@ -96,13 +96,13 @@ func TestAddElevationReasonToRawKubeconfig(t *testing.T) {
 					},
 				},
 				Contexts: map[string]*api.Context{
-					"default/test123/anonymous": {
+					"openshift-backplane-srep/test123/anonymous": {
 						Cluster:   "dummy_cluster",
-						Namespace: "default",
+						Namespace: "openshift-backplane-srep",
 						AuthInfo:  "anonymous",
 					},
 				},
-				CurrentContext: "default/test123/anonymous",
+				CurrentContext: "openshift-backplane-srep/test123/anonymous",
 			},
 			"Production cluster",
 		); err != nil {
@@ -153,13 +153,13 @@ func TestRunElevate(t *testing.T) {
 					},
 				},
 				Contexts: map[string]*api.Context{
-					"default/test123/anonymous": {
+					"openshift-backplane-srep/test123/anonymous": {
 						Cluster:   "dummy_cluster",
-						Namespace: "default",
+						Namespace: "openshift-backplane-srep",
 						AuthInfo:  "anonymous",
 					},
 				},
-				CurrentContext: "default/test123/anonymous",
+				CurrentContext: "openshift-backplane-srep/test123/anonymous",
 			}, nil
 		}
 
@@ -187,13 +187,13 @@ func TestRunElevate(t *testing.T) {
 					},
 				},
 				Contexts: map[string]*api.Context{
-					"default/test123/anonymous": {
+					"openshift-backplane-srep/test123/anonymous": {
 						Cluster:   "dummy_cluster",
-						Namespace: "default",
+						Namespace: "openshift-backplane-srep",
 						AuthInfo:  "anonymous",
 					},
 				},
-				CurrentContext: "default/test123/anonymous",
+				CurrentContext: "openshift-backplane-srep/test123/anonymous",
 			}, nil
 		}
 		if err := RunElevate([]string{"oc", "get pods"}); err != nil {
