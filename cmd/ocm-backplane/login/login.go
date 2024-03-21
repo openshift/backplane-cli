@@ -36,6 +36,7 @@ var (
 		multiCluster   bool
 		kubeConfigPath string
 		pd             string
+		defaultNamespace string
 	}
 
 	globalOpts = &globalflags.GlobalOptions{}
@@ -92,6 +93,13 @@ func init() {
 		"",
 		"Login using PagerDuty incident id or html_url.",
 	)
+		&args.defaultNamespace,
+		"namespace",
+		"n",
+		"openshift-backplane-srep",
+		"Sets a default namespace for SRE to run commands like oc debug node/xxx",
+	)
+
 }
 
 func runLogin(cmd *cobra.Command, argv []string) (err error) {
@@ -324,7 +332,7 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 
 	targetContext.AuthInfo = targetUserNickName
 	targetContext.Cluster = clusterName
-	targetContext.Namespace = "default"
+	targetContext.Namespace = args.defaultNamespace
 	targetContextNickName := getContextNickname(targetContext.Namespace, targetContext.Cluster, targetContext.AuthInfo)
 
 	// Put user, cluster, context into rawconfig
