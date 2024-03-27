@@ -59,7 +59,9 @@ type containerEngineInterface interface {
 	runMonitorPlugin(containerName string, consoleContainerName string, nginxConf string, pluginArgs []string) error
 }
 
-type podmanLinux struct{}
+type podmanLinux struct {
+	fileMountDir string
+}
 type podmanMac struct{}
 type dockerLinux struct{}
 type dockerMac struct{}
@@ -339,7 +341,7 @@ func (o *consoleOptions) getContainerEngineImpl() (containerEngineInterface, err
 
 	var containerEngineImpl containerEngineInterface
 	if runtime.GOOS == LINUX && containerEngine == PODMAN {
-		containerEngineImpl = &podmanLinux{}
+		containerEngineImpl = &podmanLinux{fileMountDir: filepath.Join(os.TempDir(), "backplane")}
 	} else if runtime.GOOS == MACOS && containerEngine == PODMAN {
 		containerEngineImpl = &podmanMac{}
 	} else if runtime.GOOS == LINUX && containerEngine == DOCKER {
@@ -571,21 +573,24 @@ func (o *consoleOptions) runMonitorPlugin(ce containerEngineInterface) error {
 		logger.Debugln("monitoring plugin is not needed, not to run monitoring plugin")
 		return nil
 	}
-	// Setup nginx configurations
-	config := fmt.Sprintf(info.MonitoringPluginNginxConfigTemplate, o.monitorPluginPort)
-	if err := ce.putFileToMount(info.MonitoringPluginNginxConfigFilename, []byte(config)); err != nil {
-		return err
-	}
 
 	clusterID, err := getClusterID()
 	if err != nil {
 		return err
 	}
+
+	// Setup nginx configurations
+	config := fmt.Sprintf(info.MonitoringPluginNginxConfigTemplate, o.monitorPluginPort)
+	nginxFilename := fmt.Sprintf(info.MonitoringPluginNginxConfigFilename, clusterID)
+	if err := ce.putFileToMount(nginxFilename, []byte(config)); err != nil {
+		return err
+	}
+
 	consoleContainerName := fmt.Sprintf("console-%s", clusterID)
 	pluginContainerName := fmt.Sprintf("monitoring-plugin-%s", clusterID)
 
 	pluginArgs := []string{o.monitorPluginImage}
-	return ce.runMonitorPlugin(pluginContainerName, consoleContainerName, info.MonitoringPluginNginxConfigFilename, pluginArgs)
+	return ce.runMonitorPlugin(pluginContainerName, consoleContainerName, nginxFilename, pluginArgs)
 }
 
 // print the console URL and pop a browser if required
@@ -1123,11 +1128,7 @@ func (ce *podmanMac) runMonitorPlugin(containerName string, consoleContainerName
 }
 
 func (ce *podmanLinux) runMonitorPlugin(containerName string, consoleContainerName string, nginxConf string, pluginArgs []string) error {
-	configDirectory, err := config.GetConfigDirctory()
-	if err != nil {
-		return err
-	}
-	nginxConfPath := filepath.Join(configDirectory, nginxConf)
+	nginxConfPath := filepath.Join(ce.fileMountDir, nginxConf)
 	return podmanRunMonitorPlugin(containerName, consoleContainerName, nginxConfPath, pluginArgs)
 }
 
@@ -1182,12 +1183,12 @@ func (ce *dockerMac) runMonitorPlugin(containerName string, consoleContainerName
 // put a file in place for container to mount
 // filename should be name only, not a path
 func (ce *podmanLinux) putFileToMount(filename string, content []byte) error {
-	// for files in linux, we put them into the user's backplane config directory
-	configDirectory, err := config.GetConfigDirctory()
+	// ensure the directory exists
+	err := os.MkdirAll(ce.fileMountDir, os.ModePerm)
 	if err != nil {
 		return err
 	}
-	dstFileName := filepath.Join(configDirectory, filename)
+	dstFileName := filepath.Join(ce.fileMountDir, filename)
 
 	// Check if file already exists, if it does remove it
 	if _, err = os.Stat(dstFileName); !os.IsNotExist(err) {
