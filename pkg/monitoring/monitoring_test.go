@@ -98,10 +98,10 @@ var _ = Describe("Backplane Monitoring Unit test", func() {
 				},
 			},
 			Contexts: map[string]*api.Context{
-				"openshift-backplane-srep/testcluster/testauth": {
+				"default/testcluster/testauth": {
 					Cluster:   "testcluster",
 					AuthInfo:  "testauth",
-					Namespace: "openshift-backplane-srep",
+					Namespace: "default",
 				},
 				"custom-context": {
 					Cluster:   "api-backplane.apps.something.com:443",
@@ -109,7 +109,7 @@ var _ = Describe("Backplane Monitoring Unit test", func() {
 					Namespace: "test-namespace",
 				},
 			},
-			CurrentContext: "openshift-backplane-srep/testcluster/testauth",
+			CurrentContext: "default/testcluster/testauth",
 			Extensions:     nil,
 		}
 

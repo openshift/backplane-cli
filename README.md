@@ -96,7 +96,7 @@ In this example, we will login to a cluster with id `123456abcdef` in production
 - Run `oc` command to access the target cluster.
   ```
   $ oc whoami
-  system:serviceaccount:openshift-backplane-srep:1234567
+  system:serviceaccount:default:1234567
   ```
   
 - To login to the Management cluster for HyperShift (or) the managing Hive shard of normal OSD/ROSA cluster

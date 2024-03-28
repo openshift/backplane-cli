@@ -27,10 +27,10 @@ clusters:
 contexts:
 - context:
     cluster: dummy_cluster
-    namespace: openshift-backplane-srep
+    namespace: default
     user: example.openshift
-  name: openshift-backplane-srep/openshift
-current-context: openshift-backplane-srep/openshift
+  name: default/openshift
+current-context: default/openshift
 kind: Config
 preferences: {}
 users:
@@ -60,10 +60,10 @@ clusters:
 contexts:
 - context:
     cluster: myopenshiftcluster
-    namespace: openshift-backplane-srep
+    namespace: default
     user: example.openshift
-  name: openshift-backplane-srep/myopenshiftcluster/example.openshift
-current-context: openshift-backplane-srep/myopenshiftcluster/example.openshift
+  name: default/myopenshiftcluster/example.openshift
+current-context: default/myopenshiftcluster/example.openshift
 kind: Config
 preferences: {}
 users:

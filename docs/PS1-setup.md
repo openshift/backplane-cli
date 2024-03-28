@@ -5,7 +5,7 @@ You can use the below methods to set the shell prompt, so you can learn which cl
 [user@user ~ (⎈ |stg/user-test-1.zlob.s1:default)]$ date
 Tue Sep  7 17:40:35 CST 2021
 [user@user ~ (⎈ |stg/user-test-1.zlob.s1:default)]$ oc whoami
-system:serviceaccount:openshift-backplane-srep:xxxxxxxxxxxx
+system:serviceaccount:default:xxxxxxxxxxxx
 ~~~
 
 ## Bash

@@ -97,7 +97,7 @@ func init() {
 		&args.defaultNamespace,
 		"namespace",
 		"n",
-		"",
+		"default",
 		"Prompts for a  default namespace for SRE to run commands like oc debug node/xxx",
 	)
 

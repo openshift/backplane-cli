@@ -42,12 +42,12 @@ var (
 			},
 		},
 		Contexts: map[string]*api.Context{
-			"openshift-backplane-srep/test123/anonymous": {
+			"default/test123/anonymous": {
 				Cluster:   "dummy_cluster",
-				Namespace: "openshift-backplane-srep",
+				Namespace: "default",
 			},
 		},
-		CurrentContext: "openshift-backplane-srep/test123/anonymous",
+		CurrentContext: "default/test123/anonymous",
 	}
 	defaultKubeConfigFileName = "config"
 )
