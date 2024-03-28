@@ -12,8 +12,10 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/spf13/cobra"
+	"sigs.k8s.io/kustomize/api/konfig"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+
 	"github.com/openshift/backplane-cli/pkg/backplaneapi"
 	backplaneapiMock "github.com/openshift/backplane-cli/pkg/backplaneapi/mocks"
 	"github.com/openshift/backplane-cli/pkg/client/mocks"
@@ -69,6 +71,8 @@ var _ = Describe("testJob create command", func() {
 		trueClusterID string
 		proxyURI      string
 		tempDir       string
+		sourceDir     string
+		workingDir    string
 
 		fakeResp *http.Response
 
@@ -79,6 +83,8 @@ var _ = Describe("testJob create command", func() {
 	BeforeEach(func() {
 		mockCtrl = gomock.NewController(GinkgoT())
 		mockClient = mocks.NewMockClientInterface(mockCtrl)
+
+		workingDir = konfig.CurrentWorkingDir()
 
 		tempDir, _ = os.MkdirTemp("", "createJobTest")
 
@@ -126,6 +132,7 @@ var _ = Describe("testJob create command", func() {
 
 	Context("create test job", func() {
 		It("when running with a simple case should work as expected", func() {
+
 			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
 			mockOcmInterface.EXPECT().IsProduction().Return(false, nil)
 			// It should query for the internal cluster id first
@@ -173,6 +180,47 @@ var _ = Describe("testJob create command", func() {
 			err := sut.Execute()
 
 			Expect(err).To(BeNil())
+		})
+
+		It("should be able to use the specified script dir", func() {
+
+			sourceDir, _ = os.MkdirTemp("", "manualScriptDir")
+			_ = os.WriteFile(path.Join(sourceDir, "metadata.yaml"), []byte(MetadataYaml), 0600)
+			_ = os.WriteFile(path.Join(sourceDir, "script.sh"), []byte("echo hello"), 0600)
+			defer os.RemoveAll(sourceDir)
+
+			_ = os.Chdir(workingDir)
+
+			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
+			mockOcmInterface.EXPECT().IsProduction().Return(false, nil)
+			// It should query for the internal cluster id first
+			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, testClusterID, nil)
+			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
+			mockClientUtil.EXPECT().MakeRawBackplaneAPIClient(proxyURI).Return(mockClient, nil)
+			mockClient.EXPECT().CreateTestScriptRun(gomock.Any(), trueClusterID, gomock.Any()).Return(fakeResp, nil)
+
+			sut.SetArgs([]string{"create", "--cluster-id", testClusterID, "--source-dir", sourceDir})
+			err := sut.Execute()
+
+			Expect(err).To(BeNil())
+		})
+
+		It("should return with correct error message when the given source dir is incorrect", func() {
+			nonExistDir := "testDir"
+			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
+			mockOcmInterface.EXPECT().IsProduction().Return(false, nil)
+			// It should query for the internal cluster id first
+			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, testClusterID, nil)
+			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
+			mockClientUtil.EXPECT().MakeRawBackplaneAPIClient(proxyURI).Return(mockClient, nil)
+
+			sut.SetArgs([]string{"create", "--cluster-id", testClusterID, "--source-dir", nonExistDir})
+			err := sut.Execute()
+
+			Expect(err).ToNot(BeNil())
+			Expect(err.Error()).Should(ContainSubstring("does not exist or it is not a directory"))
 		})
 
 		It("Should able use the current logged in cluster if non specified and retrieve from config file", func() {
