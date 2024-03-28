@@ -16,7 +16,7 @@ When executing `ocm backplane login <cluster-id>`, it will:
   - Create a script file in `$HOME/.kube/ocm-token` for later use. As backplane uses OCM token for authentication, the `ocm-token` script will call `ocm token` to get a fresh access token, and feed to the `oc` command.
   - Create cluster in `kubeconfig`. The `server` of the cluster points to the proxy url just received.
   - Create user in `kubeconfig`. The user has an [ExecConfig](https://godoc.org/k8s.io/client-go/tools/clientcmd/api#ExecConfig) pointing to the script just created.
-  - Create a context using the cluster & user just created, and set it to current context.
+  - Create a context using the cluster, namespace passed as an argument( default: default ) & user just created, and set it to current context.
 
 ### Logout
 
