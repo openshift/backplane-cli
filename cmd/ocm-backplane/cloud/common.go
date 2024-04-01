@@ -28,6 +28,7 @@ import (
 const (
 	OldFlowSupportRole  = "role/RH-Technical-Support-Access"
 	CustomerRoleArnName = "Target-Role-Arn"
+	OrgRoleArnName      = "Org-Role-Arn"
 )
 
 var StsClient = awsutil.StsClient
@@ -293,7 +294,7 @@ func (cfg *QueryConfig) getIsolatedCredentials(ocmToken string) (aws.Credentials
 	assumeRoleArnSessionSequence := make([]awsutil.RoleArnSession, 0, len(roleChainResponse.AssumptionSequence))
 	for _, namedRoleArnEntry := range roleChainResponse.AssumptionSequence {
 		roleArnSession := awsutil.RoleArnSession{RoleArn: namedRoleArnEntry.Arn}
-		if namedRoleArnEntry.Name == CustomerRoleArnName {
+		if namedRoleArnEntry.Name == CustomerRoleArnName || namedRoleArnEntry.Name == OrgRoleArnName {
 			roleArnSession.RoleSessionName = roleChainResponse.CustomerRoleSessionName
 		} else {
 			roleArnSession.RoleSessionName = email
