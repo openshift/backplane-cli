@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/golang-jwt/jwt/v4"
@@ -33,9 +34,10 @@ const EnvPs1 = "KUBE_PS1_CLUSTER_FUNCTION"
 
 var (
 	args struct {
-		multiCluster   bool
-		kubeConfigPath string
-		pd             string
+		multiCluster     bool
+		kubeConfigPath   string
+		pd               string
+		defaultNamespace string
 	}
 
 	globalOpts = &globalflags.GlobalOptions{}
@@ -92,6 +94,14 @@ func init() {
 		"",
 		"Login using PagerDuty incident id or html_url.",
 	)
+	flags.StringVarP(
+		&args.defaultNamespace,
+		"namespace",
+		"n",
+		"default",
+		"The  default namespace for a user to execute commands in",
+	)
+
 }
 
 func runLogin(cmd *cobra.Command, argv []string) (err error) {
@@ -324,7 +334,14 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 
 	targetContext.AuthInfo = targetUserNickName
 	targetContext.Cluster = clusterName
-	targetContext.Namespace = "default"
+
+	if isValidKubernetesNamespace(args.defaultNamespace) {
+		logger.Debugln("Validating argument passed as namespace")
+		targetContext.Namespace = args.defaultNamespace
+	} else {
+		return fmt.Errorf("%v is not a valid namespace", args.defaultNamespace)
+	}
+
 	targetContextNickName := getContextNickname(targetContext.Namespace, targetContext.Cluster, targetContext.AuthInfo)
 
 	// Put user, cluster, context into rawconfig
@@ -493,4 +510,11 @@ func getBackplaneCNAME(backplaneURL string) (string, error) {
 		return "", fmt.Errorf("unable to resolve the %s", fqdn)
 	}
 	return resolution, nil
+}
+
+// isValidNamespace validates the input string against  Kubernetes namespace rules.( RFC 1123 )
+func isValidKubernetesNamespace(namespace string) bool {
+	// RFC 1123 compliant regex pattern)
+	pattern := `^[a-z0-9]([-a-z0-9]*[a-z0-9])?$`
+	return regexp.MustCompile(pattern).MatchString(namespace)
 }

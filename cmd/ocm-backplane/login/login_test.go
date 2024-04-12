@@ -13,11 +13,7 @@ import (
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/client-go/tools/clientcmd/api"
-
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
-
 	"github.com/openshift/backplane-cli/pkg/backplaneapi"
 	backplaneapiMock "github.com/openshift/backplane-cli/pkg/backplaneapi/mocks"
 	"github.com/openshift/backplane-cli/pkg/cli/config"
@@ -26,6 +22,8 @@ import (
 	"github.com/openshift/backplane-cli/pkg/ocm"
 	ocmMock "github.com/openshift/backplane-cli/pkg/ocm/mocks"
 	"github.com/openshift/backplane-cli/pkg/utils"
+	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/tools/clientcmd/api"
 )
 
 func MakeIoReader(s string) io.ReadCloser {
@@ -255,6 +253,29 @@ var _ = Describe("Login command", func() {
 			Expect(len(cfg.Contexts)).To(Equal(1))
 			Expect(cfg.Contexts["default/test123/anonymous"].Cluster).To(Equal(testClusterID))
 			Expect(cfg.Contexts["default/test123/anonymous"].Namespace).To(Equal("default"))
+		})
+
+		It("when the namespace of the context is passed as an argument", func() {
+			err := utils.CreateTempKubeConfig(nil)
+			args.defaultNamespace = "default"
+			Expect(err).To(BeNil())
+			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, testClusterID, nil)
+			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil)
+			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken(backplaneAPIURI, testToken).Return(mockClient, nil)
+			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(trueClusterID)).Return(fakeResp, nil)
+
+			err = runLogin(nil, []string{testClusterID})
+
+			Expect(err).To(BeNil())
+
+			cfg, err := utils.ReadKubeconfigRaw()
+			Expect(err).To(BeNil())
+			Expect(cfg.CurrentContext).To(Equal("default/test123/anonymous"))
+			Expect(len(cfg.Contexts)).To(Equal(1))
+			Expect(cfg.Contexts["default/test123/anonymous"].Cluster).To(Equal(testClusterID))
+			Expect(cfg.Contexts["default/test123/anonymous"].Namespace).To(Equal(args.defaultNamespace))
 		})
 
 		It("Should fail when trying to find a non existent cluster", func() {
