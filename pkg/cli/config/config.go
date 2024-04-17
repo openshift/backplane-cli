@@ -114,7 +114,7 @@ func (config *BackplaneConfiguration) getFirstWorkingProxyURL(s []string) string
 	bpURL := config.URL + "/healthz"
 
 	client := &http.Client{
-		Timeout: 2 * time.Second,
+		Timeout: 5 * time.Second,
 	}
 
 	for _, p := range s {
