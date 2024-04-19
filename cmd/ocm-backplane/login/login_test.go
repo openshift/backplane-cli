@@ -292,6 +292,7 @@ var _ = Describe("Login command", func() {
 
 		It("should return the managing cluster if one is requested", func() {
 			globalOpts.Manager = true
+			mockOcmInterface.EXPECT().GetClusterInfoByID(gomock.Any()).Return(mockCluster, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, testClusterID, nil)
 			mockOcmInterface.EXPECT().GetManagingCluster(trueClusterID).Return(managingClusterID, managingClusterID, true, nil)

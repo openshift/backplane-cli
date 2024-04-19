@@ -190,7 +190,6 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 		logger.WithField("Cluster ID", clusterID).Debugln("Finding managing cluster")
 		var isHostedControlPlane bool
 		targetClusterID := clusterID
-		targetClusterName := clusterName
 
 		clusterID, clusterName, isHostedControlPlane, err = ocm.DefaultOCMInterface.GetManagingCluster(clusterID)
 		if err != nil {
@@ -207,7 +206,7 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 		logger.Debugln("Finding K8s namespaces")
 		// Print the related namespace if login to manager cluster
 		var namespaces []string
-		namespaces, err = listNamespaces(targetClusterID, targetClusterName, isHostedControlPlane)
+		namespaces, err = listNamespaces(targetClusterID, isHostedControlPlane)
 		if err != nil {
 			return err
 		}
@@ -469,13 +468,18 @@ func doLogin(api, clusterID, accessToken string) (string, error) {
 	return api + *loginResp.JSON200.ProxyUri, nil
 }
 
-func listNamespaces(clusterID, clusterName string, isHostedControlPlane bool) ([]string, error) {
+func listNamespaces(clusterID string, isHostedControlPlane bool) ([]string, error) {
 
 	env, err := ocm.DefaultOCMInterface.GetOCMEnvironment()
 	if err != nil {
 		return []string{}, err
 	}
 	envName := env.Name()
+
+	clusterInfo, err := ocm.DefaultOCMInterface.GetClusterInfoByID(clusterID)
+	if err != nil {
+		return []string{}, err
+	}
 
 	klusterletPrefix := "klusterlet-"
 	hivePrefix := fmt.Sprintf("uhc-%s-", envName)
@@ -487,7 +491,7 @@ func listNamespaces(clusterID, clusterName string, isHostedControlPlane bool) ([
 		nsList = []string{
 			klusterletPrefix + clusterID,
 			hcpPrefix + clusterID,
-			hcpPrefix + clusterID + "-" + clusterName,
+			hcpPrefix + clusterID + "-" + clusterInfo.DomainPrefix(),
 		}
 	} else {
 		nsList = []string{
