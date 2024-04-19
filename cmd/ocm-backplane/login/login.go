@@ -116,7 +116,7 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 	if err != nil {
 		return err
 	}
-	logger.Debugf("Backplane Config File Contains is: %v \n", bpConfig)
+	logger.Debugf("Backplane Config File Contains: %v \n", bpConfig)
 
 	logger.Debugf("Extracting Backplane Cluster ID")
 	// Currently go-pagerduty pkg does not include incident id validation.
