@@ -70,20 +70,14 @@ func (cfg *QueryConfig) GetCloudConsole() (*ConsoleResponse, error) {
 
 	isolatedBackplane, err := isIsolatedBackplaneAccess(cfg.Cluster, cfg.OcmConnection)
 	if err != nil {
-		logger.Infof("failed to determine if the cluster is using isolated backplane access: %v", err)
-		logger.Infof("for more information, try ocm get /api/clusters_mgmt/v1/clusters/%s/sts_support_jump_role", cfg.Cluster.ID())
-		logger.Infof("attempting to fallback to %s", OldFlowSupportRole)
+		return nil, fmt.Errorf("failed to determine if the cluster is using isolated backplane access: %v", err)
 	}
 
 	if isolatedBackplane {
 		logger.Debugf("cluster is using isolated backplane")
 		targetCredentials, err := cfg.getIsolatedCredentials(ocmToken)
 		if err != nil {
-			// TODO: This fallback should be removed in the future
-			// TODO: when we are more confident in our ability to access clusters using the isolated flow
-			logger.Infof("failed to assume role with isolated backplane flow: %v", err)
-			logger.Infof("attempting to fallback to %s", OldFlowSupportRole)
-			return cfg.getCloudConsoleFromPublicAPI(ocmToken)
+			return nil, fmt.Errorf("failed to assume role with isolated backplane flow: %v", err)
 		}
 
 		resp, err := awsutil.GetSigninToken(targetCredentials, cfg.Cluster.Region().ID())
@@ -98,7 +92,7 @@ func (cfg *QueryConfig) GetCloudConsole() (*ConsoleResponse, error) {
 		return &ConsoleResponse{ConsoleLink: signinFederationURL.String()}, nil
 	}
 
-	return cfg.getCloudConsoleFromPublicAPI(ocmToken)
+	return nil, fmt.Errorf("cluster is not using isolated backplane access")
 }
 
 // GetCloudConsole returns console response calling to public Backplane API
@@ -137,25 +131,19 @@ func (cfg *QueryConfig) getCloudConsoleFromPublicAPI(ocmToken string) (*ConsoleR
 func (cfg *QueryConfig) GetCloudCredentials() (bpCredentials.Response, error) {
 	ocmToken, _, err := cfg.OcmConnection.Tokens()
 	if err != nil {
-		return nil, fmt.Errorf("unable to get token for ocm connection")
+		return nil, fmt.Errorf("unable to get token for ocm connection: %w", err)
 	}
 
 	isolatedBackplane, err := isIsolatedBackplaneAccess(cfg.Cluster, cfg.OcmConnection)
 	if err != nil {
-		logger.Infof("failed to determine if the cluster is using isolated backplane access: %v", err)
-		logger.Infof("for more information, try ocm get /api/clusters_mgmt/v1/clusters/%s/sts_support_jump_role", cfg.Cluster.ID())
-		logger.Infof("attempting to fallback to %s", OldFlowSupportRole)
+		return nil, fmt.Errorf("failed to determine if the cluster is using isolated backplane access: %v", err)
 	}
 
 	if isolatedBackplane {
 		logger.Debugf("cluster is using isolated backplane")
 		targetCredentials, err := cfg.getIsolatedCredentials(ocmToken)
 		if err != nil {
-			// TODO: This fallback should be removed in the future
-			// TODO: when we are more confident in our ability to access clusters using the isolated flow
-			logger.Infof("failed to assume role with isolated backplane flow: %v", err)
-			logger.Infof("attempting to fallback to %s", OldFlowSupportRole)
-			return cfg.getCloudCredentialsFromBackplaneAPI(ocmToken)
+			return nil, fmt.Errorf("failed to assume role with isolated backplane flow: %v", err)
 		}
 
 		return &bpCredentials.AWSCredentialsResponse{
@@ -167,7 +155,7 @@ func (cfg *QueryConfig) GetCloudCredentials() (bpCredentials.Response, error) {
 		}, nil
 	}
 
-	return cfg.getCloudCredentialsFromBackplaneAPI(ocmToken)
+	return nil, fmt.Errorf("cluster is not using isolated backplane access")
 }
 
 func (cfg *QueryConfig) getCloudCredentialsFromBackplaneAPI(ocmToken string) (bpCredentials.Response, error) {
