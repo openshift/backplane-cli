@@ -15,7 +15,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	ocmsdk "github.com/openshift-online/ocm-sdk-go"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
-	BackplaneApi "github.com/openshift/backplane-api/pkg/client"
 	"github.com/openshift/backplane-cli/pkg/awsutil"
 	"github.com/openshift/backplane-cli/pkg/backplaneapi"
 	"github.com/openshift/backplane-cli/pkg/cli/config"
@@ -70,20 +69,14 @@ func (cfg *QueryConfig) GetCloudConsole() (*ConsoleResponse, error) {
 
 	isolatedBackplane, err := isIsolatedBackplaneAccess(cfg.Cluster, cfg.OcmConnection)
 	if err != nil {
-		logger.Infof("failed to determine if the cluster is using isolated backplane access: %v", err)
-		logger.Infof("for more information, try ocm get /api/clusters_mgmt/v1/clusters/%s/sts_support_jump_role", cfg.Cluster.ID())
-		logger.Infof("attempting to fallback to %s", OldFlowSupportRole)
+		return nil, fmt.Errorf("failed to determine if the cluster is using isolated backplane access: %v", err)
 	}
 
 	if isolatedBackplane {
 		logger.Debugf("cluster is using isolated backplane")
 		targetCredentials, err := cfg.getIsolatedCredentials(ocmToken)
 		if err != nil {
-			// TODO: This fallback should be removed in the future
-			// TODO: when we are more confident in our ability to access clusters using the isolated flow
-			logger.Infof("failed to assume role with isolated backplane flow: %v", err)
-			logger.Infof("attempting to fallback to %s", OldFlowSupportRole)
-			return cfg.getCloudConsoleFromPublicAPI(ocmToken)
+			return nil, fmt.Errorf("failed to assume role with isolated backplane flow: %v", err)
 		}
 
 		resp, err := awsutil.GetSigninToken(targetCredentials, cfg.Cluster.Region().ID())
@@ -98,64 +91,26 @@ func (cfg *QueryConfig) GetCloudConsole() (*ConsoleResponse, error) {
 		return &ConsoleResponse{ConsoleLink: signinFederationURL.String()}, nil
 	}
 
-	return cfg.getCloudConsoleFromPublicAPI(ocmToken)
-}
-
-// GetCloudConsole returns console response calling to public Backplane API
-func (cfg *QueryConfig) getCloudConsoleFromPublicAPI(ocmToken string) (*ConsoleResponse, error) {
-	logger.Debugln("Getting Cloud Console")
-
-	client, err := backplaneapi.DefaultClientUtils.GetBackplaneClient(cfg.BackplaneConfiguration.URL, ocmToken, cfg.BackplaneConfiguration.ProxyURL)
-	if err != nil {
-		return nil, err
-	}
-	resp, err := client.GetCloudConsole(context.TODO(), cfg.Cluster.ID())
-	if err != nil {
-		return nil, err
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, utils.TryPrintAPIError(resp, false)
-	}
-
-	credsResp, err := BackplaneApi.ParseGetCloudConsoleResponse(resp)
-	if err != nil {
-		return nil, fmt.Errorf("unable to parse response body from backplane:\n  Status Code: %d", resp.StatusCode)
-	}
-
-	if len(credsResp.Body) == 0 {
-		return nil, fmt.Errorf("empty response from backplane")
-	}
-
-	cliResp := &ConsoleResponse{}
-	cliResp.ConsoleLink = *credsResp.JSON200.ConsoleLink
-
-	return cliResp, nil
+	return nil, fmt.Errorf("cluster is not using isolated backplane access")
 }
 
 // GetCloudCredentials returns Cloud Credentials Response
 func (cfg *QueryConfig) GetCloudCredentials() (bpCredentials.Response, error) {
 	ocmToken, _, err := cfg.OcmConnection.Tokens()
 	if err != nil {
-		return nil, fmt.Errorf("unable to get token for ocm connection")
+		return nil, fmt.Errorf("unable to get token for ocm connection: %w", err)
 	}
 
 	isolatedBackplane, err := isIsolatedBackplaneAccess(cfg.Cluster, cfg.OcmConnection)
 	if err != nil {
-		logger.Infof("failed to determine if the cluster is using isolated backplane access: %v", err)
-		logger.Infof("for more information, try ocm get /api/clusters_mgmt/v1/clusters/%s/sts_support_jump_role", cfg.Cluster.ID())
-		logger.Infof("attempting to fallback to %s", OldFlowSupportRole)
+		return nil, fmt.Errorf("failed to determine if the cluster is using isolated backplane access: %v", err)
 	}
 
 	if isolatedBackplane {
 		logger.Debugf("cluster is using isolated backplane")
 		targetCredentials, err := cfg.getIsolatedCredentials(ocmToken)
 		if err != nil {
-			// TODO: This fallback should be removed in the future
-			// TODO: when we are more confident in our ability to access clusters using the isolated flow
-			logger.Infof("failed to assume role with isolated backplane flow: %v", err)
-			logger.Infof("attempting to fallback to %s", OldFlowSupportRole)
-			return cfg.getCloudCredentialsFromBackplaneAPI(ocmToken)
+			return nil, fmt.Errorf("failed to assume role with isolated backplane flow: %v", err)
 		}
 
 		return &bpCredentials.AWSCredentialsResponse{
@@ -167,48 +122,7 @@ func (cfg *QueryConfig) GetCloudCredentials() (bpCredentials.Response, error) {
 		}, nil
 	}
 
-	return cfg.getCloudCredentialsFromBackplaneAPI(ocmToken)
-}
-
-func (cfg *QueryConfig) getCloudCredentialsFromBackplaneAPI(ocmToken string) (bpCredentials.Response, error) {
-	client, err := backplaneapi.DefaultClientUtils.GetBackplaneClient(cfg.BackplaneConfiguration.URL, ocmToken, cfg.BackplaneConfiguration.ProxyURL)
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := client.GetCloudCredentials(context.TODO(), cfg.Cluster.ID())
-	if err != nil {
-		return nil, err
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, utils.TryPrintAPIError(resp, false)
-	}
-
-	logger.Debugln("Parsing response")
-
-	credsResp, err := BackplaneApi.ParseGetCloudCredentialsResponse(resp)
-	if err != nil {
-		return nil, fmt.Errorf("unable to parse response body from backplane:\n  Status Code: %d : err: %v", resp.StatusCode, err)
-	}
-
-	switch cfg.Cluster.CloudProvider().ID() {
-	case "aws":
-		cliResp := &bpCredentials.AWSCredentialsResponse{}
-		if err := json.Unmarshal([]byte(*credsResp.JSON200.Credentials), cliResp); err != nil {
-			return nil, fmt.Errorf("unable to unmarshal AWS credentials response from backplane %s: %w", *credsResp.JSON200.Credentials, err)
-		}
-		cliResp.Region = cfg.Cluster.Region().ID()
-		return cliResp, nil
-	case "gcp":
-		cliResp := &bpCredentials.GCPCredentialsResponse{}
-		if err := json.Unmarshal([]byte(*credsResp.JSON200.Credentials), cliResp); err != nil {
-			return nil, fmt.Errorf("unable to unmarshal GCP credentials response from backplane %s: %w", *credsResp.JSON200.Credentials, err)
-		}
-		return cliResp, nil
-	default:
-		return nil, fmt.Errorf("unsupported cloud provider: %s", cfg.Cluster.CloudProvider().ID())
-	}
+	return nil, fmt.Errorf("cluster is not using isolated backplane access")
 }
 
 type assumeChainResponse struct {
