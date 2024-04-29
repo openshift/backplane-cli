@@ -20,6 +20,10 @@ var (
 )
 
 func AddElevationReasonToRawKubeconfig(config api.Config, elevationReason string) error {
+	return AddElevationReasonsToRawKubeconfig(config, []string{elevationReason})
+}
+
+func AddElevationReasonsToRawKubeconfig(config api.Config, elevationReasons []string) error {
 	logger.Debugln("Adding reason for backplane-cluster-admin elevation")
 	if config.Contexts[config.CurrentContext] == nil {
 		return errors.New("no current kubeconfig context")
@@ -35,7 +39,7 @@ func AddElevationReasonToRawKubeconfig(config api.Config, elevationReason string
 		config.AuthInfos[currentCtxUsername].ImpersonateUserExtra = make(map[string][]string)
 	}
 
-	config.AuthInfos[currentCtxUsername].ImpersonateUserExtra["reason"] = []string{elevationReason}
+	config.AuthInfos[currentCtxUsername].ImpersonateUserExtra["reason"] = elevationReasons
 	config.AuthInfos[currentCtxUsername].Impersonate = "backplane-cluster-admin"
 
 	return nil
@@ -48,8 +52,25 @@ func RunElevate(argv []string) error {
 		return err
 	}
 
+	logger.Debug("Compute and store reason from/to kubeconfig ElevateContext")
+	var elevateReason string
+	if len(argv) == 0 {
+		elevateReason = ""
+	} else {
+		elevateReason = argv[0]
+	}
+	elevationReasons, err := ComputeElevateContextAndStoreToKubeConfigFileAndGetReasons(config, elevateReason)
+	if err != nil {
+		return err
+	}
+
+	// If no command are provided, then we just initiate elevate context
+	if len(argv) < 2 {
+		return nil
+	}
+
 	logger.Debug("Adding impersonation RBAC allow permissions to kubeconfig")
-	err = AddElevationReasonToRawKubeconfig(config, argv[0])
+	err = AddElevationReasonsToRawKubeconfig(config, elevationReasons)
 	if err != nil {
 		return err
 	}

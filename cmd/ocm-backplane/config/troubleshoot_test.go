@@ -100,7 +100,7 @@ var _ = Describe("troubleshoot command", func() {
 			getBackplaneConfiguration = func() (bpConfig config.BackplaneConfiguration, err error) {
 				result := "http://example:8888"
 				bpConfig.ProxyURL = &result
-				return bpConfig,nil
+				return bpConfig, nil
 			}
 			err := o.checkBPCli()
 			Expect(err).To(BeNil())
