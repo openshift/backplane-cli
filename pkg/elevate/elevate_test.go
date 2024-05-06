@@ -6,7 +6,10 @@ import (
 	"os"
 	"os/exec"
 	"testing"
+	"time"
 
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
 )
 
@@ -26,7 +29,7 @@ func fakeExecCommandSuccess(command string, args ...string) *exec.Cmd {
 	return cmd
 }
 
-var fakeAPIConfig = api.Config {
+var fakeAPIConfig = api.Config{
 	Kind:        "Config",
 	APIVersion:  "v1",
 	Preferences: api.Preferences{},
@@ -51,7 +54,20 @@ var fakeAPIConfig = api.Config {
 }
 
 func fakeReadKubeConfigRaw() (api.Config, error) {
-	return fakeAPIConfig, nil
+	return *fakeAPIConfig.DeepCopy(), nil
+}
+
+func fakeReadKubeConfigRawWithReasons(lastUsedMinutes time.Duration) func() (api.Config, error) {
+	return func() (api.Config, error) {
+		config := *fakeAPIConfig.DeepCopy()
+		config.Contexts[config.CurrentContext].Extensions = map[string]runtime.Object{
+			elevateExtensionName: &ElevateContext{
+				Reasons:  []string{"dymmy reason"},
+				LastUsed: time.Now().Add(-lastUsedMinutes * time.Minute),
+			},
+		}
+		return config, nil
+	}
 }
 
 func TestHelperProcessError(t *testing.T) {
@@ -88,15 +104,20 @@ func TestAddElevationReasonToRawKubeconfig(t *testing.T) {
 
 	t.Run("it succeeds if the auth info exists for the current context", func(t *testing.T) {
 		if err := AddElevationReasonToRawKubeconfig(fakeAPIConfig, "Production cluster"); err != nil {
-			t.Errorf("Expected no errors, got %v", err)
+			t.Error("Expected no errors, got", err)
 		}
 	})
 }
 
 func TestRunElevate(t *testing.T) {
+	// We do ot want to realy override any config files or remove them
+	ModifyConfig = func(configAccess clientcmd.ConfigAccess, newConfig api.Config, relativizePaths bool) error {
+		return nil
+	}
+	OsRemove = func(name string) error { return nil }
+
 	t.Run("It returns an error if we cannot load the kubeconfig", func(t *testing.T) {
 		ExecCmd = exec.Command
-		OsRemove = os.Remove
 		ReadKubeConfigRaw = func() (api.Config, error) {
 			return *api.NewConfig(), errors.New("cannot load kfg")
 		}
@@ -107,49 +128,71 @@ func TestRunElevate(t *testing.T) {
 
 	t.Run("It returns an error if kubeconfig has no current context", func(t *testing.T) {
 		ExecCmd = exec.Command
-		OsRemove = os.Remove
 		ReadKubeConfigRaw = func() (api.Config, error) {
 			return *api.NewConfig(), nil
 		}
-		if err := RunElevate([]string{"oc", "get pods"}); err == nil {
+		if err := RunElevate([]string{"reason", "get", "pods"}); err == nil {
 			t.Error("Expected error, got nil")
 		}
 	})
 
 	t.Run("It returns an error if the exec command has errors", func(t *testing.T) {
 		ExecCmd = fakeExecCommandError
-		OsRemove = os.Remove
 		ReadKubeConfigRaw = fakeReadKubeConfigRaw
-		if err := RunElevate([]string{"oc", "get pods"}); err == nil {
+		if err := RunElevate([]string{"reason", "get", "pods"}); err == nil {
 			t.Error("Expected error, got nil")
 		}
 	})
 
 	t.Run("It suceeds if the command succeeds, we can clean up the tmp kubeconfig and KUBECONFIG is still set to previous definbed value", func(t *testing.T) {
 		ExecCmd = fakeExecCommandSuccess
-		OsRemove = func(name string) error { return nil }
 		ReadKubeConfigRaw = fakeReadKubeConfigRaw
 		mockKubeconfig := "/tmp/dummy_kubeconfig"
 		os.Setenv("KUBECONFIG", mockKubeconfig)
-		if err := RunElevate([]string{"oc", "get pods"}); err != nil {
-			t.Errorf("Expected no errors, got %v", err)
+		if err := RunElevate([]string{"reason", "get", "pods"}); err != nil {
+			t.Error("Expected no errors, got", err)
 		}
-		if kubeconfigPath, kubeconfigDefined := os.LookupEnv("KUBECONFIG"); ! kubeconfigDefined || kubeconfigPath != mockKubeconfig {
-			t.Errorf("Expected KUBECONFIG to be definied to previous value, got %v", kubeconfigPath)
+		if kubeconfigPath, kubeconfigDefined := os.LookupEnv("KUBECONFIG"); !kubeconfigDefined || kubeconfigPath != mockKubeconfig {
+			t.Error("Expected KUBECONFIG to be definied to previous value, got", kubeconfigPath)
 		}
 	})
 
 	t.Run("It suceeds if the command succeeds, we can clean up the tmp kubeconfig and KUBECONFIG is still not set", func(t *testing.T) {
 		ExecCmd = fakeExecCommandSuccess
-		OsRemove = func(name string) error { return nil }
 		ReadKubeConfigRaw = fakeReadKubeConfigRaw
 		os.Unsetenv("KUBECONFIG")
-		if err := RunElevate([]string{"oc", "get pods"}); err != nil {
-			t.Errorf("Expected no errors, got %v", err)
+		if err := RunElevate([]string{"reason", "get", "pods"}); err != nil {
+			t.Error("Expected no errors, got", err)
 		}
 		if kubeconfigPath, kubeconfigDefined := os.LookupEnv("KUBECONFIG"); kubeconfigDefined {
-			t.Errorf("Expected KUBECONFIG to not be definied as previously, got %v", kubeconfigPath)
+			t.Error("Expected KUBECONFIG to not be definied as previously, got", kubeconfigPath)
 		}
 	})
 
+	t.Run("It returns an error if reason is empty and no ElevateContext", func(t *testing.T) {
+		ExecCmd = fakeExecCommandSuccess
+		AskQuestionFromPrompt = func(name string) string { return "" }
+		ReadKubeConfigRaw = fakeReadKubeConfigRaw
+		if err := RunElevate([]string{"", "get", "pods"}); err == nil {
+			t.Error("Expected error, got nil")
+		}
+	})
+
+	t.Run("It suceeds if reason is empty and ElevateContext present with Reasons still valid", func(t *testing.T) {
+		ExecCmd = fakeExecCommandSuccess
+		AskQuestionFromPrompt = func(name string) string { return "" }
+		ReadKubeConfigRaw = fakeReadKubeConfigRawWithReasons(elevateExtensionRetentionMinutes - 1)
+		if err := RunElevate([]string{"", "get", "pods"}); err != nil {
+			t.Error("Expected nil, got", err)
+		}
+	})
+
+	t.Run("It returns an error if reason is empty and ElevateContext present with Reasons to old", func(t *testing.T) {
+		ExecCmd = fakeExecCommandSuccess
+		AskQuestionFromPrompt = func(name string) string { return "" }
+		ReadKubeConfigRaw = fakeReadKubeConfigRawWithReasons(elevateExtensionRetentionMinutes + 1)
+		if err := RunElevate([]string{"", "get", "pods"}); err == nil {
+			t.Error("Expected err, got nil")
+		}
+	})
 }

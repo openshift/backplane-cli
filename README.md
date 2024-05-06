@@ -64,7 +64,7 @@ To setup the PS1(prompt) for bash/zsh, please follow [these instructions](https:
 | `ocm backplane console [flags]`                                             | Launch the OpenShift console of the current logged in cluster                            |
 | `ocm backplane cloud console`                                               | Launch the current logged in cluster's cloud provider console                            |
 | `ocm backplane cloud credentials [flags]`                                   | Retrieve a set of temporary cloud credentials for the cluster's cloud provider           |
-| `ocm backplane elevate <reason> -- <command>`                               | Elevate privileges to backplane-cluster-admin and add a reason to the api request        |
+| `ocm backplane elevate <reason> -- <command>`                               | Elevate privileges to backplane-cluster-admin and add a reason to the api request, this reason will be stored for 20min for future usage        |
 | `ocm backplane monitoring <prometheus/alertmanager/thanos/grafana> [flags]` | Launch the specified monitoring UI (Deprecated following v4.11 for cluster monitoring stack)                          |
 | `ocm backplane script describe <script> [flags]`                            | Describe the given backplane script                                                      |
 | `ocm backplane script list [flags]`                                         | List available backplane scripts |
@@ -268,6 +268,64 @@ Folowing command delete the session
 ```
 ocm backplane session --delete <session-name>
 ```
+## Backplane elevate
+If you need to run some oc command(s) with elevation using backplane-cluster-admin user, you can use the elevate command for this.
+
+Backplane elevate takes as first positional argument the reason for this elevation. If the first argument is an empty string, then it will be considered as an empty reason, but you cannot just skip the reason argument if you provide also other positional argument(s).
+If you want to not provide an empty string as reason, you can use the -n/--no-reason option and oc command will start at first positional argument.
+
+The elevate command requires a none empty reason for the elevation. When a reason is provided it will be used for future usage, in order you do not have to provide a reason for each elevation commands. The reasons are stored in the kubeconfig context, so it is valid only for the cluster for which it has been provided. When a reason is created/used, the last used reason timestamp is updated in the context, and the reason will be kept for 20min after its last usage, in order to avoid bad usage.
+
+When you use the elevate command with an empty reason, it will look if a non expired reason is stored in the current context for this server, and if there is one it will use it. If there is no reason stored in current context, then if the stdin and stderr are not redirected to pipe or file, a prompt will be done to ask for the reason.
+
+### Run an elevate command with reason
+```
+$ ocm-backplane evate 'OHSS-xxxxxx' -- get secret xxx
+```
+The provided reason will be used for elevation, but also stored for future elevation on this cluster.
+If a reason was already stored in the current_context, then this provided reason will be added to it.
+
+### Run an elevate command with empty reason
+If you run the elevate command with an empty reason for the first time (or after the expiration), then you will be prompt for the reason if possible
+```
+$ ocm-backplane elevate '' -- get secret xxx
+Please enter a reason for elevation, it will be stored in current context for 20 minutes : <here you can enter your reason>
+```
+or 
+```
+$ ocm-backplane elevate -n -- get secret xxx
+Please enter a reason for elevation, it will be stored in current context for 20 minutes : <here you can enter your reason>
+```
+If then you rerun an elevate command, for the same cluster, before the expiration delay, no prompt will be done and previous reason will be used for elevation.
+
+### Run elevate without command
+You can initialize the reson context for a cluster without running a command, then the reason will be used for future commands
+```
+$ ocm-backplane elevate 'OHSS-xxxxxx'
+```
+or you can not provide the reason and will be prompt for it if needed
+```
+$ ocm-backplane elevate
+Please enter a reason for elevation, it will be stored in current context for 20 minutes : <here you can enter your reason>
+```
+
+### Run elevate without (stored) reason and without valid prompt
+
+If a prompt is required but that stdin and/or stderr are redirected to file or output, then an error will be generated.
+```
+$ cat patch.json | ocm-backplane elevate -n -- patch -f -
+ERRO[0000] please enter a reason for elevation
+$ ocm-backplane elevate -n -- get secret xxx 2> error.txt
+ERRO[0000] please enter a reason for elevation
+```
+In order to avoid those errors, you can either run the the elevate without command before or provide a none empty reason.
+
+No issue if only stdout is redirected.
+```
+$ ocm-backplane elevate -n -- get secret xxx | grep xxx
+Please enter a reason for elevation, it will be stored in current context for 20 minutes : <here you can enter your reason>
+```
+
 ## Promotion/Release cycle of backplane CLI
 Backplane CLI has a default release cycle of every 2 weeks 
 

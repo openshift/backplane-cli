@@ -83,7 +83,7 @@ func TestBackplaneConfiguration_getFirstWorkingProxyURL(t *testing.T) {
 			clientDoFunc: func(client *http.Client, req *http.Request) (*http.Response, error) {
 				return &http.Response{StatusCode: http.StatusOK}, nil
 			},
-			want:    "https://dummy.com",
+			want: "https://dummy.com",
 		},
 		{
 			name:    "multiple-valid-proxies",
@@ -91,7 +91,7 @@ func TestBackplaneConfiguration_getFirstWorkingProxyURL(t *testing.T) {
 			clientDoFunc: func(client *http.Client, req *http.Request) (*http.Response, error) {
 				return &http.Response{StatusCode: http.StatusOK}, nil
 			},
-			want:    "https://dummy.com",
+			want: "https://dummy.com",
 		},
 		{
 			name:    "multiple-mixed-proxies",
@@ -99,7 +99,7 @@ func TestBackplaneConfiguration_getFirstWorkingProxyURL(t *testing.T) {
 			clientDoFunc: func(client *http.Client, req *http.Request) (*http.Response, error) {
 				return &http.Response{StatusCode: http.StatusOK}, nil
 			},
-			want:    "https://dummy.com",
+			want: "https://dummy.com",
 		},
 	}
 	for _, tt := range tests {
