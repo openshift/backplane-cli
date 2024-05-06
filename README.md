@@ -272,6 +272,7 @@ ocm backplane session --delete <session-name>
 If you need to run some oc command(s) with elevation using backplane-cluster-admin user, you can use the elevate command for this.
 
 Backplane elevate takes as first positional argument the reason for this elevation. If the first argument is an empty string, then it will be considered as an empty reason, but you cannot just skip the reason argument if you provide also other positional argument(s).
+If you want to not provide an empty string as reason, you can use the -n/--no-reason option and oc command will start at first positional argument.
 
 The elevate command requires a none empty reason for the elevation. When a reason is provided it will be used for future usage, in order you do not have to provide a reason for each elevation commands. The reasons are stored in the kubeconfig context, so it is valid only for the cluster for which it has been provided. When a reason is created/used, the last used reason timestamp is updated in the context, and the reason will be kept for 20min after its last usage, in order to avoid bad usage.
 
@@ -288,6 +289,11 @@ If a reason was already stored in the current_context, then this provided reason
 If you run the elevate command with an empty reason for the first time (or after the expiration), then you will be prompt for the reason if possible
 ```
 $ ocm-backplane elevate '' -- get secret xxx
+Please enter a reason for elevation, it will be stored in current context for 20 minutes : <here you can enter your reason>
+```
+or 
+```
+$ ocm-backplane elevate -n -- get secret xxx
 Please enter a reason for elevation, it will be stored in current context for 20 minutes : <here you can enter your reason>
 ```
 If then you rerun an elevate command, for the same cluster, before the expiration delay, no prompt will be done and previous reason will be used for elevation.
@@ -307,16 +313,16 @@ Please enter a reason for elevation, it will be stored in current context for 20
 
 If a prompt is required but that stdin and/or stderr are redirected to file or output, then an error will be generated.
 ```
-$ cat patch.json | ocm-backplane elevate '' -- patch -f -
+$ cat patch.json | ocm-backplane elevate -n -- patch -f -
 ERRO[0000] please enter a reason for elevation
-$ ocm-backplane elevate '' -- get secret xxx 2> error.txt
+$ ocm-backplane elevate -n -- get secret xxx 2> error.txt
 ERRO[0000] please enter a reason for elevation
 ```
 In order to avoid those errors, you can either run the the elevate without command before or provide a none empty reason.
 
 No issue if only stdout is redirected.
 ```
-$ ocm-backplane elevate '' -- get secret xxx | grep xxx
+$ ocm-backplane elevate -n -- get secret xxx | grep xxx
 Please enter a reason for elevation, it will be stored in current context for 20 minutes : <here you can enter your reason>
 ```
 

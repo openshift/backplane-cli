@@ -5,6 +5,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var noReason bool
 var ElevateCmd = &cobra.Command{
 	Use:   "elevate [<REASON> [<COMMAND>]]",
 	Short: "Give a justification for elevating privileges to backplane-cluster-admin and attach it to your user object",
@@ -20,6 +21,19 @@ If no COMMAND (and eventualy also REASON) is/are provided then the command will 
 	SilenceUsage: true,
 }
 
+func init() {
+	ElevateCmd.Flags().BoolVarP(
+		&noReason,
+		"no-reason",
+		"n",
+		false,
+		"Do not take reason as first argument, and prompt for it if needed and possible.",
+	)
+}
+
 func runElevate(cmd *cobra.Command, argv []string) error {
+	if noReason {
+		argv = append([]string{""}, argv...)
+	}
 	return elevate.RunElevate(argv)
 }
