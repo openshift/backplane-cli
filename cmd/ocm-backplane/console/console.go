@@ -1044,6 +1044,7 @@ func podmanRunConsoleContainer(containerName string, port string, consoleArgs []
 		"--rm",
 		"--detach", // run in background
 		"--name", containerName,
+		"--replace", // when name is already in use, --replace to instruct Podman to do so
 		"--publish", fmt.Sprintf("127.0.0.1:%s:%s", port, port),
 	}
 	for _, e := range envVars {
