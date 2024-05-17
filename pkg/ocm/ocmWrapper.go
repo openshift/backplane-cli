@@ -27,6 +27,8 @@ type OCMInterface interface {
 	GetPullSecret() (string, error)
 	GetStsSupportJumpRoleARN(ocmConnection *ocmsdk.Connection, clusterID string) (string, error)
 	GetOCMEnvironment() (*cmv1.Environment, error)
+	GetOCMAccessTokenWithConn(ocmConnection *ocmsdk.Connection) (*string, error)
+	GetClusterInfoByIDWithConn(ocmConnection *ocmsdk.Connection, clusterID string) (*cmv1.Cluster, error)
 }
 
 const (
@@ -38,7 +40,7 @@ type DefaultOCMInterfaceImpl struct{}
 var DefaultOCMInterface OCMInterface = &DefaultOCMInterfaceImpl{}
 
 // IsClusterHibernating returns a boolean to indicate whether the cluster is hibernating
-func (*DefaultOCMInterfaceImpl) IsClusterHibernating(clusterID string) (bool, error) {
+func (o *DefaultOCMInterfaceImpl) IsClusterHibernating(clusterID string) (bool, error) {
 	connection, err := ocm.NewConnection().Build()
 	if err != nil {
 		return false, fmt.Errorf("failed to create OCM connection: %v", err)
@@ -54,7 +56,7 @@ func (*DefaultOCMInterfaceImpl) IsClusterHibernating(clusterID string) (bool, er
 }
 
 // GetTargetCluster returns one single cluster based on the search key and survery.
-func (*DefaultOCMInterfaceImpl) GetTargetCluster(clusterKey string) (clusterID, clusterName string, err error) {
+func (o *DefaultOCMInterfaceImpl) GetTargetCluster(clusterKey string) (clusterID, clusterName string, err error) {
 	// Create the client for the OCM API:
 	connection, err := ocm.NewConnection().Build()
 	if err != nil {
@@ -143,7 +145,7 @@ func (o *DefaultOCMInterfaceImpl) GetManagingCluster(targetClusterID string) (cl
 }
 
 // GetServiceCluster gets the service cluster for a given hpyershift hosted cluster
-func (*DefaultOCMInterfaceImpl) GetServiceCluster(targetClusterID string) (clusterID, clusterName string, err error) {
+func (o *DefaultOCMInterfaceImpl) GetServiceCluster(targetClusterID string) (clusterID, clusterName string, err error) {
 	// Create the client for the OCM API
 	connection, err := ocm.NewConnection().Build()
 	if err != nil {
@@ -197,15 +199,22 @@ func (*DefaultOCMInterfaceImpl) GetServiceCluster(targetClusterID string) (clust
 }
 
 // GetOCMAccessToken initiates the OCM connection and returns the access token
-func (*DefaultOCMInterfaceImpl) GetOCMAccessToken() (*string, error) {
+func (o *DefaultOCMInterfaceImpl) GetOCMAccessToken() (*string, error) {
 	// Get ocm access token
-	logger.Debugln("Finding ocm token")
 	connection, err := ocm.NewConnection().Build()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create OCM connection: %v", err)
 	}
 	defer connection.Close()
-	accessToken, _, err := connection.Tokens()
+
+	return o.GetOCMAccessTokenWithConn(connection)
+}
+
+// GetOCMAccessTokenWithConn returns the access token of an ocmConnection
+func (o *DefaultOCMInterfaceImpl) GetOCMAccessTokenWithConn(ocmConnection *ocmsdk.Connection) (*string, error) {
+	// Get ocm access token
+	logger.Debugln("Finding ocm token")
+	accessToken, _, err := ocmConnection.Tokens()
 	if err != nil {
 		return nil, err
 	}
@@ -217,7 +226,7 @@ func (*DefaultOCMInterfaceImpl) GetOCMAccessToken() (*string, error) {
 }
 
 // GetPullSecret returns pull secret from OCM
-func (*DefaultOCMInterfaceImpl) GetPullSecret() (string, error) {
+func (o *DefaultOCMInterfaceImpl) GetPullSecret() (string, error) {
 
 	// Get ocm access token
 	logger.Debugln("Finding ocm token")
@@ -239,7 +248,7 @@ func (*DefaultOCMInterfaceImpl) GetPullSecret() (string, error) {
 
 // GetClusterInfoByID calls the OCM to retrieve the cluster info
 // for a given internal cluster id.
-func (*DefaultOCMInterfaceImpl) GetClusterInfoByID(clusterID string) (*cmv1.Cluster, error) {
+func (o *DefaultOCMInterfaceImpl) GetClusterInfoByID(clusterID string) (*cmv1.Cluster, error) {
 	// Create the client for the OCM API:
 	connection, err := ocm.NewConnection().Build()
 	if err != nil {
@@ -247,8 +256,13 @@ func (*DefaultOCMInterfaceImpl) GetClusterInfoByID(clusterID string) (*cmv1.Clus
 	}
 	defer connection.Close()
 
-	// Get the cluster info based on the cluster id
-	response, err := connection.ClustersMgmt().V1().Clusters().Cluster(clusterID).Get().Send()
+	return o.GetClusterInfoByIDWithConn(connection, clusterID)
+}
+
+// GetClusterInfoByIDWithConn calls the OCM to retrieve the cluster info
+// for a given internal cluster id.
+func (o *DefaultOCMInterfaceImpl) GetClusterInfoByIDWithConn(ocmConnection *ocmsdk.Connection, clusterID string) (*cmv1.Cluster, error) {
+	response, err := ocmConnection.ClustersMgmt().V1().Clusters().Cluster(clusterID).Get().Send()
 	if err != nil {
 		return nil, fmt.Errorf("can't retrieve cluster for id '%s': %v", clusterID, err)
 	}
@@ -260,7 +274,7 @@ func (*DefaultOCMInterfaceImpl) GetClusterInfoByID(clusterID string) (*cmv1.Clus
 }
 
 // IsProduction checks if OCM is currently in production env
-func (*DefaultOCMInterfaceImpl) IsProduction() (bool, error) {
+func (o *DefaultOCMInterfaceImpl) IsProduction() (bool, error) {
 	// Create the client for the OCM API:
 	connection, err := ocm.NewConnection().Build()
 	if err != nil {
@@ -271,7 +285,7 @@ func (*DefaultOCMInterfaceImpl) IsProduction() (bool, error) {
 	return connection.URL() == "https://api.openshift.com", nil
 }
 
-func (*DefaultOCMInterfaceImpl) GetStsSupportJumpRoleARN(ocmConnection *ocmsdk.Connection, clusterID string) (string, error) {
+func (o *DefaultOCMInterfaceImpl) GetStsSupportJumpRoleARN(ocmConnection *ocmsdk.Connection, clusterID string) (string, error) {
 	response, err := ocmConnection.ClustersMgmt().V1().Clusters().Cluster(clusterID).StsSupportJumpRole().Get().Send()
 	if err != nil {
 		return "", fmt.Errorf("failed to get STS Support Jump Role for cluster %v, %w", clusterID, err)
@@ -280,7 +294,7 @@ func (*DefaultOCMInterfaceImpl) GetStsSupportJumpRoleARN(ocmConnection *ocmsdk.C
 }
 
 // GetBackplaneURL returns the Backplane API URL based on the OCM env
-func (*DefaultOCMInterfaceImpl) GetOCMEnvironment() (*cmv1.Environment, error) {
+func (o *DefaultOCMInterfaceImpl) GetOCMEnvironment() (*cmv1.Environment, error) {
 	// Create the client for the OCM API
 	connection, err := ocm.NewConnection().Build()
 	if err != nil {
