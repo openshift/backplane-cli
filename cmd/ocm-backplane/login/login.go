@@ -20,6 +20,7 @@ import (
 
 	BackplaneApi "github.com/openshift/backplane-api/pkg/client"
 
+	ocmsdk "github.com/openshift-online/ocm-sdk-go"
 	"github.com/openshift/backplane-cli/pkg/backplaneapi"
 	"github.com/openshift/backplane-cli/pkg/cli/config"
 	"github.com/openshift/backplane-cli/pkg/cli/globalflags"
@@ -365,6 +366,38 @@ func GetRestConfig(bp config.BackplaneConfiguration, clusterID string) (*rest.Co
 	}
 
 	accessToken, err := ocm.DefaultOCMInterface.GetOCMAccessToken()
+	if err != nil {
+		return nil, err
+	}
+
+	bpAPIClusterURL, err := doLogin(bp.URL, clusterID, *accessToken)
+	if err != nil {
+		return nil, fmt.Errorf("failed to backplane login to cluster %s: %v", cluster.Name(), err)
+	}
+
+	cfg := &rest.Config{
+		Host:        bpAPIClusterURL,
+		BearerToken: *accessToken,
+	}
+
+	if bp.ProxyURL != nil {
+		cfg.Proxy = func(*http.Request) (*url.URL, error) {
+			return url.Parse(*bp.ProxyURL)
+		}
+	}
+
+	return cfg, nil
+}
+
+// GetRestConfig returns a client-go *rest.Config which can be used to programmatically interact with the
+// Kubernetes API of a provided clusterID
+func GetRestConfigWithConn(bp config.BackplaneConfiguration, ocmConnection *ocmsdk.Connection, clusterID string) (*rest.Config, error) {
+	cluster, err := ocm.DefaultOCMInterface.GetClusterInfoByIDWithConn(ocmConnection, clusterID)
+	if err != nil {
+		return nil, err
+	}
+
+	accessToken, err := ocm.DefaultOCMInterface.GetOCMAccessTokenWithConn(ocmConnection)
 	if err != nil {
 		return nil, err
 	}

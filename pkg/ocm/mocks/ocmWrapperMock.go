@@ -50,6 +50,21 @@ func (mr *MockOCMInterfaceMockRecorder) GetClusterInfoByID(arg0 interface{}) *go
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetClusterInfoByID", reflect.TypeOf((*MockOCMInterface)(nil).GetClusterInfoByID), arg0)
 }
 
+// GetClusterInfoByIDWithConn mocks base method.
+func (m *MockOCMInterface) GetClusterInfoByIDWithConn(arg0 *sdk.Connection, arg1 string) (*v1.Cluster, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetClusterInfoByIDWithConn", arg0, arg1)
+	ret0, _ := ret[0].(*v1.Cluster)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetClusterInfoByIDWithConn indicates an expected call of GetClusterInfoByIDWithConn.
+func (mr *MockOCMInterfaceMockRecorder) GetClusterInfoByIDWithConn(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetClusterInfoByIDWithConn", reflect.TypeOf((*MockOCMInterface)(nil).GetClusterInfoByIDWithConn), arg0, arg1)
+}
+
 // GetManagingCluster mocks base method.
 func (m *MockOCMInterface) GetManagingCluster(arg0 string) (string, string, bool, error) {
 	m.ctrl.T.Helper()
@@ -80,6 +95,21 @@ func (m *MockOCMInterface) GetOCMAccessToken() (*string, error) {
 func (mr *MockOCMInterfaceMockRecorder) GetOCMAccessToken() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOCMAccessToken", reflect.TypeOf((*MockOCMInterface)(nil).GetOCMAccessToken))
+}
+
+// GetOCMAccessTokenWithConn mocks base method.
+func (m *MockOCMInterface) GetOCMAccessTokenWithConn(arg0 *sdk.Connection) (*string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetOCMAccessTokenWithConn", arg0)
+	ret0, _ := ret[0].(*string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetOCMAccessTokenWithConn indicates an expected call of GetOCMAccessTokenWithConn.
+func (mr *MockOCMInterfaceMockRecorder) GetOCMAccessTokenWithConn(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOCMAccessTokenWithConn", reflect.TypeOf((*MockOCMInterface)(nil).GetOCMAccessTokenWithConn), arg0)
 }
 
 // GetOCMEnvironment mocks base method.

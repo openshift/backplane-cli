@@ -502,7 +502,6 @@ var _ = Describe("Login command", func() {
 	})
 
 	Context("check GetRestConfigAsUser", func() {
-
 		It("check config creation with username and without elevationReasons", func() {
 			mockOcmInterface.EXPECT().GetClusterInfoByID(testClusterID).Return(mockCluster, nil)
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil)
