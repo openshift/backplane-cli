@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"github.com/openshift/backplane-cli/cmd/ocm-backplane/completion"
 	"os"
 
 	log "github.com/sirupsen/logrus"
@@ -78,4 +79,5 @@ func init() {
 	rootCmd.AddCommand(upgrade.UpgradeCmd)
 	rootCmd.AddCommand(version.VersionCmd)
 	rootCmd.AddCommand(monitoring.MonitoringCmd)
+	rootCmd.AddCommand(completion.NewCompletionCmd())
 }
