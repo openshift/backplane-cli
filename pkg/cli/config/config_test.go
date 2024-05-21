@@ -75,7 +75,7 @@ func TestBackplaneConfiguration_getFirstWorkingProxyURL(t *testing.T) {
 		{
 			name:    "multiple-invalid-proxies",
 			proxies: []string{"-", "gellso", ""},
-			want:    "",
+			want:    "-",
 		},
 		{
 			name:    "valid-proxies",

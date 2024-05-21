@@ -111,7 +111,7 @@ var clientDo = func(client *http.Client, req *http.Request) (*http.Response, err
 }
 
 func (config *BackplaneConfiguration) getFirstWorkingProxyURL(s []string) string {
-	bpURL := config.URL + "/healthz"
+	proxyHealthCheckURL := config.URL + "/healthz"
 
 	client := &http.Client{
 		Timeout: 5 * time.Second,
@@ -125,9 +125,8 @@ func (config *BackplaneConfiguration) getFirstWorkingProxyURL(s []string) string
 		}
 
 		client.Transport = &http.Transport{Proxy: http.ProxyURL(proxyURL)}
-		req, _ := http.NewRequest("GET", bpURL, nil)
+		req, _ := http.NewRequest("GET", proxyHealthCheckURL, nil)
 		resp, err := clientDo(client, req)
-
 		if err != nil {
 			logger.Infof("Proxy: %s returned an error: %s", proxyURL, err)
 			continue
@@ -135,7 +134,14 @@ func (config *BackplaneConfiguration) getFirstWorkingProxyURL(s []string) string
 		if resp.StatusCode == http.StatusOK {
 			return p
 		}
+		logger.Infof("proxy: %s did not pass healthcheck, expected response code 200, got %d, discarding", proxyHealthCheckURL, resp.StatusCode)
 	}
+
+	if len(s) > 0 {
+		logger.Infof("falling back to first proxy-url after all proxies failed health checks: %s", s[0])
+		return s[0]
+	}
+
 	return ""
 }
 
