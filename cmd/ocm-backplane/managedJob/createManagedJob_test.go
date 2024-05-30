@@ -2,6 +2,7 @@ package managedjob
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -12,8 +13,10 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/spf13/cobra"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/backplane-cli/pkg/backplaneapi"
@@ -31,6 +34,7 @@ var _ = Describe("managedJob create command", func() {
 		mockClient       *mocks.MockClientInterface
 		mockOcmInterface *ocmMock.MockOCMInterface
 		mockClientUtil   *backplaneapiMock.MockClientUtils
+		mockCluster              *cmv1.Cluster
 
 		testClusterID string
 		testToken     string
@@ -39,6 +43,7 @@ var _ = Describe("managedJob create command", func() {
 
 		fakeResp        *http.Response
 		fakeJobResp     *http.Response
+		fakeLoginResp     *http.Response
 		jobResponseBody string
 
 		sut    *cobra.Command
@@ -59,6 +64,22 @@ var _ = Describe("managedJob create command", func() {
 		testToken = "hello123"
 		trueClusterID = "trueID123"
 		proxyURI = "https://shard.apps"
+		mockCluster = &cmv1.Cluster{}
+		isManagementCluster = func () (bool, error) { return true, nil}
+		listDynaKube = func(cl client.Client,ctx context.Context, u client.ObjectList, opts ...client.ListOption) error{
+			ux := u.(*unstructured.Unstructured)
+
+			st := map[string]interface{} {  
+				"spec": map[string]interface{}{
+					"apiUrl": "https://staging.live.dynatrace.com/api",
+				}, 
+			}
+
+			ux.Object["items"] = []interface{}{
+				st,
+			}
+			return nil
+		}
 
 		sut = NewManagedJobCmd()
 
@@ -93,6 +114,14 @@ var _ = Describe("managedJob create command", func() {
 		}
 		fakeJobResp.Header.Add("Content-Type", "json")
 
+		// fake response for login to get login.GetRestConfig
+		fakeLoginResp = &http.Response{
+			Body:       MakeIoReader(`{"proxy_uri":"proxy", "statusCode":200, "message":"msg"}`),
+			Header:     map[string][]string{},
+			StatusCode: http.StatusOK,
+		}
+		fakeLoginResp.Header.Add("Content-Type", "json")
+
 		// Clear config file
 		_ = clientcmd.ModifyConfig(clientcmd.NewDefaultPathOptions(), api.Config{}, true)
 
@@ -113,6 +142,9 @@ var _ = Describe("managedJob create command", func() {
 			// Then it will look for the backplane shard
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetClusterInfoByID(trueClusterID).Return(mockCluster, nil)
+			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken(proxyURI, testToken).Return(mockClient, nil)
+			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(trueClusterID)).Return(fakeLoginResp, nil)
 			mockClientUtil.EXPECT().MakeRawBackplaneAPIClient(gomock.Any()).Return(mockClient, nil)
 			mockClient.EXPECT().CreateJob(gomock.Any(), trueClusterID, gomock.Any()).Return(fakeResp, nil)
 
@@ -129,6 +161,9 @@ var _ = Describe("managedJob create command", func() {
 			// Then it will look for the backplane shard
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetClusterInfoByID(trueClusterID).Return(mockCluster, nil)
+			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken(proxyURI, testToken).Return(mockClient, nil)
+			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(trueClusterID)).Return(fakeLoginResp, nil)
 			mockClientUtil.EXPECT().MakeRawBackplaneAPIClient("https://newbackplane.url").Return(mockClient, nil)
 			mockClient.EXPECT().CreateJob(gomock.Any(), trueClusterID, gomock.Any()).Return(fakeResp, nil)
 
@@ -172,6 +207,9 @@ var _ = Describe("managedJob create command", func() {
 			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, testClusterID, nil)
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetClusterInfoByID(trueClusterID).Return(mockCluster, nil)
+			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken(proxyURI, testToken).Return(mockClient, nil)
+			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(trueClusterID)).Return(fakeLoginResp, nil)
 			mockClientUtil.EXPECT().MakeRawBackplaneAPIClient("https://newbackplane.url").Return(mockClient, nil)
 			mockClient.EXPECT().CreateJob(gomock.Any(), trueClusterID, gomock.Any()).Return(fakeResp, nil)
 			mockClient.EXPECT().GetRun(gomock.Any(), trueClusterID, gomock.Eq("jid")).Return(fakeJobResp, nil)
@@ -200,6 +238,9 @@ var _ = Describe("managedJob create command", func() {
 			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, testClusterID, nil)
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetClusterInfoByID(trueClusterID).Return(mockCluster, nil)
+			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken(proxyURI, testToken).Return(mockClient, nil)
+			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(trueClusterID)).Return(fakeLoginResp, nil)
 			mockClientUtil.EXPECT().MakeRawBackplaneAPIClient("https://newbackplane.url").Return(mockClient, nil)
 			mockClient.EXPECT().CreateJob(gomock.Any(), trueClusterID, gomock.Any()).Return(fakeResp, nil).AnyTimes()
 			mockClient.EXPECT().GetRun(gomock.Any(), trueClusterID, gomock.Eq("jid")).Return(fakeJobResp, nil).AnyTimes()
@@ -222,6 +263,9 @@ var _ = Describe("managedJob create command", func() {
 			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, testClusterID, nil)
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetClusterInfoByID(trueClusterID).Return(mockCluster, nil)
+			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken(proxyURI, testToken).Return(mockClient, nil)
+			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(trueClusterID)).Return(fakeLoginResp, nil)
 			mockClientUtil.EXPECT().MakeRawBackplaneAPIClient("https://newbackplane.url").Return(mockClient, nil)
 			mockClient.EXPECT().CreateJob(gomock.Any(), trueClusterID, gomock.Any()).Return(fakeResp, nil).AnyTimes()
 			mockClient.EXPECT().GetRun(gomock.Any(), trueClusterID, gomock.Eq("jid")).Return(fakeJobResp, nil).AnyTimes()
@@ -243,6 +287,9 @@ var _ = Describe("managedJob create command", func() {
 			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, testClusterID, nil)
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetClusterInfoByID(trueClusterID).Return(mockCluster, nil)
+			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken(proxyURI, testToken).Return(mockClient, nil)
+			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(trueClusterID)).Return(fakeLoginResp, nil)
 			mockClientUtil.EXPECT().MakeRawBackplaneAPIClient("https://newbackplane.url").Return(mockClient, nil)
 			mockClient.EXPECT().CreateJob(gomock.Any(), trueClusterID, gomock.Any()).Return(fakeResp, nil)
 			mockClient.EXPECT().GetRun(gomock.Any(), trueClusterID, gomock.Eq("jid")).Return(fakeJobResp, nil)
@@ -271,6 +318,9 @@ var _ = Describe("managedJob create command", func() {
 			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, testClusterID, nil)
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetClusterInfoByID(trueClusterID).Return(mockCluster, nil)
+			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken(proxyURI, testToken).Return(mockClient, nil)
+			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(trueClusterID)).Return(fakeLoginResp, nil)
 			mockClientUtil.EXPECT().MakeRawBackplaneAPIClient("https://newbackplane.url").Return(mockClient, nil)
 			mockClient.EXPECT().CreateJob(gomock.Any(), trueClusterID, gomock.Any()).Return(fakeResp, nil)
 			mockClient.EXPECT().GetRun(gomock.Any(), trueClusterID, gomock.Eq("jid")).Return(fakeJobResp, nil).AnyTimes()
