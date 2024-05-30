@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 
@@ -65,12 +66,21 @@ func (o *troubleshootOptions) checkBPCli() error {
 		printWrong("Failed to get backplane-cli configuration path: %v\n", err)
 	} else {
 		printCorrect("backplane-cli configuration path: %s\n", configFilePath)
+		// Check if the config file exists
+		if _, err = os.Stat(configFilePath); err != nil {
+			printNotice("config file not found: %s\n", configFilePath)
+		}
 	}
+
 	currentBPConfig, err := getBackplaneConfiguration()
 	if err != nil {
 		printWrong("Failed to read backplane-cli config file: %v\n", err)
 	} else {
-		printCorrect("proxy in backplane-cli config: %s\n", *currentBPConfig.ProxyURL)
+		if currentBPConfig.ProxyURL == nil {
+			printNotice("No proxy in backplane-cli config\n")
+		} else {
+			printCorrect("proxy in backplane-cli config: %s\n", currentBPConfig.ProxyURL)
+		}
 	}
 	return nil
 }
