@@ -77,9 +77,9 @@ func (o *troubleshootOptions) checkBPCli() error {
 		printWrong("Failed to read backplane-cli config file: %v\n", err)
 	} else {
 		if currentBPConfig.ProxyURL == nil {
-			printNotice("No proxy in backplane-cli config\n")
+			printNotice("proxy in backplane-cli config:\n")
 		} else {
-			printCorrect("proxy in backplane-cli config: %s\n", currentBPConfig.ProxyURL)
+			printCorrect("proxy in backplane-cli config: %s\n", *currentBPConfig.ProxyURL)
 		}
 	}
 	return nil
