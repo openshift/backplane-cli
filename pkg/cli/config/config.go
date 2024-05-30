@@ -83,10 +83,7 @@ func GetBackplaneConfiguration() (bpConfig BackplaneConfiguration, err error) {
 		}
 	}
 
-	bpConfig.SessionDirectory = viper.GetString("session-dir")
-	bpConfig.AssumeInitialArn = viper.GetString("assume-initial-arn")
-
-	// proxyURL is optional
+	// proxyURL is required
 	proxyInConfigFile := viper.GetStringSlice("proxy-url")
 	proxyURL := bpConfig.getFirstWorkingProxyURL(proxyInConfigFile)
 	if proxyURL != "" {
@@ -95,11 +92,15 @@ func GetBackplaneConfiguration() (bpConfig BackplaneConfiguration, err error) {
 		logger.Warn("No proxy configuration available. This may result in failing commands as backplane-api is only available from select networks.")
 	}
 
+	bpConfig.SessionDirectory = viper.GetString("session-dir")
+	bpConfig.AssumeInitialArn = viper.GetString("assume-initial-arn")
+
+	// pagerDuty token is optional
 	pagerDutyAPIKey := viper.GetString("pd-key")
 	if pagerDutyAPIKey != "" {
 		bpConfig.PagerDutyAPIKey = pagerDutyAPIKey
 	} else {
-		logger.Warn("No PagerDuty API Key configuration available. This will result in failure of `ocm-backplane login --pd <incident-id>` command.")
+		logger.Info("No PagerDuty API Key configuration available. This will result in failure of `ocm-backplane login --pd <incident-id>` command.")
 	}
 
 	return bpConfig, nil
@@ -113,7 +114,7 @@ func (config *BackplaneConfiguration) getFirstWorkingProxyURL(s []string) string
 	bpURL := config.URL + "/healthz"
 
 	client := &http.Client{
-		Timeout: 2 * time.Second,
+		Timeout: 5 * time.Second,
 	}
 
 	for _, p := range s {
@@ -126,7 +127,6 @@ func (config *BackplaneConfiguration) getFirstWorkingProxyURL(s []string) string
 		client.Transport = &http.Transport{Proxy: http.ProxyURL(proxyURL)}
 		req, _ := http.NewRequest("GET", bpURL, nil)
 		resp, err := clientDo(client, req)
-
 		if err != nil {
 			logger.Infof("Proxy: %s returned an error: %s", proxyURL, err)
 			continue
@@ -134,7 +134,14 @@ func (config *BackplaneConfiguration) getFirstWorkingProxyURL(s []string) string
 		if resp.StatusCode == http.StatusOK {
 			return p
 		}
+		logger.Infof("proxy: %s did not pass healthcheck, expected response code 200, got %d, discarding", p, resp.StatusCode)
 	}
+
+	if len(s) > 0 {
+		logger.Infof("falling back to first proxy-url after all proxies failed health checks: %s", s[0])
+		return s[0]
+	}
+
 	return ""
 }
 

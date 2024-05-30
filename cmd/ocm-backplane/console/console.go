@@ -17,6 +17,7 @@ limitations under the License.
 package console
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"fmt"
@@ -57,9 +58,12 @@ type containerEngineInterface interface {
 	// some container engines have special handlings for different types of containers
 	runConsoleContainer(containerName string, port string, consoleArgs []string, envVars []envVar) error
 	runMonitorPlugin(containerName string, consoleContainerName string, nginxConf string, pluginArgs []string) error
+	containerIsExist(containerName string) (bool, error)
 }
 
-type podmanLinux struct{}
+type podmanLinux struct {
+	fileMountDir string
+}
 type podmanMac struct{}
 type dockerLinux struct{}
 type dockerMac struct{}
@@ -132,6 +136,8 @@ var (
 
 	// Pull Secret saving directory
 	pullSecretConfigDirectory string
+
+	ctx, cancel = context.WithCancel(context.Background())
 )
 
 func newConsoleOptions() *consoleOptions {
@@ -242,23 +248,41 @@ func (o *consoleOptions) run(cmd *cobra.Command, argv []string) error {
 	if err != nil {
 		return err
 	}
-	err = o.runConsoleContainer(ce)
-	if err != nil {
+
+	done := make(chan bool)
+	errs := make(chan error)
+
+	go o.runContainers(ce, done, errs)
+
+	if len(errs) != 0 {
+		err := <-errs
 		return err
 	}
-	err = o.runMonitorPlugin(ce)
-	if err != nil {
-		return err
-	}
-	err = o.printURL()
-	if err != nil {
-		return err
-	}
+
 	err = o.cleanUp(ce)
 	if err != nil {
 		return err
 	}
+
 	return nil
+}
+
+func (o *consoleOptions) runContainers(ce containerEngineInterface, done chan bool, errs chan<- error) {
+	if err := o.runConsoleContainer(ce); err != nil {
+
+		errs <- err
+		return
+	}
+
+	if err := o.runMonitorPlugin(ce); err != nil {
+		errs <- err
+	}
+
+	if err := o.printURL(); err != nil {
+		errs <- err
+	}
+
+	close(done)
 }
 
 // Parse environment variables
@@ -339,7 +363,7 @@ func (o *consoleOptions) getContainerEngineImpl() (containerEngineInterface, err
 
 	var containerEngineImpl containerEngineInterface
 	if runtime.GOOS == LINUX && containerEngine == PODMAN {
-		containerEngineImpl = &podmanLinux{}
+		containerEngineImpl = &podmanLinux{fileMountDir: filepath.Join(os.TempDir(), "backplane")}
 	} else if runtime.GOOS == MACOS && containerEngine == PODMAN {
 		containerEngineImpl = &podmanMac{}
 	} else if runtime.GOOS == LINUX && containerEngine == DOCKER {
@@ -571,21 +595,24 @@ func (o *consoleOptions) runMonitorPlugin(ce containerEngineInterface) error {
 		logger.Debugln("monitoring plugin is not needed, not to run monitoring plugin")
 		return nil
 	}
-	// Setup nginx configurations
-	config := fmt.Sprintf(info.MonitoringPluginNginxConfigTemplate, o.monitorPluginPort)
-	if err := ce.putFileToMount(info.MonitoringPluginNginxConfigFilename, []byte(config)); err != nil {
-		return err
-	}
 
 	clusterID, err := getClusterID()
 	if err != nil {
 		return err
 	}
+
+	// Setup nginx configurations
+	config := fmt.Sprintf(info.MonitoringPluginNginxConfigTemplate, o.monitorPluginPort)
+	nginxFilename := fmt.Sprintf(info.MonitoringPluginNginxConfigFilename, clusterID)
+	if err := ce.putFileToMount(nginxFilename, []byte(config)); err != nil {
+		return err
+	}
+
 	consoleContainerName := fmt.Sprintf("console-%s", clusterID)
 	pluginContainerName := fmt.Sprintf("monitoring-plugin-%s", clusterID)
 
 	pluginArgs := []string{o.monitorPluginImage}
-	return ce.runMonitorPlugin(pluginContainerName, consoleContainerName, info.MonitoringPluginNginxConfigFilename, pluginArgs)
+	return ce.runMonitorPlugin(pluginContainerName, consoleContainerName, nginxFilename, pluginArgs)
 }
 
 // print the console URL and pop a browser if required
@@ -637,14 +664,22 @@ func (o *consoleOptions) cleanUp(ce containerEngineInterface) error {
 		o.terminationFunction = &execActionOnTermStruct{}
 	}
 
+	<-ctx.Done()
 	err = o.terminationFunction.execActionOnTerminationFunction(func() error {
 		for _, c := range containersToCleanUp {
-			err := ce.stopContainer(c)
+			exist, err := ce.containerIsExist(c)
 			if err != nil {
-				return fmt.Errorf("failed to stop container %s: %v", c, err)
+				return fmt.Errorf("failed to check container exist %s: %v", c, err)
+			}
+			if exist {
+				err := ce.stopContainer(c)
+				if err != nil {
+					return fmt.Errorf("failed to stop container '%s' during the cleanup process: %v", c, err)
+				}
+
+				logger.Infoln(fmt.Sprintf("Container removed: %s", c))
 			}
 
-			logger.Infoln(fmt.Sprintf("Container removed: %s", c))
 		}
 		return nil
 	})
@@ -1023,10 +1058,11 @@ func podmanRunConsoleContainer(containerName string, port string, consoleArgs []
 	}
 	engRunArgs = append(engRunArgs, consoleArgs...)
 	logger.WithField("Command", fmt.Sprintf("`%s %s`", PODMAN, strings.Join(engRunArgs, " "))).Infoln("Running container")
-	runCmd := createCommand(PODMAN, engRunArgs...)
+
+	runCmd := exec.CommandContext(ctx, PODMAN, engRunArgs...)
+	defer cancel()
 	runCmd.Stderr = os.Stderr
 	runCmd.Stdout = nil
-
 	err = runCmd.Run()
 	if err != nil {
 		return err
@@ -1123,11 +1159,7 @@ func (ce *podmanMac) runMonitorPlugin(containerName string, consoleContainerName
 }
 
 func (ce *podmanLinux) runMonitorPlugin(containerName string, consoleContainerName string, nginxConf string, pluginArgs []string) error {
-	configDirectory, err := config.GetConfigDirctory()
-	if err != nil {
-		return err
-	}
-	nginxConfPath := filepath.Join(configDirectory, nginxConf)
+	nginxConfPath := filepath.Join(ce.fileMountDir, nginxConf)
 	return podmanRunMonitorPlugin(containerName, consoleContainerName, nginxConfPath, pluginArgs)
 }
 
@@ -1182,12 +1214,12 @@ func (ce *dockerMac) runMonitorPlugin(containerName string, consoleContainerName
 // put a file in place for container to mount
 // filename should be name only, not a path
 func (ce *podmanLinux) putFileToMount(filename string, content []byte) error {
-	// for files in linux, we put them into the user's backplane config directory
-	configDirectory, err := config.GetConfigDirctory()
+	// ensure the directory exists
+	err := os.MkdirAll(ce.fileMountDir, os.ModePerm)
 	if err != nil {
 		return err
 	}
-	dstFileName := filepath.Join(configDirectory, filename)
+	dstFileName := filepath.Join(ce.fileMountDir, filename)
 
 	// Check if file already exists, if it does remove it
 	if _, err = os.Stat(dstFileName); !os.IsNotExist(err) {
@@ -1290,6 +1322,30 @@ func generalStopContainer(containerEngine string, containerName string) error {
 	return nil
 }
 
+func generalContainerIsExist(containerEngine string, containerName string) (bool, error) {
+	var out bytes.Buffer
+	filter := fmt.Sprintf("name=%s", containerName)
+	existArgs := []string{
+		"ps",
+		"-aq",
+		"--filter",
+		filter,
+	}
+	existCmd := createCommand(containerEngine, existArgs...)
+	existCmd.Stderr = os.Stderr
+	existCmd.Stdout = &out
+
+	err := existCmd.Run()
+
+	if err != nil {
+		return false, fmt.Errorf("failed to check container exist %s: %s", containerName, err)
+	}
+	if out.String() != "" {
+		return true, nil
+	}
+	return false, nil
+}
+
 // podman-stop for Linux
 func (ce *podmanLinux) stopContainer(containerName string) error {
 	return generalStopContainer(PODMAN, containerName)
@@ -1308,4 +1364,24 @@ func (ce *dockerLinux) stopContainer(containerName string) error {
 // docker-stop for MacOS
 func (ce *dockerMac) stopContainer(containerName string) error {
 	return generalStopContainer(DOCKER, containerName)
+}
+
+// podman-exist for Linux
+func (ce *podmanLinux) containerIsExist(containerName string) (bool, error) {
+	return generalContainerIsExist(PODMAN, containerName)
+}
+
+// podman-exist for MacOS
+func (ce *podmanMac) containerIsExist(containerName string) (bool, error) {
+	return generalContainerIsExist(PODMAN, containerName)
+}
+
+// docker-exist for Linux
+func (ce *dockerLinux) containerIsExist(containerName string) (bool, error) {
+	return generalContainerIsExist(DOCKER, containerName)
+}
+
+// docker-exist for MacOS
+func (ce *dockerMac) containerIsExist(containerName string) (bool, error) {
+	return generalContainerIsExist(DOCKER, containerName)
 }

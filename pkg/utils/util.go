@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -249,4 +250,40 @@ func CheckBackplaneVersion(cmd *cobra.Command) {
 	}
 
 	logger.WithField("Current version", info.Version).WithField("Latest version", latestVersion).Warn("Your Backplane CLI is not up to date. Please run the command 'ocm backplane upgrade' to upgrade to the latest version")
+}
+
+// CheckValidPrompt checks that the stdin and stderr are valid for prompt
+// and are not provided by a pipe or file
+func CheckValidPrompt() bool {
+	stdin, _ := os.Stdin.Stat()
+	stdout, _ := os.Stderr.Stat()
+	return (stdin.Mode()&os.ModeCharDevice) != 0 && (stdout.Mode()&os.ModeCharDevice) != 0
+}
+
+// AskQuestionFromPrompt will first check if stdIn/Err are valid for promting, if not the it will just return empty string
+// otherwise if will display the question to stderr and read answer as returned string
+func AskQuestionFromPrompt(question string) string {
+	if CheckValidPrompt() {
+		// Create a new scanner to read from stdin
+		scanner := bufio.NewScanner(os.Stdin)
+		os.Stderr.WriteString(question)
+		// Read the entire line (until the user presses Enter)
+		if scanner.Scan() {
+			return scanner.Text()
+		}
+	}
+	return ""
+}
+
+// AppendUniqNoneEmptyString will append a string to a slice if that string is not empty and is not already part of the slice
+func AppendUniqNoneEmptyString(slice []string, element string) []string {
+	if element == "" {
+		return slice
+	}
+	for _, existing := range slice {
+		if existing == element {
+			return slice // Element already exists, no need to add
+		}
+	}
+	return append(slice, element) // Append the element
 }

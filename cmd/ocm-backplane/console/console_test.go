@@ -7,7 +7,6 @@ import (
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -438,8 +437,12 @@ var _ = Describe("console command", func() {
 			o.url = "http://127.0.0.2:1447"
 			o.openBrowser = false
 			o.containerEngineFlag = DOCKER
-			err1 := o.run(&cobra.Command{}, []string{})
-			Expect(err1).To(BeNil())
+			ce, err := o.getContainerEngineImpl()
+			Expect(err).To(BeNil())
+			done := make(chan bool)
+			errs := make(chan error)
+			o.runContainers(ce, done, errs)
+			Expect(errs).To(BeEmpty())
 			os.Setenv("BACKPLANE_DEFAULT_OPEN_BROWSER", "")
 			removePath(oldpath)
 		})

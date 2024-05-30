@@ -75,31 +75,31 @@ func TestBackplaneConfiguration_getFirstWorkingProxyURL(t *testing.T) {
 		{
 			name:    "multiple-invalid-proxies",
 			proxies: []string{"-", "gellso", ""},
-			want:    "",
+			want:    "-",
 		},
 		{
 			name:    "valid-proxies",
-			proxies: []string{"https://dummy.com"},
+			proxies: []string{"https://proxy.invalid"},
 			clientDoFunc: func(client *http.Client, req *http.Request) (*http.Response, error) {
 				return &http.Response{StatusCode: http.StatusOK}, nil
 			},
-			want:    "https://dummy.com",
+			want: "https://proxy.invalid",
 		},
 		{
 			name:    "multiple-valid-proxies",
-			proxies: []string{"https://dummy.com", "https://dummy.proxy"},
+			proxies: []string{"https://proxy.invalid", "https://dummy.proxy.invalid"},
 			clientDoFunc: func(client *http.Client, req *http.Request) (*http.Response, error) {
 				return &http.Response{StatusCode: http.StatusOK}, nil
 			},
-			want:    "https://dummy.com",
+			want: "https://proxy.invalid",
 		},
 		{
 			name:    "multiple-mixed-proxies",
-			proxies: []string{"-", "gellso", "https://dummy.com"},
+			proxies: []string{"-", "gellso", "https://proxy.invalid"},
 			clientDoFunc: func(client *http.Client, req *http.Request) (*http.Response, error) {
 				return &http.Response{StatusCode: http.StatusOK}, nil
 			},
-			want:    "https://dummy.com",
+			want: "https://proxy.invalid",
 		},
 	}
 	for _, tt := range tests {

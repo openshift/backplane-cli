@@ -1,7 +1,6 @@
 reviewers:
   - wanghaoran1988
   - feichashao
-  - supreeth7
   - MitaliBhalla
   - Tafhim
   - bmeng
@@ -12,14 +11,12 @@ reviewers:
   - mjlshen
   - typeid
   - Tessg22
-  - rhs-harliu
 
 approvers:
   - wanghaoran1988
   - cblecker
   - jharrington22
   - feichashao
-  - supreeth7
   - bmeng
   - mjlshen
   - typeid
@@ -32,7 +29,6 @@ approvers:
 maintainers:
   - wanghaoran1988
   - feichashao
-  - supreeth7
   - MitaliBhalla
   - bmeng
   - samanthajayasinghe

@@ -28,6 +28,7 @@ import (
 const (
 	OldFlowSupportRole  = "role/RH-Technical-Support-Access"
 	CustomerRoleArnName = "Target-Role-Arn"
+	OrgRoleArnName      = "Org-Role-Arn"
 )
 
 var StsClient = awsutil.StsClient
@@ -69,20 +70,14 @@ func (cfg *QueryConfig) GetCloudConsole() (*ConsoleResponse, error) {
 
 	isolatedBackplane, err := isIsolatedBackplaneAccess(cfg.Cluster, cfg.OcmConnection)
 	if err != nil {
-		logger.Infof("failed to determine if the cluster is using isolated backplane access: %v", err)
-		logger.Infof("for more information, try ocm get /api/clusters_mgmt/v1/clusters/%s/sts_support_jump_role", cfg.Cluster.ID())
-		logger.Infof("attempting to fallback to %s", OldFlowSupportRole)
+		return nil, fmt.Errorf("failed to determine if cluster is using isolated backlpane access: %w", err)
 	}
 
 	if isolatedBackplane {
 		logger.Debugf("cluster is using isolated backplane")
 		targetCredentials, err := cfg.getIsolatedCredentials(ocmToken)
 		if err != nil {
-			// TODO: This fallback should be removed in the future
-			// TODO: when we are more confident in our ability to access clusters using the isolated flow
-			logger.Infof("failed to assume role with isolated backplane flow: %v", err)
-			logger.Infof("attempting to fallback to %s", OldFlowSupportRole)
-			return cfg.getCloudConsoleFromPublicAPI(ocmToken)
+			return nil, fmt.Errorf("failed to assume role with isolated backplane flow: %w", err)
 		}
 
 		resp, err := awsutil.GetSigninToken(targetCredentials, cfg.Cluster.Region().ID())
@@ -95,9 +90,9 @@ func (cfg *QueryConfig) GetCloudConsole() (*ConsoleResponse, error) {
 			return nil, fmt.Errorf("failed to generate console url: %w", err)
 		}
 		return &ConsoleResponse{ConsoleLink: signinFederationURL.String()}, nil
+	} else {
+		return cfg.getCloudConsoleFromPublicAPI(ocmToken)
 	}
-
-	return cfg.getCloudConsoleFromPublicAPI(ocmToken)
 }
 
 // GetCloudConsole returns console response calling to public Backplane API
@@ -141,20 +136,14 @@ func (cfg *QueryConfig) GetCloudCredentials() (bpCredentials.Response, error) {
 
 	isolatedBackplane, err := isIsolatedBackplaneAccess(cfg.Cluster, cfg.OcmConnection)
 	if err != nil {
-		logger.Infof("failed to determine if the cluster is using isolated backplane access: %v", err)
-		logger.Infof("for more information, try ocm get /api/clusters_mgmt/v1/clusters/%s/sts_support_jump_role", cfg.Cluster.ID())
-		logger.Infof("attempting to fallback to %s", OldFlowSupportRole)
+		return nil, fmt.Errorf("failed to determine if cluster is using isolated backlpane access: %w", err)
 	}
 
 	if isolatedBackplane {
 		logger.Debugf("cluster is using isolated backplane")
 		targetCredentials, err := cfg.getIsolatedCredentials(ocmToken)
 		if err != nil {
-			// TODO: This fallback should be removed in the future
-			// TODO: when we are more confident in our ability to access clusters using the isolated flow
-			logger.Infof("failed to assume role with isolated backplane flow: %v", err)
-			logger.Infof("attempting to fallback to %s", OldFlowSupportRole)
-			return cfg.getCloudCredentialsFromBackplaneAPI(ocmToken)
+			return nil, fmt.Errorf("failed to assume role with isolated backplane flow: %w", err)
 		}
 
 		return &bpCredentials.AWSCredentialsResponse{
@@ -164,9 +153,9 @@ func (cfg *QueryConfig) GetCloudCredentials() (bpCredentials.Response, error) {
 			Expiration:      targetCredentials.Expires.String(),
 			Region:          cfg.Cluster.Region().ID(),
 		}, nil
+	} else {
+		return cfg.getCloudCredentialsFromBackplaneAPI(ocmToken)
 	}
-
-	return cfg.getCloudCredentialsFromBackplaneAPI(ocmToken)
 }
 
 func (cfg *QueryConfig) getCloudCredentialsFromBackplaneAPI(ocmToken string) (bpCredentials.Response, error) {
@@ -293,7 +282,7 @@ func (cfg *QueryConfig) getIsolatedCredentials(ocmToken string) (aws.Credentials
 	assumeRoleArnSessionSequence := make([]awsutil.RoleArnSession, 0, len(roleChainResponse.AssumptionSequence))
 	for _, namedRoleArnEntry := range roleChainResponse.AssumptionSequence {
 		roleArnSession := awsutil.RoleArnSession{RoleArn: namedRoleArnEntry.Arn}
-		if namedRoleArnEntry.Name == CustomerRoleArnName {
+		if namedRoleArnEntry.Name == CustomerRoleArnName || namedRoleArnEntry.Name == OrgRoleArnName {
 			roleArnSession.RoleSessionName = roleChainResponse.CustomerRoleSessionName
 		} else {
 			roleArnSession.RoleSessionName = email
@@ -327,10 +316,8 @@ func isIsolatedBackplaneAccess(cluster *cmv1.Cluster, ocmConnection *ocmsdk.Conn
 		if err != nil {
 			return false, fmt.Errorf("failed to parse ARN for jump role %v: %w", stsSupportJumpRole, err)
 		}
-		if supportRoleArn.Resource != OldFlowSupportRole {
-			return true, nil
-		}
+		return supportRoleArn.Resource != OldFlowSupportRole, nil
+	} else {
+		return false, nil
 	}
-
-	return false, nil
 }

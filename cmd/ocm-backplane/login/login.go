@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/golang-jwt/jwt/v4"
@@ -19,6 +20,7 @@ import (
 
 	BackplaneApi "github.com/openshift/backplane-api/pkg/client"
 
+	ocmsdk "github.com/openshift-online/ocm-sdk-go"
 	"github.com/openshift/backplane-cli/pkg/backplaneapi"
 	"github.com/openshift/backplane-cli/pkg/cli/config"
 	"github.com/openshift/backplane-cli/pkg/cli/globalflags"
@@ -33,9 +35,10 @@ const EnvPs1 = "KUBE_PS1_CLUSTER_FUNCTION"
 
 var (
 	args struct {
-		multiCluster   bool
-		kubeConfigPath string
-		pd             string
+		multiCluster     bool
+		kubeConfigPath   string
+		pd               string
+		defaultNamespace string
 	}
 
 	globalOpts = &globalflags.GlobalOptions{}
@@ -92,6 +95,14 @@ func init() {
 		"",
 		"Login using PagerDuty incident id or html_url.",
 	)
+	flags.StringVarP(
+		&args.defaultNamespace,
+		"namespace",
+		"n",
+		"default",
+		"The  default namespace for a user to execute commands in",
+	)
+
 }
 
 func runLogin(cmd *cobra.Command, argv []string) (err error) {
@@ -106,7 +117,7 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 	if err != nil {
 		return err
 	}
-	logger.Debugf("Backplane Config File Contains is: %v \n", bpConfig)
+	logger.Debugf("Backplane Config File Contains: %v \n", bpConfig)
 
 	logger.Debugf("Extracting Backplane Cluster ID")
 	// Currently go-pagerduty pkg does not include incident id validation.
@@ -136,7 +147,7 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 		clusterKey = argv[0]
 		logger.WithField("Search Key", clusterKey).Debugln("Finding target cluster")
 
-	} else if len(argv) == 0 {
+	} else if len(argv) == 0 && args.pd == "" {
 		// if no args given, try to log into the cluster that the user is logged into
 		logger.Debugf("Finding Clustrer Key from current cluster")
 		clusterInfo, err := utils.DefaultClusterUtils.GetBackplaneClusterFromConfig()
@@ -180,7 +191,6 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 		logger.WithField("Cluster ID", clusterID).Debugln("Finding managing cluster")
 		var isHostedControlPlane bool
 		targetClusterID := clusterID
-		targetClusterName := clusterName
 
 		clusterID, clusterName, isHostedControlPlane, err = ocm.DefaultOCMInterface.GetManagingCluster(clusterID)
 		if err != nil {
@@ -197,7 +207,7 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 		logger.Debugln("Finding K8s namespaces")
 		// Print the related namespace if login to manager cluster
 		var namespaces []string
-		namespaces, err = listNamespaces(targetClusterID, targetClusterName, isHostedControlPlane)
+		namespaces, err = listNamespaces(targetClusterID, isHostedControlPlane)
 		if err != nil {
 			return err
 		}
@@ -324,7 +334,14 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 
 	targetContext.AuthInfo = targetUserNickName
 	targetContext.Cluster = clusterName
-	targetContext.Namespace = "default"
+
+	if isValidKubernetesNamespace(args.defaultNamespace) {
+		logger.Debugln("Validating argument passed as namespace")
+		targetContext.Namespace = args.defaultNamespace
+	} else {
+		return fmt.Errorf("%v is not a valid namespace", args.defaultNamespace)
+	}
+
 	targetContextNickName := getContextNickname(targetContext.Namespace, targetContext.Cluster, targetContext.AuthInfo)
 
 	// Put user, cluster, context into rawconfig
@@ -349,6 +366,38 @@ func GetRestConfig(bp config.BackplaneConfiguration, clusterID string) (*rest.Co
 	}
 
 	accessToken, err := ocm.DefaultOCMInterface.GetOCMAccessToken()
+	if err != nil {
+		return nil, err
+	}
+
+	bpAPIClusterURL, err := doLogin(bp.URL, clusterID, *accessToken)
+	if err != nil {
+		return nil, fmt.Errorf("failed to backplane login to cluster %s: %v", cluster.Name(), err)
+	}
+
+	cfg := &rest.Config{
+		Host:        bpAPIClusterURL,
+		BearerToken: *accessToken,
+	}
+
+	if bp.ProxyURL != nil {
+		cfg.Proxy = func(*http.Request) (*url.URL, error) {
+			return url.Parse(*bp.ProxyURL)
+		}
+	}
+
+	return cfg, nil
+}
+
+// GetRestConfig returns a client-go *rest.Config which can be used to programmatically interact with the
+// Kubernetes API of a provided clusterID
+func GetRestConfigWithConn(bp config.BackplaneConfiguration, ocmConnection *ocmsdk.Connection, clusterID string) (*rest.Config, error) {
+	cluster, err := ocm.DefaultOCMInterface.GetClusterInfoByIDWithConn(ocmConnection, clusterID)
+	if err != nil {
+		return nil, err
+	}
+
+	accessToken, err := ocm.DefaultOCMInterface.GetOCMAccessTokenWithConn(ocmConnection)
 	if err != nil {
 		return nil, err
 	}
@@ -452,13 +501,18 @@ func doLogin(api, clusterID, accessToken string) (string, error) {
 	return api + *loginResp.JSON200.ProxyUri, nil
 }
 
-func listNamespaces(clusterID, clusterName string, isHostedControlPlane bool) ([]string, error) {
+func listNamespaces(clusterID string, isHostedControlPlane bool) ([]string, error) {
 
 	env, err := ocm.DefaultOCMInterface.GetOCMEnvironment()
 	if err != nil {
 		return []string{}, err
 	}
 	envName := env.Name()
+
+	clusterInfo, err := ocm.DefaultOCMInterface.GetClusterInfoByID(clusterID)
+	if err != nil {
+		return []string{}, err
+	}
 
 	klusterletPrefix := "klusterlet-"
 	hivePrefix := fmt.Sprintf("uhc-%s-", envName)
@@ -470,7 +524,7 @@ func listNamespaces(clusterID, clusterName string, isHostedControlPlane bool) ([
 		nsList = []string{
 			klusterletPrefix + clusterID,
 			hcpPrefix + clusterID,
-			hcpPrefix + clusterID + "-" + clusterName,
+			hcpPrefix + clusterID + "-" + clusterInfo.DomainPrefix(),
 		}
 	} else {
 		nsList = []string{
@@ -493,4 +547,11 @@ func getBackplaneCNAME(backplaneURL string) (string, error) {
 		return "", fmt.Errorf("unable to resolve the %s", fqdn)
 	}
 	return resolution, nil
+}
+
+// isValidNamespace validates the input string against  Kubernetes namespace rules.( RFC 1123 )
+func isValidKubernetesNamespace(namespace string) bool {
+	// RFC 1123 compliant regex pattern)
+	pattern := `^[a-z0-9]([-a-z0-9]*[a-z0-9])?$`
+	return regexp.MustCompile(pattern).MatchString(namespace)
 }
