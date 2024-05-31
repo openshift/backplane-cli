@@ -34,10 +34,6 @@ import (
 
 	"github.com/Masterminds/semver"
 	homedir "github.com/mitchellh/go-homedir"
-	"github.com/openshift/backplane-cli/pkg/cli/config"
-	"github.com/openshift/backplane-cli/pkg/info"
-	"github.com/openshift/backplane-cli/pkg/ocm"
-	"github.com/openshift/backplane-cli/pkg/utils"
 	consolev1typedclient "github.com/openshift/client-go/console/clientset/versioned/typed/console/v1"
 	consolev1alpha1typedclient "github.com/openshift/client-go/console/clientset/versioned/typed/console/v1alpha1"
 	operatorv1typedclient "github.com/openshift/client-go/operator/clientset/versioned/typed/operator/v1"
@@ -49,6 +45,11 @@ import (
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+
+	"github.com/openshift/backplane-cli/pkg/cli/config"
+	"github.com/openshift/backplane-cli/pkg/info"
+	"github.com/openshift/backplane-cli/pkg/ocm"
+	"github.com/openshift/backplane-cli/pkg/utils"
 )
 
 type containerEngineInterface interface {
@@ -1194,7 +1195,7 @@ func dockerRunMonitorPlugin(containerName string, consoleContainerName string, n
 }
 
 func (ce *dockerLinux) runMonitorPlugin(containerName string, consoleContainerName string, nginxConf string, pluginArgs []string) error {
-	configDirectory, err := config.GetConfigDirctory()
+	configDirectory, err := config.GetConfigDirectory()
 	if err != nil {
 		return err
 	}
@@ -1203,7 +1204,7 @@ func (ce *dockerLinux) runMonitorPlugin(containerName string, consoleContainerNa
 }
 
 func (ce *dockerMac) runMonitorPlugin(containerName string, consoleContainerName string, nginxConf string, pluginArgs []string) error {
-	configDirectory, err := config.GetConfigDirctory()
+	configDirectory, err := config.GetConfigDirectory()
 	if err != nil {
 		return err
 	}
@@ -1265,7 +1266,7 @@ func (ce *podmanMac) putFileToMount(filename string, content []byte) error {
 // filename should be name only, not a path
 func dockerPutFileToMount(filename string, content []byte) error {
 	// for files in linux, we put them into the user's backplane config directory
-	configDirectory, err := config.GetConfigDirctory()
+	configDirectory, err := config.GetConfigDirectory()
 	if err != nil {
 		return err
 	}

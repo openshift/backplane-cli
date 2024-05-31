@@ -122,6 +122,9 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 	logger.Debugf("Extracting Backplane Cluster ID")
 	// Currently go-pagerduty pkg does not include incident id validation.
 	if args.pd != "" {
+		if bpConfig.PagerDutyAPIKey == "" {
+			return fmt.Errorf("please make sure the PD API Key is configured correctly in the config file")
+		}
 		pdClient, err := pagerduty.NewWithToken(bpConfig.PagerDutyAPIKey)
 		if err != nil {
 			return fmt.Errorf("could not initialize the client: %w", err)

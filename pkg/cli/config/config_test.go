@@ -3,7 +3,12 @@ package config
 import (
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
+
+	"github.com/spf13/viper"
+
+	"github.com/openshift/backplane-cli/pkg/info"
 )
 
 func TestGetBackplaneConfig(t *testing.T) {
@@ -25,7 +30,6 @@ func TestGetBackplaneConfig(t *testing.T) {
 			t.Errorf("expected to return the explicitly defined proxy %v instead of the default one %v", userDefinedProxy, config.ProxyURL)
 		}
 	})
-
 }
 
 func TestGetBackplaneConnection(t *testing.T) {
@@ -117,6 +121,39 @@ func TestBackplaneConfiguration_getFirstWorkingProxyURL(t *testing.T) {
 
 			if got != tt.want {
 				t.Errorf("BackplaneConfiguration.getFirstWorkingProxyURL() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestValidateConfig(t *testing.T) {
+	tests := []struct {
+		name        string
+		proxyConfig []string
+		envProxy    string
+		expectError bool
+	}{
+		{"No proxy set", nil, "", true},
+		{"Proxy set in config", []string{"http://proxy.example.com"}, "", false},
+		{"Proxy set in environment", nil, "http://proxy.example.com", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Set up viper configuration
+			viper.Set("proxy-url", tt.proxyConfig)
+
+			// Set up environment variable
+			if tt.envProxy != "" {
+				os.Setenv(info.BackplaneProxyEnvName, tt.envProxy)
+			} else {
+				os.Unsetenv(info.BackplaneProxyEnvName)
+			}
+
+			// Validate config
+			err := validateConfig()
+			if (err != nil) != tt.expectError {
+				t.Errorf("expected error: %v, got: %v", tt.expectError, err)
 			}
 		})
 	}
