@@ -2,112 +2,155 @@ package pagerduty
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"strings"
 	"time"
 
-	"github.com/PagerDuty/go-pagerduty"
+	pdApi "github.com/PagerDuty/go-pagerduty"
 )
-
-// PagerDutyClient defines the methods needed from the PagerDuty client.
-type PagerDutyClient interface {
-	GetClusterIDFromAlertList(alertList *pagerduty.ListAlertsResponse) (string, error)
-	GetClusterIDFromAlert(alert *pagerduty.IncidentAlert) (string, error)
-	GetClusterID(pdClient *pagerduty.Client, incidentID string) (string, error)
-	CreateIncident(description string) (string, error)
-}
-
-// RealPagerDutyClient implements the PagerDutyClient interface using the real PagerDuty client.
-type RealPagerDutyClient struct {
-	PdClient *pagerduty.Client
-}
 
 // Alert struct represents the data contained in an alert.
 type Alert struct {
-	ID         string
-	IncidentID string
-	CreatedAt  time.Time
+	ID          string
+	Name        string
+	IncidentID  string
+	Severity    string
+	Status      string
+	CreatedAt   time.Time
+	WebURL      string
+	ClusterID   string
+	ClusterName string
+}
+
+const (
+	// PagerDuty Incident Statuses
+	StatusTriggered    = "triggered"
+	StatusAcknowledged = "acknowledged"
+	StatusHigh         = "high"
+	StatusLow          = "low"
+)
+
+type PagerDuty struct {
+	client PagerDutyClient
+}
+
+func NewPagerDuty(client PagerDutyClient) *PagerDuty {
+	return &PagerDuty{
+		client: client,
+	}
 }
 
 // NewWithToken initializes a new PDClient.
 // The token can be created using the docs https://support.pagerduty.com/docs/api-access-keys#section-generate-a-user-token-rest-api-key.
-func NewWithToken(authToken string, options ...pagerduty.ClientOptions) (*RealPagerDutyClient, error) {
-	c := RealPagerDutyClient{
-		PdClient: pagerduty.NewClient(authToken, options...),
-	}
+func NewWithToken(authToken string, options ...pdApi.ClientOptions) (*PagerDuty, error) {
 
-	return &c, nil
+	pd := NewClient()
+	pd.Connect(authToken, options...)
+
+	return &PagerDuty{
+		client: pd,
+	}, nil
+
 }
 
-// GetClusterIDFromAlertList retrieves the cluster ID from a list of PagerDuty alerts,
-// ensuring they have the same cluster ID or return an error if inconsistent or no alerts found.
-func (c *RealPagerDutyClient) GetClusterIDFromAlertList(alertList *pagerduty.ListAlertsResponse) (string, error) {
-	switch len(alertList.Alerts) {
-	case 0:
-		return "", fmt.Errorf("no alerts found for the given incident ID")
-	case 1:
-		clusterID, err := c.GetClusterIDFromAlert(&alertList.Alerts[0])
-		if err != nil {
-			return "", err
-		}
-		return clusterID, nil
-	default:
-		prevClusterID, err := c.GetClusterIDFromAlert(&alertList.Alerts[0])
-		if err != nil {
-			return "", err
-		}
-		// Check if all alerts in the list have the same cluster ID
-		for _, alert := range alertList.Alerts {
-			currentAlert := alert
-			if currentClusterID, err := c.GetClusterIDFromAlert(&currentAlert); err != nil {
-				return "", err
-			} else if currentClusterID != prevClusterID {
-				return "", fmt.Errorf("not all alerts have the same cluster ID")
+// GetIncidentAlerts returns all the alerts belonging to a particular incident.
+func (pd *PagerDuty) GetIncidentAlerts(incidentID string) ([]Alert, error) {
+	var alerts []Alert
+
+	// Fetch alerts related to an incident via pagerduty API
+	incidentAlerts, err := pd.client.ListIncidentAlerts(incidentID)
+
+	if err != nil {
+		var aerr pdApi.APIError
+
+		if errors.As(err, &aerr) {
+			if aerr.RateLimited() {
+				return nil, fmt.Errorf("API rate limited")
 			}
+
+			return nil, fmt.Errorf("status code: %d, error: %s", aerr.StatusCode, err)
 		}
-		return prevClusterID, nil
 	}
+
+	for _, alert := range incidentAlerts.Alerts {
+		status := alert.Status
+
+		if status == StatusTriggered {
+
+			formatAlert, err := pd.formatAlert(&alert)
+
+			if err != nil {
+				return nil, err
+			}
+			alerts = append(alerts, formatAlert)
+		}
+	}
+	fmt.Print(alerts)
+	return alerts, nil
 }
 
-// GetClusterIDFromAlert extracts the cluster ID from a PagerDuty incident alert.
-// It expects the alert's body to have a Common Event Format.
-func (c *RealPagerDutyClient) GetClusterIDFromAlert(alert *pagerduty.IncidentAlert) (string, error) {
-	if alert == nil || alert.Body == nil {
-		return "", fmt.Errorf("given alert or it's body is empty")
+func (pd *PagerDuty) formatAlert(alert *pdApi.IncidentAlert) (formatAlert Alert, err error) {
+	formatAlert.IncidentID = alert.Incident.ID
+
+	formatAlert.Name = alert.Summary
+	formatAlert.Status = alert.Status
+	formatAlert.WebURL = alert.HTMLURL
+
+	// Check if the alert is of type 'Missing cluster'
+	isCHGM := alert.Body["details"].(map[string]interface{})["notes"]
+
+	if isCHGM != nil {
+		notes := strings.Split(fmt.Sprint(alert.Body["details"].(map[string]interface{})["notes"]), "\n")
+
+		formatAlert.ClusterID = strings.Replace(notes[0], "cluster_id: ", "", 1)
+		formatAlert.ClusterName = strings.Split(fmt.Sprint(alert.Body["details"].(map[string]interface{})["name"]), ".")[0]
+
+	} else {
+		formatAlert.ClusterID = fmt.Sprint(alert.Body["details"].(map[string]interface{})["cluster_id"])
+		formatAlert.ClusterName, err = pd.GetClusterName(alert.Service.ID)
+
+		// If the service mapped to the current incident is not available (404)
+		if err != nil {
+			formatAlert.ClusterName = "N/A"
+		}
 	}
 
-	cefDetails, ok := alert.Body["cef_details"].(map[string]interface{})
-	if !ok || cefDetails == nil {
-		return "", fmt.Errorf("missing or invalid Common Event Format Details of given alert")
+	// If there's no cluster ID related to the given alert
+	if formatAlert.ClusterID == "" {
+		formatAlert.ClusterID = "N/A"
 	}
 
-	detailsValue, ok := cefDetails["details"]
-	if !ok || detailsValue == nil {
-		return "", fmt.Errorf("missing or invalid 'details' field in Common Event Format Details")
+	return formatAlert, nil
+}
+
+// GetClusterName interacts with the PD service endpoint and returns the cluster name string.
+func (pd *PagerDuty) GetClusterName(serviceID string) (string, error) {
+	service, err := pd.client.GetServiceWithContext(context.TODO(), serviceID, &pdApi.GetServiceOptions{})
+
+	if err != nil {
+		return "", err
 	}
 
-	details, ok := detailsValue.(map[string]interface{})
-	if !ok || details == nil {
-		return "", fmt.Errorf("'details' field is not a map[string]interface{} in Common Event Format Details")
-	}
+	clusterName := strings.Split(service.Description, " ")[0]
 
-	clusterID, ok := details["cluster_id"].(string)
-	if !ok || clusterID == "" {
-		return "", fmt.Errorf("missing or invalid 'cluster_id' field in CEF details")
-	}
-	return clusterID, nil
+	return clusterName, nil
 }
 
 // GetClusterID retrieves the cluster ID associated with the given incident ID.
-func (c *RealPagerDutyClient) GetClusterID(incidentID string) (string, error) {
-	incidentAlerts, err := c.PdClient.ListIncidentAlertsWithContext(context.TODO(), incidentID, pagerduty.ListIncidentAlertsOptions{})
+func (pd *PagerDuty) GetClusterID(incidentID string) (string, error) {
+	incidentAlerts, err := pd.GetIncidentAlerts(incidentID)
 	if err != nil {
 		return "", err
 	}
 
-	clusterID, err := c.GetClusterIDFromAlertList(incidentAlerts)
-	if err != nil {
-		return "", err
+	switch len(incidentAlerts) {
+	case 0:
+		return "", fmt.Errorf("no alerts found for the given incident ID")
+	case 1:
+		return incidentAlerts[0].ClusterID, nil
+	default:
+		return incidentAlerts[0].ClusterID, nil
 	}
 
-	return clusterID, nil
 }
