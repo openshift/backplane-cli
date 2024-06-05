@@ -47,7 +47,7 @@ const (
 	}
 	`
 
-	MonitoringPluginNginxConfigFilename = "monitoring-plugin-nginx.conf"
+	MonitoringPluginNginxConfigFilename = "monitoring-plugin-nginx-%s.conf"
 )
 
 var (

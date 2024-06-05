@@ -14,6 +14,9 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/tools/clientcmd/api"
+
 	"github.com/openshift/backplane-cli/pkg/backplaneapi"
 	backplaneapiMock "github.com/openshift/backplane-cli/pkg/backplaneapi/mocks"
 	"github.com/openshift/backplane-cli/pkg/cli/config"
@@ -22,8 +25,6 @@ import (
 	"github.com/openshift/backplane-cli/pkg/ocm"
 	ocmMock "github.com/openshift/backplane-cli/pkg/ocm/mocks"
 	"github.com/openshift/backplane-cli/pkg/utils"
-	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/client-go/tools/clientcmd/api"
 )
 
 func MakeIoReader(s string) io.ReadCloser {
@@ -462,6 +463,43 @@ var _ = Describe("Login command", func() {
 			err = runLogin(nil, nil)
 
 			Expect(err.Error()).Should(ContainSubstring("status code 401"))
+		})
+
+		It("should return error when trying to login via PD but the PD API Key is not configured", func() {
+			args.pd = truePagerDutyIncidentID
+
+			err := utils.CreateTempKubeConfig(nil)
+			Expect(err).To(BeNil())
+
+			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
+
+			// Create a temporary JSON configuration file in the temp directory for testing purposes.
+			tempDir := os.TempDir()
+			bpConfigPath = filepath.Join(tempDir, "mock.json")
+			tempFile, err := os.Create(bpConfigPath)
+			Expect(err).To(BeNil())
+
+			testData := config.BackplaneConfiguration{
+				URL:              backplaneAPIURI,
+				ProxyURL:         new(string),
+				SessionDirectory: "",
+				AssumeInitialArn: "",
+				PagerDutyAPIKey:  falsePagerDutyAPITkn,
+			}
+
+			// Marshal the testData into JSON format and write it to tempFile.
+			pdTestData := testData
+			pdTestData.PagerDutyAPIKey = ""
+			jsonData, err := json.Marshal(pdTestData)
+			Expect(err).To(BeNil())
+			_, err = tempFile.Write(jsonData)
+			Expect(err).To(BeNil())
+
+			os.Setenv("BACKPLANE_CONFIG", bpConfigPath)
+
+			err = runLogin(nil, nil)
+
+			Expect(err.Error()).Should(ContainSubstring("please make sure the PD API Key is configured correctly"))
 		})
 
 		It("should fail to find a non existent PD Incident and return HTTP status code 404 when the requested resource is not found", func() {

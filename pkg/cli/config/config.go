@@ -15,9 +15,10 @@ import (
 	"github.com/openshift/backplane-cli/pkg/ocm"
 )
 
+// Please update the validateConfig function if there is any required config key added
 type BackplaneConfiguration struct {
 	URL              string  `json:"url"`
-	ProxyURL         *string `json:"proxy-url"` // Optional
+	ProxyURL         *string `json:"proxy-url"`
 	SessionDirectory string  `json:"session-dir"`
 	AssumeInitialArn string  `json:"assume-initial-arn"`
 	PagerDutyAPIKey  string  `json:"pd-key"`
@@ -61,6 +62,11 @@ func GetBackplaneConfiguration() (bpConfig BackplaneConfiguration, err error) {
 		}
 	}
 
+	if err = validateConfig(); err != nil {
+		// FIXME: we should return instead of warning here, after the tests do not require external network access
+		logger.Warn(err)
+	}
+
 	// Check if user has explicitly defined proxy; it has higher precedence over the config file
 	err = viper.BindEnv("proxy-url", info.BackplaneProxyEnvName)
 	if err != nil {
@@ -72,9 +78,10 @@ func GetBackplaneConfiguration() (bpConfig BackplaneConfiguration, err error) {
 		logger.Warn("Manual URL configuration is deprecated, please remove URL key from Backplane configuration")
 	}
 
-	// Check if user has explicitly defined backplane URL via env; it has higher precedence over the ocm env URL
+	// Warn if user has explicitly defined backplane URL via env
 	url, ok := getBackplaneEnv(info.BackplaneURLEnvName)
 	if ok {
+		logger.Warn(fmt.Printf("Manual URL configuration is deprecated, please unset the environment %s", info.BackplaneURLEnvName))
 		bpConfig.URL = url
 	} else {
 		// Fetch backplane URL from ocm env
@@ -88,8 +95,6 @@ func GetBackplaneConfiguration() (bpConfig BackplaneConfiguration, err error) {
 	proxyURL := bpConfig.getFirstWorkingProxyURL(proxyInConfigFile)
 	if proxyURL != "" {
 		bpConfig.ProxyURL = &proxyURL
-	} else {
-		logger.Warn("No proxy configuration available. This may result in failing commands as backplane-api is only available from select networks.")
 	}
 
 	bpConfig.SessionDirectory = viper.GetString("session-dir")
@@ -102,7 +107,6 @@ func GetBackplaneConfiguration() (bpConfig BackplaneConfiguration, err error) {
 	} else {
 		logger.Info("No PagerDuty API Key configuration available. This will result in failure of `ocm-backplane login --pd <incident-id>` command.")
 	}
-
 	return bpConfig, nil
 }
 
@@ -127,7 +131,6 @@ func (config *BackplaneConfiguration) getFirstWorkingProxyURL(s []string) string
 		client.Transport = &http.Transport{Proxy: http.ProxyURL(proxyURL)}
 		req, _ := http.NewRequest("GET", bpURL, nil)
 		resp, err := clientDo(client, req)
-
 		if err != nil {
 			logger.Infof("Proxy: %s returned an error: %s", proxyURL, err)
 			continue
@@ -135,11 +138,29 @@ func (config *BackplaneConfiguration) getFirstWorkingProxyURL(s []string) string
 		if resp.StatusCode == http.StatusOK {
 			return p
 		}
+		logger.Infof("proxy: %s did not pass healthcheck, expected response code 200, got %d, discarding", p, resp.StatusCode)
 	}
+
+	if len(s) > 0 {
+		logger.Infof("falling back to first proxy-url after all proxies failed health checks: %s", s[0])
+		return s[0]
+	}
+
 	return ""
 }
 
-func GetConfigDirctory() (string, error) {
+func validateConfig() error {
+
+	// Validate the proxy url
+	if viper.GetStringSlice("proxy-url") == nil && os.Getenv(info.BackplaneProxyEnvName) == "" {
+		return fmt.Errorf("proxy-url must be set explicitly in either config file or via the environment HTTPS_PROXY")
+	}
+
+	return nil
+}
+
+// GetConfigDirectory returns the backplane config path
+func GetConfigDirectory() (string, error) {
 	bpConfigFilePath, err := GetConfigFilePath()
 	if err != nil {
 		return "", err
