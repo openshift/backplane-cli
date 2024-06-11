@@ -2,65 +2,50 @@ package pagerduty
 
 import (
 	"context"
-	"net/http"
+	"fmt"
 
 	pdApi "github.com/PagerDuty/go-pagerduty"
 )
 
 // PagerDutyClient is an interface for the actual PD API
 type PagerDutyClient interface {
+	Connect(authToken string, options ...pdApi.ClientOptions) (err error)
 	ListIncidents(pdApi.ListIncidentsOptions) (*pdApi.ListIncidentsResponse, error)
-	ListIncidentAlerts(incidentId string) (*pdApi.ListAlertsResponse, error)
-	GetCurrentUser(pdApi.GetCurrentUserOptions) (*pdApi.User, error)
-	GetIncidentAlert(incidentID, alertID string) (*pdApi.IncidentAlertResponse, *http.Response, error)
-	GetService(serviceID string, opts *pdApi.GetServiceOptions) (*pdApi.Service, error)
+	ListIncidentAlerts(incidentID string) (*pdApi.ListAlertsResponse, error)
 	GetServiceWithContext(ctx context.Context, serviceID string, opts *pdApi.GetServiceOptions) (*pdApi.Service, error)
-	ListOnCalls(opts pdApi.ListOnCallOptions) (*pdApi.ListOnCallsResponse, error)
 }
 
-type PDClient struct {
-	PdClient PagerDutyClient
+type DefaultPagerDutyClientImpl struct {
+	client *pdApi.Client
 }
 
 // NewClient creates an instance of PDClient that is then used to connect to the actual pagerduty client.
-func NewClient() *PDClient {
-	return &PDClient{}
+func NewClient() *DefaultPagerDutyClientImpl {
+	return &DefaultPagerDutyClientImpl{}
 }
 
 // Connect uses the information stored in new client to create a new PagerDuty connection.
 // It returns the PDClient object with pagerduty API connection initialized.
-func (pd *PDClient) Connect(authToken string, options ...pdApi.ClientOptions) (client *PDClient, err error) {
+func (c *DefaultPagerDutyClientImpl) Connect(authToken string, options ...pdApi.ClientOptions) (err error) {
+
+	if authToken == "" {
+		return fmt.Errorf("empty pagerduty token")
+	}
 
 	// Create a new PagerDuty API client
-	pdApi.NewClient(authToken, options...)
+	c.client = pdApi.NewClient(authToken, options...)
 
-	return pd, nil
+	return nil
 }
 
-func (c *PDClient) ListIncidents(opts pdApi.ListIncidentsOptions) (*pdApi.ListIncidentsResponse, error) {
-	return c.PdClient.ListIncidents(opts)
+func (c *DefaultPagerDutyClientImpl) ListIncidents(opts pdApi.ListIncidentsOptions) (*pdApi.ListIncidentsResponse, error) {
+	return c.client.ListIncidentsWithContext(context.TODO(), opts)
 }
 
-func (c *PDClient) ListIncidentAlerts(incidentID string) (*pdApi.ListAlertsResponse, error) {
-	return c.PdClient.ListIncidentAlerts(incidentID)
+func (c *DefaultPagerDutyClientImpl) ListIncidentAlerts(incidentID string) (*pdApi.ListAlertsResponse, error) {
+	return c.client.ListIncidentAlerts(incidentID)
 }
 
-func (c *PDClient) GetCurrentUser(opts pdApi.GetCurrentUserOptions) (*pdApi.User, error) {
-	return c.PdClient.GetCurrentUser(opts)
-}
-
-func (c *PDClient) GetIncidentAlert(incidentID, alertID string) (*pdApi.IncidentAlertResponse, *http.Response, error) {
-	return c.PdClient.GetIncidentAlert(incidentID, alertID)
-}
-
-func (c *PDClient) GetService(serviceID string, opts *pdApi.GetServiceOptions) (*pdApi.Service, error) {
-	return c.PdClient.GetService(serviceID, opts)
-}
-
-func (c *PDClient) GetServiceWithContext(ctx context.Context, serviceID string, opts *pdApi.GetServiceOptions) (*pdApi.Service, error) {
-	return c.PdClient.GetServiceWithContext(ctx, serviceID, opts)
-}
-
-func (c *PDClient) ListOnCalls(opts pdApi.ListOnCallOptions) (*pdApi.ListOnCallsResponse, error) {
-	return c.PdClient.ListOnCalls(opts)
+func (c *DefaultPagerDutyClientImpl) GetServiceWithContext(ctx context.Context, serviceID string, opts *pdApi.GetServiceOptions) (*pdApi.Service, error) {
+	return c.client.GetServiceWithContext(ctx, serviceID, opts)
 }

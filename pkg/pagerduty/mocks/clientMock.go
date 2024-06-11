@@ -6,7 +6,6 @@ package mocks
 
 import (
 	context "context"
-	http "net/http"
 	reflect "reflect"
 
 	pagerduty "github.com/PagerDuty/go-pagerduty"
@@ -36,50 +35,23 @@ func (m *MockPagerDutyClient) EXPECT() *MockPagerDutyClientMockRecorder {
 	return m.recorder
 }
 
-// GetCurrentUser mocks base method.
-func (m *MockPagerDutyClient) GetCurrentUser(arg0 pagerduty.GetCurrentUserOptions) (*pagerduty.User, error) {
+// Connect mocks base method.
+func (m *MockPagerDutyClient) Connect(arg0 string, arg1 ...pagerduty.ClientOptions) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetCurrentUser", arg0)
-	ret0, _ := ret[0].(*pagerduty.User)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	varargs := []interface{}{arg0}
+	for _, a := range arg1 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "Connect", varargs...)
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
-// GetCurrentUser indicates an expected call of GetCurrentUser.
-func (mr *MockPagerDutyClientMockRecorder) GetCurrentUser(arg0 interface{}) *gomock.Call {
+// Connect indicates an expected call of Connect.
+func (mr *MockPagerDutyClientMockRecorder) Connect(arg0 interface{}, arg1 ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCurrentUser", reflect.TypeOf((*MockPagerDutyClient)(nil).GetCurrentUser), arg0)
-}
-
-// GetIncidentAlert mocks base method.
-func (m *MockPagerDutyClient) GetIncidentAlert(arg0, arg1 string) (*pagerduty.IncidentAlertResponse, *http.Response, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetIncidentAlert", arg0, arg1)
-	ret0, _ := ret[0].(*pagerduty.IncidentAlertResponse)
-	ret1, _ := ret[1].(*http.Response)
-	ret2, _ := ret[2].(error)
-	return ret0, ret1, ret2
-}
-
-// GetIncidentAlert indicates an expected call of GetIncidentAlert.
-func (mr *MockPagerDutyClientMockRecorder) GetIncidentAlert(arg0, arg1 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetIncidentAlert", reflect.TypeOf((*MockPagerDutyClient)(nil).GetIncidentAlert), arg0, arg1)
-}
-
-// GetService mocks base method.
-func (m *MockPagerDutyClient) GetService(arg0 string, arg1 *pagerduty.GetServiceOptions) (*pagerduty.Service, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetService", arg0, arg1)
-	ret0, _ := ret[0].(*pagerduty.Service)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetService indicates an expected call of GetService.
-func (mr *MockPagerDutyClientMockRecorder) GetService(arg0, arg1 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetService", reflect.TypeOf((*MockPagerDutyClient)(nil).GetService), arg0, arg1)
+	varargs := append([]interface{}{arg0}, arg1...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Connect", reflect.TypeOf((*MockPagerDutyClient)(nil).Connect), varargs...)
 }
 
 // GetServiceWithContext mocks base method.
@@ -125,19 +97,4 @@ func (m *MockPagerDutyClient) ListIncidents(arg0 pagerduty.ListIncidentsOptions)
 func (mr *MockPagerDutyClientMockRecorder) ListIncidents(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListIncidents", reflect.TypeOf((*MockPagerDutyClient)(nil).ListIncidents), arg0)
-}
-
-// ListOnCalls mocks base method.
-func (m *MockPagerDutyClient) ListOnCalls(arg0 pagerduty.ListOnCallOptions) (*pagerduty.ListOnCallsResponse, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListOnCalls", arg0)
-	ret0, _ := ret[0].(*pagerduty.ListOnCallsResponse)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// ListOnCalls indicates an expected call of ListOnCalls.
-func (mr *MockPagerDutyClientMockRecorder) ListOnCalls(arg0 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListOnCalls", reflect.TypeOf((*MockPagerDutyClient)(nil).ListOnCalls), arg0)
 }

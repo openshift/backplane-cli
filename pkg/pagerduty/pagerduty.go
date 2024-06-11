@@ -46,7 +46,11 @@ func NewPagerDuty(client PagerDutyClient) *PagerDuty {
 func NewWithToken(authToken string, options ...pdApi.ClientOptions) (*PagerDuty, error) {
 
 	pd := NewClient()
-	pd.Connect(authToken, options...)
+	err := pd.Connect(authToken, options...)
+
+	if err != nil {
+		return nil, err
+	}
 
 	return &PagerDuty{
 		client: pd,
@@ -74,19 +78,14 @@ func (pd *PagerDuty) GetIncidentAlerts(incidentID string) ([]Alert, error) {
 	}
 
 	for _, alert := range incidentAlerts.Alerts {
-		status := alert.Status
+		currentAlert := alert
+		formatAlert, err := pd.formatAlert(&currentAlert)
 
-		if status == StatusTriggered {
-
-			formatAlert, err := pd.formatAlert(&alert)
-
-			if err != nil {
-				return nil, err
-			}
-			alerts = append(alerts, formatAlert)
+		if err != nil {
+			return nil, err
 		}
+		alerts = append(alerts, formatAlert)
 	}
-	fmt.Print(alerts)
 	return alerts, nil
 }
 
