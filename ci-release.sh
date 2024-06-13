@@ -1,5 +1,9 @@
 #!/bin/bash
+# Manual release steps for reference: https://github.com/openshift/backplane-cli/blob/main/docs/release.md
+
 set -e
+
+REPO_URL="https://github.com/openshift/backplane-cli.git"
 
 # Extract version from VERSION.md
 VERSION=$(grep 'Version:' VERSION.md | awk '{print $2}')
@@ -19,6 +23,16 @@ fi
 # Git configurations
 git config user.name "CI release"
 git config user.email "ci-test@release.com"
+
+# Ensure the remote repository 'upstream' is set to the correct URL
+if git remote | grep -iq 'upstream'; then
+    current_url=$(git remote get-url upstream)
+    if [ "$current_url" != "$REPO_URL" ]; then
+        git remote set-url upstream $REPO_URL
+    fi
+else
+    git remote add upstream $REPO_URL
+fi
 
 # Ensure working on the latest main
 git fetch upstream
