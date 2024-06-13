@@ -1,9 +1,19 @@
 #!/bin/bash
-# Manual release steps for reference: https://github.com/openshift/backplane-cli/blob/main/docs/release.md
+# Manual release steps for reference:
+# https://github.com/openshift/backplane-cli/blob/main/docs/release.md
 
 set -e
 
-REPO_URL="https://github.com/openshift/backplane-cli.git"
+# Ensure GITHUB_TOKEN is set
+if [ -z "$GITHUB_TOKEN" ]; then
+    echo "Error: GITHUB_TOKEN is not set in ci-release.sh."
+    exit 1
+else
+    echo "GITHUB_TOKEN is set in ci-release.sh"
+fi
+
+# Define repository URL with token
+REPO_URL="https://${GITHUB_TOKEN}@github.com/openshift/backplane-cli.git"
 
 # Extract version from VERSION.md
 VERSION=$(grep 'Version:' VERSION.md | awk '{print $2}')
@@ -40,4 +50,10 @@ git checkout upstream/main
 
 # Tagging the release
 git tag -a "v${VERSION}" -m "Release v${VERSION}"
+
+# Print the remote URL again before pushing
+echo "Final upstream URL before push:"
+git remote -v
+
+# Push the tag to the remote repository
 git push upstream "v${VERSION}"
