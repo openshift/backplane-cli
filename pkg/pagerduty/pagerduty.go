@@ -101,7 +101,7 @@ func (pd *PagerDuty) formatAlert(alert *pdApi.IncidentAlert) (formatAlert Alert,
 
 	if isCHGM != nil {
 		notes := strings.Split(fmt.Sprint(alert.Body["details"].(map[string]interface{})["notes"]), "\n")
-
+		fmt.Print(notes)
 		formatAlert.ClusterID = strings.Replace(notes[0], "cluster_id: ", "", 1)
 		formatAlert.ClusterName = strings.Split(fmt.Sprint(alert.Body["details"].(map[string]interface{})["name"]), ".")[0]
 
@@ -136,8 +136,8 @@ func (pd *PagerDuty) GetClusterName(serviceID string) (string, error) {
 	return clusterName, nil
 }
 
-// GetClusterID retrieves the cluster ID associated with the given incident ID.
-func (pd *PagerDuty) GetClusterID(incidentID string) (string, error) {
+// GetClusterIDFromIncident retrieves the cluster ID associated with the given incident ID.
+func (pd *PagerDuty) GetClusterIDFromIncident(incidentID string) (string, error) {
 	incidentAlerts, err := pd.GetIncidentAlerts(incidentID)
 	if err != nil {
 		return "", err
@@ -149,7 +149,15 @@ func (pd *PagerDuty) GetClusterID(incidentID string) (string, error) {
 	case 1:
 		return incidentAlerts[0].ClusterID, nil
 	default:
-		return incidentAlerts[0].ClusterID, nil
+		currentClusterID := incidentAlerts[0].ClusterID
+		for _, alert := range incidentAlerts {
+
+			if currentClusterID != alert.ClusterID {
+				return "", fmt.Errorf("not all alerts have the same cluster ID")
+			}
+
+		}
+		return currentClusterID, nil
 	}
 
 }

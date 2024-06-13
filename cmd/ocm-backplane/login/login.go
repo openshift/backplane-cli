@@ -131,12 +131,12 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 		}
 		if strings.Contains(args.pd, "/incidents/") {
 			incidentID := args.pd[strings.LastIndex(args.pd, "/")+1:]
-			clusterKey, err = pdClient.GetClusterID(incidentID)
+			clusterKey, err = pdClient.GetClusterIDFromIncident(incidentID)
 			if err != nil {
 				return err
 			}
 		} else {
-			clusterKey, err = pdClient.GetClusterID(args.pd)
+			clusterKey, err = pdClient.GetClusterIDFromIncident(args.pd)
 			if err != nil {
 				return err
 			}

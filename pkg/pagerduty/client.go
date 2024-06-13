@@ -9,7 +9,7 @@ import (
 
 // PagerDutyClient is an interface for the actual PD API
 type PagerDutyClient interface {
-	Connect(authToken string, options ...pdApi.ClientOptions) (err error)
+	Connect(authToken string, options ...pdApi.ClientOptions) error
 	ListIncidents(pdApi.ListIncidentsOptions) (*pdApi.ListIncidentsResponse, error)
 	ListIncidentAlerts(incidentID string) (*pdApi.ListAlertsResponse, error)
 	GetServiceWithContext(ctx context.Context, serviceID string, opts *pdApi.GetServiceOptions) (*pdApi.Service, error)
@@ -26,7 +26,7 @@ func NewClient() *DefaultPagerDutyClientImpl {
 
 // Connect uses the information stored in new client to create a new PagerDuty connection.
 // It returns the PDClient object with pagerduty API connection initialized.
-func (c *DefaultPagerDutyClientImpl) Connect(authToken string, options ...pdApi.ClientOptions) (err error) {
+func (c *DefaultPagerDutyClientImpl) Connect(authToken string, options ...pdApi.ClientOptions) error {
 
 	if authToken == "" {
 		return fmt.Errorf("empty pagerduty token")

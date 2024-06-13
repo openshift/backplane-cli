@@ -48,7 +48,7 @@ var _ = Describe("Pagerduty", func() {
 						testServiceID,
 						testAlertName,
 						testClusterID,
-						"triggered",
+						StatusTriggered,
 					),
 				},
 			}
@@ -67,7 +67,7 @@ var _ = Describe("Pagerduty", func() {
 
 		})
 
-		It("Should return cluster-id for a incident", func() {
+		It("Should return cluster-id for an incident", func() {
 
 			// Mock alert response
 			alertResponse := &pdApi.ListAlertsResponse{
@@ -77,7 +77,7 @@ var _ = Describe("Pagerduty", func() {
 						testServiceID,
 						testAlertName,
 						testClusterID,
-						"triggered",
+						StatusTriggered,
 					),
 				},
 			}
@@ -90,7 +90,7 @@ var _ = Describe("Pagerduty", func() {
 			mockPdClient.EXPECT().ListIncidentAlerts(testIncidentID).Return(alertResponse, nil).Times(1)
 			mockPdClient.EXPECT().GetServiceWithContext(context.TODO(), testServiceID, gomock.Any()).Return(serviceResponse, nil).Times(1)
 
-			clusterID, err := pagerDuty.GetClusterID(testIncidentID)
+			clusterID, err := pagerDuty.GetClusterIDFromIncident(testIncidentID)
 			Expect(err).To(BeNil())
 			Expect(clusterID).To(Equal(testClusterID))
 		})
@@ -104,12 +104,38 @@ var _ = Describe("Pagerduty", func() {
 
 			mockPdClient.EXPECT().ListIncidentAlerts(testIncidentID).Return(alertResponse, nil).Times(1)
 
-			clusterID, err := pagerDuty.GetClusterID(testIncidentID)
+			clusterID, err := pagerDuty.GetClusterIDFromIncident(testIncidentID)
 			Expect(err).NotTo(BeNil())
 			Expect(clusterID).To(Equal(""))
 		})
 
-		It("Should return first cluster-id for multiple incident", func() {
+		It("Should returns a format alert", func() {
+
+			nonFormatAlert := alert(
+				testIncidentID,
+				testServiceID,
+				testAlertName,
+				testClusterID,
+				StatusTriggered,
+			)
+
+			// Mock the service response
+			serviceResponse := &pdApi.Service{
+				Description: testClusterName,
+			}
+
+			mockPdClient.EXPECT().GetServiceWithContext(context.TODO(), testServiceID, gomock.Any()).Return(serviceResponse, nil).Times(1)
+
+			formatAlert, err := pagerDuty.formatAlert(&nonFormatAlert)
+			Expect(err).To(BeNil())
+			Expect(formatAlert.ClusterID).To(Equal(testClusterID))
+			Expect(formatAlert.ClusterName).To(Equal(testClusterName))
+			Expect(formatAlert.Name).To(Equal(testAlertName))
+			Expect(formatAlert.IncidentID).To(Equal(testIncidentID))
+
+		})
+
+		It("Should return first cluster-id for multiple incidents", func() {
 
 			// Mock alert response
 			alertResponse := &pdApi.ListAlertsResponse{
@@ -119,14 +145,14 @@ var _ = Describe("Pagerduty", func() {
 						testServiceID,
 						testAlertName,
 						testClusterID,
-						"triggered",
+						StatusTriggered,
 					),
 					alert(
 						"incident-id-001",
 						testServiceID,
 						testAlertName,
 						testClusterID,
-						"triggered",
+						StatusTriggered,
 					),
 				},
 			}
@@ -139,16 +165,95 @@ var _ = Describe("Pagerduty", func() {
 			mockPdClient.EXPECT().ListIncidentAlerts(testIncidentID).Return(alertResponse, nil).Times(1)
 			mockPdClient.EXPECT().GetServiceWithContext(context.TODO(), testServiceID, gomock.Any()).Return(serviceResponse, nil).Times(2)
 
-			clusterID, err := pagerDuty.GetClusterID(testIncidentID)
+			clusterID, err := pagerDuty.GetClusterIDFromIncident(testIncidentID)
 			Expect(err).To(BeNil())
 			Expect(clusterID).To(Equal(testClusterID))
 		})
 
+		It("Should return error if cluster-id is not match for multiple incidents", func() {
+
+			// Mock alert response
+			alertResponse := &pdApi.ListAlertsResponse{
+				Alerts: []pdApi.IncidentAlert{
+					alert(
+						testIncidentID,
+						testServiceID,
+						testAlertName,
+						testClusterID,
+						StatusTriggered,
+					),
+					alert(
+						"incident-id-001",
+						testServiceID,
+						testAlertName,
+						"cluster-id-001",
+						StatusAcknowledged,
+					),
+				},
+			}
+
+			// Mock the service response
+			serviceResponse := &pdApi.Service{
+				Description: testClusterName,
+			}
+
+			mockPdClient.EXPECT().ListIncidentAlerts(testIncidentID).Return(alertResponse, nil).Times(1)
+			mockPdClient.EXPECT().GetServiceWithContext(context.TODO(), testServiceID, gomock.Any()).Return(serviceResponse, nil).Times(2)
+
+			clusterID, err := pagerDuty.GetClusterIDFromIncident(testIncidentID)
+			Expect(err).NotTo(BeNil())
+			Expect(clusterID).To(Equal(""))
+			Expect(err.Error()).To(Equal("not all alerts have the same cluster ID"))
+		})
+
+		It("Should returns cluster-id for CHGM incidents", func() {
+			// Mock alert response
+			alertResponse := &pdApi.ListAlertsResponse{
+				Alerts: []pdApi.IncidentAlert{
+					alert(
+						testIncidentID,
+						testServiceID,
+						"CHGM",
+						testClusterID,
+						StatusTriggered,
+					),
+				},
+			}
+
+			mockPdClient.EXPECT().ListIncidentAlerts(testIncidentID).Return(alertResponse, nil).Times(1)
+
+			clusterID, err := pagerDuty.GetClusterIDFromIncident(testIncidentID)
+			Expect(err).To(BeNil())
+			Expect(clusterID).To(ContainSubstring(testClusterID))
+
+		})
 	})
 })
 
 // alert retuns a pagerduty alert object with pre-configured data.
-func alert(incidentID string, serviceID string, name string, clusterID string, status string) pdApi.IncidentAlert {
+func alert(
+	incidentID string,
+	serviceID string,
+	name string,
+	clusterID string,
+	status string,
+) pdApi.IncidentAlert {
+
+	body := map[string]interface{}{
+		"details": map[string]interface{}{
+			"cluster_id": clusterID,
+		},
+	}
+
+	if name == "CHGM" {
+		body = map[string]interface{}{
+			"details": map[string]interface{}{
+				"notes": [...]string{
+					"cluster_id: " + clusterID,
+				},
+			},
+		}
+	}
 	return pdApi.IncidentAlert{
 
 		Incident: pdApi.APIReference{
@@ -163,11 +268,7 @@ func alert(incidentID string, serviceID string, name string, clusterID string, s
 			Summary: name,
 		},
 
-		Body: map[string]interface{}{
-			"details": map[string]interface{}{
-				"cluster_id": clusterID,
-			},
-		},
+		Body: body,
 
 		Status: status,
 	}
