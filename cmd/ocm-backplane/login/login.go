@@ -31,7 +31,12 @@ import (
 )
 
 // Environment variable that for setting PS1
-const EnvPs1 = "KUBE_PS1_CLUSTER_FUNCTION"
+const (
+	EnvPs1                          = "KUBE_PS1_CLUSTER_FUNCTION"
+	LOGIN_TYPE_CLUSTER_ID           = "cluster-id"
+	LOGIN_TYPE_EXISTING_KUBE_CONFIG = "kube-config"
+	LOGIN_TYPE_PAGERDUTY            = "pagerduty"
+)
 
 var (
 	args struct {
@@ -40,6 +45,10 @@ var (
 		pd               string
 		defaultNamespace string
 	}
+
+	// loginType derive the login type based on flags and args
+	// set default login type as cluster-id
+	loginType = LOGIN_TYPE_CLUSTER_ID
 
 	globalOpts = &globalflags.GlobalOptions{}
 
@@ -64,6 +73,7 @@ var (
 			}
 			return nil
 		},
+		PreRunE:      preLogin,
 		RunE:         runLogin,
 		SilenceUsage: true,
 	}
@@ -93,7 +103,7 @@ func init() {
 		&args.pd,
 		"pd",
 		"",
-		"Login using PagerDuty incident id or html_url.",
+		"Login using PagerDuty incident id or pagerduty url.",
 	)
 	flags.StringVarP(
 		&args.defaultNamespace,
@@ -119,47 +129,24 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 	}
 	logger.Debugf("Backplane Config File Contains: %v \n", bpConfig)
 
+	// login to the cluster based on login type
 	logger.Debugf("Extracting Backplane Cluster ID")
-	// Currently go-pagerduty pkg does not include incident id validation.
-	if args.pd != "" {
-		if bpConfig.PagerDutyAPIKey == "" {
-			return fmt.Errorf("please make sure the PD API Key is configured correctly in the config file")
-		}
-		pdClient, err := pagerduty.NewWithToken(bpConfig.PagerDutyAPIKey)
-		if err != nil {
-			return fmt.Errorf("could not initialize the client: %w", err)
-		}
-		if strings.Contains(args.pd, "/incidents/") {
-			incidentID := args.pd[strings.LastIndex(args.pd, "/")+1:]
-			clusterKey, err = pdClient.GetClusterIDFromIncident(incidentID)
-			if err != nil {
-				return err
-			}
-		} else {
-			clusterKey, err = pdClient.GetClusterIDFromIncident(args.pd)
-			if err != nil {
-				return err
-			}
-		}
-	}
-
-	// Get the cluster ID only if it hasn't been populated by PagerDuty.
-	if len(argv) == 1 {
-		// if explicitly one cluster key given, use it to log in.
-		logger.Debugf("Cluster Key is given in argument")
-		clusterKey = argv[0]
-		logger.WithField("Search Key", clusterKey).Debugln("Finding target cluster")
-
-	} else if len(argv) == 0 && args.pd == "" {
-		// if no args given, try to log into the cluster that the user is logged into
-		logger.Debugf("Finding Clustrer Key from current cluster")
-		clusterInfo, err := utils.DefaultClusterUtils.GetBackplaneClusterFromConfig()
+	switch loginType {
+	case LOGIN_TYPE_PAGERDUTY:
+		clusterKey, err = getClusterIdFromPagerduty(bpConfig)
 		if err != nil {
 			return err
 		}
-		clusterKey = clusterInfo.ClusterID
-		logger.Debugf("Backplane Cluster Infromation data extracted: %+v\n", clusterInfo)
+
+	case LOGIN_TYPE_CLUSTER_ID:
+		logger.Debugf("Cluster Key is given in argument")
+		clusterKey = argv[0]
+	case LOGIN_TYPE_EXISTING_KUBE_CONFIG:
+		clusterKey, err = getClusterIdFromExistingKubeConfig()
+	default:
+		return fmt.Errorf("please make sure the PD API Key is configured correctly in the config file")
 	}
+
 	logger.Debugf("Backplane Cluster Key is: %v \n", clusterKey)
 
 	logger.Debugln("Setting Proxy URL from global options")
@@ -557,4 +544,57 @@ func isValidKubernetesNamespace(namespace string) bool {
 	// RFC 1123 compliant regex pattern)
 	pattern := `^[a-z0-9]([-a-z0-9]*[a-z0-9])?$`
 	return regexp.MustCompile(pattern).MatchString(namespace)
+}
+
+// preLogin will execute before the command
+func preLogin(cmd *cobra.Command, argv []string) (err error) {
+	if len(argv) == 1 {
+		if args.pd != "" {
+			loginType = LOGIN_TYPE_PAGERDUTY
+		} else {
+			loginType = LOGIN_TYPE_CLUSTER_ID
+		}
+
+	} else if len(argv) == 0 && args.pd == "" {
+		loginType = LOGIN_TYPE_EXISTING_KUBE_CONFIG
+	}
+	return nil
+}
+
+// getClusterIdFromPagerduty returns clustedID from Pagerduty incident
+func getClusterIdFromPagerduty(bpConfig config.BackplaneConfiguration) (string, error) {
+	var clusterKey string
+	if bpConfig.PagerDutyAPIKey == "" {
+		return "", fmt.Errorf("please make sure the PD API Key is configured correctly in the config file")
+	}
+	pdClient, err := pagerduty.NewWithToken(bpConfig.PagerDutyAPIKey)
+	if err != nil {
+		return "", fmt.Errorf("could not initialize the client: %w", err)
+	}
+	if strings.Contains(args.pd, "/incidents/") {
+		incidentID := args.pd[strings.LastIndex(args.pd, "/")+1:]
+		clusterKey, err = pdClient.GetClusterIDFromIncident(incidentID)
+		if err != nil {
+			return "", err
+		}
+	} else {
+		clusterKey, err = pdClient.GetClusterIDFromIncident(args.pd)
+		if err != nil {
+			return "", err
+		}
+	}
+	return clusterKey, nil
+}
+
+// getClusterIdFromExistingKubeConfig returns clusterId from kubeconfig
+func getClusterIdFromExistingKubeConfig() (string, error) {
+	var clusterKey string
+	logger.Debugf("Finding Clustrer Key from current cluster")
+	clusterInfo, err := utils.DefaultClusterUtils.GetBackplaneClusterFromConfig()
+	if err != nil {
+		return "", err
+	}
+	clusterKey = clusterInfo.ClusterID
+	logger.Debugf("Backplane Cluster Infromation data extracted: %+v\n", clusterInfo)
+	return clusterKey, nil
 }

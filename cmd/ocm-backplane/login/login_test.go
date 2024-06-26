@@ -105,6 +105,8 @@ var _ = Describe("Login command", func() {
 		mockCluster = &cmv1.Cluster{}
 
 		backplaneConfiguration = config.BackplaneConfiguration{URL: backplaneAPIURI}
+
+		loginType = LOGIN_TYPE_CLUSTER_ID
 	})
 
 	AfterEach(func() {
@@ -184,6 +186,7 @@ var _ = Describe("Login command", func() {
 			err := utils.CreateTempKubeConfig(nil)
 			Expect(err).To(BeNil())
 			globalOpts.ProxyURL = "https://squid.myproxy.com"
+			os.Setenv("HTTPS_PROXY", "https://squid.myproxy.com")
 			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
 			mockClientUtil.EXPECT().SetClientProxyURL(globalOpts.ProxyURL).Return(nil)
 			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, testClusterID, nil)
@@ -345,6 +348,7 @@ var _ = Describe("Login command", func() {
 		})
 
 		It("should login to current cluster if cluster id not provided", func() {
+			loginType = LOGIN_TYPE_EXISTING_KUBE_CONFIG
 			err := utils.CreateTempKubeConfig(nil)
 			Expect(err).To(BeNil())
 			globalOpts.ProxyURL = "https://squid.myproxy.com"
@@ -431,6 +435,7 @@ var _ = Describe("Login command", func() {
 		})
 
 		It("should fail to create PD API client and return HTTP status code 401 when unauthorized", func() {
+			loginType = LOGIN_TYPE_PAGERDUTY
 			args.pd = truePagerDutyIncidentID
 
 			err := utils.CreateTempKubeConfig(nil)
@@ -466,6 +471,7 @@ var _ = Describe("Login command", func() {
 		})
 
 		It("should return error when trying to login via PD but the PD API Key is not configured", func() {
+			loginType = LOGIN_TYPE_PAGERDUTY
 			args.pd = truePagerDutyIncidentID
 
 			err := utils.CreateTempKubeConfig(nil)
@@ -503,6 +509,7 @@ var _ = Describe("Login command", func() {
 		})
 
 		It("should fail to find a non existent PD Incident and return HTTP status code 404 when the requested resource is not found", func() {
+			loginType = LOGIN_TYPE_PAGERDUTY
 			args.pd = falsePagerDutyIncidentID
 
 			err := utils.CreateTempKubeConfig(nil)
