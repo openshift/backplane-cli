@@ -22,6 +22,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/backplane-cli/cmd/ocm-backplane/accessrequest"
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/cloud"
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/config"
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/console"
@@ -64,6 +65,7 @@ func init() {
 	globalflags.AddVerbosityFlag(rootCmd)
 
 	// Register sub-commands
+	rootCmd.AddCommand(accessrequest.NewAccessRequestCmd())
 	rootCmd.AddCommand(console.NewConsoleCmd())
 	rootCmd.AddCommand(config.NewConfigCmd())
 	rootCmd.AddCommand(cloud.CloudCmd)

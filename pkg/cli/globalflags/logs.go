@@ -43,7 +43,7 @@ func AddVerbosityFlag(cmd *cobra.Command) {
 		&logLevel,
 		"verbosity",
 		"v",
-		"Verbosity level: panic, fatal, error, warn, info, debug. Providing no verbosity level will default to info.",
+		"Verbosity level: panic, fatal, error, warn, info, debug",
 	)
 	logLevelFlag.NoOptDefVal = log.InfoLevel.String()
 }

@@ -15,13 +15,59 @@ import (
 	"github.com/openshift/backplane-cli/pkg/ocm"
 )
 
+type JiraTransitionsNamesForAccessRequests struct {
+	OnCreation string `json:"on-creation"`
+	OnApproval string `json:"on-approval"`
+	OnError    string `json:"on-error"`
+}
+
+type AccessRequestsJiraConfiguration struct {
+	DefaultProject            string                                           `json:"default-project"`
+	DefaultIssueType          string                                           `json:"default-issue-type"`
+	ProdProject               string                                           `json:"prod-project"`
+	ProdIssueType             string                                           `json:"prod-issue-type"`
+	ProjectToTransitionsNames map[string]JiraTransitionsNamesForAccessRequests `json:"project-to-transitions-names"`
+}
+
 // Please update the validateConfig function if there is any required config key added
 type BackplaneConfiguration struct {
-	URL              string  `json:"url"`
-	ProxyURL         *string `json:"proxy-url"`
-	SessionDirectory string  `json:"session-dir"`
-	AssumeInitialArn string  `json:"assume-initial-arn"`
-	PagerDutyAPIKey  string  `json:"pd-key"`
+	URL                         string                          `json:"url"`
+	ProxyURL                    *string                         `json:"proxy-url"`
+	SessionDirectory            string                          `json:"session-dir"`
+	AssumeInitialArn            string                          `json:"assume-initial-arn"`
+	ProdEnvName                 string                          `json:"prod-env-name"`
+	PagerDutyAPIKey             string                          `json:"pd-key"`
+	JiraBaseURL                 string                          `json:"jira-base-url"`
+	JiraToken                   string                          `json:"jira-token"`
+	JiraConfigForAccessRequests AccessRequestsJiraConfiguration `json:"jira-config-for-access-requests"`
+}
+
+const (
+	prodEnvNameKey                 = "prod-env-name"
+	jiraBaseURLKey                 = "jira-base-url"
+	JiraTokenViperKey              = "jira-token"
+	JiraConfigForAccessRequestsKey = "jira-config-for-access-requests"
+	prodEnvNameDefaultValue        = "production"
+	JiraBaseURLDefaultValue        = "https://issues.redhat.com"
+)
+
+var JiraConfigForAccessRequestsDefaultValue = AccessRequestsJiraConfiguration{
+	DefaultProject:   "SDAINT",
+	DefaultIssueType: "Story",
+	ProdProject:      "OHSS",
+	ProdIssueType:    "Incident",
+	ProjectToTransitionsNames: map[string]JiraTransitionsNamesForAccessRequests{
+		"SDAINT": JiraTransitionsNamesForAccessRequests{
+			OnCreation: "In Progress",
+			OnApproval: "In Progress",
+			OnError:    "Closed",
+		},
+		"OHSS": JiraTransitionsNamesForAccessRequests{
+			OnCreation: "Pending Customer",
+			OnApproval: "New",
+			OnError:    "Cancelled",
+		},
+	},
 }
 
 // GetConfigFilePath returns the Backplane CLI configuration filepath
@@ -44,6 +90,10 @@ func GetConfigFilePath() (string, error) {
 
 // GetBackplaneConfiguration parses and returns the given backplane configuration
 func GetBackplaneConfiguration() (bpConfig BackplaneConfiguration, err error) {
+	viper.SetDefault(prodEnvNameKey, prodEnvNameDefaultValue)
+	viper.SetDefault(jiraBaseURLKey, JiraBaseURLDefaultValue)
+	viper.SetDefault(JiraConfigForAccessRequestsKey, JiraConfigForAccessRequestsDefaultValue)
+
 	filePath, err := GetConfigFilePath()
 	if err != nil {
 		return bpConfig, err
@@ -107,6 +157,29 @@ func GetBackplaneConfiguration() (bpConfig BackplaneConfiguration, err error) {
 	} else {
 		logger.Info("No PagerDuty API Key configuration available. This will result in failure of `ocm-backplane login --pd <incident-id>` command.")
 	}
+
+	// OCM prod env name is optional as there is a default value
+	bpConfig.ProdEnvName = viper.GetString(prodEnvNameKey)
+
+	// JIRA base URL is optional as there is a default value
+	bpConfig.JiraBaseURL = viper.GetString(jiraBaseURLKey)
+
+	// JIRA token is optional
+	bpConfig.JiraToken = viper.GetString(JiraTokenViperKey)
+
+	// JIRA config for access requests is optional as there is a default value
+	err = viper.UnmarshalKey(JiraConfigForAccessRequestsKey, &bpConfig.JiraConfigForAccessRequests)
+
+	if err != nil {
+		logger.Warnf("failed to unmarshal '%s' entry as json in '%s' config file: %v", JiraConfigForAccessRequestsKey, filePath, err)
+	} else {
+		for _, project := range []string{bpConfig.JiraConfigForAccessRequests.DefaultProject, bpConfig.JiraConfigForAccessRequests.ProdProject} {
+			if _, isKnownProject := bpConfig.JiraConfigForAccessRequests.ProjectToTransitionsNames[project]; !isKnownProject {
+				logger.Warnf("content unmarshalled from '%s' in '%s' config file is inconsistent: no transitions defined for project '%s'", JiraConfigForAccessRequestsKey, filePath, project)
+			}
+		}
+	}
+
 	return bpConfig, nil
 }
 
