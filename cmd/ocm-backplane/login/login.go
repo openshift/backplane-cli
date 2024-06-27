@@ -146,6 +146,9 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 		clusterKey = argv[0]
 	case LoginTypeExistingKubeConfig:
 		clusterKey, err = getClusterIDFromExistingKubeConfig()
+		if err != nil {
+			return err
+		}
 	default:
 		return fmt.Errorf("please make sure the PD API Key is configured correctly in the config file")
 	}
@@ -576,7 +579,8 @@ func preLogin(cmd *cobra.Command, argv []string) (err error) {
 	return nil
 }
 
-// getClusterIDFromPagerduty returns clustedID from Pagerduty incident
+// getClusterInfoFromPagerduty returns a pagerduty.Alert from Pagerduty incident,
+// which contains alert info including the cluster id.
 func getClusterInfoFromPagerduty(bpConfig config.BackplaneConfiguration) (alert pagerduty.Alert, err error) {
 	if bpConfig.PagerDutyAPIKey == "" {
 		return alert, fmt.Errorf("please make sure the PD API Key is configured correctly in the config file")
