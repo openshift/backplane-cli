@@ -486,11 +486,9 @@ var _ = Describe("Login command", func() {
 			Expect(err).To(BeNil())
 
 			testData := config.BackplaneConfiguration{
-				URL:              backplaneAPIURI,
-				ProxyURL:         new(string),
-				SessionDirectory: "",
-				AssumeInitialArn: "",
-				PagerDutyAPIKey:  falsePagerDutyAPITkn,
+				URL:             backplaneAPIURI,
+				ProxyURL:        new(string),
+				PagerDutyAPIKey: falsePagerDutyAPITkn,
 			}
 
 			// Marshal the testData into JSON format and write it to tempFile.
@@ -524,11 +522,9 @@ var _ = Describe("Login command", func() {
 			Expect(err).To(BeNil())
 
 			testData := config.BackplaneConfiguration{
-				URL:              backplaneAPIURI,
-				ProxyURL:         new(string),
-				SessionDirectory: "",
-				AssumeInitialArn: "",
-				PagerDutyAPIKey:  truePagerDutyAPITkn,
+				URL:             backplaneAPIURI,
+				ProxyURL:        new(string),
+				PagerDutyAPIKey: truePagerDutyAPITkn,
 			}
 
 			// Marshal the testData into JSON format and write it to tempFile.
