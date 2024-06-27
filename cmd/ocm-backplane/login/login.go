@@ -32,10 +32,10 @@ import (
 
 // Environment variable that for setting PS1
 const (
-	EnvPs1                          = "KUBE_PS1_CLUSTER_FUNCTION"
-	LOGIN_TYPE_CLUSTER_ID           = "cluster-id"
-	LOGIN_TYPE_EXISTING_KUBE_CONFIG = "kube-config"
-	LOGIN_TYPE_PAGERDUTY            = "pagerduty"
+	EnvPs1                      = "KUBE_PS1_CLUSTER_FUNCTION"
+	LoginTypeClusterID          = "cluster-id"
+	LoginTypeExistingKubeConfig = "kube-config"
+	LoginTypePagerduty          = "pagerduty"
 )
 
 var (
@@ -48,7 +48,7 @@ var (
 
 	// loginType derive the login type based on flags and args
 	// set default login type as cluster-id
-	loginType = LOGIN_TYPE_CLUSTER_ID
+	loginType = LoginTypeClusterID
 
 	globalOpts = &globalflags.GlobalOptions{}
 
@@ -117,6 +117,7 @@ func init() {
 
 func runLogin(cmd *cobra.Command, argv []string) (err error) {
 	var clusterKey string
+	var elevateReason string
 	logger.Debugf("Running Login Command ...")
 	logger.Debugf("Checking Backplane Version")
 	utils.CheckBackplaneVersion(cmd)
@@ -132,17 +133,19 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 	// login to the cluster based on login type
 	logger.Debugf("Extracting Backplane Cluster ID")
 	switch loginType {
-	case LOGIN_TYPE_PAGERDUTY:
-		clusterKey, err = getClusterIdFromPagerduty(bpConfig)
+	case LoginTypePagerduty:
+		info, err := getClusterInfoFromPagerduty(bpConfig)
+		clusterKey = info.ClusterID
+		elevateReason = info.WebURL
 		if err != nil {
 			return err
 		}
 
-	case LOGIN_TYPE_CLUSTER_ID:
+	case LoginTypeClusterID:
 		logger.Debugf("Cluster Key is given in argument")
 		clusterKey = argv[0]
-	case LOGIN_TYPE_EXISTING_KUBE_CONFIG:
-		clusterKey, err = getClusterIdFromExistingKubeConfig()
+	case LoginTypeExistingKubeConfig:
+		clusterKey, err = getClusterIDFromExistingKubeConfig()
 	default:
 		return fmt.Errorf("please make sure the PD API Key is configured correctly in the config file")
 	}
@@ -340,11 +343,20 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 	rc.Contexts[targetContextNickName] = targetContext
 	rc.CurrentContext = targetContextNickName
 
+	// Add elevate reason to config
+	if elevateReason != "" {
+		if err = login.AddElevationReasonsToRawKubeconfig(rc, []string{elevateReason}); err != nil {
+			return err
+		}
+	}
+
 	logger.Debugln("Saving new API config")
 	// Save the config
-	err = login.SaveKubeConfig(clusterID, rc, args.multiCluster, args.kubeConfigPath)
+	if err = login.SaveKubeConfig(clusterID, rc, args.multiCluster, args.kubeConfigPath); err != nil {
+		return err
+	}
 
-	return err
+	return nil
 }
 
 // GetRestConfig returns a client-go *rest.Config which can be used to programmatically interact with the
@@ -548,46 +560,48 @@ func isValidKubernetesNamespace(namespace string) bool {
 
 // preLogin will execute before the command
 func preLogin(cmd *cobra.Command, argv []string) (err error) {
-	if len(argv) == 1 {
-		if args.pd != "" {
-			loginType = LOGIN_TYPE_PAGERDUTY
-		} else {
-			loginType = LOGIN_TYPE_CLUSTER_ID
-		}
 
-	} else if len(argv) == 0 && args.pd == "" {
-		loginType = LOGIN_TYPE_EXISTING_KUBE_CONFIG
+	switch len(argv) {
+	case 1:
+		loginType = LoginTypeClusterID
+
+	case 0:
+		if args.pd == "" {
+			loginType = LoginTypeExistingKubeConfig
+		} else {
+			loginType = LoginTypePagerduty
+		}
 	}
+
 	return nil
 }
 
-// getClusterIdFromPagerduty returns clustedID from Pagerduty incident
-func getClusterIdFromPagerduty(bpConfig config.BackplaneConfiguration) (string, error) {
-	var clusterKey string
+// getClusterIDFromPagerduty returns clustedID from Pagerduty incident
+func getClusterInfoFromPagerduty(bpConfig config.BackplaneConfiguration) (alert pagerduty.Alert, err error) {
 	if bpConfig.PagerDutyAPIKey == "" {
-		return "", fmt.Errorf("please make sure the PD API Key is configured correctly in the config file")
+		return alert, fmt.Errorf("please make sure the PD API Key is configured correctly in the config file")
 	}
 	pdClient, err := pagerduty.NewWithToken(bpConfig.PagerDutyAPIKey)
 	if err != nil {
-		return "", fmt.Errorf("could not initialize the client: %w", err)
+		return alert, fmt.Errorf("could not initialize the client: %w", err)
 	}
 	if strings.Contains(args.pd, "/incidents/") {
 		incidentID := args.pd[strings.LastIndex(args.pd, "/")+1:]
-		clusterKey, err = pdClient.GetClusterIDFromIncident(incidentID)
+		alert, err = pdClient.GetClusterInfoFromIncident(incidentID)
 		if err != nil {
-			return "", err
+			return alert, err
 		}
 	} else {
-		clusterKey, err = pdClient.GetClusterIDFromIncident(args.pd)
+		alert, err = pdClient.GetClusterInfoFromIncident(args.pd)
 		if err != nil {
-			return "", err
+			return alert, err
 		}
 	}
-	return clusterKey, nil
+	return alert, nil
 }
 
-// getClusterIdFromExistingKubeConfig returns clusterId from kubeconfig
-func getClusterIdFromExistingKubeConfig() (string, error) {
+// getClusterIDFromExistingKubeConfig returns clusterId from kubeconfig
+func getClusterIDFromExistingKubeConfig() (string, error) {
 	var clusterKey string
 	logger.Debugf("Finding Clustrer Key from current cluster")
 	clusterInfo, err := utils.DefaultClusterUtils.GetBackplaneClusterFromConfig()
