@@ -305,14 +305,18 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 			// Hibernating, print an error
 			return fmt.Errorf("cluster %s is hibernating, login failed", clusterKey)
 		}
+
 		// Check API connection with configured proxy
 		if connErr := bpConfig.CheckAPIConnection(); connErr != nil {
-			return fmt.Errorf("cannot connect to backplane API URL, check if you need to use a proxy/VPN to access backplane: %v", connErr)
+			logger.Errorf("Cannot connect to backplane API URL, check if you need to use a proxy/VPN to access backplane: %v. To troubleshoot connectivity issues, please run the following command: ocm-backplane health-check", connErr)
+			return fmt.Errorf("cannot connect to backplane API URL: %v", connErr)
 		}
 
-		// Otherwise, return the failure
-		return fmt.Errorf("can't login to cluster: %v", err)
+		// Log suggestion to run connectivity health check if login fails
+		logger.Errorf("Login failed: %v. To troubleshoot connectivity issues, please run the following command: ocm-backplane health-check", err)
+		return fmt.Errorf("login failed: %v", err)
 	}
+
 	logger.WithField("URL", bpAPIClusterURL).Debugln("Proxy")
 
 	logger.Debugln("Generating a new K8s cluster config file")

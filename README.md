@@ -65,7 +65,7 @@ To setup the PS1(prompt) for bash/zsh, please follow [these instructions](https:
 | `ocm backplane cloud console`                                               | Launch the current logged in cluster's cloud provider console                            |
 | `ocm backplane cloud credentials [flags]`                                   | Retrieve a set of temporary cloud credentials for the cluster's cloud provider           |
 | `ocm backplane elevate <reason> -- <command>`                               | Elevate privileges to backplane-cluster-admin and add a reason to the api request, this reason will be stored for 20min for future usage        |
-| `ocm backplane monitoring <prometheus/alertmanager/thanos/grafana> [flags]` | Launch the specified monitoring UI (Deprecated following v4.11 for cluster monitoring stack)                          |
+| `ocm backplane monitoring <prometheus/alertmanager/thanos/grafana> [flags]` | Launch the specified monitoring UI (Deprecated following v4.11 for cluster monitoring stack)|
 | `ocm backplane script describe <script> [flags]`                            | Describe the given backplane script                                                      |
 | `ocm backplane script list [flags]`                                         | List available backplane scripts |
 | `ocm backplane session [flags]`                                             | Create a new session and log into the cluster                                            |
@@ -81,6 +81,7 @@ To setup the PS1(prompt) for bash/zsh, please follow [these instructions](https:
 | `ocm backplane testJob logs <job_name> [flags]`                             | Retrieve logs of the specified test job resource                                         |
 | `ocm backplane upgrade`                                                     | Upgrade backplane-cli to the latest version                                              |
 | `ocm backplane version`                                                     | Display the installed backplane-cli version                                              |
+| `ocm backplane healthcheck`                                                 | Check the VPN and Proxy connectivity on the host network when experiencing isssues accessing the backplane API|
 
 ## Login
 
@@ -324,6 +325,58 @@ No issue if only stdout is redirected.
 ```
 $ ocm-backplane elevate -n -- get secret xxx | grep xxx
 Please enter a reason for elevation, it will be stored in current context for 20 minutes : <here you can enter your reason>
+```
+## Backplane healthcheck
+The backplane health check can be used to verify VPN and proxy connectivity on the host network as a troubleshooting approach when experiencing issues accessing the backplane API.
+
+### Pre-settings
+The end-user needs to set the VPN and Proxy check-endpoints in the local backplane configuration first:
+```
+cat ~/.config/backplane/config.json 
+{
+    "proxy-url": ["http://proxy1.example.com:3128", "http://proxy2.example.com:3128"],
+    "vpn-check-endpoint": "http://your-vpn-endpoint.example.com",
+    "proxy-check-endpoint": "http://your-proxy-endpoint.example.com"
+}
+```
+- `vpn-check-endpoint:` To specify this test endpoint to check if it can be accessed with the currently connected VPN.
+- `proxy-check-endpoint:` To specify this test endpoint to check if it can be accssed with the currently working proxy.
+
+**NOTE:** The `vpn-check-endpoint` and `proxy-check-endpoint` mentioned above are just examples, the end-user can customize them as needed.
+
+### How to use it
+- Running healthcheck by default
+```
+./ocm-backplane healthcheck
+Checking VPN connectivity...
+VPN connectivity check passed!
+
+Checking proxy connectivity...
+Getting the working proxy URL ['http://proxy1.example.com:3128'] from local backplane configuration.
+Testing connectivity to the pre-defined test endpoint ['https://your-proxy-endpoint.example.com'] with the proxy.
+Proxy connectivity check passed!
+
+Checking backplane API connectivity...
+Successfully connected to the backplane API!
+Backplane API connectivity check passed!
+```
+- Specify the healthcheck flags to run `vpn` or `proxy` check only
+```
+./ocm-backplane healthcheck --vpn
+Checking VPN connectivity...
+VPN connectivity check passed!
+
+./ocm-backplane healthcheck --proxy
+Checking proxy connectivity...
+Proxy connectivity check passed!
+```
+
+**Note:** VPN connection check is a pre-requisite (The example below demonstrates checking proxy connectivity with VPN disconnected.)
+```
+./ocm-backplane healthcheck --proxy
+WARN[0000] No VPN interfaces found: [tun tap ppp wg]    
+VPN connectivity check failed: No VPN interfaces found: [tun tap ppp wg]
+Note: Proxy connectivity check requires VPN to be connected. Please ensure VPN is connected and try again.
 ```
 
 ## Promotion/Release cycle of backplane CLI
