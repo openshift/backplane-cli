@@ -135,11 +135,11 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 	switch loginType {
 	case LoginTypePagerduty:
 		info, err := getClusterInfoFromPagerduty(bpConfig)
-		clusterKey = info.ClusterID
-		elevateReason = info.WebURL
 		if err != nil {
 			return err
 		}
+		clusterKey = info.ClusterID
+		elevateReason = info.WebURL
 
 	case LoginTypeClusterID:
 		logger.Debugf("Cluster Key is given in argument")
@@ -150,7 +150,7 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 			return err
 		}
 	default:
-		return fmt.Errorf("please make sure the PD API Key is configured correctly in the config file")
+		return fmt.Errorf("login type cannot be detected")
 	}
 
 	logger.Debugf("Backplane Cluster Key is: %v \n", clusterKey)
@@ -346,11 +346,13 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 	rc.Contexts[targetContextNickName] = targetContext
 	rc.CurrentContext = targetContextNickName
 
-	// Add elevate reason to config
+	// Add elevate reason to kubeconfig context
 	if elevateReason != "" {
-		if err = login.AddElevationReasonsToRawKubeconfig(rc, []string{elevateReason}); err != nil {
+		elevationReasons, err := login.SaveElevateContextReasons(rc, elevateReason)
+		if err != nil {
 			return err
 		}
+		logger.Infof("save elevate reason: %s\n", elevationReasons)
 	}
 
 	logger.Debugln("Saving new API config")
