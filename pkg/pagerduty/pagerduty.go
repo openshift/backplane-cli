@@ -136,28 +136,28 @@ func (pd *PagerDuty) GetClusterName(serviceID string) (string, error) {
 	return clusterName, nil
 }
 
-// GetClusterIDFromIncident retrieves the cluster ID associated with the given incident ID.
-func (pd *PagerDuty) GetClusterIDFromIncident(incidentID string) (string, error) {
+// GetClusterInfoFromIncident retrieves the cluster ID associated with the given incident ID.
+func (pd *PagerDuty) GetClusterInfoFromIncident(incidentID string) (info Alert, err error) {
 	incidentAlerts, err := pd.GetIncidentAlerts(incidentID)
 	if err != nil {
-		return "", err
+		return info, err
 	}
 
 	switch len(incidentAlerts) {
 	case 0:
-		return "", fmt.Errorf("no alerts found for the given incident ID")
+		return info, fmt.Errorf("no alerts found for the given incident ID")
 	case 1:
-		return incidentAlerts[0].ClusterID, nil
+		return incidentAlerts[0], nil
 	default:
 		currentClusterID := incidentAlerts[0].ClusterID
 		for _, alert := range incidentAlerts {
 
 			if currentClusterID != alert.ClusterID {
-				return "", fmt.Errorf("not all alerts have the same cluster ID")
+				return info, fmt.Errorf("not all alerts have the same cluster ID")
 			}
 
 		}
-		return currentClusterID, nil
+		return incidentAlerts[0], nil
 	}
 
 }

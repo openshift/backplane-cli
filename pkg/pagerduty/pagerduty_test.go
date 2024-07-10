@@ -90,9 +90,9 @@ var _ = Describe("Pagerduty", func() {
 			mockPdClient.EXPECT().ListIncidentAlerts(testIncidentID).Return(alertResponse, nil).Times(1)
 			mockPdClient.EXPECT().GetServiceWithContext(context.TODO(), testServiceID, gomock.Any()).Return(serviceResponse, nil).Times(1)
 
-			clusterID, err := pagerDuty.GetClusterIDFromIncident(testIncidentID)
+			info, err := pagerDuty.GetClusterInfoFromIncident(testIncidentID)
 			Expect(err).To(BeNil())
-			Expect(clusterID).To(Equal(testClusterID))
+			Expect(info.ClusterID).To(Equal(testClusterID))
 		})
 
 		It("Should return empty cluster-id for non matching incident id", func() {
@@ -104,9 +104,9 @@ var _ = Describe("Pagerduty", func() {
 
 			mockPdClient.EXPECT().ListIncidentAlerts(testIncidentID).Return(alertResponse, nil).Times(1)
 
-			clusterID, err := pagerDuty.GetClusterIDFromIncident(testIncidentID)
+			info, err := pagerDuty.GetClusterInfoFromIncident(testIncidentID)
 			Expect(err).NotTo(BeNil())
-			Expect(clusterID).To(Equal(""))
+			Expect(info.ClusterID).To(BeEmpty())
 		})
 
 		It("Should returns a format alert", func() {
@@ -165,9 +165,9 @@ var _ = Describe("Pagerduty", func() {
 			mockPdClient.EXPECT().ListIncidentAlerts(testIncidentID).Return(alertResponse, nil).Times(1)
 			mockPdClient.EXPECT().GetServiceWithContext(context.TODO(), testServiceID, gomock.Any()).Return(serviceResponse, nil).Times(2)
 
-			clusterID, err := pagerDuty.GetClusterIDFromIncident(testIncidentID)
+			info, err := pagerDuty.GetClusterInfoFromIncident(testIncidentID)
 			Expect(err).To(BeNil())
-			Expect(clusterID).To(Equal(testClusterID))
+			Expect(info.ClusterID).To(Equal(testClusterID))
 		})
 
 		It("Should return error if cluster-id is not match for multiple incidents", func() {
@@ -200,9 +200,8 @@ var _ = Describe("Pagerduty", func() {
 			mockPdClient.EXPECT().ListIncidentAlerts(testIncidentID).Return(alertResponse, nil).Times(1)
 			mockPdClient.EXPECT().GetServiceWithContext(context.TODO(), testServiceID, gomock.Any()).Return(serviceResponse, nil).Times(2)
 
-			clusterID, err := pagerDuty.GetClusterIDFromIncident(testIncidentID)
+			_, err := pagerDuty.GetClusterInfoFromIncident(testIncidentID)
 			Expect(err).NotTo(BeNil())
-			Expect(clusterID).To(Equal(""))
 			Expect(err.Error()).To(Equal("not all alerts have the same cluster ID"))
 		})
 
@@ -222,9 +221,9 @@ var _ = Describe("Pagerduty", func() {
 
 			mockPdClient.EXPECT().ListIncidentAlerts(testIncidentID).Return(alertResponse, nil).Times(1)
 
-			clusterID, err := pagerDuty.GetClusterIDFromIncident(testIncidentID)
+			info, err := pagerDuty.GetClusterInfoFromIncident(testIncidentID)
 			Expect(err).To(BeNil())
-			Expect(clusterID).To(ContainSubstring(testClusterID))
+			Expect(info.ClusterID).To(ContainSubstring(testClusterID))
 
 		})
 	})
