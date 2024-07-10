@@ -6,16 +6,31 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"regexp"
+	"strings"
 	"time"
+
+	"github.com/openshift/backplane-cli/cmd/ocm-backplane/login"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	BackplaneApi "github.com/openshift/backplane-api/pkg/client"
 	logger "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	"github.com/openshift/backplane-cli/pkg/backplaneapi"
+	"github.com/openshift/backplane-cli/pkg/cli/config"
 	"github.com/openshift/backplane-cli/pkg/ocm"
 	"github.com/openshift/backplane-cli/pkg/utils"
+	oocm "github.com/openshift-online/ocm-cli/pkg/ocm"
+)
+
+const (
+	clusterTypeLabelKey               = "ext-hypershift.openshift.io/cluster-type"
+	clusterTypeLabelManagementCluster = "management-cluster"
 )
 
 var (
@@ -74,6 +89,31 @@ func newCreateManagedJobCmd() *cobra.Command {
 	return cmd
 }
 
+var isManagementCluster = func () (bool, error) {
+	//  check for a label with a key of ext-hypershift.openshift.io/cluster-type and a value of management-cluster
+	connection, err := oocm.NewConnection().Build()
+	if err != nil {
+		return false, fmt.Errorf("failed to create OCM connection: %v", err)
+	}
+	defer connection.Close()
+
+	labelsListResponse, err := connection.ClustersMgmt().V1().Clusters().Cluster(options.clusterID).ExternalConfiguration().Labels().List().Send()
+	if err != nil {
+		if labelsListResponse.Status() == 400 {
+			return false, nil
+		}
+		return false, fmt.Errorf("failed to get label from ocm: %v", err)
+	}
+
+	for _, label := range labelsListResponse.Items().Slice() {
+		if label.Key() == clusterTypeLabelKey {
+			return label.Value() == clusterTypeLabelManagementCluster, nil
+		}
+	}
+
+	return false, nil
+}
+
 // runCreateManagedJob creates managed job in the specific cluster
 func runCreateManagedJob(cmd *cobra.Command, args []string) (err error) {
 
@@ -127,12 +167,26 @@ func runCreateManagedJob(cmd *cobra.Command, args []string) (err error) {
 	if err != nil {
 		return err
 	}
-
+	
 	// create the job
 	job, err := createJob(client)
-
+	
 	if err != nil {
 		return err
+	}
+	
+	mc, err := isManagementCluster()
+	if err != nil{
+		logger.Warn("Could not determine if cluster is Managed Cluster")
+	}
+
+	if mc { // print dynatrace url for managed clusters only		
+		dtInstance, err := getDynatraceInstance() 
+		if err != nil {
+			logger.Info("Could not get Dynatrace instance")
+		} else {
+			defer fmt.Fprintf(cmd.OutOrStdout(), "\nCheck dynatrace logs at: %s\n", dtInstance)
+		}
 	}
 
 	// wait for job to be finished
@@ -334,4 +388,54 @@ func getJobStatus(client BackplaneApi.ClientInterface, job *BackplaneApi.Job) (B
 	}
 
 	return *formatJobResp.JSON200.JobStatus.Status, nil
+}
+
+var listDynaKube = func(cl client.Client,ctx context.Context, u client.ObjectList, opts ...client.ListOption) error{
+	return cl.List(ctx, u, opts...)
+}
+
+func getDynatraceInstance() (instance string, err error) {
+	bp, err := config.GetBackplaneConfiguration()
+	if err != nil {
+		return
+	}
+	cfg, err := login.GetRestConfig(bp, options.clusterID)
+	if err != nil {
+		return
+	}
+	cl, err := client.New(cfg, client.Options{})
+
+	if err != nil {
+		return
+	}
+	u := &unstructured.Unstructured{}
+	u.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "dynatrace.com",
+		Kind:    "DynaKube",
+		Version: "v1alpha1",
+	})
+
+	err = listDynaKube(cl,context.Background(), u, client.InNamespace("dynatrace"))
+	if err != nil {
+		return
+	}
+
+	err = u.EachListItem(func(object runtime.Object) error {
+		ux := object.(*unstructured.Unstructured)
+
+		data := ux.Object["spec"].(map[string]interface{})["apiUrl"].(string)
+		output := regexp.MustCompile(`https:\/\/(\w+)\..*/api`).FindStringSubmatch(data)
+		if len(output) > 1 {
+			instance = output[0]
+			//convert api url to ui
+			instance = strings.Replace(instance, ".live.", ".apps.", 1)
+			instance = strings.Replace(instance, "/api", "/ui", 1)
+		}
+		return nil
+	})
+
+	if err != nil{
+		return "", err
+	}
+	return
 }
