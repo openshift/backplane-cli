@@ -9,5 +9,5 @@ import (
 
 func TestJira(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Jira Suite")
+	RunSpecs(t, "Jira Service Suite")
 }

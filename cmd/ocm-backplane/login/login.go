@@ -80,6 +80,9 @@ var (
 		RunE:         runLogin,
 		SilenceUsage: true,
 	}
+
+	//ohss service
+	ohssService *jira.OHSSService
 )
 
 func init() {
@@ -150,7 +153,7 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 		clusterKey = info.ClusterID
 		elevateReason = info.WebURL
 	case LoginTypeJira:
-		ohssIssue, err := getClusterInfoFromJira(bpConfig)
+		ohssIssue, err := getClusterInfoFromJira()
 		if err != nil {
 			return err
 		}
@@ -627,16 +630,12 @@ func getClusterInfoFromPagerduty(bpConfig config.BackplaneConfiguration) (alert 
 }
 
 // getClusterInfoFromJira returns a cluster info OHSS card
-func getClusterInfoFromJira(bpConfig config.BackplaneConfiguration) (ohss jira.OHSSIssue, err error) {
-	if bpConfig.JiraAPIToken == "" || bpConfig.JiraBaseURL == "" {
-		return ohss, fmt.Errorf("please make sure the JIRA url and token are configured correctly in the config file")
-	}
-	jiraClient, err := jira.NewJiraFromConfig(bpConfig)
-	if err != nil {
-		return ohss, fmt.Errorf("could not initialize the client: %w", err)
+func getClusterInfoFromJira() (ohss jira.OHSSIssue, err error) {
+	if ohssService == nil {
+		ohssService = jira.NewOHSSService(jira.DefaultIssueService)
 	}
 
-	ohss, err = jiraClient.GetIssue(args.ohss)
+	ohss, err = ohssService.GetIssue(args.ohss)
 	if err != nil {
 		return ohss, err
 	}
