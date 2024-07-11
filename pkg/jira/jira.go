@@ -8,12 +8,21 @@ import (
 )
 
 const (
-	JiraOHSSProjectName            = "OpenShift Hosted SRE Support"
+	JiraOHSSProjectID              = "OHSS"
+	CustomFieldClusterID           = "customfield_12316349"
 	JqlGetIssueTemplate            = `project = "%s" AND issue = "%s"`
 	JqlGetIssuesForClusterTemplate = `(project = "%s" AND "Cluster ID" ~ "%s") 
 		OR (project = "%s" AND "Cluster ID" ~ "%s") 
 		ORDER BY created DESC`
 )
+
+type OHSSIssue struct {
+	ID        string
+	Title     string
+	ProjectID string
+	WebURL    string
+	ClusterID string
+}
 
 type Jira struct {
 	client JiraClient
@@ -27,7 +36,7 @@ func NewJira(client JiraClient) *Jira {
 
 func NewJiraFromConfig(bpConfig config.BackplaneConfiguration) (*Jira, error) {
 	jiraClient := NewClient()
-	err := jiraClient.Connect(bpConfig.JiraBaseUrl, bpConfig.JiraAPIToken)
+	err := jiraClient.Connect(bpConfig.JiraBaseURL, bpConfig.JiraAPIToken)
 
 	if err != nil {
 		return nil, err
@@ -40,24 +49,26 @@ func NewJiraFromConfig(bpConfig config.BackplaneConfiguration) (*Jira, error) {
 }
 
 // GetIssue returns matching issue from OHSS project
-func (j *Jira) GetIssue(issueID string) (issue jira.Issue, err error) {
+func (j *Jira) GetIssue(issueID string) (ohssIssue OHSSIssue, err error) {
 
 	if issueID == "" {
-		return issue, fmt.Errorf("empty issue Id")
+		return ohssIssue, fmt.Errorf("empty issue Id")
 	}
-	jql := fmt.Sprintf(JqlGetIssueTemplate, JiraOHSSProjectName, issueID)
-	issues, err := j.client.SearchIssue(jql, nil)
+	issue, err := j.client.GetIssue(issueID, nil)
 	if err != nil {
-		return issue, err
+		return ohssIssue, err
 	}
-	switch len(issues) {
-	case 0:
-		return issue, fmt.Errorf("no matching issue for issueID:%s", issueID)
-	case 1:
-		return issues[0], nil
-	default:
-		return issue, fmt.Errorf("more than one matching issues for issueID:%s", issueID)
+	if issue != nil {
+		formatIssue, err := j.formatIssue(*issue)
+		if err != nil {
+			return ohssIssue, err
+		}
+		return formatIssue, nil
+	} else {
+		return ohssIssue, fmt.Errorf("no matching issue for issueID:%s", issueID)
+
 	}
+
 }
 
 // GetJiraIssuesForCluster returns all matching issues for cluster ID
@@ -69,14 +80,30 @@ func (j *Jira) GetJiraIssuesForCluster(clusterID string, externalClusterID strin
 
 	jql := fmt.Sprintf(
 		JqlGetIssuesForClusterTemplate,
-		JiraOHSSProjectName,
+		JiraOHSSProjectID,
 		clusterID,
-		JiraOHSSProjectName,
+		JiraOHSSProjectID,
 		externalClusterID,
 	)
-	issues, err := j.client.SearchIssue(jql, nil)
+	issues, err := j.client.SearchIssues(jql, nil)
 	if err != nil {
 		return nil, err
 	}
 	return issues, nil
+}
+
+// formatIssue for
+func (j *Jira) formatIssue(issue jira.Issue) (formatIssue OHSSIssue, err error) {
+
+	formatIssue.ID = issue.ID
+	if issue.Fields != nil {
+		clusterID, clusterIDExist := issue.Fields.Unknowns[CustomFieldClusterID]
+		if clusterIDExist {
+			formatIssue.ClusterID = fmt.Sprintf("%s", clusterID)
+		}
+	}
+	formatIssue.WebURL = issue.Self
+	formatIssue.Title = issue.Fields.Summary
+	formatIssue.ProjectID = issue.Fields.Project.ID
+	return formatIssue, nil
 }

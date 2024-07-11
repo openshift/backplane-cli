@@ -9,7 +9,8 @@ import (
 // JiraClient is an interface to handle jira functions
 type JiraClient interface {
 	Connect(baseURL string, jiraToken string) error
-	SearchIssue(jql string, options *jira.SearchOptions) (issues []jira.Issue, err error)
+	SearchIssues(jql string, options *jira.SearchOptions) (issues []jira.Issue, err error)
+	GetIssue(issueID string, options *jira.GetQueryOptions) (*jira.Issue, error)
 	CreateIssue(issue *jira.Issue) (*jira.Issue, error)
 }
 
@@ -46,9 +47,17 @@ func (c *DefaultJiraClientImpl) Connect(baseURL string, jiraToken string) error 
 }
 
 // SearchIssue returns the issues based on JQL
-func (c *DefaultJiraClientImpl) SearchIssue(jql string, options *jira.SearchOptions) (issues []jira.Issue, err error) {
+func (c *DefaultJiraClientImpl) SearchIssues(jql string, options *jira.SearchOptions) (issues []jira.Issue, err error) {
 	issues, _, err = c.client.Issue.Search(jql, options)
 	return issues, err
+
+}
+
+// SearchIssue returns the issues based on JQL
+func (c *DefaultJiraClientImpl) GetIssue(issueID string, options *jira.GetQueryOptions) (*jira.Issue, error) {
+	issue, _, err := c.client.Issue.Get(issueID, options)
+	return issue, err
+
 }
 
 // Create Jira Issue

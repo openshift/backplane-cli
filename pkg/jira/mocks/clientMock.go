@@ -63,17 +63,32 @@ func (mr *MockJiraClientMockRecorder) CreateIssue(arg0 interface{}) *gomock.Call
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateIssue", reflect.TypeOf((*MockJiraClient)(nil).CreateIssue), arg0)
 }
 
-// SearchIssue mocks base method.
-func (m *MockJiraClient) SearchIssue(arg0 string, arg1 *jira.SearchOptions) ([]jira.Issue, error) {
+// GetIssue mocks base method.
+func (m *MockJiraClient) GetIssue(arg0 string, arg1 *jira.GetQueryOptions) (*jira.Issue, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SearchIssue", arg0, arg1)
+	ret := m.ctrl.Call(m, "GetIssue", arg0, arg1)
+	ret0, _ := ret[0].(*jira.Issue)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetIssue indicates an expected call of GetIssue.
+func (mr *MockJiraClientMockRecorder) GetIssue(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetIssue", reflect.TypeOf((*MockJiraClient)(nil).GetIssue), arg0, arg1)
+}
+
+// SearchIssues mocks base method.
+func (m *MockJiraClient) SearchIssues(arg0 string, arg1 *jira.SearchOptions) ([]jira.Issue, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SearchIssues", arg0, arg1)
 	ret0, _ := ret[0].([]jira.Issue)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// SearchIssue indicates an expected call of SearchIssue.
-func (mr *MockJiraClientMockRecorder) SearchIssue(arg0, arg1 interface{}) *gomock.Call {
+// SearchIssues indicates an expected call of SearchIssues.
+func (mr *MockJiraClientMockRecorder) SearchIssues(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SearchIssue", reflect.TypeOf((*MockJiraClient)(nil).SearchIssue), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SearchIssues", reflect.TypeOf((*MockJiraClient)(nil).SearchIssues), arg0, arg1)
 }

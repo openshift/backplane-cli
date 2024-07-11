@@ -24,6 +24,7 @@ import (
 	"github.com/openshift/backplane-cli/pkg/backplaneapi"
 	"github.com/openshift/backplane-cli/pkg/cli/config"
 	"github.com/openshift/backplane-cli/pkg/cli/globalflags"
+	"github.com/openshift/backplane-cli/pkg/jira"
 	"github.com/openshift/backplane-cli/pkg/login"
 	"github.com/openshift/backplane-cli/pkg/ocm"
 	"github.com/openshift/backplane-cli/pkg/pagerduty"
@@ -36,6 +37,7 @@ const (
 	LoginTypeClusterID          = "cluster-id"
 	LoginTypeExistingKubeConfig = "kube-config"
 	LoginTypePagerduty          = "pagerduty"
+	LoginTypeJira               = "jira"
 )
 
 var (
@@ -44,6 +46,7 @@ var (
 		kubeConfigPath   string
 		pd               string
 		defaultNamespace string
+		ohss             string
 	}
 
 	// loginType derive the login type based on flags and args
@@ -62,7 +65,7 @@ var (
 		run oc command later to operate the target cluster.`,
 		Example: " backplane login <id>\n backplane login %test%\n backplane login <external_id>\n backplane login --pd <incident-id>",
 		Args: func(cmd *cobra.Command, args []string) error {
-			if cmd.Flags().Lookup("pd").Changed {
+			if cmd.Flags().Lookup("pd").Changed || cmd.Flags().Lookup("ohss").Changed {
 				if err := cobra.ExactArgs(0)(cmd, args); err != nil {
 					return err
 				}
@@ -112,6 +115,12 @@ func init() {
 		"default",
 		"The  default namespace for a user to execute commands in",
 	)
+	flags.StringVar(
+		&args.ohss,
+		"ohss",
+		"",
+		"Login using JIRA Id",
+	)
 
 }
 
@@ -140,7 +149,16 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 		}
 		clusterKey = info.ClusterID
 		elevateReason = info.WebURL
-
+	case LoginTypeJira:
+		ohssIssue, err := getClusterInfoFromJira(bpConfig)
+		if err != nil {
+			return err
+		}
+		if ohssIssue.ClusterID == "" {
+			return fmt.Errorf("clusterID cannot be detected for JIRA issue:%s", args.ohss)
+		}
+		clusterKey = ohssIssue.ClusterID
+		elevateReason = ohssIssue.WebURL
 	case LoginTypeClusterID:
 		logger.Debugf("Cluster Key is given in argument")
 		clusterKey = argv[0]
@@ -571,9 +589,11 @@ func preLogin(cmd *cobra.Command, argv []string) (err error) {
 		loginType = LoginTypeClusterID
 
 	case 0:
-		if args.pd == "" {
+		if args.pd == "" && args.ohss == "" {
 			loginType = LoginTypeExistingKubeConfig
-		} else {
+		} else if args.ohss != "" {
+			loginType = LoginTypeJira
+		} else if args.pd != "" {
 			loginType = LoginTypePagerduty
 		}
 	}
@@ -604,6 +624,24 @@ func getClusterInfoFromPagerduty(bpConfig config.BackplaneConfiguration) (alert 
 		}
 	}
 	return alert, nil
+}
+
+// getClusterInfoFromJira returns a cluster info OHSS card
+func getClusterInfoFromJira(bpConfig config.BackplaneConfiguration) (ohss jira.OHSSIssue, err error) {
+	if bpConfig.JiraAPIToken == "" || bpConfig.JiraBaseURL == "" {
+		return ohss, fmt.Errorf("please make sure the JIRA url and token are configured correctly in the config file")
+	}
+	jiraClient, err := jira.NewJiraFromConfig(bpConfig)
+	if err != nil {
+		return ohss, fmt.Errorf("could not initialize the client: %w", err)
+	}
+
+	ohss, err = jiraClient.GetIssue(args.ohss)
+	if err != nil {
+		return ohss, err
+	}
+
+	return ohss, nil
 }
 
 // getClusterIDFromExistingKubeConfig returns clusterId from kubeconfig
