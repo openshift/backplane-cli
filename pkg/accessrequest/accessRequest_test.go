@@ -17,10 +17,10 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/backplane-cli/pkg/backplaneapi"
 	backplaneapiMock "github.com/openshift/backplane-cli/pkg/backplaneapi/mocks"
+	jiraClient "github.com/openshift/backplane-cli/pkg/jira"
+	jiraMocks "github.com/openshift/backplane-cli/pkg/jira/mocks"
 	"github.com/openshift/backplane-cli/pkg/ocm"
 	ocmMock "github.com/openshift/backplane-cli/pkg/ocm/mocks"
-	"github.com/openshift/backplane-cli/pkg/utils"
-	utilsMocks "github.com/openshift/backplane-cli/pkg/utils/mocks"
 )
 
 const testDesc = "accessrequest package"
@@ -57,7 +57,7 @@ var _ = Describe(testDesc, func() {
 		mockCtrl         *gomock.Controller
 		mockClientUtil   *backplaneapiMock.MockClientUtils
 		mockOcmInterface *ocmMock.MockOCMInterface
-		mockIssueService *utilsMocks.MockIssueServiceInterface
+		mockIssueService *jiraMocks.MockIssueServiceInterface
 
 		clusterID       string
 		ocmEnv          *cmv1.Environment
@@ -81,8 +81,8 @@ var _ = Describe(testDesc, func() {
 		mockOcmInterface = ocmMock.NewMockOCMInterface(mockCtrl)
 		ocm.DefaultOCMInterface = mockOcmInterface
 
-		mockIssueService = utilsMocks.NewMockIssueServiceInterface(mockCtrl)
-		utils.DefaultIssueService = mockIssueService
+		mockIssueService = jiraMocks.NewMockIssueServiceInterface(mockCtrl)
+		jiraClient.DefaultIssueService = mockIssueService
 
 		clusterID = "cluster-12345678"
 

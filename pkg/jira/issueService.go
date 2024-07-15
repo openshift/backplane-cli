@@ -1,4 +1,4 @@
-package utils
+package jira
 
 import (
 	"errors"

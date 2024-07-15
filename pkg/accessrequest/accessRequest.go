@@ -9,6 +9,7 @@ import (
 	ocmsdk "github.com/openshift-online/ocm-sdk-go"
 	acctrspv1 "github.com/openshift-online/ocm-sdk-go/accesstransparency/v1"
 	"github.com/openshift/backplane-cli/pkg/cli/config"
+	jiraClient "github.com/openshift/backplane-cli/pkg/jira"
 	"github.com/openshift/backplane-cli/pkg/ocm"
 	"github.com/openshift/backplane-cli/pkg/utils"
 	logger "github.com/sirupsen/logrus"
@@ -114,7 +115,7 @@ func verifyAndPossiblyRetrieveIssue(bpConfig *config.BackplaneConfiguration, isP
 		return nil, nil
 	}
 
-	issue, _, err := utils.DefaultIssueService.Get(issueID, nil)
+	issue, _, err := jiraClient.DefaultIssueService.Get(issueID, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -145,7 +146,7 @@ func createNotificationIssue(bpConfig *config.BackplaneConfiguration, isProd boo
 		},
 	}
 
-	issue, _, err := utils.DefaultIssueService.Create(issue)
+	issue, _, err := jiraClient.DefaultIssueService.Create(issue)
 	if err != nil {
 		return nil, err
 	}
@@ -164,7 +165,7 @@ func getProjectFromIssueID(issueID string) string {
 }
 
 func transitionIssue(issueID, newTransitionName string) {
-	possibleTransitions, _, err := utils.DefaultIssueService.GetTransitions(issueID)
+	possibleTransitions, _, err := jiraClient.DefaultIssueService.GetTransitions(issueID)
 	if err != nil {
 		logger.Warnf("won't transition the '%s' JIRA issue to '%s' as it was not possible to retrieve the possible transitions for the issue: %v", issueID, newTransitionName, err)
 	} else {
@@ -180,7 +181,7 @@ func transitionIssue(issueID, newTransitionName string) {
 		if transitionID == "" {
 			logger.Warnf("won't transition the '%s' JIRA issue to '%s' as there is no transition named that way", issueID, newTransitionName)
 		} else {
-			_, err := utils.DefaultIssueService.DoTransition(issueID, transitionID)
+			_, err := jiraClient.DefaultIssueService.DoTransition(issueID, transitionID)
 
 			if err != nil {
 				logger.Warnf("failed to transition the '%s' JIRA issue to '%s': %v", issueID, newTransitionName, err)
@@ -196,7 +197,7 @@ func updateNotificationIssueDescription(issue *jira.Issue, onApprovalTransitionN
 			onApprovalTransitionName, accessRequest.HREF()),
 	}
 
-	_, _, err := utils.DefaultIssueService.Update(issue)
+	_, _, err := jiraClient.DefaultIssueService.Update(issue)
 	if err != nil {
 		logger.Warnf("failed to update the description of the '%s' JIRA issue: %v", issue.Key, err)
 	}
