@@ -17,7 +17,7 @@ require (
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.33.1
 	github.com/openshift-online/ocm-cli v0.1.74
-	github.com/openshift-online/ocm-sdk-go v0.1.428
+	github.com/openshift-online/ocm-sdk-go v0.1.430
 	github.com/openshift/backplane-api v0.0.0-20240620101759-427d89f7620c
 	github.com/openshift/client-go v0.0.0-20221019143426-16aed247da5c
 	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8
