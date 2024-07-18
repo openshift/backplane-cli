@@ -22,10 +22,12 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/backplane-cli/cmd/ocm-backplane/accessrequest"
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/cloud"
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/config"
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/console"
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/elevate"
+	healthcheck "github.com/openshift/backplane-cli/cmd/ocm-backplane/healthcheck"
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/login"
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/logout"
 	managedjob "github.com/openshift/backplane-cli/cmd/ocm-backplane/managedJob"
@@ -64,6 +66,7 @@ func init() {
 	globalflags.AddVerbosityFlag(rootCmd)
 
 	// Register sub-commands
+	rootCmd.AddCommand(accessrequest.NewAccessRequestCmd())
 	rootCmd.AddCommand(console.NewConsoleCmd())
 	rootCmd.AddCommand(config.NewConfigCmd())
 	rootCmd.AddCommand(cloud.CloudCmd)
@@ -78,4 +81,5 @@ func init() {
 	rootCmd.AddCommand(upgrade.UpgradeCmd)
 	rootCmd.AddCommand(version.VersionCmd)
 	rootCmd.AddCommand(monitoring.MonitoringCmd)
+	rootCmd.AddCommand(healthcheck.HealthCheckCmd)
 }

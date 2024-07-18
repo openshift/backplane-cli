@@ -24,7 +24,8 @@ const (
 	AwsExportFormat = `export AWS_ACCESS_KEY_ID=%s
 export AWS_SECRET_ACCESS_KEY=%s
 export AWS_SESSION_TOKEN=%s
-export AWS_DEFAULT_REGION=%s`
+export AWS_DEFAULT_REGION=%s
+export AWS_REGION=%s`
 )
 
 type AWSCredentialsResponse struct {
@@ -40,7 +41,7 @@ func (r *AWSCredentialsResponse) String() string {
 }
 
 func (r *AWSCredentialsResponse) FmtExport() string {
-	return fmt.Sprintf(AwsExportFormat, r.AccessKeyID, r.SecretAccessKey, r.SessionToken, r.Region)
+	return fmt.Sprintf(AwsExportFormat, r.AccessKeyID, r.SecretAccessKey, r.SessionToken, r.Region, r.Region)
 }
 
 // AWSV2Config returns an aws-sdk-go-v2 config that can be used to programmatically access the AWS API

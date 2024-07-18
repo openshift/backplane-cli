@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi8/ubi:8.10-901 as base
+FROM registry.access.redhat.com/ubi8/ubi:8.10-1020 as base
 
 ### Pre-install dependencies
 # These packages will end up in the final image
@@ -8,7 +8,7 @@ RUN yum --assumeyes install \
     && yum clean all;
 
 ### Build backplane-cli
-FROM registry.access.redhat.com/ubi8/ubi:8.10-901 as bp-cli-builder
+FROM registry.access.redhat.com/ubi8/ubi:8.10-1020 as bp-cli-builder
 
 RUN yum install --assumeyes \
     make \
@@ -32,7 +32,7 @@ RUN cp ./ocm-backplane /out
 RUN chmod -R +x /out
 
 ### Build dependencies
-FROM registry.access.redhat.com/ubi8/ubi:8.10-901 as dep-builder
+FROM registry.access.redhat.com/ubi8/ubi:8.10-1020 as dep-builder
 
 RUN yum install --assumeyes \
     jq \
@@ -43,7 +43,7 @@ ARG GITHUB_URL="https://api.github.com"
 ARG GITHUB_TOKEN=""
 
 # Replace version with a version number to pin a specific version (eg: "4.7.8")
-ARG OC_VERSION="stable"
+ARG OC_VERSION="stable-4.15"
 ENV OC_URL="https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/${OC_VERSION}"
 
 # Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.4.0")

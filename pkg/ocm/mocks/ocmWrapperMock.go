@@ -9,7 +9,8 @@ import (
 
 	gomock "github.com/golang/mock/gomock"
 	sdk "github.com/openshift-online/ocm-sdk-go"
-	v1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	v1 "github.com/openshift-online/ocm-sdk-go/accesstransparency/v1"
+	v10 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 )
 
 // MockOCMInterface is a mock of OCMInterface interface.
@@ -35,11 +36,56 @@ func (m *MockOCMInterface) EXPECT() *MockOCMInterfaceMockRecorder {
 	return m.recorder
 }
 
+// CreateAccessRequestDecision mocks base method.
+func (m *MockOCMInterface) CreateAccessRequestDecision(arg0 *sdk.Connection, arg1 *v1.AccessRequest, arg2 v1.DecisionDecision, arg3 string) (*v1.Decision, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateAccessRequestDecision", arg0, arg1, arg2, arg3)
+	ret0, _ := ret[0].(*v1.Decision)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreateAccessRequestDecision indicates an expected call of CreateAccessRequestDecision.
+func (mr *MockOCMInterfaceMockRecorder) CreateAccessRequestDecision(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateAccessRequestDecision", reflect.TypeOf((*MockOCMInterface)(nil).CreateAccessRequestDecision), arg0, arg1, arg2, arg3)
+}
+
+// CreateClusterAccessRequest mocks base method.
+func (m *MockOCMInterface) CreateClusterAccessRequest(arg0 *sdk.Connection, arg1, arg2, arg3, arg4 string) (*v1.AccessRequest, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateClusterAccessRequest", arg0, arg1, arg2, arg3, arg4)
+	ret0, _ := ret[0].(*v1.AccessRequest)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreateClusterAccessRequest indicates an expected call of CreateClusterAccessRequest.
+func (mr *MockOCMInterfaceMockRecorder) CreateClusterAccessRequest(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateClusterAccessRequest", reflect.TypeOf((*MockOCMInterface)(nil).CreateClusterAccessRequest), arg0, arg1, arg2, arg3, arg4)
+}
+
+// GetClusterActiveAccessRequest mocks base method.
+func (m *MockOCMInterface) GetClusterActiveAccessRequest(arg0 *sdk.Connection, arg1 string) (*v1.AccessRequest, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetClusterActiveAccessRequest", arg0, arg1)
+	ret0, _ := ret[0].(*v1.AccessRequest)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetClusterActiveAccessRequest indicates an expected call of GetClusterActiveAccessRequest.
+func (mr *MockOCMInterfaceMockRecorder) GetClusterActiveAccessRequest(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetClusterActiveAccessRequest", reflect.TypeOf((*MockOCMInterface)(nil).GetClusterActiveAccessRequest), arg0, arg1)
+}
+
 // GetClusterInfoByID mocks base method.
-func (m *MockOCMInterface) GetClusterInfoByID(arg0 string) (*v1.Cluster, error) {
+func (m *MockOCMInterface) GetClusterInfoByID(arg0 string) (*v10.Cluster, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetClusterInfoByID", arg0)
-	ret0, _ := ret[0].(*v1.Cluster)
+	ret0, _ := ret[0].(*v10.Cluster)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -51,10 +97,10 @@ func (mr *MockOCMInterfaceMockRecorder) GetClusterInfoByID(arg0 interface{}) *go
 }
 
 // GetClusterInfoByIDWithConn mocks base method.
-func (m *MockOCMInterface) GetClusterInfoByIDWithConn(arg0 *sdk.Connection, arg1 string) (*v1.Cluster, error) {
+func (m *MockOCMInterface) GetClusterInfoByIDWithConn(arg0 *sdk.Connection, arg1 string) (*v10.Cluster, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetClusterInfoByIDWithConn", arg0, arg1)
-	ret0, _ := ret[0].(*v1.Cluster)
+	ret0, _ := ret[0].(*v10.Cluster)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -113,10 +159,10 @@ func (mr *MockOCMInterfaceMockRecorder) GetOCMAccessTokenWithConn(arg0 interface
 }
 
 // GetOCMEnvironment mocks base method.
-func (m *MockOCMInterface) GetOCMEnvironment() (*v1.Environment, error) {
+func (m *MockOCMInterface) GetOCMEnvironment() (*v10.Environment, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetOCMEnvironment")
-	ret0, _ := ret[0].(*v1.Environment)
+	ret0, _ := ret[0].(*v10.Environment)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -187,6 +233,21 @@ func (m *MockOCMInterface) GetTargetCluster(arg0 string) (string, string, error)
 func (mr *MockOCMInterfaceMockRecorder) GetTargetCluster(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTargetCluster", reflect.TypeOf((*MockOCMInterface)(nil).GetTargetCluster), arg0)
+}
+
+// IsClusterAccessProtectionEnabled mocks base method.
+func (m *MockOCMInterface) IsClusterAccessProtectionEnabled(arg0 *sdk.Connection, arg1 string) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "IsClusterAccessProtectionEnabled", arg0, arg1)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// IsClusterAccessProtectionEnabled indicates an expected call of IsClusterAccessProtectionEnabled.
+func (mr *MockOCMInterfaceMockRecorder) IsClusterAccessProtectionEnabled(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsClusterAccessProtectionEnabled", reflect.TypeOf((*MockOCMInterface)(nil).IsClusterAccessProtectionEnabled), arg0, arg1)
 }
 
 // IsClusterHibernating mocks base method.

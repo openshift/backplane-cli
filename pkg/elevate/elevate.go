@@ -1,14 +1,13 @@
 package elevate
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 
 	logger "github.com/sirupsen/logrus"
-	"k8s.io/client-go/tools/clientcmd/api"
 
+	"github.com/openshift/backplane-cli/pkg/login"
 	"github.com/openshift/backplane-cli/pkg/utils"
 )
 
@@ -18,32 +17,6 @@ var (
 	ReadKubeConfigRaw     = utils.ReadKubeconfigRaw
 	WriteKubeconfigToFile = utils.CreateTempKubeConfig
 )
-
-func AddElevationReasonToRawKubeconfig(config api.Config, elevationReason string) error {
-	return AddElevationReasonsToRawKubeconfig(config, []string{elevationReason})
-}
-
-func AddElevationReasonsToRawKubeconfig(config api.Config, elevationReasons []string) error {
-	logger.Debugln("Adding reason for backplane-cluster-admin elevation")
-	if config.Contexts[config.CurrentContext] == nil {
-		return errors.New("no current kubeconfig context")
-	}
-
-	currentCtxUsername := config.Contexts[config.CurrentContext].AuthInfo
-
-	if config.AuthInfos[currentCtxUsername] == nil {
-		return errors.New("no current user information")
-	}
-
-	if config.AuthInfos[currentCtxUsername].ImpersonateUserExtra == nil {
-		config.AuthInfos[currentCtxUsername].ImpersonateUserExtra = make(map[string][]string)
-	}
-
-	config.AuthInfos[currentCtxUsername].ImpersonateUserExtra["reason"] = elevationReasons
-	config.AuthInfos[currentCtxUsername].Impersonate = "backplane-cluster-admin"
-
-	return nil
-}
 
 func RunElevate(argv []string) error {
 	logger.Debugln("Finding target cluster from kubeconfig")
@@ -59,7 +32,7 @@ func RunElevate(argv []string) error {
 	} else {
 		elevateReason = argv[0]
 	}
-	elevationReasons, err := ComputeElevateContextAndStoreToKubeConfigFileAndGetReasons(config, elevateReason)
+	elevationReasons, err := login.SaveElevateContextReasons(config, elevateReason)
 	if err != nil {
 		return err
 	}
@@ -70,7 +43,7 @@ func RunElevate(argv []string) error {
 	}
 
 	logger.Debug("Adding impersonation RBAC allow permissions to kubeconfig")
-	err = AddElevationReasonsToRawKubeconfig(config, elevationReasons)
+	err = login.AddElevationReasonsToRawKubeconfig(config, elevationReasons)
 	if err != nil {
 		return err
 	}

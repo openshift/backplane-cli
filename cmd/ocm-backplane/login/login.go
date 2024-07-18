@@ -24,6 +24,7 @@ import (
 	"github.com/openshift/backplane-cli/pkg/backplaneapi"
 	"github.com/openshift/backplane-cli/pkg/cli/config"
 	"github.com/openshift/backplane-cli/pkg/cli/globalflags"
+	"github.com/openshift/backplane-cli/pkg/jira"
 	"github.com/openshift/backplane-cli/pkg/login"
 	"github.com/openshift/backplane-cli/pkg/ocm"
 	"github.com/openshift/backplane-cli/pkg/pagerduty"
@@ -31,7 +32,13 @@ import (
 )
 
 // Environment variable that for setting PS1
-const EnvPs1 = "KUBE_PS1_CLUSTER_FUNCTION"
+const (
+	EnvPs1                      = "KUBE_PS1_CLUSTER_FUNCTION"
+	LoginTypeClusterID          = "cluster-id"
+	LoginTypeExistingKubeConfig = "kube-config"
+	LoginTypePagerduty          = "pagerduty"
+	LoginTypeJira               = "jira"
+)
 
 var (
 	args struct {
@@ -39,7 +46,12 @@ var (
 		kubeConfigPath   string
 		pd               string
 		defaultNamespace string
+		ohss             string
 	}
+
+	// loginType derive the login type based on flags and args
+	// set default login type as cluster-id
+	loginType = LoginTypeClusterID
 
 	globalOpts = &globalflags.GlobalOptions{}
 
@@ -53,7 +65,7 @@ var (
 		run oc command later to operate the target cluster.`,
 		Example: " backplane login <id>\n backplane login %test%\n backplane login <external_id>\n backplane login --pd <incident-id>",
 		Args: func(cmd *cobra.Command, args []string) error {
-			if cmd.Flags().Lookup("pd").Changed {
+			if cmd.Flags().Lookup("pd").Changed || cmd.Flags().Lookup("ohss").Changed {
 				if err := cobra.ExactArgs(0)(cmd, args); err != nil {
 					return err
 				}
@@ -64,9 +76,13 @@ var (
 			}
 			return nil
 		},
+		PreRunE:      preLogin,
 		RunE:         runLogin,
 		SilenceUsage: true,
 	}
+
+	//ohss service
+	ohssService *jira.OHSSService
 )
 
 func init() {
@@ -93,7 +109,7 @@ func init() {
 		&args.pd,
 		"pd",
 		"",
-		"Login using PagerDuty incident id or html_url.",
+		"Login using PagerDuty incident id or pagerduty url.",
 	)
 	flags.StringVarP(
 		&args.defaultNamespace,
@@ -102,11 +118,18 @@ func init() {
 		"default",
 		"The  default namespace for a user to execute commands in",
 	)
+	flags.StringVar(
+		&args.ohss,
+		"ohss",
+		"",
+		"Login using JIRA Id",
+	)
 
 }
 
 func runLogin(cmd *cobra.Command, argv []string) (err error) {
 	var clusterKey string
+	var elevateReason string
 	logger.Debugf("Running Login Command ...")
 	logger.Debugf("Checking Backplane Version")
 	utils.CheckBackplaneVersion(cmd)
@@ -119,44 +142,38 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 	}
 	logger.Debugf("Backplane Config File Contains: %v \n", bpConfig)
 
+	// login to the cluster based on login type
 	logger.Debugf("Extracting Backplane Cluster ID")
-	// Currently go-pagerduty pkg does not include incident id validation.
-	if args.pd != "" {
-		pdClient, err := pagerduty.NewWithToken(bpConfig.PagerDutyAPIKey)
-		if err != nil {
-			return fmt.Errorf("could not initialize the client: %w", err)
-		}
-		if strings.Contains(args.pd, "/incidents/") {
-			incidentID := args.pd[strings.LastIndex(args.pd, "/")+1:]
-			clusterKey, err = pdClient.GetClusterID(incidentID)
-			if err != nil {
-				return err
-			}
-		} else {
-			clusterKey, err = pdClient.GetClusterID(args.pd)
-			if err != nil {
-				return err
-			}
-		}
-	}
-
-	// Get the cluster ID only if it hasn't been populated by PagerDuty.
-	if len(argv) == 1 {
-		// if explicitly one cluster key given, use it to log in.
-		logger.Debugf("Cluster Key is given in argument")
-		clusterKey = argv[0]
-		logger.WithField("Search Key", clusterKey).Debugln("Finding target cluster")
-
-	} else if len(argv) == 0 && args.pd == "" {
-		// if no args given, try to log into the cluster that the user is logged into
-		logger.Debugf("Finding Clustrer Key from current cluster")
-		clusterInfo, err := utils.DefaultClusterUtils.GetBackplaneClusterFromConfig()
+	switch loginType {
+	case LoginTypePagerduty:
+		info, err := getClusterInfoFromPagerduty(bpConfig)
 		if err != nil {
 			return err
 		}
-		clusterKey = clusterInfo.ClusterID
-		logger.Debugf("Backplane Cluster Infromation data extracted: %+v\n", clusterInfo)
+		clusterKey = info.ClusterID
+		elevateReason = info.WebURL
+	case LoginTypeJira:
+		ohssIssue, err := getClusterInfoFromJira()
+		if err != nil {
+			return err
+		}
+		if ohssIssue.ClusterID == "" {
+			return fmt.Errorf("clusterID cannot be detected for JIRA issue:%s", args.ohss)
+		}
+		clusterKey = ohssIssue.ClusterID
+		elevateReason = ohssIssue.WebURL
+	case LoginTypeClusterID:
+		logger.Debugf("Cluster Key is given in argument")
+		clusterKey = argv[0]
+	case LoginTypeExistingKubeConfig:
+		clusterKey, err = getClusterIDFromExistingKubeConfig()
+		if err != nil {
+			return err
+		}
+	default:
+		return fmt.Errorf("login type cannot be detected")
 	}
+
 	logger.Debugf("Backplane Cluster Key is: %v \n", clusterKey)
 
 	logger.Debugln("Setting Proxy URL from global options")
@@ -288,14 +305,18 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 			// Hibernating, print an error
 			return fmt.Errorf("cluster %s is hibernating, login failed", clusterKey)
 		}
+
 		// Check API connection with configured proxy
 		if connErr := bpConfig.CheckAPIConnection(); connErr != nil {
-			return fmt.Errorf("cannot connect to backplane API URL, check if you need to use a proxy/VPN to access backplane: %v", connErr)
+			logger.Errorf("Cannot connect to backplane API URL, check if you need to use a proxy/VPN to access backplane: %v. To troubleshoot connectivity issues, please run the following command: ocm-backplane health-check", connErr)
+			return fmt.Errorf("cannot connect to backplane API URL: %v", connErr)
 		}
 
-		// Otherwise, return the failure
-		return fmt.Errorf("can't login to cluster: %v", err)
+		// Log suggestion to run connectivity health check if login fails
+		logger.Errorf("Login failed: %v. To troubleshoot connectivity issues, please run the following command: ocm-backplane health-check", err)
+		return fmt.Errorf("login failed: %v", err)
 	}
+
 	logger.WithField("URL", bpAPIClusterURL).Debugln("Proxy")
 
 	logger.Debugln("Generating a new K8s cluster config file")
@@ -350,11 +371,22 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 	rc.Contexts[targetContextNickName] = targetContext
 	rc.CurrentContext = targetContextNickName
 
+	// Add elevate reason to kubeconfig context
+	if elevateReason != "" {
+		elevationReasons, err := login.SaveElevateContextReasons(rc, elevateReason)
+		if err != nil {
+			return err
+		}
+		logger.Infof("save elevate reason: %s\n", elevationReasons)
+	}
+
 	logger.Debugln("Saving new API config")
 	// Save the config
-	err = login.SaveKubeConfig(clusterID, rc, args.multiCluster, args.kubeConfigPath)
+	if err = login.SaveKubeConfig(clusterID, rc, args.multiCluster, args.kubeConfigPath); err != nil {
+		return err
+	}
 
-	return err
+	return nil
 }
 
 // GetRestConfig returns a client-go *rest.Config which can be used to programmatically interact with the
@@ -554,4 +586,76 @@ func isValidKubernetesNamespace(namespace string) bool {
 	// RFC 1123 compliant regex pattern)
 	pattern := `^[a-z0-9]([-a-z0-9]*[a-z0-9])?$`
 	return regexp.MustCompile(pattern).MatchString(namespace)
+}
+
+// preLogin will execute before the command
+func preLogin(cmd *cobra.Command, argv []string) (err error) {
+
+	switch len(argv) {
+	case 1:
+		loginType = LoginTypeClusterID
+
+	case 0:
+		if args.pd == "" && args.ohss == "" {
+			loginType = LoginTypeExistingKubeConfig
+		} else if args.ohss != "" {
+			loginType = LoginTypeJira
+		} else if args.pd != "" {
+			loginType = LoginTypePagerduty
+		}
+	}
+
+	return nil
+}
+
+// getClusterInfoFromPagerduty returns a pagerduty.Alert from Pagerduty incident,
+// which contains alert info including the cluster id.
+func getClusterInfoFromPagerduty(bpConfig config.BackplaneConfiguration) (alert pagerduty.Alert, err error) {
+	if bpConfig.PagerDutyAPIKey == "" {
+		return alert, fmt.Errorf("please make sure the PD API Key is configured correctly in the config file")
+	}
+	pdClient, err := pagerduty.NewWithToken(bpConfig.PagerDutyAPIKey)
+	if err != nil {
+		return alert, fmt.Errorf("could not initialize the client: %w", err)
+	}
+	if strings.Contains(args.pd, "/incidents/") {
+		incidentID := args.pd[strings.LastIndex(args.pd, "/")+1:]
+		alert, err = pdClient.GetClusterInfoFromIncident(incidentID)
+		if err != nil {
+			return alert, err
+		}
+	} else {
+		alert, err = pdClient.GetClusterInfoFromIncident(args.pd)
+		if err != nil {
+			return alert, err
+		}
+	}
+	return alert, nil
+}
+
+// getClusterInfoFromJira returns a cluster info OHSS card
+func getClusterInfoFromJira() (ohss jira.OHSSIssue, err error) {
+	if ohssService == nil {
+		ohssService = jira.NewOHSSService(jira.DefaultIssueService)
+	}
+
+	ohss, err = ohssService.GetIssue(args.ohss)
+	if err != nil {
+		return ohss, err
+	}
+
+	return ohss, nil
+}
+
+// getClusterIDFromExistingKubeConfig returns clusterId from kubeconfig
+func getClusterIDFromExistingKubeConfig() (string, error) {
+	var clusterKey string
+	logger.Debugf("Finding Clustrer Key from current cluster")
+	clusterInfo, err := utils.DefaultClusterUtils.GetBackplaneClusterFromConfig()
+	if err != nil {
+		return "", err
+	}
+	clusterKey = clusterInfo.ClusterID
+	logger.Debugf("Backplane Cluster Infromation data extracted: %+v\n", clusterInfo)
+	return clusterKey, nil
 }

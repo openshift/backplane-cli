@@ -53,6 +53,7 @@ func setConfig(cmd *cobra.Command, args []string) error {
 		}
 
 		bpConfig.SessionDirectory = viper.GetString("session-dir")
+		bpConfig.JiraToken = viper.GetString(config.JiraTokenViperKey)
 	}
 
 	// create config directory if it doesn't exist
@@ -90,8 +91,10 @@ func setConfig(cmd *cobra.Command, args []string) error {
 		bpConfig.SessionDirectory = args[1]
 	case PagerDutyAPIConfigVar:
 		bpConfig.PagerDutyAPIKey = args[1]
+	case config.JiraTokenViperKey:
+		bpConfig.JiraToken = args[1]
 	default:
-		return fmt.Errorf("supported config variables are %s, %s, %s & %s", URLConfigVar, ProxyURLConfigVar, SessionConfigVar, PagerDutyAPIConfigVar)
+		return fmt.Errorf("supported config variables are %s, %s, %s, %s & %s", URLConfigVar, ProxyURLConfigVar, SessionConfigVar, PagerDutyAPIConfigVar, config.JiraTokenViperKey)
 	}
 
 	viper.SetConfigType("json")
@@ -99,6 +102,7 @@ func setConfig(cmd *cobra.Command, args []string) error {
 	viper.Set(ProxyURLConfigVar, bpConfig.ProxyURL)
 	viper.Set(SessionConfigVar, bpConfig.SessionDirectory)
 	viper.Set(PagerDutyAPIConfigVar, bpConfig.PagerDutyAPIKey)
+	viper.Set(config.JiraTokenViperKey, bpConfig.JiraToken)
 
 	err = viper.WriteConfigAs(configPath)
 	if err != nil {
