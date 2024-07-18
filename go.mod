@@ -25,6 +25,7 @@ require (
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.19.0
+	github.com/trivago/tgo v1.0.7
 	golang.org/x/term v0.22.0
 	gopkg.in/AlecAivazis/survey.v1 v1.8.8
 	k8s.io/api v0.28.3
@@ -123,7 +124,6 @@ require (
 	github.com/spf13/afero v1.11.0 // indirect
 	github.com/spf13/cast v1.6.0 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
-	github.com/trivago/tgo v1.0.7 // indirect
 	github.com/xlab/treeprint v1.2.0 // indirect
 	github.com/zalando/go-keyring v0.2.3 // indirect
 	go.starlark.net v0.0.0-20230525235612-a134d8f9ddca // indirect

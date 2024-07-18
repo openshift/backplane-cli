@@ -40,6 +40,8 @@ type BackplaneConfiguration struct {
 	JiraBaseURL                 string                          `json:"jira-base-url"`
 	JiraToken                   string                          `json:"jira-token"`
 	JiraConfigForAccessRequests AccessRequestsJiraConfiguration `json:"jira-config-for-access-requests"`
+	VPNCheckEndpoint            string                          `json:"vpn-check-endpoint"`
+	ProxyCheckEndpoint          string                          `json:"proxy-check-endpoint"`
 }
 
 const (
@@ -57,12 +59,12 @@ var JiraConfigForAccessRequestsDefaultValue = AccessRequestsJiraConfiguration{
 	ProdProject:      "OHSS",
 	ProdIssueType:    "Incident",
 	ProjectToTransitionsNames: map[string]JiraTransitionsNamesForAccessRequests{
-		"SDAINT": JiraTransitionsNamesForAccessRequests{
+		"SDAINT": {
 			OnCreation: "In Progress",
 			OnApproval: "In Progress",
 			OnError:    "Closed",
 		},
-		"OHSS": JiraTransitionsNamesForAccessRequests{
+		"OHSS": {
 			OnCreation: "Pending Customer",
 			OnApproval: "New",
 			OnError:    "Cancelled",
@@ -113,7 +115,6 @@ func GetBackplaneConfiguration() (bpConfig BackplaneConfiguration, err error) {
 	}
 
 	if err = validateConfig(); err != nil {
-		// FIXME: we should return instead of warning here, after the tests do not require external network access
 		logger.Warn(err)
 	}
 
@@ -131,7 +132,7 @@ func GetBackplaneConfiguration() (bpConfig BackplaneConfiguration, err error) {
 	// Warn if user has explicitly defined backplane URL via env
 	url, ok := getBackplaneEnv(info.BackplaneURLEnvName)
 	if ok {
-		logger.Warn(fmt.Printf("Manual URL configuration is deprecated, please unset the environment %s", info.BackplaneURLEnvName))
+		logger.Warn(fmt.Sprintf("Manual URL configuration is deprecated, please unset the environment %s", info.BackplaneURLEnvName))
 		bpConfig.URL = url
 	} else {
 		// Fetch backplane URL from ocm env
@@ -179,6 +180,10 @@ func GetBackplaneConfiguration() (bpConfig BackplaneConfiguration, err error) {
 			}
 		}
 	}
+
+	// Load VPN and Proxy check endpoints from the local backplane configuration file
+	bpConfig.VPNCheckEndpoint = viper.GetString("vpn-check-endpoint")
+	bpConfig.ProxyCheckEndpoint = viper.GetString("proxy-check-endpoint")
 
 	return bpConfig, nil
 }

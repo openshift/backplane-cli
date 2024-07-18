@@ -27,6 +27,7 @@ import (
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/config"
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/console"
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/elevate"
+	healthcheck "github.com/openshift/backplane-cli/cmd/ocm-backplane/healthcheck"
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/login"
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/logout"
 	managedjob "github.com/openshift/backplane-cli/cmd/ocm-backplane/managedJob"
@@ -80,4 +81,5 @@ func init() {
 	rootCmd.AddCommand(upgrade.UpgradeCmd)
 	rootCmd.AddCommand(version.VersionCmd)
 	rootCmd.AddCommand(monitoring.MonitoringCmd)
+	rootCmd.AddCommand(healthcheck.HealthCheckCmd)
 }
