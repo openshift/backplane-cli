@@ -279,3 +279,18 @@ func (mr *MockOCMInterfaceMockRecorder) IsProduction() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsProduction", reflect.TypeOf((*MockOCMInterface)(nil).IsProduction))
 }
+
+// SetupOCMConnection mocks base method.
+func (m *MockOCMInterface) SetupOCMConnection() (*sdk.Connection, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetupOCMConnection")
+	ret0, _ := ret[0].(*sdk.Connection)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SetupOCMConnection indicates an expected call of SetupOCMConnection.
+func (mr *MockOCMInterfaceMockRecorder) SetupOCMConnection() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetupOCMConnection", reflect.TypeOf((*MockOCMInterface)(nil).SetupOCMConnection))
+}

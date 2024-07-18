@@ -6,8 +6,6 @@ import (
 	"os"
 	"strconv"
 
-	ocmsdk "github.com/openshift-online/ocm-cli/pkg/ocm"
-
 	"github.com/openshift/backplane-cli/pkg/ocm"
 
 	"github.com/pkg/browser"
@@ -130,9 +128,9 @@ func runConsole(cmd *cobra.Command, argv []string) (err error) {
 	logger.Infof("Using backplane URL: %s\n", backplaneConfiguration.URL)
 
 	// Initialize OCM connection
-	ocmConnection, err := ocmsdk.NewConnection().Build()
+	ocmConnection, err := ocm.DefaultOCMInterface.SetupOCMConnection()
 	if err != nil {
-		return fmt.Errorf("unable to build ocm sdk: %w", err)
+		return fmt.Errorf("failed to create OCM connection: %w", err)
 	}
 	defer ocmConnection.Close()
 

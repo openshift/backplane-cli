@@ -8,11 +8,12 @@ import (
 
 	"github.com/openshift/backplane-cli/pkg/accessrequest"
 
-	ocmcli "github.com/openshift-online/ocm-cli/pkg/ocm"
-	"github.com/openshift/backplane-cli/pkg/login"
-	"github.com/openshift/backplane-cli/pkg/utils"
 	logger "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+
+	"github.com/openshift/backplane-cli/pkg/login"
+	"github.com/openshift/backplane-cli/pkg/ocm"
+	"github.com/openshift/backplane-cli/pkg/utils"
 )
 
 var (
@@ -96,7 +97,7 @@ func runCreateAccessRequest(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to compute cluster ID: %v", err)
 	}
 
-	ocmConnection, err := ocmcli.NewConnection().Build()
+	ocmConnection, err := ocm.DefaultOCMInterface.SetupOCMConnection()
 	if err != nil {
 		return fmt.Errorf("failed to create OCM connection: %v", err)
 	}

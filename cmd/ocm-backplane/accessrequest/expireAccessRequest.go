@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/openshift/backplane-cli/pkg/accessrequest"
+	"github.com/openshift/backplane-cli/pkg/ocm"
 
-	ocmcli "github.com/openshift-online/ocm-cli/pkg/ocm"
 	"github.com/spf13/cobra"
 )
 
@@ -30,7 +30,7 @@ func runExpireAccessRequest(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to compute cluster ID: %v", err)
 	}
 
-	ocmConnection, err := ocmcli.NewConnection().Build()
+	ocmConnection, err := ocm.DefaultOCMInterface.SetupOCMConnection()
 	if err != nil {
 		return fmt.Errorf("failed to create OCM connection: %v", err)
 	}

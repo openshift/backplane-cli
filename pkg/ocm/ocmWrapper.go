@@ -4,9 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
 
-	"github.com/openshift-online/ocm-cli/pkg/ocm"
+	ocmocm "github.com/openshift-online/ocm-cli/pkg/ocm"
+	ocmurls "github.com/openshift-online/ocm-cli/pkg/urls"
 	ocmsdk "github.com/openshift-online/ocm-sdk-go"
 	acctrspv1 "github.com/openshift-online/ocm-sdk-go/accesstransparency/v1"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
@@ -35,19 +37,51 @@ type OCMInterface interface {
 	GetClusterActiveAccessRequest(ocmConnection *ocmsdk.Connection, clusterID string) (*acctrspv1.AccessRequest, error)
 	CreateClusterAccessRequest(ocmConnection *ocmsdk.Connection, clusterID, reason, jiraIssueID, approvalDuration string) (*acctrspv1.AccessRequest, error)
 	CreateAccessRequestDecision(ocmConnection *ocmsdk.Connection, accessRequest *acctrspv1.AccessRequest, decision acctrspv1.DecisionDecision, justification string) (*acctrspv1.Decision, error)
+	SetupOCMConnection() (*ocmsdk.Connection, error)
 }
 
 const (
-	ClustersPageSize = 50
+	ClustersPageSize      = 50
+	ocmNotLoggedInMessage = "Not logged in"
 )
 
-type DefaultOCMInterfaceImpl struct{}
+type DefaultOCMInterfaceImpl struct {
+	//	connection *ocmsdk.Connection
+}
 
 var DefaultOCMInterface OCMInterface = &DefaultOCMInterfaceImpl{}
 
+// SetupOCMConnection setups the ocm connection for all the other ocm requests
+func (o *DefaultOCMInterfaceImpl) SetupOCMConnection() (*ocmsdk.Connection, error) {
+
+	envURL := os.Getenv("OCM_URL")
+	if envURL != "" {
+		// Fetch the real ocm url from the alias and set it back to the ENV
+		ocmURL, err := ocmurls.ResolveGatewayURL(envURL, nil)
+		if err != nil {
+			return nil, err
+		}
+		os.Setenv("OCM_URL", ocmURL)
+		logger.Debugf("reset the OCM_URL to %s", ocmURL)
+	}
+
+	// Setup connection at the first try
+	connection, err := ocmocm.NewConnection().Build()
+	if err != nil {
+		if strings.Contains(err.Error(), ocmNotLoggedInMessage) {
+			return nil, fmt.Errorf("please ensure you are logged into OCM by using the command " +
+				"\"ocm login --url $ENV\"")
+		} else {
+			return nil, err
+		}
+	}
+
+	return connection, nil
+}
+
 // IsClusterHibernating returns a boolean to indicate whether the cluster is hibernating
 func (o *DefaultOCMInterfaceImpl) IsClusterHibernating(clusterID string) (bool, error) {
-	connection, err := ocm.NewConnection().Build()
+	connection, err := o.SetupOCMConnection()
 	if err != nil {
 		return false, fmt.Errorf("failed to create OCM connection: %v", err)
 	}
@@ -64,7 +98,7 @@ func (o *DefaultOCMInterfaceImpl) IsClusterHibernating(clusterID string) (bool, 
 // GetTargetCluster returns one single cluster based on the search key and survery.
 func (o *DefaultOCMInterfaceImpl) GetTargetCluster(clusterKey string) (clusterID, clusterName string, err error) {
 	// Create the client for the OCM API:
-	connection, err := ocm.NewConnection().Build()
+	connection, err := o.SetupOCMConnection()
 	if err != nil {
 		return "", "", fmt.Errorf("failed to create OCM connection: %v", err)
 	}
@@ -96,7 +130,7 @@ func (o *DefaultOCMInterfaceImpl) GetTargetCluster(clusterKey string) (clusterID
 // for the given clusterID
 func (o *DefaultOCMInterfaceImpl) GetManagingCluster(targetClusterID string) (clusterID, clusterName string, isHostedControlPlane bool, err error) {
 	// Create the client for the OCM API:
-	connection, err := ocm.NewConnection().Build()
+	connection, err := o.SetupOCMConnection()
 	if err != nil {
 		return "", "", false, fmt.Errorf("failed to create OCM connection: %v", err)
 	}
@@ -153,7 +187,7 @@ func (o *DefaultOCMInterfaceImpl) GetManagingCluster(targetClusterID string) (cl
 // GetServiceCluster gets the service cluster for a given hpyershift hosted cluster
 func (o *DefaultOCMInterfaceImpl) GetServiceCluster(targetClusterID string) (clusterID, clusterName string, err error) {
 	// Create the client for the OCM API
-	connection, err := ocm.NewConnection().Build()
+	connection, err := o.SetupOCMConnection()
 	if err != nil {
 		return "", "", fmt.Errorf("failed to create OCM connection: %v", err)
 	}
@@ -207,7 +241,7 @@ func (o *DefaultOCMInterfaceImpl) GetServiceCluster(targetClusterID string) (clu
 // GetOCMAccessToken initiates the OCM connection and returns the access token
 func (o *DefaultOCMInterfaceImpl) GetOCMAccessToken() (*string, error) {
 	// Get ocm access token
-	connection, err := ocm.NewConnection().Build()
+	connection, err := o.SetupOCMConnection()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create OCM connection: %v", err)
 	}
@@ -236,7 +270,7 @@ func (o *DefaultOCMInterfaceImpl) GetPullSecret() (string, error) {
 
 	// Get ocm access token
 	logger.Debugln("Finding ocm token")
-	connection, err := ocm.NewConnection().Build()
+	connection, err := o.SetupOCMConnection()
 	if err != nil {
 		return "", fmt.Errorf("failed to create OCM connection: %v", err)
 	}
@@ -256,7 +290,7 @@ func (o *DefaultOCMInterfaceImpl) GetPullSecret() (string, error) {
 // for a given internal cluster id.
 func (o *DefaultOCMInterfaceImpl) GetClusterInfoByID(clusterID string) (*cmv1.Cluster, error) {
 	// Create the client for the OCM API:
-	connection, err := ocm.NewConnection().Build()
+	connection, err := o.SetupOCMConnection()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create OCM connection: %v", err)
 	}
@@ -282,7 +316,7 @@ func (o *DefaultOCMInterfaceImpl) GetClusterInfoByIDWithConn(ocmConnection *ocms
 // IsProduction checks if OCM is currently in production env
 func (o *DefaultOCMInterfaceImpl) IsProduction() (bool, error) {
 	// Create the client for the OCM API:
-	connection, err := ocm.NewConnection().Build()
+	connection, err := o.SetupOCMConnection()
 	if err != nil {
 		return false, fmt.Errorf("failed to create OCM connection: %v", err)
 	}
@@ -299,10 +333,10 @@ func (o *DefaultOCMInterfaceImpl) GetStsSupportJumpRoleARN(ocmConnection *ocmsdk
 	return response.Body().RoleArn(), nil
 }
 
-// GetBackplaneURL returns the Backplane API URL based on the OCM env
+// GetOCMEnvironment returns the Backplane API URL based on the OCM env
 func (o *DefaultOCMInterfaceImpl) GetOCMEnvironment() (*cmv1.Environment, error) {
 	// Create the client for the OCM API
-	connection, err := ocm.NewConnection().Build()
+	connection, err := o.SetupOCMConnection()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create OCM connection: %v", err)
 	}
