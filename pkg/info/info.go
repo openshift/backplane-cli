@@ -4,6 +4,7 @@ package info
 
 import (
 	"fmt"
+	"strings"
 )
 
 const (
@@ -57,3 +58,28 @@ var (
 
 	UpstreamREADMETagged = fmt.Sprintf(UpstreamREADMETemplate, Version)
 )
+
+type InfoService interface {
+	// get the current binary version from available sources
+	GetVersion() string
+}
+
+type DefaultInfoServiceImpl struct {
+}
+
+func (i *DefaultInfoServiceImpl) GetVersion() string {
+	// If the Version is set by Goreleaser, return it directly.
+	if Version != "" {
+		return Version
+	}
+
+	// otherwise, return the build info from Go build if available.
+	buildInfo, available := DefaultBuildInfoService.GetBuildInfo()
+	if available {
+		return strings.TrimLeft(buildInfo.Main.Version, "v")
+	}
+
+	return "unknown"
+}
+
+var DefaultInfoService InfoService = &DefaultInfoServiceImpl{}

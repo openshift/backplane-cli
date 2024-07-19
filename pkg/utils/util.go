@@ -249,13 +249,14 @@ func CheckBackplaneVersion(cmd *cobra.Command) {
 	// GitHub API keeps the v prefix in front which causes mismatch with info.Version
 	latestVersion := strings.TrimLeft(latestVersionTag.TagName, "v")
 
+	currentVersion := info.DefaultInfoService.GetVersion()
 	// Check if the local version is already up-to-date
-	if latestVersion == info.Version {
-		logger.WithField("Current version", info.Version).Info("Already up-to-date")
+	if latestVersion == currentVersion {
+		logger.WithField("Current version", currentVersion).Info("Already up-to-date")
 		return
 	}
 
-	logger.WithField("Current version", info.Version).WithField("Latest version", latestVersion).Warn("Your Backplane CLI is not up to date. Please run the command 'ocm backplane upgrade' to upgrade to the latest version")
+	logger.WithField("Current version", currentVersion).WithField("Latest version", latestVersion).Warn("Your Backplane CLI is not up to date. Please run the command 'ocm backplane upgrade' to upgrade to the latest version")
 }
 
 // CheckValidPrompt checks that the stdin and stderr are valid for prompt
