@@ -19,7 +19,7 @@ var VersionCmd = &cobra.Command{
 
 func runVersion(cmd *cobra.Command, argv []string) error {
 	// Print the version
-	_, _ = fmt.Fprintf(os.Stdout, "%s\n", info.Version)
+	_, _ = fmt.Fprintf(os.Stdout, "%s\n", info.DefaultInfoService.GetVersion())
 
 	return nil
 }
