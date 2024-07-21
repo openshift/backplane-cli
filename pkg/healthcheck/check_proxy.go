@@ -10,11 +10,13 @@ import (
 
 // CheckProxyConnectivity checks the proxy connectivity
 func CheckProxyConnectivity(client HTTPClient) (string, error) {
-	bpConfig, err := getConfigFunc()
+	logger.Debug("Starting CheckProxyConnectivity")
+	bpConfig, err := GetConfigFunc()
 	if err != nil {
 		logger.Errorf("Failed to get backplane configuration: %v", err)
 		return "", fmt.Errorf("failed to get backplane configuration: %v", err)
 	}
+	logger.Debugf("Backplane configuration: %+v", bpConfig)
 
 	proxyURL := bpConfig.ProxyURL
 	if proxyURL == nil || *proxyURL == "" {
@@ -25,25 +27,28 @@ func CheckProxyConnectivity(client HTTPClient) (string, error) {
 
 	logger.Infof("Getting the working proxy URL ['%s'] from local backplane configuration.", *proxyURL)
 
-	proxy, err := url.Parse(*proxyURL)
+	parsedProxyURL, err := url.Parse(*proxyURL)
 	if err != nil {
 		logger.Errorf("Invalid proxy URL: %v", err)
 		return "", fmt.Errorf("invalid proxy URL: %v", err)
 	}
+	logger.Debugf("Parsed proxy URL: %s", parsedProxyURL)
 
-	httpClientWithProxy := &DefaultHTTPClient{
+	httpClientWithProxy := &DefaultHTTPClientImpl{
 		Client: &http.Client{
 			Transport: &http.Transport{
-				Proxy: http.ProxyURL(proxy),
+				Proxy: http.ProxyURL(parsedProxyURL),
 			},
 		},
 	}
+	logger.Debug("HTTP client with proxy configured")
 
 	proxyTestEndpoint, err := GetProxyTestEndpointFunc()
 	if err != nil {
 		logger.Errorf("Failed to get proxy test endpoint: %v", err)
 		return "", err
 	}
+	logger.Debugf("Proxy test endpoint: %s", proxyTestEndpoint)
 
 	logger.Infof("Testing connectivity to the pre-defined test endpoint ['%s'] with the proxy.", proxyTestEndpoint)
 	if err := testEndPointConnectivity(proxyTestEndpoint, httpClientWithProxy); err != nil {
@@ -52,11 +57,12 @@ func CheckProxyConnectivity(client HTTPClient) (string, error) {
 		return "", fmt.Errorf(errMsg)
 	}
 
+	logger.Debugf("Successfully connected to proxy test endpoint: %s", proxyTestEndpoint)
 	return *proxyURL, nil
 }
 
 func GetProxyTestEndpoint() (string, error) {
-	bpConfig, err := getConfigFunc()
+	bpConfig, err := GetConfigFunc()
 	if err != nil {
 		logger.Errorf("Failed to get backplane configuration: %v", err)
 		return "", fmt.Errorf("failed to get backplane configuration: %v", err)

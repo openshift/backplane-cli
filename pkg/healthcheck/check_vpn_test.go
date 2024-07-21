@@ -1,135 +1,162 @@
-package healthcheck
+package healthcheck_test
 
 import (
 	"errors"
 	"net"
 	"net/http"
 	"net/http/httptest"
-	"testing"
 
 	"github.com/golang/mock/gomock"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 	"github.com/openshift/backplane-cli/pkg/cli/config"
-	"github.com/openshift/backplane-cli/pkg/healthcheck/mocks"
+	"github.com/openshift/backplane-cli/pkg/healthcheck"
+	healthcheckMock "github.com/openshift/backplane-cli/pkg/healthcheck/mocks"
 )
 
-func TestCheckVPNConnectivity(t *testing.T) {
-	tests := []struct {
-		name        string
-		interfaces  []net.Interface
-		vpnEndpoint string
-		expectErr   bool
-	}{
-		{
-			name: "VPN connected - Linux",
-			interfaces: []net.Interface{
-				{Name: "tun0"},
-			},
-			vpnEndpoint: "http://vpn-endpoint",
-			expectErr:   false,
-		},
-		{
-			name: "VPN connected - macOS",
-			interfaces: []net.Interface{
-				{Name: "utun0"},
-			},
-			vpnEndpoint: "http://vpn-endpoint",
-			expectErr:   false,
-		},
-		{
-			name: "VPN not connected",
-			interfaces: []net.Interface{
-				{Name: "eth0"},
-			},
-			vpnEndpoint: "http://vpn-endpoint",
-			expectErr:   true,
-		},
-		{
-			name:       "No VPN interfaces",
-			interfaces: []net.Interface{},
-			expectErr:  true,
-		},
-	}
+var _ = Describe("VPN Connectivity", func() {
+	var (
+		mockCtrl       *gomock.Controller
+		mockInterfaces *healthcheckMock.MockNetworkInterface
+		mockClient     *healthcheckMock.MockHTTPClient
+	)
 
-	originalGetVPNCheckEndpointFunc := GetVPNCheckEndpointFunc
-	defer func() { GetVPNCheckEndpointFunc = originalGetVPNCheckEndpointFunc }()
+	BeforeEach(func() {
+		mockCtrl = gomock.NewController(GinkgoT())
+		mockInterfaces = healthcheckMock.NewMockNetworkInterface(mockCtrl)
+		mockClient = healthcheckMock.NewMockHTTPClient(mockCtrl)
+		healthcheck.NetInterfaces = mockInterfaces
+		healthcheck.HTTPClients = mockClient
+	})
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			GetVPNCheckEndpointFunc = func() (string, error) {
-				if tt.vpnEndpoint == "" {
-					return "", errors.New("VPN check endpoint not configured")
+	AfterEach(func() {
+		mockCtrl.Finish()
+	})
+
+	Describe("CheckVPNConnectivity", func() {
+		var originalGetVPNCheckEndpointFunc func() (string, error)
+
+		BeforeEach(func() {
+			originalGetVPNCheckEndpointFunc = healthcheck.GetVPNCheckEndpointFunc
+		})
+
+		AfterEach(func() {
+			healthcheck.GetVPNCheckEndpointFunc = originalGetVPNCheckEndpointFunc
+		})
+
+		Context("When checking VPN connectivity", func() {
+			It("should pass if VPN is connected on Linux", func() {
+				interfaces := []net.Interface{{Name: "tun0"}}
+				vpnEndpoint := "http://vpn-endpoint"
+
+				healthcheck.GetVPNCheckEndpointFunc = func() (string, error) {
+					return vpnEndpoint, nil
 				}
-				return tt.vpnEndpoint, nil
-			}
 
-			mockCtrl := gomock.NewController(t)
-			defer mockCtrl.Finish()
+				mockInterfaces.EXPECT().Interfaces().Return(interfaces, nil).AnyTimes()
+				mockClient.EXPECT().Get(gomock.Any()).Return(&http.Response{StatusCode: http.StatusOK}, nil).AnyTimes()
 
-			netInterfaces := mocks.NewMockNetworkInterface(mockCtrl)
-			netInterfaces.EXPECT().Interfaces().Return(tt.interfaces, nil).AnyTimes()
-
-			mockHTTPClient := mocks.NewMockHTTPClient(mockCtrl)
-			mockHTTPClient.EXPECT().Get(gomock.Any()).Return(&http.Response{StatusCode: http.StatusOK}, nil).AnyTimes()
-
-			if tt.vpnEndpoint != "" {
 				server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					w.WriteHeader(http.StatusOK)
 				}))
 				defer server.Close()
-				tt.vpnEndpoint = server.URL
-			}
+				vpnEndpoint = server.URL
 
-			err := CheckVPNConnectivity(netInterfaces, mockHTTPClient)
-			if (err != nil) != tt.expectErr {
-				t.Errorf("CheckVPNConnectivity() error = %v, expectErr %v", err, tt.expectErr)
-			}
-		})
-	}
-}
+				err := healthcheck.CheckVPNConnectivity(mockInterfaces, mockClient)
+				Expect(err).ToNot(HaveOccurred())
+			})
 
-func TestGetVPNCheckEndpoint(t *testing.T) {
-	originalGetConfigFunc := getConfigFunc
-	defer func() { getConfigFunc = originalGetConfigFunc }()
+			It("should pass if VPN is connected on macOS", func() {
+				interfaces := []net.Interface{{Name: "utun0"}}
+				vpnEndpoint := "http://vpn-endpoint"
 
-	tests := []struct {
-		name      string
-		config    config.BackplaneConfiguration
-		expectErr bool
-	}{
-		{
-			name: "Configured VPN endpoint",
-			config: config.BackplaneConfiguration{
-				VPNCheckEndpoint: "http://vpn-endpoint",
-			},
-			expectErr: false,
-		},
-		{
-			name: "No VPN endpoint configured",
-			config: config.BackplaneConfiguration{
-				VPNCheckEndpoint: "",
-			},
-			expectErr: true,
-		},
-		{
-			name:      "Failed to get backplane configuration",
-			config:    config.BackplaneConfiguration{},
-			expectErr: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			getConfigFunc = func() (config.BackplaneConfiguration, error) {
-				if tt.name == "Failed to get backplane configuration" {
-					return config.BackplaneConfiguration{}, errors.New("failed to get backplane configuration")
+				healthcheck.GetVPNCheckEndpointFunc = func() (string, error) {
+					return vpnEndpoint, nil
 				}
-				return tt.config, nil
+
+				mockInterfaces.EXPECT().Interfaces().Return(interfaces, nil).AnyTimes()
+				mockClient.EXPECT().Get(gomock.Any()).Return(&http.Response{StatusCode: http.StatusOK}, nil).AnyTimes()
+
+				server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					w.WriteHeader(http.StatusOK)
+				}))
+				defer server.Close()
+				vpnEndpoint = server.URL
+
+				err := healthcheck.CheckVPNConnectivity(mockInterfaces, mockClient)
+				Expect(err).ToNot(HaveOccurred())
+			})
+
+			It("should fail if VPN is not connected", func() {
+				interfaces := []net.Interface{{Name: "eth0"}}
+				vpnEndpoint := "http://vpn-endpoint"
+
+				healthcheck.GetVPNCheckEndpointFunc = func() (string, error) {
+					return vpnEndpoint, nil
+				}
+
+				mockInterfaces.EXPECT().Interfaces().Return(interfaces, nil).AnyTimes()
+				mockClient.EXPECT().Get(gomock.Any()).Return(&http.Response{StatusCode: http.StatusOK}, nil).AnyTimes()
+
+				err := healthcheck.CheckVPNConnectivity(mockInterfaces, mockClient)
+				Expect(err).To(HaveOccurred())
+			})
+
+			It("should fail if no VPN interfaces are found", func() {
+				interfaces := []net.Interface{}
+				vpnEndpoint := "http://vpn-endpoint"
+
+				healthcheck.GetVPNCheckEndpointFunc = func() (string, error) {
+					return vpnEndpoint, nil
+				}
+
+				mockInterfaces.EXPECT().Interfaces().Return(interfaces, nil).AnyTimes()
+				mockClient.EXPECT().Get(gomock.Any()).Return(&http.Response{StatusCode: http.StatusOK}, nil).AnyTimes()
+
+				err := healthcheck.CheckVPNConnectivity(mockInterfaces, mockClient)
+				Expect(err).To(HaveOccurred())
+			})
+		})
+	})
+
+	Describe("GetVPNCheckEndpoint", func() {
+		var originalGetConfigFunc func() (config.BackplaneConfiguration, error)
+
+		BeforeEach(func() {
+			originalGetConfigFunc = healthcheck.GetConfigFunc
+		})
+
+		AfterEach(func() {
+			healthcheck.GetConfigFunc = originalGetConfigFunc
+		})
+
+		It("should return the configured VPN endpoint", func() {
+			vpnEndpoint := "http://vpn-endpoint"
+			healthcheck.GetConfigFunc = func() (config.BackplaneConfiguration, error) {
+				return config.BackplaneConfiguration{VPNCheckEndpoint: vpnEndpoint}, nil
 			}
 
-			_, err := GetVPNCheckEndpoint()
-			if (err != nil) != tt.expectErr {
-				t.Errorf("GetVPNCheckEndpoint() error = %v, expectErr %v", err, tt.expectErr)
-			}
+			endpoint, err := healthcheck.GetVPNCheckEndpoint()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(endpoint).To(Equal(vpnEndpoint))
 		})
-	}
-}
+
+		It("should return an error if VPN endpoint is not configured", func() {
+			healthcheck.GetConfigFunc = func() (config.BackplaneConfiguration, error) {
+				return config.BackplaneConfiguration{VPNCheckEndpoint: ""}, nil
+			}
+
+			_, err := healthcheck.GetVPNCheckEndpoint()
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("should return an error if failed to get backplane configuration", func() {
+			healthcheck.GetConfigFunc = func() (config.BackplaneConfiguration, error) {
+				return config.BackplaneConfiguration{}, errors.New("failed to get backplane configuration")
+			}
+
+			_, err := healthcheck.GetVPNCheckEndpoint()
+			Expect(err).To(HaveOccurred())
+		})
+	})
+})
