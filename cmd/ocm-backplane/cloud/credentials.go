@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	ocmsdk "github.com/openshift-online/ocm-cli/pkg/ocm"
 	logger "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"sigs.k8s.io/yaml"
@@ -98,9 +97,9 @@ func runCredentials(cmd *cobra.Command, argv []string) error {
 	logger.Infof("Using backplane URL: %s\n", backplaneConfiguration.URL)
 
 	// Initialize OCM connection
-	ocmConnection, err := ocmsdk.NewConnection().Build()
+	ocmConnection, err := ocm.DefaultOCMInterface.SetupOCMConnection()
 	if err != nil {
-		return fmt.Errorf("unable to build ocm sdk: %w", err)
+		return fmt.Errorf("failed to create OCM connection: %w", err)
 	}
 	defer ocmConnection.Close()
 
