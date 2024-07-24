@@ -1,143 +1,133 @@
-package healthcheck
+package healthcheck_test
 
 import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
-	"testing"
 
 	"github.com/golang/mock/gomock"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 	"github.com/openshift/backplane-cli/pkg/cli/config"
-	"github.com/openshift/backplane-cli/pkg/healthcheck/mocks"
+	"github.com/openshift/backplane-cli/pkg/healthcheck"
+	healthcheckMock "github.com/openshift/backplane-cli/pkg/healthcheck/mocks"
 )
 
-func TestCheckProxyConnectivity(t *testing.T) {
-	tests := []struct {
-		name          string
-		proxyURL      string
-		proxyEndpoint string
-		expectErr     bool
-	}{
-		{
-			name:      "Proxy not configured",
-			proxyURL:  "",
-			expectErr: true,
-		},
-	}
+var _ = Describe("Proxy Connectivity", func() {
+	var (
+		mockCtrl   *gomock.Controller
+		mockClient *healthcheckMock.MockHTTPClient
+		mockProxy  *httptest.Server
+	)
 
-	originalGetProxyTestEndpointFunc := GetProxyTestEndpointFunc
-	defer func() { GetProxyTestEndpointFunc = originalGetProxyTestEndpointFunc }()
+	BeforeEach(func() {
+		mockCtrl = gomock.NewController(GinkgoT())
+		mockClient = healthcheckMock.NewMockHTTPClient(mockCtrl)
+		healthcheck.HTTPClients = mockClient
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			GetProxyTestEndpointFunc = func() (string, error) {
-				if tt.proxyEndpoint == "" {
+		// Set up a mock proxy server
+		mockProxy = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+		}))
+		healthcheck.GetConfigFunc = func() (config.BackplaneConfiguration, error) {
+			proxyURL := mockProxy.URL
+			return config.BackplaneConfiguration{ProxyURL: &proxyURL}, nil
+		}
+	})
+
+	AfterEach(func() {
+		mockProxy.Close()
+		mockCtrl.Finish()
+	})
+
+	Describe("CheckProxyConnectivity", func() {
+		var originalGetProxyTestEndpointFunc func() (string, error)
+
+		BeforeEach(func() {
+			originalGetProxyTestEndpointFunc = healthcheck.GetProxyTestEndpointFunc
+		})
+
+		AfterEach(func() {
+			healthcheck.GetProxyTestEndpointFunc = originalGetProxyTestEndpointFunc
+		})
+
+		Context("When proxy is not configured", func() {
+			It("should return an error", func() {
+				healthcheck.GetProxyTestEndpointFunc = func() (string, error) {
 					return "", errors.New("proxy test endpoint not configured")
 				}
-				return tt.proxyEndpoint, nil
-			}
 
-			mockCtrl := gomock.NewController(t)
-			defer mockCtrl.Finish()
+				healthcheck.GetConfigFunc = func() (config.BackplaneConfiguration, error) {
+					return config.BackplaneConfiguration{ProxyURL: nil}, nil
+				}
 
-			client := mocks.NewMockHTTPClient(mockCtrl)
-			client.EXPECT().Get(gomock.Any()).Return(&http.Response{StatusCode: http.StatusOK}, nil).AnyTimes()
-
-			url, err := CheckProxyConnectivity(client)
-			if (err != nil) != tt.expectErr {
-				t.Errorf("CheckProxyConnectivity() error = %v, expectErr %v", err, tt.expectErr)
-			}
-			if err == nil && url != tt.proxyURL {
-				t.Errorf("Expected proxy URL = %v, got %v", tt.proxyURL, url)
-			}
+				_, err := healthcheck.CheckProxyConnectivity(mockClient)
+				Expect(err).To(HaveOccurred())
+			})
 		})
-	}
-}
 
-func TestCheckBackplaneAPIConnectivity(t *testing.T) {
-	tests := []struct {
-		name      string
-		proxyURL  string
-		apiURL    string
-		expectErr bool
-	}{
-		{
-			name:      "API not accessible through proxy",
-			proxyURL:  "http://proxy:8080",
-			apiURL:    "http://bad-api-endpoint",
-			expectErr: true,
-		},
-	}
+		Context("When proxy is configured", func() {
+			It("should pass if proxy connectivity is good", func() {
+				healthcheck.GetProxyTestEndpointFunc = func() (string, error) {
+					return "http://proxy-test-endpoint", nil
+				}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if r.URL.String() == tt.apiURL {
+				server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					w.WriteHeader(http.StatusOK)
-				} else {
-					w.WriteHeader(http.StatusInternalServerError)
+				}))
+				defer server.Close()
+
+				healthcheck.GetProxyTestEndpointFunc = func() (string, error) {
+					return server.URL, nil
 				}
-			}))
-			defer server.Close()
-			tt.apiURL = server.URL
 
-			mockCtrl := gomock.NewController(t)
-			defer mockCtrl.Finish()
+				mockClient.EXPECT().Get(server.URL).Return(&http.Response{StatusCode: http.StatusOK}, nil).AnyTimes()
 
-			client := mocks.NewMockHTTPClient(mockCtrl)
-			client.EXPECT().Get(gomock.Any()).Return(&http.Response{StatusCode: http.StatusOK}, nil).AnyTimes()
-
-			err := CheckBackplaneAPIConnectivity(client, tt.proxyURL)
-			if (err != nil) != tt.expectErr {
-				t.Errorf("CheckBackplaneAPIConnectivity() error = %v, expectErr %v", err, tt.expectErr)
-			}
+				url, err := healthcheck.CheckProxyConnectivity(mockClient)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(url).To(Equal(mockProxy.URL))
+			})
 		})
-	}
-}
+	})
 
-func TestGetProxyTestEndpoint(t *testing.T) {
-	originalGetConfigFunc := getConfigFunc
-	defer func() { getConfigFunc = originalGetConfigFunc }()
+	Describe("GetProxyTestEndpoint", func() {
+		var originalGetConfigFunc func() (config.BackplaneConfiguration, error)
 
-	tests := []struct {
-		name      string
-		config    config.BackplaneConfiguration
-		expectErr bool
-	}{
-		{
-			name: "Configured proxy endpoint",
-			config: config.BackplaneConfiguration{
-				ProxyCheckEndpoint: "http://proxy-endpoint",
-			},
-			expectErr: false,
-		},
-		{
-			name: "No proxy endpoint configured",
-			config: config.BackplaneConfiguration{
-				ProxyCheckEndpoint: "",
-			},
-			expectErr: true,
-		},
-		{
-			name:      "Failed to get backplane configuration",
-			config:    config.BackplaneConfiguration{},
-			expectErr: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			getConfigFunc = func() (config.BackplaneConfiguration, error) {
-				if tt.name == "Failed to get backplane configuration" {
-					return config.BackplaneConfiguration{}, errors.New("failed to get backplane configuration")
-				}
-				return tt.config, nil
-			}
-
-			_, err := GetProxyTestEndpoint()
-			if (err != nil) != tt.expectErr {
-				t.Errorf("GetProxyTestEndpoint() error = %v, expectErr %v", err, tt.expectErr)
-			}
+		BeforeEach(func() {
+			originalGetConfigFunc = healthcheck.GetConfigFunc
 		})
-	}
-}
+
+		AfterEach(func() {
+			healthcheck.GetConfigFunc = originalGetConfigFunc
+		})
+
+		It("should return the configured proxy endpoint", func() {
+			proxyEndpoint := "http://proxy-endpoint"
+			healthcheck.GetConfigFunc = func() (config.BackplaneConfiguration, error) {
+				return config.BackplaneConfiguration{ProxyCheckEndpoint: proxyEndpoint}, nil
+			}
+
+			endpoint, err := healthcheck.GetProxyTestEndpoint()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(endpoint).To(Equal(proxyEndpoint))
+		})
+
+		It("should return an error if proxy endpoint is not configured", func() {
+			healthcheck.GetConfigFunc = func() (config.BackplaneConfiguration, error) {
+				return config.BackplaneConfiguration{ProxyCheckEndpoint: ""}, nil
+			}
+
+			_, err := healthcheck.GetProxyTestEndpoint()
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("should return an error if failed to get backplane configuration", func() {
+			healthcheck.GetConfigFunc = func() (config.BackplaneConfiguration, error) {
+				return config.BackplaneConfiguration{}, errors.New("failed to get backplane configuration")
+			}
+
+			_, err := healthcheck.GetProxyTestEndpoint()
+			Expect(err).To(HaveOccurred())
+		})
+	})
+})

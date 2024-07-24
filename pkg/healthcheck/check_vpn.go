@@ -51,7 +51,7 @@ func CheckVPNConnectivity(netInterfaces NetworkInterface, client HTTPClient) err
 }
 
 func GetVPNCheckEndpoint() (string, error) {
-	bpConfig, err := getConfigFunc()
+	bpConfig, err := GetConfigFunc()
 	if err != nil {
 		logger.Errorf("Failed to get backplane configuration: %v", err)
 		return "", fmt.Errorf("failed to get backplane configuration: %v", err)
