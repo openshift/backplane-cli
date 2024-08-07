@@ -308,13 +308,13 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 
 		// Check API connection with configured proxy
 		if connErr := bpConfig.CheckAPIConnection(); connErr != nil {
-			logger.Errorf("Cannot connect to backplane API URL, check if you need to use a proxy/VPN to access backplane: %v. To troubleshoot connectivity issues, please run the following command: ocm-backplane health-check", connErr)
-			return fmt.Errorf("cannot connect to backplane API URL: %v", connErr)
+			logger.Errorln("Connection Error to Backplane API:")
+			return fmt.Errorf("cannot connect to Backplane API URL: %v.\n[**NOTE:** To troubleshoot the connectivity issues, please run `ocm-backplane health-check`]", connErr)
 		}
 
 		// Log suggestion to run connectivity health check if login fails
-		logger.Errorf("Login failed: %v. To troubleshoot connectivity issues, please run the following command: ocm-backplane health-check", err)
-		return fmt.Errorf("login failed: %v", err)
+		logger.Errorln("Login Attempt Failed:")
+		return fmt.Errorf("login failed: %v.\n[**NOTE:** To troubleshoot the connectivity issues, please run `ocm-backplane health-check`]", err)
 	}
 
 	logger.WithField("URL", bpAPIClusterURL).Debugln("Proxy")
