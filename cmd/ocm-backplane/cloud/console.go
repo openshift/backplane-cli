@@ -140,14 +140,17 @@ func runConsole(cmd *cobra.Command, argv []string) (err error) {
 
 	// ======== Get cloud console from backplane API ============
 	consoleResponse, err := queryConfig.GetCloudConsole()
+
+	// Declare helperMsg
+	helperMsg := "\n\033[1mNOTE: To troubleshoot the connectivity issues, please run `ocm-backplane health-check`\033[0m\n\n"
+
 	if err != nil {
 		// Check API connection with configured proxy
 		if connErr := backplaneConfiguration.CheckAPIConnection(); connErr != nil {
 			logger.Error("Cannot connect to backplane API URL, check if you need to use a proxy/VPN to access backplane:")
-			logger.Errorf("Error: %v", connErr)
-			logger.Info("To troubleshoot connectivity issues, please run the following command:")
-			logger.Info("ocm-backplane health-check")
+			logger.Errorf("Error: %v.\n%s", connErr, helperMsg)
 		}
+
 		return fmt.Errorf("failed to get cloud console for cluster %v: %w", clusterID, err)
 	}
 
