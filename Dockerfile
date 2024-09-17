@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi8/ubi:8.10-1054 as base
+FROM registry.access.redhat.com/ubi8/ubi:8.10-1054.1725961554 as base
 
 ### Pre-install dependencies
 # These packages will end up in the final image
@@ -8,7 +8,7 @@ RUN yum --assumeyes install \
     && yum clean all;
 
 ### Build backplane-cli
-FROM registry.access.redhat.com/ubi8/ubi:8.10-1054 as bp-cli-builder
+FROM registry.access.redhat.com/ubi8/ubi:8.10-1054.1725961554 as bp-cli-builder
 
 RUN yum install --assumeyes \
     make \
@@ -32,7 +32,7 @@ RUN cp ./ocm-backplane /out
 RUN chmod -R +x /out
 
 ### Build dependencies
-FROM registry.access.redhat.com/ubi8/ubi:8.10-1054 as dep-builder
+FROM registry.access.redhat.com/ubi8/ubi:8.10-1054.1725961554 as dep-builder
 
 RUN yum install --assumeyes \
     jq \
