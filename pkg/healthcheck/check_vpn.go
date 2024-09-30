@@ -33,7 +33,7 @@ func CheckVPNConnectivity(netInterfaces NetworkInterface, client HTTPClient) err
 	if !vpnConnected {
 		errMsg := fmt.Sprintf("No VPN interfaces found: %v", vpnInterfaces)
 		logger.Warn(errMsg)
-		return fmt.Errorf(errMsg)
+		return fmt.Errorf("%s", errMsg)
 	}
 
 	vpnCheckEndpoint, err := GetVPNCheckEndpointFunc()
@@ -43,8 +43,8 @@ func CheckVPNConnectivity(netInterfaces NetworkInterface, client HTTPClient) err
 	}
 	if err := testEndPointConnectivity(vpnCheckEndpoint, client); err != nil {
 		errMsg := fmt.Sprintf("Failed to access internal URL %s: %v", vpnCheckEndpoint, err)
-		logger.Errorf(errMsg)
-		return fmt.Errorf(errMsg)
+		logger.Errorf("%s", errMsg)
+		return fmt.Errorf("%s", errMsg)
 	}
 
 	return nil
@@ -59,7 +59,7 @@ func GetVPNCheckEndpoint() (string, error) {
 	if bpConfig.VPNCheckEndpoint == "" {
 		errMsg := "VPN check endpoint not configured"
 		logger.Warn(errMsg)
-		return "", fmt.Errorf(errMsg)
+		return "", fmt.Errorf("%s", errMsg)
 	}
 	return bpConfig.VPNCheckEndpoint, nil
 }

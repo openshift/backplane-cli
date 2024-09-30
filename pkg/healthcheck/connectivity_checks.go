@@ -129,7 +129,7 @@ func testEndPointConnectivity(testURL string, client HTTPClient) error {
 	if resp.StatusCode != http.StatusOK {
 		errMsg := fmt.Sprintf("Unexpected status code: %v", resp.StatusCode)
 		logger.Error(errMsg)
-		return fmt.Errorf(errMsg)
+		return fmt.Errorf("%s", errMsg)
 	}
 	return nil
 }

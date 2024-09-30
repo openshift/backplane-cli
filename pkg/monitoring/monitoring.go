@@ -158,7 +158,7 @@ func (c Client) RunMonitoring(monitoringType string) error {
 
 	if resp.StatusCode >= 400 {
 		responseBody, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf(string(responseBody))
+		return fmt.Errorf("%s", string(responseBody))
 	}
 
 	// If the above test pass, we will construct a reverse proxy for the user
