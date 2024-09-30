@@ -31,7 +31,7 @@ import (
 	"github.com/openshift/backplane-cli/pkg/utils"
 )
 
-// Environment variable that for setting PS1
+// Environment variable that for setting PS1 - test
 const (
 	EnvPs1                      = "KUBE_PS1_CLUSTER_FUNCTION"
 	LoginTypeClusterID          = "cluster-id"
