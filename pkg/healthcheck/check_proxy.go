@@ -22,7 +22,7 @@ func CheckProxyConnectivity(client HTTPClient) (string, error) {
 	if proxyURL == nil || *proxyURL == "" {
 		errMsg := "no proxy URL configured in backplane configuration"
 		logger.Warn(errMsg)
-		return "", fmt.Errorf(errMsg)
+		return "", fmt.Errorf("%s", errMsg)
 	}
 
 	logger.Infof("Getting the working proxy URL ['%s'] from local backplane configuration.", *proxyURL)
@@ -53,8 +53,8 @@ func CheckProxyConnectivity(client HTTPClient) (string, error) {
 	logger.Infof("Testing connectivity to the pre-defined test endpoint ['%s'] with the proxy.", proxyTestEndpoint)
 	if err := testEndPointConnectivity(proxyTestEndpoint, httpClientWithProxy); err != nil {
 		errMsg := fmt.Sprintf("Failed to access target endpoint ['%s'] with the proxy: %v", proxyTestEndpoint, err)
-		logger.Errorf(errMsg)
-		return "", fmt.Errorf(errMsg)
+		logger.Errorf("%s", errMsg)
+		return "", fmt.Errorf("%s", errMsg)
 	}
 
 	logger.Debugf("Successfully connected to proxy test endpoint: %s", proxyTestEndpoint)
@@ -70,7 +70,7 @@ func GetProxyTestEndpoint() (string, error) {
 	if bpConfig.ProxyCheckEndpoint == "" {
 		errMsg := "proxy test endpoint not configured"
 		logger.Warn(errMsg)
-		return "", fmt.Errorf(errMsg)
+		return "", fmt.Errorf("%s", errMsg)
 	}
 	return bpConfig.ProxyCheckEndpoint, nil
 }
