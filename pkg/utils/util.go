@@ -105,19 +105,25 @@ func MatchBaseDomain(longHostname, baseDomain string) bool {
 }
 
 func TryParseBackplaneAPIError(rsp *http.Response) (*BackplaneApi.Error, error) {
+	if rsp == nil {
+		return nil, fmt.Errorf("parse err provided nil http response")
+	}
 	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
+	defer func() {
+		_ = rsp.Body.Close()
+	}()
 	if err != nil {
 		return nil, err
+	} else {
+		var dest BackplaneApi.Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			// Avoid squashing the HTTP response info with Unmarshal err...
+			bodyStr := strings.ReplaceAll(string(bodyBytes[:]), "\n", " ")
+			err := fmt.Errorf("status:'%s', code:'%d'; failed to unmarshal response:'%s'; %w", rsp.Status, rsp.StatusCode, bodyStr, err)
+			return nil, err
+		}
+		return &dest, nil
 	}
-
-	var dest BackplaneApi.Error
-
-	if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-		return nil, err
-	}
-
-	return &dest, nil
 }
 
 func TryRenderErrorRaw(rsp *http.Response) error {
@@ -243,13 +249,14 @@ func CheckBackplaneVersion(cmd *cobra.Command) {
 	// GitHub API keeps the v prefix in front which causes mismatch with info.Version
 	latestVersion := strings.TrimLeft(latestVersionTag.TagName, "v")
 
+	currentVersion := info.DefaultInfoService.GetVersion()
 	// Check if the local version is already up-to-date
-	if latestVersion == info.Version {
-		logger.WithField("Current version", info.Version).Info("Already up-to-date")
+	if latestVersion == currentVersion {
+		logger.WithField("Current version", currentVersion).Info("Already up-to-date")
 		return
 	}
 
-	logger.WithField("Current version", info.Version).WithField("Latest version", latestVersion).Warn("Your Backplane CLI is not up to date. Please run the command 'ocm backplane upgrade' to upgrade to the latest version")
+	logger.WithField("Current version", currentVersion).WithField("Latest version", latestVersion).Warn("Your Backplane CLI is not up to date. Please run the command 'ocm backplane upgrade' to upgrade to the latest version")
 }
 
 // CheckValidPrompt checks that the stdin and stderr are valid for prompt

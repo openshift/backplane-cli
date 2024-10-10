@@ -1,12 +1,16 @@
 package ocm
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
 
-	"github.com/openshift-online/ocm-cli/pkg/ocm"
+	ocmocm "github.com/openshift-online/ocm-cli/pkg/ocm"
+	ocmurls "github.com/openshift-online/ocm-cli/pkg/urls"
 	ocmsdk "github.com/openshift-online/ocm-sdk-go"
+	acctrspv1 "github.com/openshift-online/ocm-sdk-go/accesstransparency/v1"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	logger "github.com/sirupsen/logrus"
 
@@ -29,19 +33,55 @@ type OCMInterface interface {
 	GetOCMEnvironment() (*cmv1.Environment, error)
 	GetOCMAccessTokenWithConn(ocmConnection *ocmsdk.Connection) (*string, error)
 	GetClusterInfoByIDWithConn(ocmConnection *ocmsdk.Connection, clusterID string) (*cmv1.Cluster, error)
+	IsClusterAccessProtectionEnabled(ocmConnection *ocmsdk.Connection, clusterID string) (bool, error)
+	GetClusterActiveAccessRequest(ocmConnection *ocmsdk.Connection, clusterID string) (*acctrspv1.AccessRequest, error)
+	CreateClusterAccessRequest(ocmConnection *ocmsdk.Connection, clusterID, reason, jiraIssueID, approvalDuration string) (*acctrspv1.AccessRequest, error)
+	CreateAccessRequestDecision(ocmConnection *ocmsdk.Connection, accessRequest *acctrspv1.AccessRequest, decision acctrspv1.DecisionDecision, justification string) (*acctrspv1.Decision, error)
+	SetupOCMConnection() (*ocmsdk.Connection, error)
 }
 
 const (
-	ClustersPageSize = 50
+	ClustersPageSize      = 50
+	ocmNotLoggedInMessage = "Not logged in"
 )
 
-type DefaultOCMInterfaceImpl struct{}
+type DefaultOCMInterfaceImpl struct {
+	//	connection *ocmsdk.Connection
+}
 
 var DefaultOCMInterface OCMInterface = &DefaultOCMInterfaceImpl{}
 
+// SetupOCMConnection setups the ocm connection for all the other ocm requests
+func (o *DefaultOCMInterfaceImpl) SetupOCMConnection() (*ocmsdk.Connection, error) {
+
+	envURL := os.Getenv("OCM_URL")
+	if envURL != "" {
+		// Fetch the real ocm url from the alias and set it back to the ENV
+		ocmURL, err := ocmurls.ResolveGatewayURL(envURL, nil)
+		if err != nil {
+			return nil, err
+		}
+		os.Setenv("OCM_URL", ocmURL)
+		logger.Debugf("reset the OCM_URL to %s", ocmURL)
+	}
+
+	// Setup connection at the first try
+	connection, err := ocmocm.NewConnection().Build()
+	if err != nil {
+		if strings.Contains(err.Error(), ocmNotLoggedInMessage) {
+			return nil, fmt.Errorf("please ensure you are logged into OCM by using the command " +
+				"\"ocm login --url $ENV\"")
+		} else {
+			return nil, err
+		}
+	}
+
+	return connection, nil
+}
+
 // IsClusterHibernating returns a boolean to indicate whether the cluster is hibernating
 func (o *DefaultOCMInterfaceImpl) IsClusterHibernating(clusterID string) (bool, error) {
-	connection, err := ocm.NewConnection().Build()
+	connection, err := o.SetupOCMConnection()
 	if err != nil {
 		return false, fmt.Errorf("failed to create OCM connection: %v", err)
 	}
@@ -58,7 +98,7 @@ func (o *DefaultOCMInterfaceImpl) IsClusterHibernating(clusterID string) (bool, 
 // GetTargetCluster returns one single cluster based on the search key and survery.
 func (o *DefaultOCMInterfaceImpl) GetTargetCluster(clusterKey string) (clusterID, clusterName string, err error) {
 	// Create the client for the OCM API:
-	connection, err := ocm.NewConnection().Build()
+	connection, err := o.SetupOCMConnection()
 	if err != nil {
 		return "", "", fmt.Errorf("failed to create OCM connection: %v", err)
 	}
@@ -90,7 +130,7 @@ func (o *DefaultOCMInterfaceImpl) GetTargetCluster(clusterKey string) (clusterID
 // for the given clusterID
 func (o *DefaultOCMInterfaceImpl) GetManagingCluster(targetClusterID string) (clusterID, clusterName string, isHostedControlPlane bool, err error) {
 	// Create the client for the OCM API:
-	connection, err := ocm.NewConnection().Build()
+	connection, err := o.SetupOCMConnection()
 	if err != nil {
 		return "", "", false, fmt.Errorf("failed to create OCM connection: %v", err)
 	}
@@ -147,7 +187,7 @@ func (o *DefaultOCMInterfaceImpl) GetManagingCluster(targetClusterID string) (cl
 // GetServiceCluster gets the service cluster for a given hpyershift hosted cluster
 func (o *DefaultOCMInterfaceImpl) GetServiceCluster(targetClusterID string) (clusterID, clusterName string, err error) {
 	// Create the client for the OCM API
-	connection, err := ocm.NewConnection().Build()
+	connection, err := o.SetupOCMConnection()
 	if err != nil {
 		return "", "", fmt.Errorf("failed to create OCM connection: %v", err)
 	}
@@ -201,7 +241,7 @@ func (o *DefaultOCMInterfaceImpl) GetServiceCluster(targetClusterID string) (clu
 // GetOCMAccessToken initiates the OCM connection and returns the access token
 func (o *DefaultOCMInterfaceImpl) GetOCMAccessToken() (*string, error) {
 	// Get ocm access token
-	connection, err := ocm.NewConnection().Build()
+	connection, err := o.SetupOCMConnection()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create OCM connection: %v", err)
 	}
@@ -230,7 +270,7 @@ func (o *DefaultOCMInterfaceImpl) GetPullSecret() (string, error) {
 
 	// Get ocm access token
 	logger.Debugln("Finding ocm token")
-	connection, err := ocm.NewConnection().Build()
+	connection, err := o.SetupOCMConnection()
 	if err != nil {
 		return "", fmt.Errorf("failed to create OCM connection: %v", err)
 	}
@@ -250,7 +290,7 @@ func (o *DefaultOCMInterfaceImpl) GetPullSecret() (string, error) {
 // for a given internal cluster id.
 func (o *DefaultOCMInterfaceImpl) GetClusterInfoByID(clusterID string) (*cmv1.Cluster, error) {
 	// Create the client for the OCM API:
-	connection, err := ocm.NewConnection().Build()
+	connection, err := o.SetupOCMConnection()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create OCM connection: %v", err)
 	}
@@ -276,7 +316,7 @@ func (o *DefaultOCMInterfaceImpl) GetClusterInfoByIDWithConn(ocmConnection *ocms
 // IsProduction checks if OCM is currently in production env
 func (o *DefaultOCMInterfaceImpl) IsProduction() (bool, error) {
 	// Create the client for the OCM API:
-	connection, err := ocm.NewConnection().Build()
+	connection, err := o.SetupOCMConnection()
 	if err != nil {
 		return false, fmt.Errorf("failed to create OCM connection: %v", err)
 	}
@@ -293,10 +333,10 @@ func (o *DefaultOCMInterfaceImpl) GetStsSupportJumpRoleARN(ocmConnection *ocmsdk
 	return response.Body().RoleArn(), nil
 }
 
-// GetBackplaneURL returns the Backplane API URL based on the OCM env
+// GetOCMEnvironment returns the Backplane API URL based on the OCM env
 func (o *DefaultOCMInterfaceImpl) GetOCMEnvironment() (*cmv1.Environment, error) {
 	// Create the client for the OCM API
-	connection, err := ocm.NewConnection().Build()
+	connection, err := o.SetupOCMConnection()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create OCM connection: %v", err)
 	}
@@ -322,6 +362,112 @@ func (o *DefaultOCMInterfaceImpl) GetOCMEnvironment() (*cmv1.Environment, error)
 	}
 
 	return responseEnv.Body(), nil
+}
+
+func (o *DefaultOCMInterfaceImpl) IsClusterAccessProtectionEnabled(ocmConnection *ocmsdk.Connection, clusterID string) (bool, error) {
+	getResponse, err := ocmConnection.AccessTransparency().V1().AccessProtection().Get().ClusterId(clusterID).Send()
+
+	if getResponse == nil || err != nil {
+		return false, err
+	}
+
+	body := getResponse.Body()
+
+	if body == nil {
+		return false, errors.New("no body in response to access protection get request")
+	}
+
+	return body.Enabled(), nil
+}
+
+func (o *DefaultOCMInterfaceImpl) GetClusterActiveAccessRequest(ocmConnection *ocmsdk.Connection, clusterID string) (*acctrspv1.AccessRequest, error) {
+	search := fmt.Sprintf("cluster_id = '%s' and (status.state = 'Pending' or status.state = 'Approved')", clusterID)
+	listResponse, err := ocmConnection.AccessTransparency().V1().AccessRequests().List().Search(search).Send()
+
+	if err != nil {
+		logger.Warnf("failed to list access requests: %v", err)
+
+		return nil, err
+	}
+
+	accessRequests := listResponse.Items()
+
+	if accessRequests == nil {
+		return nil, errors.New("no access requests in response to the search")
+	}
+
+	if accessRequests.Len() > 1 {
+		logger.Warnf("more than one pending or approved access requests; retaining only the first one")
+	}
+
+	if accessRequests.Empty() {
+		return nil, nil
+	}
+
+	accessRequest := accessRequests.Get(0)
+
+	if accessRequest == nil {
+		return nil, errors.New("nil access request in response to the search")
+	}
+
+	return accessRequest, nil
+}
+
+func (o *DefaultOCMInterfaceImpl) CreateClusterAccessRequest(ocmConnection *ocmsdk.Connection, clusterID, justification, jiraIssueID, approvalDuration string) (*acctrspv1.AccessRequest, error) {
+	requestBuilder := acctrspv1.NewAccessRequestPostRequest().
+		ClusterId(clusterID).
+		Justification(justification).
+		InternalSupportCaseId(jiraIssueID).
+		Duration(approvalDuration)
+
+	request, err := requestBuilder.Build()
+	if err != nil {
+		return nil, fmt.Errorf("failed to build access request post request: %v", err)
+	}
+
+	postResponse, err := ocmConnection.AccessTransparency().V1().AccessRequests().Post().Body(request).Send()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create access request: %v", err)
+	}
+
+	if postResponse == nil {
+		return nil, errors.New("nil response to access request creation")
+	}
+
+	accessRequest := postResponse.Body()
+
+	if accessRequest == nil {
+		return nil, errors.New("nil access request in response to the creation")
+	}
+
+	return accessRequest, nil
+}
+
+func (o *DefaultOCMInterfaceImpl) CreateAccessRequestDecision(ocmConnection *ocmsdk.Connection, accessRequest *acctrspv1.AccessRequest, decision acctrspv1.DecisionDecision, justification string) (*acctrspv1.Decision, error) {
+	decisionBuilder := acctrspv1.NewDecision().Decision(decision).Justification(justification)
+
+	decisionObj, err := decisionBuilder.Build()
+	if err != nil {
+		return nil, fmt.Errorf("failed to build access request decision: %v", err)
+	}
+
+	addResponse, err := ocmConnection.AccessTransparency().V1().AccessRequests().AccessRequest(accessRequest.ID()).Decisions().Add().Body(decisionObj).Send()
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to create access request decision: %v", err)
+	}
+
+	if addResponse == nil {
+		return nil, errors.New("nil response to access request decision creation")
+	}
+
+	accessRequestDecision := addResponse.Body()
+
+	if accessRequestDecision == nil {
+		return nil, errors.New("nil access request decision in response to the creation")
+	}
+
+	return accessRequestDecision, nil
 }
 
 func getClusters(client *cmv1.ClustersClient, clusterKey string) ([]*cmv1.Cluster, error) {

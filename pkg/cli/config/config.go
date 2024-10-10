@@ -15,12 +15,61 @@ import (
 	"github.com/openshift/backplane-cli/pkg/ocm"
 )
 
+type JiraTransitionsNamesForAccessRequests struct {
+	OnCreation string `json:"on-creation"`
+	OnApproval string `json:"on-approval"`
+	OnError    string `json:"on-error"`
+}
+
+type AccessRequestsJiraConfiguration struct {
+	DefaultProject            string                                           `json:"default-project"`
+	DefaultIssueType          string                                           `json:"default-issue-type"`
+	ProdProject               string                                           `json:"prod-project"`
+	ProdIssueType             string                                           `json:"prod-issue-type"`
+	ProjectToTransitionsNames map[string]JiraTransitionsNamesForAccessRequests `json:"project-to-transitions-names"`
+}
+
+// Please update the validateConfig function if there is any required config key added
 type BackplaneConfiguration struct {
-	URL              string  `json:"url"`
-	ProxyURL         *string `json:"proxy-url"` // Optional
-	SessionDirectory string  `json:"session-dir"`
-	AssumeInitialArn string  `json:"assume-initial-arn"`
-	PagerDutyAPIKey  string  `json:"pd-key"`
+	URL                         string                          `json:"url"`
+	ProxyURL                    *string                         `json:"proxy-url"`
+	SessionDirectory            string                          `json:"session-dir"`
+	AssumeInitialArn            string                          `json:"assume-initial-arn"`
+	ProdEnvName                 string                          `json:"prod-env-name"`
+	PagerDutyAPIKey             string                          `json:"pd-key"`
+	JiraBaseURL                 string                          `json:"jira-base-url"`
+	JiraToken                   string                          `json:"jira-token"`
+	JiraConfigForAccessRequests AccessRequestsJiraConfiguration `json:"jira-config-for-access-requests"`
+	VPNCheckEndpoint            string                          `json:"vpn-check-endpoint"`
+	ProxyCheckEndpoint          string                          `json:"proxy-check-endpoint"`
+}
+
+const (
+	prodEnvNameKey                 = "prod-env-name"
+	jiraBaseURLKey                 = "jira-base-url"
+	JiraTokenViperKey              = "jira-token"
+	JiraConfigForAccessRequestsKey = "jira-config-for-access-requests"
+	prodEnvNameDefaultValue        = "production"
+	JiraBaseURLDefaultValue        = "https://issues.redhat.com"
+)
+
+var JiraConfigForAccessRequestsDefaultValue = AccessRequestsJiraConfiguration{
+	DefaultProject:   "SDAINT",
+	DefaultIssueType: "Story",
+	ProdProject:      "OHSS",
+	ProdIssueType:    "Incident",
+	ProjectToTransitionsNames: map[string]JiraTransitionsNamesForAccessRequests{
+		"SDAINT": {
+			OnCreation: "In Progress",
+			OnApproval: "In Progress",
+			OnError:    "Closed",
+		},
+		"OHSS": {
+			OnCreation: "Pending Customer",
+			OnApproval: "New",
+			OnError:    "Cancelled",
+		},
+	},
 }
 
 // GetConfigFilePath returns the Backplane CLI configuration filepath
@@ -43,6 +92,10 @@ func GetConfigFilePath() (string, error) {
 
 // GetBackplaneConfiguration parses and returns the given backplane configuration
 func GetBackplaneConfiguration() (bpConfig BackplaneConfiguration, err error) {
+	viper.SetDefault(prodEnvNameKey, prodEnvNameDefaultValue)
+	viper.SetDefault(jiraBaseURLKey, JiraBaseURLDefaultValue)
+	viper.SetDefault(JiraConfigForAccessRequestsKey, JiraConfigForAccessRequestsDefaultValue)
+
 	filePath, err := GetConfigFilePath()
 	if err != nil {
 		return bpConfig, err
@@ -61,6 +114,10 @@ func GetBackplaneConfiguration() (bpConfig BackplaneConfiguration, err error) {
 		}
 	}
 
+	if err = validateConfig(); err != nil {
+		logger.Warn(err)
+	}
+
 	// Check if user has explicitly defined proxy; it has higher precedence over the config file
 	err = viper.BindEnv("proxy-url", info.BackplaneProxyEnvName)
 	if err != nil {
@@ -72,9 +129,10 @@ func GetBackplaneConfiguration() (bpConfig BackplaneConfiguration, err error) {
 		logger.Warn("Manual URL configuration is deprecated, please remove URL key from Backplane configuration")
 	}
 
-	// Check if user has explicitly defined backplane URL via env; it has higher precedence over the ocm env URL
+	// Warn if user has explicitly defined backplane URL via env
 	url, ok := getBackplaneEnv(info.BackplaneURLEnvName)
 	if ok {
+		logger.Warn(fmt.Sprintf("Manual URL configuration is deprecated, please unset the environment %s", info.BackplaneURLEnvName))
 		bpConfig.URL = url
 	} else {
 		// Fetch backplane URL from ocm env
@@ -88,8 +146,6 @@ func GetBackplaneConfiguration() (bpConfig BackplaneConfiguration, err error) {
 	proxyURL := bpConfig.getFirstWorkingProxyURL(proxyInConfigFile)
 	if proxyURL != "" {
 		bpConfig.ProxyURL = &proxyURL
-	} else {
-		logger.Warn("No proxy configuration available. This may result in failing commands as backplane-api is only available from select networks.")
 	}
 
 	bpConfig.SessionDirectory = viper.GetString("session-dir")
@@ -102,6 +158,32 @@ func GetBackplaneConfiguration() (bpConfig BackplaneConfiguration, err error) {
 	} else {
 		logger.Info("No PagerDuty API Key configuration available. This will result in failure of `ocm-backplane login --pd <incident-id>` command.")
 	}
+
+	// OCM prod env name is optional as there is a default value
+	bpConfig.ProdEnvName = viper.GetString(prodEnvNameKey)
+
+	// JIRA base URL is optional as there is a default value
+	bpConfig.JiraBaseURL = viper.GetString(jiraBaseURLKey)
+
+	// JIRA token is optional
+	bpConfig.JiraToken = viper.GetString(JiraTokenViperKey)
+
+	// JIRA config for access requests is optional as there is a default value
+	err = viper.UnmarshalKey(JiraConfigForAccessRequestsKey, &bpConfig.JiraConfigForAccessRequests)
+
+	if err != nil {
+		logger.Warnf("failed to unmarshal '%s' entry as json in '%s' config file: %v", JiraConfigForAccessRequestsKey, filePath, err)
+	} else {
+		for _, project := range []string{bpConfig.JiraConfigForAccessRequests.DefaultProject, bpConfig.JiraConfigForAccessRequests.ProdProject} {
+			if _, isKnownProject := bpConfig.JiraConfigForAccessRequests.ProjectToTransitionsNames[project]; !isKnownProject {
+				logger.Warnf("content unmarshalled from '%s' in '%s' config file is inconsistent: no transitions defined for project '%s'", JiraConfigForAccessRequestsKey, filePath, project)
+			}
+		}
+	}
+
+	// Load VPN and Proxy check endpoints from the local backplane configuration file
+	bpConfig.VPNCheckEndpoint = viper.GetString("vpn-check-endpoint")
+	bpConfig.ProxyCheckEndpoint = viper.GetString("proxy-check-endpoint")
 
 	return bpConfig, nil
 }
@@ -127,7 +209,6 @@ func (config *BackplaneConfiguration) getFirstWorkingProxyURL(s []string) string
 		client.Transport = &http.Transport{Proxy: http.ProxyURL(proxyURL)}
 		req, _ := http.NewRequest("GET", bpURL, nil)
 		resp, err := clientDo(client, req)
-
 		if err != nil {
 			logger.Infof("Proxy: %s returned an error: %s", proxyURL, err)
 			continue
@@ -135,11 +216,29 @@ func (config *BackplaneConfiguration) getFirstWorkingProxyURL(s []string) string
 		if resp.StatusCode == http.StatusOK {
 			return p
 		}
+		logger.Infof("proxy: %s did not pass healthcheck, expected response code 200, got %d, discarding", p, resp.StatusCode)
 	}
+
+	if len(s) > 0 {
+		logger.Infof("falling back to first proxy-url after all proxies failed health checks: %s", s[0])
+		return s[0]
+	}
+
 	return ""
 }
 
-func GetConfigDirctory() (string, error) {
+func validateConfig() error {
+
+	// Validate the proxy url
+	if viper.GetStringSlice("proxy-url") == nil && os.Getenv(info.BackplaneProxyEnvName) == "" {
+		return fmt.Errorf("proxy-url must be set explicitly in either config file or via the environment HTTPS_PROXY")
+	}
+
+	return nil
+}
+
+// GetConfigDirectory returns the backplane config path
+func GetConfigDirectory() (string, error) {
 	bpConfigFilePath, err := GetConfigFilePath()
 	if err != nil {
 		return "", err

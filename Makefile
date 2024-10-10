@@ -9,7 +9,7 @@ GO_BUILD_FLAGS :=-tags 'include_gcs include_oss containers_image_openpgp gssapi'
 GO_BUILD_FLAGS_DARWIN :=-tags 'include_gcs include_oss containers_image_openpgp'
 GO_BUILD_FLAGS_LINUX_CROSS :=-tags 'include_gcs include_oss containers_image_openpgp'
 
-GOLANGCI_LINT_VERSION=v1.52.2
+GOLANGCI_LINT_VERSION=v1.61.0
 GORELEASER_VERSION=v1.14.1
 GOVULNCHECK_VERSION=v1.0.1
 
@@ -114,6 +114,12 @@ mock-gen:
 	mockgen -destination=./pkg/backplaneapi/mocks/clientUtilsMock.go -package=mocks github.com/openshift/backplane-cli/pkg/backplaneapi ClientUtils
 	mockgen -destination=./pkg/cli/session/mocks/sessionMock.go -package=mocks github.com/openshift/backplane-cli/pkg/cli/session BackplaneSessionInterface
 	mockgen -destination=./pkg/utils/mocks/shellCheckerMock.go -package=mocks github.com/openshift/backplane-cli/pkg/utils ShellCheckerInterface
+	mockgen -destination=./pkg/pagerduty/mocks/clientMock.go -package=mocks github.com/openshift/backplane-cli/pkg/pagerduty PagerDutyClient
+	mockgen -destination=./pkg/jira/mocks/jiraMock.go -package=mocks github.com/openshift/backplane-cli/pkg/jira IssueServiceInterface
+	mockgen -destination=./pkg/healthcheck/mocks/networkMock.go -package=mocks github.com/openshift/backplane-cli/pkg/healthcheck NetworkInterface
+	mockgen -destination=./pkg/healthcheck/mocks/httpClientMock.go -package=mocks github.com/openshift/backplane-cli/pkg/healthcheck HTTPClient
+	mockgen -destination=./pkg/info/mocks/infoMock.go -package=mocks github.com/openshift/backplane-cli/pkg/info InfoService
+	mockgen -destination=./pkg/info/mocks/buildInfoMock.go -package=mocks github.com/openshift/backplane-cli/pkg/info BuildInfoService
 
 .PHONY: build-image
 build-image:

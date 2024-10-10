@@ -6,8 +6,6 @@ import (
 	"os"
 	"strconv"
 
-	ocmsdk "github.com/openshift-online/ocm-cli/pkg/ocm"
-
 	"github.com/openshift/backplane-cli/pkg/ocm"
 
 	"github.com/pkg/browser"
@@ -130,9 +128,9 @@ func runConsole(cmd *cobra.Command, argv []string) (err error) {
 	logger.Infof("Using backplane URL: %s\n", backplaneConfiguration.URL)
 
 	// Initialize OCM connection
-	ocmConnection, err := ocmsdk.NewConnection().Build()
+	ocmConnection, err := ocm.DefaultOCMInterface.SetupOCMConnection()
 	if err != nil {
-		return fmt.Errorf("unable to build ocm sdk: %w", err)
+		return fmt.Errorf("failed to create OCM connection: %w", err)
 	}
 	defer ocmConnection.Close()
 
@@ -142,7 +140,17 @@ func runConsole(cmd *cobra.Command, argv []string) (err error) {
 
 	// ======== Get cloud console from backplane API ============
 	consoleResponse, err := queryConfig.GetCloudConsole()
+
+	// Declare helperMsg
+	helperMsg := "\n\033[1mNOTE: To troubleshoot the connectivity issues, please run `ocm-backplane health-check`\033[0m\n\n"
+
 	if err != nil {
+		// Check API connection with configured proxy
+		if connErr := backplaneConfiguration.CheckAPIConnection(); connErr != nil {
+			logger.Error("Cannot connect to backplane API URL, check if you need to use a proxy/VPN to access backplane:")
+			logger.Errorf("Error: %v.\n%s", connErr, helperMsg)
+		}
+
 		return fmt.Errorf("failed to get cloud console for cluster %v: %w", clusterID, err)
 	}
 

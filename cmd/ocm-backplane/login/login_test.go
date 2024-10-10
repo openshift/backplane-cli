@@ -14,16 +14,21 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	"github.com/trivago/tgo/tcontainer"
+	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/tools/clientcmd/api"
+
+	"github.com/andygrunwald/go-jira"
 	"github.com/openshift/backplane-cli/pkg/backplaneapi"
 	backplaneapiMock "github.com/openshift/backplane-cli/pkg/backplaneapi/mocks"
 	"github.com/openshift/backplane-cli/pkg/cli/config"
 	"github.com/openshift/backplane-cli/pkg/client/mocks"
+	jiraClient "github.com/openshift/backplane-cli/pkg/jira"
+	jiraMock "github.com/openshift/backplane-cli/pkg/jira/mocks"
 	"github.com/openshift/backplane-cli/pkg/login"
 	"github.com/openshift/backplane-cli/pkg/ocm"
 	ocmMock "github.com/openshift/backplane-cli/pkg/ocm/mocks"
 	"github.com/openshift/backplane-cli/pkg/utils"
-	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/client-go/tools/clientcmd/api"
 )
 
 func MakeIoReader(s string) io.ReadCloser {
@@ -39,6 +44,7 @@ var _ = Describe("Login command", func() {
 		mockClientWithResp *mocks.MockClientWithResponsesInterface
 		mockOcmInterface   *ocmMock.MockOCMInterface
 		mockClientUtil     *backplaneapiMock.MockClientUtils
+		mockIssueService   *jiraMock.MockIssueServiceInterface
 
 		testClusterID            string
 		testToken                string
@@ -104,6 +110,8 @@ var _ = Describe("Login command", func() {
 		mockCluster = &cmv1.Cluster{}
 
 		backplaneConfiguration = config.BackplaneConfiguration{URL: backplaneAPIURI}
+
+		loginType = LoginTypeClusterID
 	})
 
 	AfterEach(func() {
@@ -183,6 +191,7 @@ var _ = Describe("Login command", func() {
 			err := utils.CreateTempKubeConfig(nil)
 			Expect(err).To(BeNil())
 			globalOpts.ProxyURL = "https://squid.myproxy.com"
+			os.Setenv("HTTPS_PROXY", "https://squid.myproxy.com")
 			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
 			mockClientUtil.EXPECT().SetClientProxyURL(globalOpts.ProxyURL).Return(nil)
 			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, testClusterID, nil)
@@ -344,6 +353,7 @@ var _ = Describe("Login command", func() {
 		})
 
 		It("should login to current cluster if cluster id not provided", func() {
+			loginType = LoginTypeExistingKubeConfig
 			err := utils.CreateTempKubeConfig(nil)
 			Expect(err).To(BeNil())
 			globalOpts.ProxyURL = "https://squid.myproxy.com"
@@ -430,6 +440,7 @@ var _ = Describe("Login command", func() {
 		})
 
 		It("should fail to create PD API client and return HTTP status code 401 when unauthorized", func() {
+			loginType = LoginTypePagerduty
 			args.pd = truePagerDutyIncidentID
 
 			err := utils.CreateTempKubeConfig(nil)
@@ -464,7 +475,44 @@ var _ = Describe("Login command", func() {
 			Expect(err.Error()).Should(ContainSubstring("status code 401"))
 		})
 
+		It("should return error when trying to login via PD but the PD API Key is not configured", func() {
+			loginType = LoginTypePagerduty
+			args.pd = truePagerDutyIncidentID
+
+			err := utils.CreateTempKubeConfig(nil)
+			Expect(err).To(BeNil())
+
+			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
+
+			// Create a temporary JSON configuration file in the temp directory for testing purposes.
+			tempDir := os.TempDir()
+			bpConfigPath = filepath.Join(tempDir, "mock.json")
+			tempFile, err := os.Create(bpConfigPath)
+			Expect(err).To(BeNil())
+
+			testData := config.BackplaneConfiguration{
+				URL:             backplaneAPIURI,
+				ProxyURL:        new(string),
+				PagerDutyAPIKey: falsePagerDutyAPITkn,
+			}
+
+			// Marshal the testData into JSON format and write it to tempFile.
+			pdTestData := testData
+			pdTestData.PagerDutyAPIKey = ""
+			jsonData, err := json.Marshal(pdTestData)
+			Expect(err).To(BeNil())
+			_, err = tempFile.Write(jsonData)
+			Expect(err).To(BeNil())
+
+			os.Setenv("BACKPLANE_CONFIG", bpConfigPath)
+
+			err = runLogin(nil, nil)
+
+			Expect(err.Error()).Should(ContainSubstring("please make sure the PD API Key is configured correctly"))
+		})
+
 		It("should fail to find a non existent PD Incident and return HTTP status code 404 when the requested resource is not found", func() {
+			loginType = LoginTypePagerduty
 			args.pd = falsePagerDutyIncidentID
 
 			err := utils.CreateTempKubeConfig(nil)
@@ -479,11 +527,9 @@ var _ = Describe("Login command", func() {
 			Expect(err).To(BeNil())
 
 			testData := config.BackplaneConfiguration{
-				URL:              backplaneAPIURI,
-				ProxyURL:         new(string),
-				SessionDirectory: "",
-				AssumeInitialArn: "",
-				PagerDutyAPIKey:  truePagerDutyAPITkn,
+				URL:             backplaneAPIURI,
+				ProxyURL:        new(string),
+				PagerDutyAPIKey: truePagerDutyAPITkn,
 			}
 
 			// Marshal the testData into JSON format and write it to tempFile.
@@ -534,5 +580,63 @@ var _ = Describe("Login command", func() {
 
 		})
 
+	})
+
+	Context("check JIRA OHSS login", func() {
+		var (
+			testOHSSID  string
+			testIssue   jira.Issue
+			issueFields *jira.IssueFields
+		)
+		BeforeEach(func() {
+			mockIssueService = jiraMock.NewMockIssueServiceInterface(mockCtrl)
+			ohssService = jiraClient.NewOHSSService(mockIssueService)
+			testOHSSID = "OHSS-1000"
+		})
+
+		It("should login to ohss card cluster", func() {
+
+			loginType = LoginTypeJira
+			args.ohss = testOHSSID
+			err := utils.CreateTempKubeConfig(nil)
+			args.kubeConfigPath = ""
+			Expect(err).To(BeNil())
+			issueFields = &jira.IssueFields{
+				Project:  jira.Project{Key: jiraClient.JiraOHSSProjectKey},
+				Unknowns: tcontainer.MarshalMap{jiraClient.CustomFieldClusterID: testClusterID},
+			}
+			testIssue = jira.Issue{ID: testOHSSID, Fields: issueFields}
+			globalOpts.ProxyURL = "https://squid.myproxy.com"
+			mockIssueService.EXPECT().Get(testOHSSID, nil).Return(&testIssue, nil, nil).Times(1)
+			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
+			mockClientUtil.EXPECT().SetClientProxyURL(globalOpts.ProxyURL).Return(nil)
+			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(testClusterID, testClusterID, nil)
+			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(testClusterID)).Return(false, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil)
+			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken(backplaneAPIURI, testToken).Return(mockClient, nil)
+			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(testClusterID)).Return(fakeResp, nil)
+
+			err = runLogin(nil, nil)
+
+			Expect(err).To(BeNil())
+		})
+
+		It("should failed missing cluster id ohss cards", func() {
+
+			loginType = LoginTypeJira
+			args.ohss = testOHSSID
+
+			issueFields = &jira.IssueFields{
+				Project: jira.Project{Key: jiraClient.JiraOHSSProjectKey},
+			}
+			testIssue = jira.Issue{ID: testOHSSID, Fields: issueFields}
+			mockIssueService.EXPECT().Get(testOHSSID, nil).Return(&testIssue, nil, nil).Times(1)
+			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
+
+			err := runLogin(nil, nil)
+
+			Expect(err).NotTo(BeNil())
+			Expect(err.Error()).To(Equal("clusterID cannot be detected for JIRA issue:OHSS-1000"))
+		})
 	})
 })
