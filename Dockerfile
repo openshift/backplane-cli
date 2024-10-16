@@ -1,3 +1,4 @@
+# This is for CI test and should build on x86_64 environment
 FROM registry.access.redhat.com/ubi9/ubi:9.4-1214 as base
 
 ### Pre-install dependencies
