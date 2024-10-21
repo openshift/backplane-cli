@@ -37,6 +37,7 @@ func makeClientOptions(accessToken string) BackplaneApi.ClientOption {
 		client.RequestEditors = append(client.RequestEditors, func(ctx context.Context, req *http.Request) error {
 			req.Header.Add("Authorization", "Bearer "+accessToken)
 			req.Header.Set("User-Agent", "backplane-cli"+info.Version)
+			req.Header.Set("Backplane-Version", info.DefaultInfoService.GetVersion())
 			return nil
 		})
 		return nil
