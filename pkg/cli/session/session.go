@@ -73,7 +73,7 @@ func (e *BackplaneSession) RunCommand(cmd *cobra.Command, args []string) error {
 	clusterID, clusterName, err := ocm.DefaultOCMInterface.GetTargetCluster(clusterKey)
 
 	if err != nil {
-		return fmt.Errorf("invalid cluster Id %s", clusterKey)
+		return fmt.Errorf("invalid cluster Id %s. error: %w", clusterKey, err)
 	}
 
 	if e.Options.GlobalOpts.Manager {
@@ -103,7 +103,7 @@ func (e *BackplaneSession) RunCommand(cmd *cobra.Command, args []string) error {
 
 	err = e.initSessionPath()
 	if err != nil {
-		return fmt.Errorf("could not init session path")
+		return fmt.Errorf("could not init session path. error: %w", err)
 	}
 
 	if e.Options.DeleteSession {
