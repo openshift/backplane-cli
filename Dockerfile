@@ -1,4 +1,5 @@
-FROM registry.access.redhat.com/ubi8/ubi:8.10-1088 as base
+# This is for CI test and should build on x86_64 environment
+FROM registry.access.redhat.com/ubi9/ubi:9.4-1214 as base
 
 ### Pre-install dependencies
 # These packages will end up in the final image
@@ -8,7 +9,7 @@ RUN yum --assumeyes install \
     && yum clean all;
 
 ### Build backplane-cli
-FROM registry.access.redhat.com/ubi8/ubi:8.10-1088 as bp-cli-builder
+FROM registry.access.redhat.com/ubi9/ubi:9.4-1214 as bp-cli-builder
 
 RUN yum install --assumeyes \
     make \
@@ -32,7 +33,7 @@ RUN cp ./ocm-backplane /out
 RUN chmod -R +x /out
 
 ### Build dependencies
-FROM registry.access.redhat.com/ubi8/ubi:8.10-1088 as dep-builder
+FROM registry.access.redhat.com/ubi9/ubi:9.4-1214 as dep-builder
 
 RUN yum install --assumeyes \
     jq \
@@ -43,7 +44,7 @@ ARG GITHUB_URL="https://api.github.com"
 ARG GITHUB_TOKEN=""
 
 # Replace version with a version number to pin a specific version (eg: "4.7.8")
-ARG OC_VERSION="stable-4.15"
+ARG OC_VERSION="stable-4.16"
 ENV OC_URL="https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/${OC_VERSION}"
 
 # Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.4.0")
@@ -59,7 +60,7 @@ WORKDIR /oc
 # Download the checksum
 RUN curl -sSLf ${OC_URL}/sha256sum.txt -o sha256sum.txt
 # Download the amd64 binary tarball
-RUN curl -sSLf -O ${OC_URL}/$(awk -v asset="openshift-client-linux" '$0~asset {print $2}' sha256sum.txt | grep -v arm64 | grep -v ppc64 | grep -v amd64)
+RUN curl -sSLf -O ${OC_URL}/$(awk -v asset="openshift-client-linux" '$0~asset {print $2}' sha256sum.txt | grep -v arm64 | grep -v ppc64 | grep -v amd64 | grep -v s390x)
 # Check the tarball and checksum match
 RUN sha256sum --check --ignore-missing sha256sum.txt
 RUN tar --extract --gunzip --no-same-owner --directory /out oc --file *.tar.gz
