@@ -311,7 +311,7 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 		"clusterID": clusterID,
 	}).Debugln("Query backplane-api for proxy url of our target cluster")
 	// Query backplane-api for proxy url
-	bpAPIClusterURL, err := doLogin(bpURL, clusterID, *accessToken)
+	bpAPIClusterURL, err := doLogin(bpURL, clusterID, *accessToken, args.remediation)
 	if err != nil {
 		// If login failed, we try to find out if the cluster is hibernating
 		isHibernating, _ := ocm.DefaultOCMInterface.IsClusterHibernating(clusterID)
@@ -405,7 +405,7 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 
 // GetRestConfig returns a client-go *rest.Config which can be used to programmatically interact with the
 // Kubernetes API of a provided clusterID
-func GetRestConfig(bp config.BackplaneConfiguration, clusterID string) (*rest.Config, error) {
+func GetRestConfig(bp config.BackplaneConfiguration, clusterID string, remediation string) (*rest.Config, error) {
 	cluster, err := ocm.DefaultOCMInterface.GetClusterInfoByID(clusterID)
 	if err != nil {
 		return nil, err
@@ -416,7 +416,7 @@ func GetRestConfig(bp config.BackplaneConfiguration, clusterID string) (*rest.Co
 		return nil, err
 	}
 
-	bpAPIClusterURL, err := doLogin(bp.URL, clusterID, *accessToken)
+	bpAPIClusterURL, err := doLogin(bp.URL, clusterID, *accessToken, remediation)
 	if err != nil {
 		return nil, fmt.Errorf("failed to backplane login to cluster %s: %v", cluster.Name(), err)
 	}
@@ -437,7 +437,7 @@ func GetRestConfig(bp config.BackplaneConfiguration, clusterID string) (*rest.Co
 
 // GetRestConfig returns a client-go *rest.Config which can be used to programmatically interact with the
 // Kubernetes API of a provided clusterID
-func GetRestConfigWithConn(bp config.BackplaneConfiguration, ocmConnection *ocmsdk.Connection, clusterID string) (*rest.Config, error) {
+func GetRestConfigWithConn(bp config.BackplaneConfiguration, ocmConnection *ocmsdk.Connection, clusterID string, remediation string) (*rest.Config, error) {
 	cluster, err := ocm.DefaultOCMInterface.GetClusterInfoByIDWithConn(ocmConnection, clusterID)
 	if err != nil {
 		return nil, err
@@ -448,7 +448,7 @@ func GetRestConfigWithConn(bp config.BackplaneConfiguration, ocmConnection *ocms
 		return nil, err
 	}
 
-	bpAPIClusterURL, err := doLogin(bp.URL, clusterID, *accessToken)
+	bpAPIClusterURL, err := doLogin(bp.URL, clusterID, *accessToken, remediation)
 	if err != nil {
 		return nil, fmt.Errorf("failed to backplane login to cluster %s: %v", cluster.Name(), err)
 	}
@@ -470,8 +470,8 @@ func GetRestConfigWithConn(bp config.BackplaneConfiguration, ocmConnection *ocms
 // GetRestConfigAsUser returns a client-go *rest.Config like GetRestConfig, but supports configuring an
 // impersonation username. Commonly, this is "backplane-cluster-admin"
 // best practice would be to add at least one elevationReason in order to justity the impersonation
-func GetRestConfigAsUser(bp config.BackplaneConfiguration, clusterID, username string, elevationReasons ...string) (*rest.Config, error) {
-	cfg, err := GetRestConfig(bp, clusterID)
+func GetRestConfigAsUser(bp config.BackplaneConfiguration, clusterID, username string, remediation string, elevationReasons ...string) (*rest.Config, error) {
+	cfg, err := GetRestConfig(bp, clusterID, remediation)
 	if err != nil {
 		return nil, err
 	}
@@ -514,7 +514,7 @@ func getUsernameFromJWT(token string) string {
 }
 
 // doLogin returns the proxy url for the target cluster.
-func doLogin(api, clusterID, accessToken string) (string, error) {
+func doLogin(api, clusterID, accessToken string, remediation string) (string, error) {
 
 	client, err := backplaneapi.DefaultClientUtils.MakeRawBackplaneAPIClientWithAccessToken(api, accessToken)
 
@@ -523,7 +523,7 @@ func doLogin(api, clusterID, accessToken string) (string, error) {
 	}
 
 	resp, err := client.LoginCluster(context.TODO(), clusterID, &BackplaneApi.LoginClusterParams{
-		Remediation: &args.remediation,
+		Remediation: &remediation,
 	})
 	// Print the whole response if we can't parse it. Eg. 5xx error from http server.
 	if err != nil {
