@@ -108,10 +108,6 @@ func newGetManagedJobCmd() *cobra.Command {
 					return err
 				}
 
-				if err != nil {
-					return err
-				}
-
 				if resp.StatusCode != http.StatusOK {
 					return utils.TryPrintAPIError(resp, rawFlag)
 				}

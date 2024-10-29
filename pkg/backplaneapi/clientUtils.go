@@ -32,8 +32,8 @@ var (
 	DefaultClientUtils ClientUtils = &DefaultClientUtilsImpl{}
 )
 
-func (s *DefaultClientUtilsImpl) MakeRawBackplaneAPIClientWithAccessToken(base, accessToken string) (BackplaneApi.ClientInterface, error) {
-	co := func(client *BackplaneApi.Client) error {
+func makeClientOptions(accessToken string) BackplaneApi.ClientOption {
+	return func(client *BackplaneApi.Client) error {
 		client.RequestEditors = append(client.RequestEditors, func(ctx context.Context, req *http.Request) error {
 			req.Header.Add("Authorization", "Bearer "+accessToken)
 			req.Header.Set("User-Agent", "backplane-cli"+info.Version)
@@ -41,7 +41,9 @@ func (s *DefaultClientUtilsImpl) MakeRawBackplaneAPIClientWithAccessToken(base, 
 		})
 		return nil
 	}
+}
 
+func (s *DefaultClientUtilsImpl) MakeRawBackplaneAPIClientWithAccessToken(base, accessToken string) (BackplaneApi.ClientInterface, error) {
 	// Inject client Proxy Url from config
 	if s.clientProxyURL == "" {
 		bpConfig, err := config.GetBackplaneConfiguration()
@@ -53,39 +55,21 @@ func (s *DefaultClientUtilsImpl) MakeRawBackplaneAPIClientWithAccessToken(base, 
 		}
 	}
 
-	// Update http proxy transport
-	if s.clientProxyURL != "" {
-		proxyURL, err := url.Parse(s.clientProxyURL)
-		if err != nil {
-			return nil, err
-		}
-		http.DefaultTransport = &http.Transport{Proxy: http.ProxyURL(proxyURL)}
-
-		logger.Debugf("Using backplane Proxy URL: %s\n", s.clientProxyURL)
-	}
-
-	return BackplaneApi.NewClient(base, co)
+	return makeRawBackplaneAPIClientWithAccessTokenCustomProxy(base, accessToken, s.clientProxyURL)
 }
 
 // makeRawBackplaneAPIClientWithAccessTokenCustomProxy creates a BackplaneApi.ClientInterface with a custom proxy url
 // proxyURL is optional, the default behavior is no proxy.
-func makeRawBackplaneAPIClientWithAccessTokenCustomProxy(server string, accessToken string, proxyURL *string) (BackplaneApi.ClientInterface, error) {
-	co := func(client *BackplaneApi.Client) error {
-		client.RequestEditors = append(client.RequestEditors, func(ctx context.Context, req *http.Request) error {
-			req.Header.Add("Authorization", "Bearer "+accessToken)
-			req.Header.Set("User-Agent", "backplane-cli"+info.Version)
-			return nil
-		})
-		return nil
-	}
+func makeRawBackplaneAPIClientWithAccessTokenCustomProxy(server string, accessToken string, proxyURL string) (BackplaneApi.ClientInterface, error) {
+	co := makeClientOptions(accessToken)
 
-	if proxyURL != nil {
-		proxy, err := url.Parse(*proxyURL)
+	if proxyURL != "" {
+		proxy, err := url.Parse(proxyURL)
 		if err != nil {
 			return nil, err
 		}
 		http.DefaultTransport = &http.Transport{Proxy: http.ProxyURL(proxy)}
-		logger.Debugf("Using backplane Proxy URL: %s\n", *proxyURL)
+		logger.Debugf("Using backplane Proxy URL: %s\n", proxyURL)
 	}
 
 	return BackplaneApi.NewClient(server, co)
@@ -100,14 +84,7 @@ func (s *DefaultClientUtilsImpl) MakeRawBackplaneAPIClient(base string) (Backpla
 }
 
 func (*DefaultClientUtilsImpl) MakeBackplaneAPIClientWithAccessToken(base, accessToken string) (BackplaneApi.ClientWithResponsesInterface, error) {
-	co := func(client *BackplaneApi.Client) error {
-		client.RequestEditors = append(client.RequestEditors, func(ctx context.Context, req *http.Request) error {
-			req.Header.Add("Authorization", "Bearer "+accessToken)
-			req.Header.Set("User-Agent", "backplane-cli"+info.Version)
-			return nil
-		})
-		return nil
-	}
+	co := makeClientOptions(accessToken)
 
 	return BackplaneApi.NewClientWithResponses(base, co)
 }
@@ -133,7 +110,15 @@ func (s *DefaultClientUtilsImpl) GetBackplaneClient(backplaneURL string, ocmToke
 	}
 
 	logger.Debugln("Getting client")
-	backplaneClient, err := makeRawBackplaneAPIClientWithAccessTokenCustomProxy(backplaneURL, ocmToken, proxyURL)
+
+	var proxyString string
+	if proxyURL == nil {
+		proxyString = ""
+	} else {
+		proxyString = *proxyURL
+	}
+
+	backplaneClient, err := makeRawBackplaneAPIClientWithAccessTokenCustomProxy(backplaneURL, ocmToken, proxyString)
 	if err != nil {
 		return client, fmt.Errorf("unable to create backplane api client: %w", err)
 	}
