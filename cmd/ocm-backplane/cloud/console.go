@@ -122,8 +122,8 @@ func runConsole(cmd *cobra.Command, argv []string) (err error) {
 	}
 
 	// ============Get Backplane URl ==========================
-	if credentialArgs.backplaneURL != "" { // Overwrite if parameter is set
-		backplaneConfiguration.URL = credentialArgs.backplaneURL
+	if consoleArgs.backplaneURL != "" { // Overwrite if parameter is set
+		backplaneConfiguration.URL = consoleArgs.backplaneURL
 	}
 	logger.Infof("Using backplane URL: %s\n", backplaneConfiguration.URL)
 
