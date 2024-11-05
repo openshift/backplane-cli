@@ -11,7 +11,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/golang-jwt/jwt/v4"
 	logger "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
@@ -135,6 +134,8 @@ func init() {
 	flags.StringVar(&args.remediation, "remediation", "", "The name of the remediation for which RBAC should get created")
 }
 
+// TODO there is something about the proxy config in relation to overriding with --url
+// if i give localhost in the url it still tries to use proxy from .config/backplane/env.json
 func runLogin(cmd *cobra.Command, argv []string) (err error) {
 	var clusterKey string
 	var elevateReason string
@@ -311,7 +312,7 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 		"clusterID": clusterID,
 	}).Debugln("Query backplane-api for proxy url of our target cluster")
 	// Query backplane-api for proxy url
-	bpAPIClusterURL, err := doLogin(bpURL, clusterID, *accessToken, args.remediation)
+	bpAPIClusterURL, err := doLogin(bpURL, clusterID, *accessToken)
 	if err != nil {
 		// If login failed, we try to find out if the cluster is hibernating
 		isHibernating, _ := ocm.DefaultOCMInterface.IsClusterHibernating(clusterID)
@@ -363,7 +364,7 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 		targetCluster.ProxyURL = proxyURL
 	}
 
-	targetUserNickName := getUsernameFromJWT(*accessToken)
+	targetUserNickName := utils.GetUsernameFromJWT(*accessToken)
 
 	targetUser.Token = *accessToken
 
@@ -377,7 +378,7 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 		return fmt.Errorf("%v is not a valid namespace", args.defaultNamespace)
 	}
 
-	targetContextNickName := getContextNickname(targetContext.Namespace, targetContext.Cluster, targetContext.AuthInfo)
+	targetContextNickName := utils.GetContextNickname(targetContext.Namespace, targetContext.Cluster, targetContext.AuthInfo)
 
 	// Put user, cluster, context into rawconfig
 	rc.Clusters[targetContext.Cluster] = targetCluster
@@ -405,7 +406,7 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 
 // GetRestConfig returns a client-go *rest.Config which can be used to programmatically interact with the
 // Kubernetes API of a provided clusterID
-func GetRestConfig(bp config.BackplaneConfiguration, clusterID string, remediation string) (*rest.Config, error) {
+func GetRestConfig(bp config.BackplaneConfiguration, clusterID string) (*rest.Config, error) {
 	cluster, err := ocm.DefaultOCMInterface.GetClusterInfoByID(clusterID)
 	if err != nil {
 		return nil, err
@@ -416,7 +417,7 @@ func GetRestConfig(bp config.BackplaneConfiguration, clusterID string, remediati
 		return nil, err
 	}
 
-	bpAPIClusterURL, err := doLogin(bp.URL, clusterID, *accessToken, remediation)
+	bpAPIClusterURL, err := doLogin(bp.URL, clusterID, *accessToken)
 	if err != nil {
 		return nil, fmt.Errorf("failed to backplane login to cluster %s: %v", cluster.Name(), err)
 	}
@@ -437,7 +438,7 @@ func GetRestConfig(bp config.BackplaneConfiguration, clusterID string, remediati
 
 // GetRestConfig returns a client-go *rest.Config which can be used to programmatically interact with the
 // Kubernetes API of a provided clusterID
-func GetRestConfigWithConn(bp config.BackplaneConfiguration, ocmConnection *ocmsdk.Connection, clusterID string, remediation string) (*rest.Config, error) {
+func GetRestConfigWithConn(bp config.BackplaneConfiguration, ocmConnection *ocmsdk.Connection, clusterID string) (*rest.Config, error) {
 	cluster, err := ocm.DefaultOCMInterface.GetClusterInfoByIDWithConn(ocmConnection, clusterID)
 	if err != nil {
 		return nil, err
@@ -448,7 +449,7 @@ func GetRestConfigWithConn(bp config.BackplaneConfiguration, ocmConnection *ocms
 		return nil, err
 	}
 
-	bpAPIClusterURL, err := doLogin(bp.URL, clusterID, *accessToken, remediation)
+	bpAPIClusterURL, err := doLogin(bp.URL, clusterID, *accessToken)
 	if err != nil {
 		return nil, fmt.Errorf("failed to backplane login to cluster %s: %v", cluster.Name(), err)
 	}
@@ -470,8 +471,8 @@ func GetRestConfigWithConn(bp config.BackplaneConfiguration, ocmConnection *ocms
 // GetRestConfigAsUser returns a client-go *rest.Config like GetRestConfig, but supports configuring an
 // impersonation username. Commonly, this is "backplane-cluster-admin"
 // best practice would be to add at least one elevationReason in order to justity the impersonation
-func GetRestConfigAsUser(bp config.BackplaneConfiguration, clusterID, username string, remediation string, elevationReasons ...string) (*rest.Config, error) {
-	cfg, err := GetRestConfig(bp, clusterID, remediation)
+func GetRestConfigAsUser(bp config.BackplaneConfiguration, clusterID, username string, elevationReasons ...string) (*rest.Config, error) {
+	cfg, err := GetRestConfig(bp, clusterID)
 	if err != nil {
 		return nil, err
 	}
@@ -487,34 +488,8 @@ func GetRestConfigAsUser(bp config.BackplaneConfiguration, clusterID, username s
 	return cfg, nil
 }
 
-// getContextNickname returns a nickname of a context
-func getContextNickname(namespace, clusterNick, userNick string) string {
-	tokens := strings.SplitN(userNick, "/", 2)
-	return namespace + "/" + clusterNick + "/" + tokens[0]
-}
-
-// getUsernameFromJWT returns the username extracted from JWT token
-func getUsernameFromJWT(token string) string {
-	var jwtToken *jwt.Token
-	var err error
-	parser := new(jwt.Parser)
-	jwtToken, _, err = parser.ParseUnverified(token, jwt.MapClaims{})
-	if err != nil {
-		return "anonymous"
-	}
-	claims, ok := jwtToken.Claims.(jwt.MapClaims)
-	if !ok {
-		return "anonymous"
-	}
-	claim, ok := claims["username"]
-	if !ok {
-		return "anonymous"
-	}
-	return claim.(string)
-}
-
 // doLogin returns the proxy url for the target cluster.
-func doLogin(api, clusterID, accessToken string, remediation string) (string, error) {
+func doLogin(api, clusterID, accessToken string) (string, error) {
 
 	client, err := backplaneapi.DefaultClientUtils.MakeRawBackplaneAPIClientWithAccessToken(api, accessToken)
 
@@ -522,9 +497,7 @@ func doLogin(api, clusterID, accessToken string, remediation string) (string, er
 		return "", fmt.Errorf("unable to create backplane api client")
 	}
 
-	resp, err := client.LoginCluster(context.TODO(), clusterID, &BackplaneApi.LoginClusterParams{
-		Remediation: &remediation,
-	})
+	resp, err := client.LoginCluster(context.TODO(), clusterID)
 	// Print the whole response if we can't parse it. Eg. 5xx error from http server.
 	if err != nil {
 		// trying to determine the error
