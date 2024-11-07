@@ -24,6 +24,7 @@ import (
 	"github.com/openshift/backplane-cli/pkg/backplaneapi"
 	"github.com/openshift/backplane-cli/pkg/cli/config"
 	"github.com/openshift/backplane-cli/pkg/cli/globalflags"
+	"github.com/openshift/backplane-cli/pkg/info"
 	"github.com/openshift/backplane-cli/pkg/jira"
 	"github.com/openshift/backplane-cli/pkg/login"
 	"github.com/openshift/backplane-cli/pkg/ocm"
@@ -518,6 +519,11 @@ func doLogin(api, clusterID, accessToken string) (string, error) {
 		}
 
 		return "", err
+	}
+
+	err = backplaneapi.CheckResponseDeprecation(resp)
+	if errors.Is(err, backplaneapi.ErrDeprecation) {
+		logger.Warnf("The server indicated that backplane-cli version %s is deprecated. Please update as soon as possible.", info.DefaultInfoService.GetVersion())
 	}
 
 	if resp.StatusCode != http.StatusOK {
