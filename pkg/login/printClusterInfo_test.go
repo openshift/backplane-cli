@@ -143,7 +143,6 @@ var _ = Describe("PrintClusterInfo", func() {
 			// Create a new mock cluster with LimitedSupportReasonCount(3) specific to this test
 			clusterInfo2, _ := cmv1.NewCluster().
 				ID(clusterID).
-				Name("Test Cluster").
 				CloudProvider(cmv1.NewCloudProvider().ID("aws")).
 				State(cmv1.ClusterState("ready")).
 				Region(cmv1.NewCloudRegion().ID("us-east-1")).
