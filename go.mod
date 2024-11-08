@@ -36,6 +36,8 @@ require (
 	sigs.k8s.io/yaml v1.4.0
 )
 
+replace github.com/openshift/backplane-api => ../backplane-openapi/backplane-api
+
 require (
 	github.com/99designs/go-keychain v0.0.0-20191008050251-8e49817e8af4 // indirect
 	github.com/99designs/keyring v1.2.2 // indirect

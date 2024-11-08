@@ -11,7 +11,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/golang-jwt/jwt/v4"
 	logger "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
@@ -48,6 +47,7 @@ var (
 		pd               string
 		defaultNamespace string
 		ohss             string
+		remediation      string
 	}
 
 	// loginType derive the login type based on flags and args
@@ -125,9 +125,12 @@ func init() {
 		"",
 		"Login using JIRA Id",
 	)
+	flags.StringVar(&args.remediation, "remediation", "", "The name of the remediation for which RBAC should get created")
 
 }
 
+// TODO there is something about the proxy config in relation to overriding with --url
+// if i give localhost in the url it still tries to use proxy from .config/backplane/env.json
 func runLogin(cmd *cobra.Command, argv []string) (err error) {
 	var clusterKey string
 	var elevateReason string
@@ -350,7 +353,7 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 		targetCluster.ProxyURL = proxyURL
 	}
 
-	targetUserNickName := getUsernameFromJWT(*accessToken)
+	targetUserNickName := utils.GetUsernameFromJWT(*accessToken)
 
 	targetUser.Token = *accessToken
 
@@ -364,7 +367,7 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 		return fmt.Errorf("%v is not a valid namespace", args.defaultNamespace)
 	}
 
-	targetContextNickName := getContextNickname(targetContext.Namespace, targetContext.Cluster, targetContext.AuthInfo)
+	targetContextNickName := utils.GetContextNickname(targetContext.Namespace, targetContext.Cluster, targetContext.AuthInfo)
 
 	// Put user, cluster, context into rawconfig
 	rc.Clusters[targetContext.Cluster] = targetCluster
@@ -472,32 +475,6 @@ func GetRestConfigAsUser(bp config.BackplaneConfiguration, clusterID, username s
 	}
 
 	return cfg, nil
-}
-
-// getContextNickname returns a nickname of a context
-func getContextNickname(namespace, clusterNick, userNick string) string {
-	tokens := strings.SplitN(userNick, "/", 2)
-	return namespace + "/" + clusterNick + "/" + tokens[0]
-}
-
-// getUsernameFromJWT returns the username extracted from JWT token
-func getUsernameFromJWT(token string) string {
-	var jwtToken *jwt.Token
-	var err error
-	parser := new(jwt.Parser)
-	jwtToken, _, err = parser.ParseUnverified(token, jwt.MapClaims{})
-	if err != nil {
-		return "anonymous"
-	}
-	claims, ok := jwtToken.Claims.(jwt.MapClaims)
-	if !ok {
-		return "anonymous"
-	}
-	claim, ok := claims["username"]
-	if !ok {
-		return "anonymous"
-	}
-	return claim.(string)
 }
 
 // doLogin returns the proxy url for the target cluster.
