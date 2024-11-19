@@ -76,6 +76,26 @@ func (mr *MockClientWithResponsesInterfaceMockRecorder) CreateJobWithResponse(ar
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateJobWithResponse", reflect.TypeOf((*MockClientWithResponsesInterface)(nil).CreateJobWithResponse), varargs...)
 }
 
+// CreateRemediationWithResponse mocks base method.
+func (m *MockClientWithResponsesInterface) CreateRemediationWithResponse(arg0 context.Context, arg1 string, arg2 *Openapi.CreateRemediationParams, arg3 ...Openapi.RequestEditorFn) (*Openapi.CreateRemediationResponse, error) {
+	m.ctrl.T.Helper()
+	varargs := []interface{}{arg0, arg1, arg2}
+	for _, a := range arg3 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "CreateRemediationWithResponse", varargs...)
+	ret0, _ := ret[0].(*Openapi.CreateRemediationResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreateRemediationWithResponse indicates an expected call of CreateRemediationWithResponse.
+func (mr *MockClientWithResponsesInterfaceMockRecorder) CreateRemediationWithResponse(arg0, arg1, arg2 interface{}, arg3 ...interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]interface{}{arg0, arg1, arg2}, arg3...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateRemediationWithResponse", reflect.TypeOf((*MockClientWithResponsesInterface)(nil).CreateRemediationWithResponse), varargs...)
+}
+
 // CreateTestScriptRunWithBodyWithResponse mocks base method.
 func (m *MockClientWithResponsesInterface) CreateTestScriptRunWithBodyWithResponse(arg0 context.Context, arg1, arg2 string, arg3 io.Reader, arg4 ...Openapi.RequestEditorFn) (*Openapi.CreateTestScriptRunResponse, error) {
 	m.ctrl.T.Helper()
@@ -136,6 +156,26 @@ func (mr *MockClientWithResponsesInterfaceMockRecorder) DeleteBackplaneClusterCl
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteBackplaneClusterClusterIdWithResponse", reflect.TypeOf((*MockClientWithResponsesInterface)(nil).DeleteBackplaneClusterClusterIdWithResponse), varargs...)
 }
 
+// DeleteBackplaneRemediateClusterIdRemediationWithResponse mocks base method.
+func (m *MockClientWithResponsesInterface) DeleteBackplaneRemediateClusterIdRemediationWithResponse(arg0 context.Context, arg1, arg2 string, arg3 ...Openapi.RequestEditorFn) (*Openapi.DeleteBackplaneRemediateClusterIdRemediationResponse, error) {
+	m.ctrl.T.Helper()
+	varargs := []interface{}{arg0, arg1, arg2}
+	for _, a := range arg3 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "DeleteBackplaneRemediateClusterIdRemediationWithResponse", varargs...)
+	ret0, _ := ret[0].(*Openapi.DeleteBackplaneRemediateClusterIdRemediationResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// DeleteBackplaneRemediateClusterIdRemediationWithResponse indicates an expected call of DeleteBackplaneRemediateClusterIdRemediationWithResponse.
+func (mr *MockClientWithResponsesInterfaceMockRecorder) DeleteBackplaneRemediateClusterIdRemediationWithResponse(arg0, arg1, arg2 interface{}, arg3 ...interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]interface{}{arg0, arg1, arg2}, arg3...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteBackplaneRemediateClusterIdRemediationWithResponse", reflect.TypeOf((*MockClientWithResponsesInterface)(nil).DeleteBackplaneRemediateClusterIdRemediationWithResponse), varargs...)
+}
+
 // DeleteJobWithResponse mocks base method.
 func (m *MockClientWithResponsesInterface) DeleteJobWithResponse(arg0 context.Context, arg1, arg2 string, arg3 ...Openapi.RequestEditorFn) (*Openapi.DeleteJobResponse, error) {
 	m.ctrl.T.Helper()
@@ -154,6 +194,26 @@ func (mr *MockClientWithResponsesInterfaceMockRecorder) DeleteJobWithResponse(ar
 	mr.mock.ctrl.T.Helper()
 	varargs := append([]interface{}{arg0, arg1, arg2}, arg3...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteJobWithResponse", reflect.TypeOf((*MockClientWithResponsesInterface)(nil).DeleteJobWithResponse), varargs...)
+}
+
+// DeleteRemediationWithResponse mocks base method.
+func (m *MockClientWithResponsesInterface) DeleteRemediationWithResponse(arg0 context.Context, arg1 string, arg2 *Openapi.DeleteRemediationParams, arg3 ...Openapi.RequestEditorFn) (*Openapi.DeleteRemediationResponse, error) {
+	m.ctrl.T.Helper()
+	varargs := []interface{}{arg0, arg1, arg2}
+	for _, a := range arg3 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "DeleteRemediationWithResponse", varargs...)
+	ret0, _ := ret[0].(*Openapi.DeleteRemediationResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// DeleteRemediationWithResponse indicates an expected call of DeleteRemediationWithResponse.
+func (mr *MockClientWithResponsesInterfaceMockRecorder) DeleteRemediationWithResponse(arg0, arg1, arg2 interface{}, arg3 ...interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]interface{}{arg0, arg1, arg2}, arg3...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteRemediationWithResponse", reflect.TypeOf((*MockClientWithResponsesInterface)(nil).DeleteRemediationWithResponse), varargs...)
 }
 
 // GetAllJobsWithResponse mocks base method.
@@ -214,6 +274,26 @@ func (mr *MockClientWithResponsesInterfaceMockRecorder) GetBackplaneClusterClust
 	mr.mock.ctrl.T.Helper()
 	varargs := append([]interface{}{arg0, arg1}, arg2...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBackplaneClusterClusterIdWithResponse", reflect.TypeOf((*MockClientWithResponsesInterface)(nil).GetBackplaneClusterClusterIdWithResponse), varargs...)
+}
+
+// GetBackplaneRemediateClusterIdRemediationWithResponse mocks base method.
+func (m *MockClientWithResponsesInterface) GetBackplaneRemediateClusterIdRemediationWithResponse(arg0 context.Context, arg1, arg2 string, arg3 ...Openapi.RequestEditorFn) (*Openapi.GetBackplaneRemediateClusterIdRemediationResponse, error) {
+	m.ctrl.T.Helper()
+	varargs := []interface{}{arg0, arg1, arg2}
+	for _, a := range arg3 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "GetBackplaneRemediateClusterIdRemediationWithResponse", varargs...)
+	ret0, _ := ret[0].(*Openapi.GetBackplaneRemediateClusterIdRemediationResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetBackplaneRemediateClusterIdRemediationWithResponse indicates an expected call of GetBackplaneRemediateClusterIdRemediationWithResponse.
+func (mr *MockClientWithResponsesInterfaceMockRecorder) GetBackplaneRemediateClusterIdRemediationWithResponse(arg0, arg1, arg2 interface{}, arg3 ...interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]interface{}{arg0, arg1, arg2}, arg3...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBackplaneRemediateClusterIdRemediationWithResponse", reflect.TypeOf((*MockClientWithResponsesInterface)(nil).GetBackplaneRemediateClusterIdRemediationWithResponse), varargs...)
 }
 
 // GetCloudConsoleWithResponse mocks base method.
@@ -376,6 +456,26 @@ func (mr *MockClientWithResponsesInterfaceMockRecorder) HeadBackplaneClusterClus
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HeadBackplaneClusterClusterIdWithResponse", reflect.TypeOf((*MockClientWithResponsesInterface)(nil).HeadBackplaneClusterClusterIdWithResponse), varargs...)
 }
 
+// HeadBackplaneRemediateClusterIdRemediationWithResponse mocks base method.
+func (m *MockClientWithResponsesInterface) HeadBackplaneRemediateClusterIdRemediationWithResponse(arg0 context.Context, arg1, arg2 string, arg3 ...Openapi.RequestEditorFn) (*Openapi.HeadBackplaneRemediateClusterIdRemediationResponse, error) {
+	m.ctrl.T.Helper()
+	varargs := []interface{}{arg0, arg1, arg2}
+	for _, a := range arg3 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "HeadBackplaneRemediateClusterIdRemediationWithResponse", varargs...)
+	ret0, _ := ret[0].(*Openapi.HeadBackplaneRemediateClusterIdRemediationResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// HeadBackplaneRemediateClusterIdRemediationWithResponse indicates an expected call of HeadBackplaneRemediateClusterIdRemediationWithResponse.
+func (mr *MockClientWithResponsesInterfaceMockRecorder) HeadBackplaneRemediateClusterIdRemediationWithResponse(arg0, arg1, arg2 interface{}, arg3 ...interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]interface{}{arg0, arg1, arg2}, arg3...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HeadBackplaneRemediateClusterIdRemediationWithResponse", reflect.TypeOf((*MockClientWithResponsesInterface)(nil).HeadBackplaneRemediateClusterIdRemediationWithResponse), varargs...)
+}
+
 // LoginClusterWithResponse mocks base method.
 func (m *MockClientWithResponsesInterface) LoginClusterWithResponse(arg0 context.Context, arg1 string, arg2 ...Openapi.RequestEditorFn) (*Openapi.LoginClusterResponse, error) {
 	m.ctrl.T.Helper()
@@ -416,6 +516,26 @@ func (mr *MockClientWithResponsesInterfaceMockRecorder) OptionsBackplaneClusterC
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "OptionsBackplaneClusterClusterIdWithResponse", reflect.TypeOf((*MockClientWithResponsesInterface)(nil).OptionsBackplaneClusterClusterIdWithResponse), varargs...)
 }
 
+// OptionsBackplaneRemediateClusterIdRemediationWithResponse mocks base method.
+func (m *MockClientWithResponsesInterface) OptionsBackplaneRemediateClusterIdRemediationWithResponse(arg0 context.Context, arg1, arg2 string, arg3 ...Openapi.RequestEditorFn) (*Openapi.OptionsBackplaneRemediateClusterIdRemediationResponse, error) {
+	m.ctrl.T.Helper()
+	varargs := []interface{}{arg0, arg1, arg2}
+	for _, a := range arg3 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "OptionsBackplaneRemediateClusterIdRemediationWithResponse", varargs...)
+	ret0, _ := ret[0].(*Openapi.OptionsBackplaneRemediateClusterIdRemediationResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// OptionsBackplaneRemediateClusterIdRemediationWithResponse indicates an expected call of OptionsBackplaneRemediateClusterIdRemediationWithResponse.
+func (mr *MockClientWithResponsesInterfaceMockRecorder) OptionsBackplaneRemediateClusterIdRemediationWithResponse(arg0, arg1, arg2 interface{}, arg3 ...interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]interface{}{arg0, arg1, arg2}, arg3...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "OptionsBackplaneRemediateClusterIdRemediationWithResponse", reflect.TypeOf((*MockClientWithResponsesInterface)(nil).OptionsBackplaneRemediateClusterIdRemediationWithResponse), varargs...)
+}
+
 // PatchBackplaneClusterClusterIdWithResponse mocks base method.
 func (m *MockClientWithResponsesInterface) PatchBackplaneClusterClusterIdWithResponse(arg0 context.Context, arg1 string, arg2 ...Openapi.RequestEditorFn) (*Openapi.PatchBackplaneClusterClusterIdResponse, error) {
 	m.ctrl.T.Helper()
@@ -434,6 +554,26 @@ func (mr *MockClientWithResponsesInterfaceMockRecorder) PatchBackplaneClusterClu
 	mr.mock.ctrl.T.Helper()
 	varargs := append([]interface{}{arg0, arg1}, arg2...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PatchBackplaneClusterClusterIdWithResponse", reflect.TypeOf((*MockClientWithResponsesInterface)(nil).PatchBackplaneClusterClusterIdWithResponse), varargs...)
+}
+
+// PatchBackplaneRemediateClusterIdRemediationWithResponse mocks base method.
+func (m *MockClientWithResponsesInterface) PatchBackplaneRemediateClusterIdRemediationWithResponse(arg0 context.Context, arg1, arg2 string, arg3 ...Openapi.RequestEditorFn) (*Openapi.PatchBackplaneRemediateClusterIdRemediationResponse, error) {
+	m.ctrl.T.Helper()
+	varargs := []interface{}{arg0, arg1, arg2}
+	for _, a := range arg3 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "PatchBackplaneRemediateClusterIdRemediationWithResponse", varargs...)
+	ret0, _ := ret[0].(*Openapi.PatchBackplaneRemediateClusterIdRemediationResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// PatchBackplaneRemediateClusterIdRemediationWithResponse indicates an expected call of PatchBackplaneRemediateClusterIdRemediationWithResponse.
+func (mr *MockClientWithResponsesInterfaceMockRecorder) PatchBackplaneRemediateClusterIdRemediationWithResponse(arg0, arg1, arg2 interface{}, arg3 ...interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]interface{}{arg0, arg1, arg2}, arg3...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PatchBackplaneRemediateClusterIdRemediationWithResponse", reflect.TypeOf((*MockClientWithResponsesInterface)(nil).PatchBackplaneRemediateClusterIdRemediationWithResponse), varargs...)
 }
 
 // PostBackplaneClusterClusterIdWithResponse mocks base method.
@@ -456,6 +596,26 @@ func (mr *MockClientWithResponsesInterfaceMockRecorder) PostBackplaneClusterClus
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PostBackplaneClusterClusterIdWithResponse", reflect.TypeOf((*MockClientWithResponsesInterface)(nil).PostBackplaneClusterClusterIdWithResponse), varargs...)
 }
 
+// PostBackplaneRemediateClusterIdRemediationWithResponse mocks base method.
+func (m *MockClientWithResponsesInterface) PostBackplaneRemediateClusterIdRemediationWithResponse(arg0 context.Context, arg1, arg2 string, arg3 ...Openapi.RequestEditorFn) (*Openapi.PostBackplaneRemediateClusterIdRemediationResponse, error) {
+	m.ctrl.T.Helper()
+	varargs := []interface{}{arg0, arg1, arg2}
+	for _, a := range arg3 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "PostBackplaneRemediateClusterIdRemediationWithResponse", varargs...)
+	ret0, _ := ret[0].(*Openapi.PostBackplaneRemediateClusterIdRemediationResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// PostBackplaneRemediateClusterIdRemediationWithResponse indicates an expected call of PostBackplaneRemediateClusterIdRemediationWithResponse.
+func (mr *MockClientWithResponsesInterfaceMockRecorder) PostBackplaneRemediateClusterIdRemediationWithResponse(arg0, arg1, arg2 interface{}, arg3 ...interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]interface{}{arg0, arg1, arg2}, arg3...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PostBackplaneRemediateClusterIdRemediationWithResponse", reflect.TypeOf((*MockClientWithResponsesInterface)(nil).PostBackplaneRemediateClusterIdRemediationWithResponse), varargs...)
+}
+
 // PutBackplaneClusterClusterIdWithResponse mocks base method.
 func (m *MockClientWithResponsesInterface) PutBackplaneClusterClusterIdWithResponse(arg0 context.Context, arg1 string, arg2 ...Openapi.RequestEditorFn) (*Openapi.PutBackplaneClusterClusterIdResponse, error) {
 	m.ctrl.T.Helper()
@@ -476,6 +636,26 @@ func (mr *MockClientWithResponsesInterfaceMockRecorder) PutBackplaneClusterClust
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PutBackplaneClusterClusterIdWithResponse", reflect.TypeOf((*MockClientWithResponsesInterface)(nil).PutBackplaneClusterClusterIdWithResponse), varargs...)
 }
 
+// PutBackplaneRemediateClusterIdRemediationWithResponse mocks base method.
+func (m *MockClientWithResponsesInterface) PutBackplaneRemediateClusterIdRemediationWithResponse(arg0 context.Context, arg1, arg2 string, arg3 ...Openapi.RequestEditorFn) (*Openapi.PutBackplaneRemediateClusterIdRemediationResponse, error) {
+	m.ctrl.T.Helper()
+	varargs := []interface{}{arg0, arg1, arg2}
+	for _, a := range arg3 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "PutBackplaneRemediateClusterIdRemediationWithResponse", varargs...)
+	ret0, _ := ret[0].(*Openapi.PutBackplaneRemediateClusterIdRemediationResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// PutBackplaneRemediateClusterIdRemediationWithResponse indicates an expected call of PutBackplaneRemediateClusterIdRemediationWithResponse.
+func (mr *MockClientWithResponsesInterfaceMockRecorder) PutBackplaneRemediateClusterIdRemediationWithResponse(arg0, arg1, arg2 interface{}, arg3 ...interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]interface{}{arg0, arg1, arg2}, arg3...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PutBackplaneRemediateClusterIdRemediationWithResponse", reflect.TypeOf((*MockClientWithResponsesInterface)(nil).PutBackplaneRemediateClusterIdRemediationWithResponse), varargs...)
+}
+
 // TraceBackplaneClusterClusterIdWithResponse mocks base method.
 func (m *MockClientWithResponsesInterface) TraceBackplaneClusterClusterIdWithResponse(arg0 context.Context, arg1 string, arg2 ...Openapi.RequestEditorFn) (*Openapi.TraceBackplaneClusterClusterIdResponse, error) {
 	m.ctrl.T.Helper()
@@ -494,4 +674,24 @@ func (mr *MockClientWithResponsesInterfaceMockRecorder) TraceBackplaneClusterClu
 	mr.mock.ctrl.T.Helper()
 	varargs := append([]interface{}{arg0, arg1}, arg2...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TraceBackplaneClusterClusterIdWithResponse", reflect.TypeOf((*MockClientWithResponsesInterface)(nil).TraceBackplaneClusterClusterIdWithResponse), varargs...)
+}
+
+// TraceBackplaneRemediateClusterIdRemediationWithResponse mocks base method.
+func (m *MockClientWithResponsesInterface) TraceBackplaneRemediateClusterIdRemediationWithResponse(arg0 context.Context, arg1, arg2 string, arg3 ...Openapi.RequestEditorFn) (*Openapi.TraceBackplaneRemediateClusterIdRemediationResponse, error) {
+	m.ctrl.T.Helper()
+	varargs := []interface{}{arg0, arg1, arg2}
+	for _, a := range arg3 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "TraceBackplaneRemediateClusterIdRemediationWithResponse", varargs...)
+	ret0, _ := ret[0].(*Openapi.TraceBackplaneRemediateClusterIdRemediationResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// TraceBackplaneRemediateClusterIdRemediationWithResponse indicates an expected call of TraceBackplaneRemediateClusterIdRemediationWithResponse.
+func (mr *MockClientWithResponsesInterfaceMockRecorder) TraceBackplaneRemediateClusterIdRemediationWithResponse(arg0, arg1, arg2 interface{}, arg3 ...interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]interface{}{arg0, arg1, arg2}, arg3...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TraceBackplaneRemediateClusterIdRemediationWithResponse", reflect.TypeOf((*MockClientWithResponsesInterface)(nil).TraceBackplaneRemediateClusterIdRemediationWithResponse), varargs...)
 }

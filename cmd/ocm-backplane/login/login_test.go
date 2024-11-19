@@ -556,7 +556,7 @@ var _ = Describe("Login command", func() {
 
 			username := "test-user"
 
-			config, err := GetRestConfigAsUser(backplaneConfiguration, testClusterID, username, "")
+			config, err := GetRestConfigAsUser(backplaneConfiguration, testClusterID, username)
 			Expect(err).To(BeNil())
 			Expect(config.Impersonate.UserName).To(Equal(username))
 			Expect(len(config.Impersonate.Extra["reason"])).To(Equal(0))
@@ -572,7 +572,7 @@ var _ = Describe("Login command", func() {
 			username := "test-user"
 			elevationReasons := []string{"reason1", "reason2"}
 
-			config, err := GetRestConfigAsUser(backplaneConfiguration, testClusterID, username, "", elevationReasons...)
+			config, err := GetRestConfigAsUser(backplaneConfiguration, testClusterID, username, elevationReasons...)
 			Expect(err).To(BeNil())
 			Expect(config.Impersonate.UserName).To(Equal(username))
 			Expect(config.Impersonate.Extra["reason"][0]).To(Equal(elevationReasons[0]))
