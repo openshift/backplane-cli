@@ -67,110 +67,7 @@ func newCreateRemediationCmd() *cobra.Command {
 				return err
 			}
 
-			// ======== Initialize backplaneURL ========
-			bpConfig, err := config.GetBackplaneConfiguration()
-			if err != nil {
-				return err
-			}
-
-			bpCluster, err := utils.DefaultClusterUtils.GetBackplaneCluster(clusterKey)
-			if err != nil {
-				return err
-			}
-
-			backplaneHost := bpConfig.URL
-
-			clusterID := bpCluster.ClusterID
-
-			if urlFlag != "" {
-				backplaneHost = urlFlag
-			}
-
-			// ======== Parsing Args ========
-			if len(args) < 1 {
-				return fmt.Errorf("missing remediation name as an argument")
-			}
-			remediationName := args[0]
-
-			accessToken, err := ocm.DefaultOCMInterface.GetOCMAccessToken()
-			if err != nil {
-				return err
-			}
-			proxyURI, err := doCreateRemediation(backplaneHost, clusterID, *accessToken, remediationName)
-			// ======== Render Results ========
-			if err != nil {
-				return err
-			}
-
-			logger.Infof("Created remediation RBAC and serviceaccount\nuri: %s", proxyURI)
-			// TODO needs code to create local kubeconfig factorized from login command
-			// So that we are "logged in"
-			// CAD uses the programmatic endpoint and resulting kubeconfig directly
-
-			// Add a new cluster & context & user
-			logger.Debugln("Writing OCM configuration ")
-
-			targetCluster := api.NewCluster()
-			targetUser := api.NewAuthInfo()
-			targetContext := api.NewContext()
-
-			targetCluster.Server = proxyURI
-
-			// Add proxy URL to target cluster
-			proxyURL := globalOpts.ProxyURL
-			if proxyURL != "" {
-				err = backplaneapi.DefaultClientUtils.SetClientProxyURL(proxyURL)
-
-				if err != nil {
-					return err
-				}
-				logger.Debugf("Using backplane Proxy URL: %s\n", proxyURL)
-			}
-
-			if bpConfig.ProxyURL != nil {
-				proxyURL = *bpConfig.ProxyURL
-				logger.Debugln("backplane configuration file also contains a proxy url, using that one instead")
-				logger.Debugf("New backplane Proxy URL: %s\n", proxyURL)
-			}
-
-			logger.Debugln("Extracting target cluster ID and name")
-			clusterID, clusterName, err := ocm.DefaultOCMInterface.GetTargetCluster(clusterKey)
-			if err != nil {
-				return err
-			}
-			if proxyURL != "" {
-				targetCluster.ProxyURL = proxyURL
-			}
-
-			targetUserNickName := utils.GetUsernameFromJWT(*accessToken)
-
-			targetUser.Token = *accessToken
-
-			targetContext.AuthInfo = targetUserNickName
-			targetContext.Cluster = clusterName
-
-			targetContext.Namespace = "default"
-
-			targetContextNickName := utils.GetContextNickname(targetContext.Namespace, targetContext.Cluster, targetContext.AuthInfo)
-
-			cf := genericclioptions.NewConfigFlags(true)
-			rc, err := cf.ToRawKubeConfigLoader().RawConfig()
-			if err != nil {
-				return err
-			}
-			// Put user, cluster, context into rawconfig
-			rc.Clusters[targetContext.Cluster] = targetCluster
-			rc.AuthInfos[targetUserNickName] = targetUser
-			rc.Contexts[targetContextNickName] = targetContext
-			rc.CurrentContext = targetContextNickName
-
-			logger.Debugln("Saving new API config")
-			// Save the config
-			if err = login.SaveKubeConfig(clusterID, rc, false, ""); err != nil {
-				return err
-			}
-
-			return nil
+			return runCreateRemediation(args, clusterKey, urlFlag)
 		},
 	}
 	return cmd
@@ -196,47 +93,158 @@ func newDeleteRemediationCmd() *cobra.Command {
 				return err
 			}
 
-			// ======== Initialize backplaneURL ========
-			bpConfig, err := config.GetBackplaneConfiguration()
-			if err != nil {
-				return err
-			}
-
-			bpCluster, err := utils.DefaultClusterUtils.GetBackplaneCluster(clusterKey)
-			if err != nil {
-				return err
-			}
-
-			backplaneHost := bpConfig.URL
-
-			clusterID := bpCluster.ClusterID
-
-			if urlFlag != "" {
-				backplaneHost = urlFlag
-			}
-
-			// ======== Parsing Args ========
-			if len(args) < 1 {
-				return fmt.Errorf("missing remediations service account name as an argument")
-			}
-			remediationSA := args[0]
-
-			accessToken, err := ocm.DefaultOCMInterface.GetOCMAccessToken()
-			if err != nil {
-				return err
-			}
-			// ======== Call Endpoint ========
-			err = doDeleteRemediation(backplaneHost, clusterID, *accessToken, remediationSA)
-			// ======== Render Results ========
-			if err != nil {
-				return err
-			}
-
-			fmt.Printf("Deleted remediation RBAC on cluster %s\n", clusterID)
-			return nil
+			return runDeleteRemediation(args, clusterKey, urlFlag)
 		},
 	}
 	return cmd
+}
+
+func runCreateRemediation(args []string, clusterKey string, urlFlag string) error {
+	// ======== Initialize backplaneURL ========
+	bpConfig, err := config.GetBackplaneConfiguration()
+	if err != nil {
+		return err
+	}
+
+	bpCluster, err := utils.DefaultClusterUtils.GetBackplaneCluster(clusterKey)
+	if err != nil {
+		return err
+	}
+
+	backplaneHost := bpConfig.URL
+
+	clusterID := bpCluster.ClusterID
+
+	if urlFlag != "" {
+		backplaneHost = urlFlag
+	}
+
+	// ======== Parsing Args ========
+	if len(args) < 1 {
+		return fmt.Errorf("missing remediation name as an argument")
+	}
+	remediationName := args[0]
+
+	accessToken, err := ocm.DefaultOCMInterface.GetOCMAccessToken()
+	if err != nil {
+		return err
+	}
+	proxyURI, err := doCreateRemediation(backplaneHost, clusterID, *accessToken, remediationName)
+	// ======== Render Results ========
+	if err != nil {
+		return err
+	}
+
+	logger.Infof("Created remediation RBAC and serviceaccount\nuri: %s", proxyURI)
+	// TODO needs code to create local kubeconfig factorized from login command
+	// So that we are "logged in"
+	// CAD uses the programmatic endpoint and resulting kubeconfig directly
+
+	// Add a new cluster & context & user
+	logger.Debugln("Writing OCM configuration ")
+
+	targetCluster := api.NewCluster()
+	targetUser := api.NewAuthInfo()
+	targetContext := api.NewContext()
+
+	targetCluster.Server = proxyURI
+
+	// Add proxy URL to target cluster
+	proxyURL := globalOpts.ProxyURL
+	if proxyURL != "" {
+		err = backplaneapi.DefaultClientUtils.SetClientProxyURL(proxyURL)
+
+		if err != nil {
+			return err
+		}
+		logger.Debugf("Using backplane Proxy URL: %s\n", proxyURL)
+	}
+
+	if bpConfig.ProxyURL != nil {
+		proxyURL = *bpConfig.ProxyURL
+		logger.Debugln("backplane configuration file also contains a proxy url, using that one instead")
+		logger.Debugf("New backplane Proxy URL: %s\n", proxyURL)
+	}
+
+	logger.Debugln("Extracting target cluster ID and name")
+	clusterID, clusterName, err := ocm.DefaultOCMInterface.GetTargetCluster(clusterKey)
+	if err != nil {
+		return err
+	}
+	if proxyURL != "" {
+		targetCluster.ProxyURL = proxyURL
+	}
+
+	targetUserNickName := utils.GetUsernameFromJWT(*accessToken)
+
+	targetUser.Token = *accessToken
+
+	targetContext.AuthInfo = targetUserNickName
+	targetContext.Cluster = clusterName
+
+	targetContext.Namespace = "default"
+
+	targetContextNickName := utils.GetContextNickname(targetContext.Namespace, targetContext.Cluster, targetContext.AuthInfo)
+
+	cf := genericclioptions.NewConfigFlags(true)
+	rc, err := cf.ToRawKubeConfigLoader().RawConfig()
+	if err != nil {
+		return err
+	}
+	// Put user, cluster, context into rawconfig
+	rc.Clusters[targetContext.Cluster] = targetCluster
+	rc.AuthInfos[targetUserNickName] = targetUser
+	rc.Contexts[targetContextNickName] = targetContext
+	rc.CurrentContext = targetContextNickName
+
+	logger.Debugln("Saving new API config")
+	// Save the config
+	if err = login.SaveKubeConfig(clusterID, rc, false, ""); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func runDeleteRemediation(args []string, clusterKey string, urlFlag string) error {
+	// ======== Initialize backplaneURL ========
+	bpConfig, err := config.GetBackplaneConfiguration()
+	if err != nil {
+		return err
+	}
+
+	bpCluster, err := utils.DefaultClusterUtils.GetBackplaneCluster(clusterKey)
+	if err != nil {
+		return err
+	}
+
+	backplaneHost := bpConfig.URL
+
+	clusterID := bpCluster.ClusterID
+
+	if urlFlag != "" {
+		backplaneHost = urlFlag
+	}
+
+	// ======== Parsing Args ========
+	if len(args) < 1 {
+		return fmt.Errorf("missing remediations service account name as an argument")
+	}
+	remediationSA := args[0]
+
+	accessToken, err := ocm.DefaultOCMInterface.GetOCMAccessToken()
+	if err != nil {
+		return err
+	}
+	// ======== Call Endpoint ========
+	err = doDeleteRemediation(backplaneHost, clusterID, *accessToken, remediationSA)
+	// ======== Render Results ========
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Deleted remediation RBAC on cluster %s\n", clusterID)
+	return nil
 }
 
 // TODO are we missusing the backplane api package? We have generated functions like backplaneapi.CreateRemediationWithResponse which already reads the body. All the utils functions do read the body again. Failing my calls here.
@@ -268,7 +276,6 @@ func doCreateRemediation(api string, clusterID string, accessToken string, remed
 		return "", errors.New(*dest.Message)
 
 	}
-
 	return api + *resp.JSON200.ProxyUri, nil
 }
 
