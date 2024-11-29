@@ -108,6 +108,12 @@ In this example, we will login to a cluster with id `123456abcdef` in production
   ```
   $ ocm backplane login <cluster> --service
   ```
+### Get Cluster information after login
+
+- Login to the target cluster via backplane and add --cluster-info flag
+ ```
+  $ ocm backplane cluster login <cluster> --cluster-info
+ ```
 
 ### Login to multiple clusters 
 
