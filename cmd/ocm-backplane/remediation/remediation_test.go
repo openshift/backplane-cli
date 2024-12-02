@@ -57,6 +57,9 @@ var _ = Describe("New Remediation command", func() {
 		mockClientWithResp = mocks.NewMockClientWithResponsesInterface(mockCtrl)
 		//ockClient = mocks.NewMockClientInterface(mockCtrl)
 
+		err := utils.CreateTempKubeConfig(nil)
+		Expect(err).To(BeNil())
+
 		mockOcmInterface = ocmMock.NewMockOCMInterface(mockCtrl)
 		ocm.DefaultOCMInterface = mockOcmInterface
 
