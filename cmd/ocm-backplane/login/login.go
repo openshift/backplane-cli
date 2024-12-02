@@ -49,6 +49,7 @@ var (
 		defaultNamespace string
 		ohss             string
 		clusterInfo      bool
+		remediation      string
 	}
 
 	// loginType derive the login type based on flags and args
@@ -131,7 +132,7 @@ func init() {
 		"cluster-info",
 		false, "Print basic cluster information after login",
 	)
-
+	flags.StringVar(&args.remediation, "remediation", "", "The name of the remediation for which RBAC should get created")
 }
 
 func runLogin(cmd *cobra.Command, argv []string) (err error) {
@@ -521,7 +522,9 @@ func doLogin(api, clusterID, accessToken string) (string, error) {
 		return "", fmt.Errorf("unable to create backplane api client")
 	}
 
-	resp, err := client.LoginCluster(context.TODO(), clusterID)
+	resp, err := client.LoginCluster(context.TODO(), clusterID, &BackplaneApi.LoginClusterParams{
+		Remediation: &args.remediation,
+	})
 	// Print the whole response if we can't parse it. Eg. 5xx error from http server.
 	if err != nil {
 		// trying to determine the error
