@@ -1,26 +1,18 @@
 package remediation
 
 import (
-	"context"
-	"encoding/json"
-	"errors"
 	"fmt"
-	"net/http"
-	"net/url"
-	"strings"
 
-	ocmsdk "github.com/openshift-online/ocm-sdk-go"
-	BackplaneApi "github.com/openshift/backplane-api/pkg/client"
 	"github.com/openshift/backplane-cli/pkg/backplaneapi"
 	"github.com/openshift/backplane-cli/pkg/cli/config"
 	"github.com/openshift/backplane-cli/pkg/cli/globalflags"
 	"github.com/openshift/backplane-cli/pkg/login"
 	"github.com/openshift/backplane-cli/pkg/ocm"
+	"github.com/openshift/backplane-cli/pkg/remediation"
 	"github.com/openshift/backplane-cli/pkg/utils"
 	logger "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
-	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd/api"
 )
 
@@ -129,7 +121,7 @@ func runCreateRemediation(args []string, clusterKey string, urlFlag string) erro
 	if err != nil {
 		return err
 	}
-	proxyURI, err := doCreateRemediation(backplaneHost, clusterID, *accessToken, remediationName)
+	proxyURI, err := remediation.DoCreateRemediation(backplaneHost, clusterID, *accessToken, remediationName)
 	// ======== Render Results ========
 	if err != nil {
 		return err
@@ -237,7 +229,7 @@ func runDeleteRemediation(args []string, clusterKey string, urlFlag string) erro
 		return err
 	}
 	// ======== Call Endpoint ========
-	err = doDeleteRemediation(backplaneHost, clusterID, *accessToken, remediationSA)
+	err = remediation.DoDeleteRemediation(backplaneHost, clusterID, *accessToken, remediationSA)
 	// ======== Render Results ========
 	if err != nil {
 		return err
@@ -245,99 +237,4 @@ func runDeleteRemediation(args []string, clusterKey string, urlFlag string) erro
 
 	fmt.Printf("Deleted remediation RBAC on cluster %s\n", clusterID)
 	return nil
-}
-
-// TODO are we missusing the backplane api package? We have generated functions like backplaneapi.CreateRemediationWithResponse which already reads the body. All the utils functions do read the body again. Failing my calls here.
-func doCreateRemediation(api string, clusterID string, accessToken string, remediationName string) (proxyURI string, err error) {
-	client, err := backplaneapi.DefaultClientUtils.MakeBackplaneAPIClientWithAccessToken(api, accessToken)
-	if err != nil {
-		return "", fmt.Errorf("unable to create backplane api client")
-	}
-
-	logger.Debug("Sending request...")
-	resp, err := client.CreateRemediationWithResponse(context.TODO(), clusterID, &BackplaneApi.CreateRemediationParams{Remediation: remediationName})
-	if err != nil {
-		logger.Debug("unexpected...")
-		return "", err
-	}
-
-	// TODO figure out the error handling here
-	if resp.StatusCode() != http.StatusOK {
-		// logger.Debugf("Unmarshal error resp body: %s", resp.Body)
-		var dest BackplaneApi.Error
-		if err := json.Unmarshal(resp.Body, &dest); err != nil {
-			// Avoid squashing the HTTP response info with Unmarshal err...
-			logger.Debugf("Unmarshaled %s", *dest.Message)
-
-			bodyStr := strings.ReplaceAll(string(resp.Body[:]), "\n", " ")
-			err := fmt.Errorf("code:'%d'; failed to unmarshal response:'%s'; %w", resp.StatusCode(), bodyStr, err)
-			return "", err
-		}
-		return "", errors.New(*dest.Message)
-
-	}
-	return api + *resp.JSON200.ProxyUri, nil
-}
-
-// CreateRemediationWithConn can be used to programtically interact with backplaneapi
-func CreateRemediationWithConn(bp config.BackplaneConfiguration, ocmConnection *ocmsdk.Connection, clusterID string, remediationName string) (config *rest.Config, serviceAccountName string, err error) {
-	accessToken, err := ocm.DefaultOCMInterface.GetOCMAccessTokenWithConn(ocmConnection)
-	if err != nil {
-		return nil, "", err
-	}
-
-	bpAPIClusterURL, err := doCreateRemediation(bp.URL, clusterID, *accessToken, remediationName)
-	if err != nil {
-		return nil, "", err
-	}
-
-	cfg := &rest.Config{
-		Host:        bpAPIClusterURL,
-		BearerToken: *accessToken,
-	}
-
-	if bp.ProxyURL != nil {
-		cfg.Proxy = func(r *http.Request) (*url.URL, error) {
-			return url.Parse(*bp.ProxyURL)
-		}
-	}
-	return cfg, "", nil
-}
-
-func doDeleteRemediation(api string, clusterID string, accessToken string, remediation string) error {
-	client, err := backplaneapi.DefaultClientUtils.MakeBackplaneAPIClientWithAccessToken(api, accessToken)
-	if err != nil {
-		return fmt.Errorf("unable to create backplane api client")
-	}
-
-	resp, err := client.DeleteRemediationWithResponse(context.TODO(), clusterID, &BackplaneApi.DeleteRemediationParams{Remediation: &remediation})
-	if err != nil {
-		return err
-	}
-
-	if resp.StatusCode() != http.StatusOK {
-		// logger.Debugf("Unmarshal error resp body: %s", resp.Body)
-		var dest BackplaneApi.Error
-		if err := json.Unmarshal(resp.Body, &dest); err != nil {
-			// Avoid squashing the HTTP response info with Unmarshal err...
-			logger.Debugf("Unmarshaled %s", *dest.Message)
-
-			bodyStr := strings.ReplaceAll(string(resp.Body[:]), "\n", " ")
-			err := fmt.Errorf("code:'%d'; failed to unmarshal response:'%s'; %w", resp.StatusCode(), bodyStr, err)
-			return err
-		}
-		return errors.New(*dest.Message)
-	}
-
-	return nil
-}
-
-// DeleteRemediationWithConn can be used to programtically interact with backplaneapi
-func DeleteRemediationWithConn(bp config.BackplaneConfiguration, ocmConnection *ocmsdk.Connection, clusterID string, remediationSA string) error {
-	accessToken, err := ocm.DefaultOCMInterface.GetOCMAccessTokenWithConn(ocmConnection)
-	if err != nil {
-		return err
-	}
-
-	return doDeleteRemediation(bp.URL, clusterID, *accessToken, remediationSA)
 }
