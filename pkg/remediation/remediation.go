@@ -51,15 +51,15 @@ func DoCreateRemediation(api string, clusterID string, accessToken string, remed
 }
 
 // CreateRemediationWithConn can be used to programtically interact with backplaneapi
-func CreateRemediationWithConn(bp config.BackplaneConfiguration, ocmConnection *ocmsdk.Connection, clusterID string, remediationName string) (config *rest.Config, serviceAccountName string, err error) {
+func CreateRemediationWithConn(bp config.BackplaneConfiguration, ocmConnection *ocmsdk.Connection, clusterID string, remediationName string) (config *rest.Config, err error) {
 	accessToken, err := ocm.DefaultOCMInterface.GetOCMAccessTokenWithConn(ocmConnection)
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 
 	bpAPIClusterURL, err := DoCreateRemediation(bp.URL, clusterID, *accessToken, remediationName)
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 
 	cfg := &rest.Config{
@@ -72,7 +72,7 @@ func CreateRemediationWithConn(bp config.BackplaneConfiguration, ocmConnection *
 			return url.Parse(*bp.ProxyURL)
 		}
 	}
-	return cfg, "", nil
+	return cfg, nil
 }
 
 func DoDeleteRemediation(api string, clusterID string, accessToken string, remediation string) error {
@@ -104,11 +104,11 @@ func DoDeleteRemediation(api string, clusterID string, accessToken string, remed
 }
 
 // DeleteRemediationWithConn can be used to programtically interact with backplaneapi
-func DeleteRemediationWithConn(bp config.BackplaneConfiguration, ocmConnection *ocmsdk.Connection, clusterID string, remediationSA string) error {
+func DeleteRemediationWithConn(bp config.BackplaneConfiguration, ocmConnection *ocmsdk.Connection, clusterID string, remediation string) error {
 	accessToken, err := ocm.DefaultOCMInterface.GetOCMAccessTokenWithConn(ocmConnection)
 	if err != nil {
 		return err
 	}
 
-	return DoDeleteRemediation(bp.URL, clusterID, *accessToken, remediationSA)
+	return DoDeleteRemediation(bp.URL, clusterID, *accessToken, remediation)
 }
