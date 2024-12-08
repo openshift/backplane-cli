@@ -1,14 +1,12 @@
 package config
 
 import (
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
 
 	"github.com/spf13/viper"
-	"github.com/stretchr/testify/mock"
 
 	"github.com/openshift/backplane-cli/pkg/info"
 )
@@ -32,6 +30,19 @@ func TestGetBackplaneConfig(t *testing.T) {
 			t.Errorf("expected to return the explicitly defined proxy %v instead of the default one %v", userDefinedProxy, config.ProxyURL)
 		}
 	})
+
+	t.Run("display cluster info is true", func(t *testing.T) {
+		viper.Set("display-cluster-info", true)
+		config, err := GetBackplaneConfiguration()
+		if err != nil {
+			t.Error(err)
+		}
+
+		if !config.DisplayClusterInfo {
+			t.Errorf("expected DisplayClusterInfo to be true, got %v", config.DisplayClusterInfo)
+		}
+	})
+
 }
 
 func TestGetBackplaneConnection(t *testing.T) {
@@ -156,85 +167,6 @@ func TestValidateConfig(t *testing.T) {
 			err := validateConfig()
 			if (err != nil) != tt.expectError {
 				t.Errorf("expected error: %v, got: %v", tt.expectError, err)
-			}
-		})
-	}
-}
-
-// Test DisplayClusterInfoHandling tests the behavior of the PrintClusterInfo method
-
-type MockLogin struct {
-	mock.Mock
-}
-
-func (m *MockLogin) PrintClusterInfo(clusterID string) error {
-	args := m.Called(clusterID)
-	return args.Error(0)
-}
-
-func TestDisplayClusterInfoHandling(t *testing.T) {
-	tests := []struct {
-		name                      string
-		displayClusterInfoEnabled bool
-		mockPrintClusterInfoError error
-		expectedError             error
-		expectMockCalled          bool
-	}{
-		{
-			name:                      "DisplayClusterInfo is enabled and PrintClusterInfo succeeds",
-			displayClusterInfoEnabled: true,
-			mockPrintClusterInfoError: nil,
-			expectedError:             nil,
-			expectMockCalled:          true,
-		},
-		{
-			name:                      "DisplayClusterInfo is enabled and PrintClusterInfo fails",
-			displayClusterInfoEnabled: true,
-			mockPrintClusterInfoError: fmt.Errorf("mock error"),
-			expectedError:             fmt.Errorf("failed to print cluster info: mock error"),
-			expectMockCalled:          true,
-		},
-		{
-			name:                      "DisplayClusterInfo is disabled",
-			displayClusterInfoEnabled: false,
-			mockPrintClusterInfoError: nil,
-			expectedError:             nil,
-			expectMockCalled:          false, // Mock should not be called
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			mockLogin := new(MockLogin)
-			clusterID := "test-cluster-id"
-
-			// Mock the PrintClusterInfo behavior
-			mockLogin.On("PrintClusterInfo", clusterID).Return(tt.mockPrintClusterInfoError)
-
-			// bpConfig structure
-			bpConfig := struct {
-				DisplayClusterInfo bool
-			}{
-				DisplayClusterInfo: tt.displayClusterInfoEnabled,
-			}
-
-			// Run code under test
-			var err error
-			if bpConfig.DisplayClusterInfo {
-				err = mockLogin.PrintClusterInfo(clusterID)
-				if err != nil {
-					err = fmt.Errorf("failed to print cluster info: %v", err)
-				}
-			}
-
-			if (err != nil && tt.expectedError == nil) || (err == nil && tt.expectedError != nil) || (err != nil && err.Error() != tt.expectedError.Error()) {
-				t.Errorf("expected error: %v, got: %v", tt.expectedError, err)
-			}
-
-			if tt.expectMockCalled {
-				mockLogin.AssertExpectations(t) // Assert that the mock method was called
-			} else {
-				mockLogin.AssertNotCalled(t, "PrintClusterInfo", clusterID) // Assert that the mock method was NOT called
 			}
 		})
 	}
