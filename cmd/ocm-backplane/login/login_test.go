@@ -242,6 +242,24 @@ var _ = Describe("Login command", func() {
 			globalOpts.Manager = false
 			globalOpts.Service = false
 		})
+
+		It("should fail to print cluster info when bpConfig.DisplayClusterInfo is true and PrintClusterInfo returns an error", func() {
+			err := utils.CreateTempKubeConfig(nil)
+			Expect(err).To(BeNil())
+			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, testClusterID, nil)
+			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil)
+			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken(backplaneAPIURI, testToken).Return(mockClient, nil)
+			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(trueClusterID)).Return(fakeResp, nil)
+			mockOcmInterface.EXPECT().GetClusterInfoByID(gomock.Any()).Return(nil, errors.New("error"))
+			bpConfig := config.BackplaneConfiguration{DisplayClusterInfo: true}
+			bpConfig.DisplayClusterInfo = true
+
+			err = runLogin(nil, []string{testClusterID})
+			Expect(err.Error()).Should(ContainSubstring("failed to print cluster info"))
+		})
+
 		It("when running with a simple case should work as expected", func() {
 			err := utils.CreateTempKubeConfig(nil)
 			Expect(err).To(BeNil())
