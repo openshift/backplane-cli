@@ -241,48 +241,49 @@ var _ = Describe("Login command", func() {
 		BeforeEach(func() {
 			globalOpts.Manager = false
 			globalOpts.Service = false
-		})
-		It("should print a message if DisplayClusterInfo is not set to true", func() {
-			err := utils.CreateTempKubeConfig(nil)
-			Expect(err).To(BeNil())
+			args.clusterInfo = false
 
+		})
+
+		It("when display cluster info is set to true", func() {
+			err := utils.CreateTempKubeConfig(nil)
+			args.defaultNamespace = "default"
+			args.clusterInfo = true
+			Expect(err).To(BeNil())
 			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, testClusterID, nil)
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil)
 			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken(backplaneAPIURI, testToken).Return(mockClient, nil)
 			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(trueClusterID)).Return(fakeResp, nil)
-
-			// Create a temporary JSON configuration file in the temp directory for testing purposes.
-			tempDir := os.TempDir()
-			bpConfigPath := filepath.Join(tempDir, "mock.json")
-			tempFile, err := os.Create(bpConfigPath)
-			Expect(err).To(BeNil())
-
-			testData := config.BackplaneConfiguration{
-				URL:                backplaneAPIURI,
-				ProxyURL:           new(string),
-				DisplayClusterInfo: false,
-			}
-
-			// Marshal the testData into JSON format and write it to tempFile.
-			jsonData, err := json.Marshal(testData)
-			Expect(err).To(BeNil())
-			_, err = tempFile.Write(jsonData)
-			Expect(err).To(BeNil())
-
-			os.Setenv("BACKPLANE_CONFIG", bpConfigPath)
-
-			// Set the global configuration to use the bpConfig
-			bpConfig := config.BackplaneConfiguration{DisplayClusterInfo: false}
+			mockOcmInterface.EXPECT().GetClusterInfoByID(gomock.Any()).Return(mockCluster, nil).Times(2)
+			mockOcmInterface.EXPECT().SetupOCMConnection().Return(nil, nil)
+			mockOcmInterface.EXPECT().IsClusterAccessProtectionEnabled(gomock.Any(), trueClusterID).Return(false, nil)
 
 			err = runLogin(nil, []string{testClusterID})
-			Expect(err).To(BeNil())
 
-			// Check if DisplayClusterInfo is set to true
-			if !bpConfig.DisplayClusterInfo {
-				fmt.Println("The default value is set for DisplayClusterInfo cluster info will not be printed")
-			}
+			Expect(err).To(BeNil())
+		})
+
+		It("should fail to print cluster info when is set to true and PrintClusterInfo returns an error", func() {
+			err := utils.CreateTempKubeConfig(nil)
+			Expect(err).To(BeNil())
+			args.defaultNamespace = "default"
+			args.clusterInfo = true
+
+			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, testClusterID, nil)
+			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
+			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken(backplaneAPIURI, testToken).Return(mockClient, nil).AnyTimes()
+			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(trueClusterID)).Return(fakeResp, nil).AnyTimes()
+
+			// Mock PrintClusterInfo to return an error
+			mockOcmInterface.EXPECT().GetClusterInfoByID(gomock.Any()).Return(nil, errors.New("mock error"))
+
+			err = runLogin(nil, []string{testClusterID})
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("failed to print cluster info"))
 		})
 
 		It("when running with a simple case should work as expected", func() {
