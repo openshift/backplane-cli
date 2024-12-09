@@ -241,17 +241,24 @@ var _ = Describe("Login command", func() {
 		BeforeEach(func() {
 			globalOpts.Manager = false
 			globalOpts.Service = false
+			args.clusterInfo = false
+			bpConfig := config.BackplaneConfiguration{}
+			bpConfig.DisplayClusterInfo = false
+
 		})
-		It("should print a message if DisplayClusterInfo is not set to true", func() {
+
+		It("should print a message if DisplayClusterInfo is set to true", func() {
 			err := utils.CreateTempKubeConfig(nil)
 			Expect(err).To(BeNil())
-
+			mockOcmInterface.EXPECT().SetupOCMConnection().Return(nil, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, testClusterID, nil)
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil)
 			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken(backplaneAPIURI, testToken).Return(mockClient, nil)
 			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(trueClusterID)).Return(fakeResp, nil)
+			mockOcmInterface.EXPECT().GetClusterInfoByID(gomock.Eq(trueClusterID)).Return(mockCluster, nil).AnyTimes()
+			mockOcmInterface.EXPECT().IsClusterAccessProtectionEnabled(gomock.Any(), gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
 
 			// Create a temporary JSON configuration file in the temp directory for testing purposes.
 			tempDir := os.TempDir()
@@ -262,7 +269,7 @@ var _ = Describe("Login command", func() {
 			testData := config.BackplaneConfiguration{
 				URL:                backplaneAPIURI,
 				ProxyURL:           new(string),
-				DisplayClusterInfo: false,
+				DisplayClusterInfo: true,
 			}
 
 			// Marshal the testData into JSON format and write it to tempFile.
@@ -274,14 +281,14 @@ var _ = Describe("Login command", func() {
 			os.Setenv("BACKPLANE_CONFIG", bpConfigPath)
 
 			// Set the global configuration to use the bpConfig
-			bpConfig := config.BackplaneConfiguration{DisplayClusterInfo: false}
+			bpConfig := config.BackplaneConfiguration{DisplayClusterInfo: true}
 
 			err = runLogin(nil, []string{testClusterID})
 			Expect(err).To(BeNil())
 
 			// Check if DisplayClusterInfo is set to true
-			if !bpConfig.DisplayClusterInfo {
-				fmt.Println("The default value is set for DisplayClusterInfo cluster info will not be printed")
+			if bpConfig.DisplayClusterInfo {
+				fmt.Println("DisplayClusterInfo is set to true, cluster info will be displayed.")
 			}
 		})
 
