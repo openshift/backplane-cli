@@ -30,6 +30,26 @@ func TestGetBackplaneConfig(t *testing.T) {
 			t.Errorf("expected to return the explicitly defined proxy %v instead of the default one %v", userDefinedProxy, config.ProxyURL)
 		}
 	})
+
+	t.Run("display cluster info is true", func(t *testing.T) {
+		viper.Set("display-cluster-info", true)
+		svr := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			_, _ = w.Write([]byte("dummy data"))
+		}))
+
+		userDefinedProxy := "example-proxy"
+		t.Setenv("BACKPLANE_URL", svr.URL)
+		t.Setenv("HTTPS_PROXY", userDefinedProxy)
+		config, err := GetBackplaneConfiguration()
+		if err != nil {
+			t.Error(err)
+		}
+
+		if !config.DisplayClusterInfo {
+			t.Errorf("expected DisplayClusterInfo to be true, got %v", config.DisplayClusterInfo)
+		}
+	})
+
 }
 
 func TestGetBackplaneConnection(t *testing.T) {
