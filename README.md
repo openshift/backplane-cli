@@ -108,13 +108,20 @@ In this example, we will login to a cluster with id `123456abcdef` in production
   ```
   $ ocm backplane login <cluster> --service
   ```
-### Get Cluster information after login
+### Get cluster information after login
 
-- Login to the target cluster via backplane and add --cluster-info flag
+- Login to the target cluster via backplane and add `--cluster-info` flag
  ```
   $ ocm backplane cluster login <cluster> --cluster-info
  ```
-
+- Set a `"display-cluster-info": true` flag in the backplane config for cluster info to be auto printed.
+  
+ ```
+  {
+    "proxy-url": "your-proxy-url",
+    "display-cluster-info": true
+  }
+ ```
 ### Login to multiple clusters 
 
 Logging into multiple clusters via different terminal instances.
