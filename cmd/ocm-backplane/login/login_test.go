@@ -241,7 +241,51 @@ var _ = Describe("Login command", func() {
 		BeforeEach(func() {
 			globalOpts.Manager = false
 			globalOpts.Service = false
+			args.clusterInfo = false
+
 		})
+
+		It("when display cluster info is set to true", func() {
+			err := utils.CreateTempKubeConfig(nil)
+			args.defaultNamespace = "default"
+			args.clusterInfo = true
+			Expect(err).To(BeNil())
+			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, testClusterID, nil)
+			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil)
+			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken(backplaneAPIURI, testToken).Return(mockClient, nil)
+			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(trueClusterID)).Return(fakeResp, nil)
+			mockOcmInterface.EXPECT().GetClusterInfoByID(gomock.Any()).Return(mockCluster, nil).Times(2)
+			mockOcmInterface.EXPECT().SetupOCMConnection().Return(nil, nil)
+			mockOcmInterface.EXPECT().IsClusterAccessProtectionEnabled(gomock.Any(), trueClusterID).Return(false, nil)
+
+			err = runLogin(nil, []string{testClusterID})
+
+			Expect(err).To(BeNil())
+		})
+
+		It("should fail to print cluster info when is set to true and PrintClusterInfo returns an error", func() {
+			err := utils.CreateTempKubeConfig(nil)
+			Expect(err).To(BeNil())
+			args.defaultNamespace = "default"
+			args.clusterInfo = true
+
+			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, testClusterID, nil)
+			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
+			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken(backplaneAPIURI, testToken).Return(mockClient, nil).AnyTimes()
+			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(trueClusterID)).Return(fakeResp, nil).AnyTimes()
+
+			// Mock PrintClusterInfo to return an error
+			mockOcmInterface.EXPECT().GetClusterInfoByID(gomock.Any()).Return(nil, errors.New("mock error"))
+
+			err = runLogin(nil, []string{testClusterID})
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("failed to print cluster info"))
+		})
+
 		It("when running with a simple case should work as expected", func() {
 			err := utils.CreateTempKubeConfig(nil)
 			Expect(err).To(BeNil())

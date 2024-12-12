@@ -217,6 +217,12 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 		}
 	}
 
+	if bpConfig.DisplayClusterInfo {
+		if err := login.PrintClusterInfo(clusterID); err != nil {
+			return fmt.Errorf("failed to print cluster info: %v", err)
+		}
+	}
+
 	if globalOpts.Manager {
 		logger.WithField("Cluster ID", clusterID).Debugln("Finding managing cluster")
 		var isHostedControlPlane bool
