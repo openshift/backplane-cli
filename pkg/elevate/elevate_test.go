@@ -39,9 +39,7 @@ var fakeAPIConfig = api.Config{
 		},
 	},
 	AuthInfos: map[string]*api.AuthInfo{
-		"anonymous": {
-			LocationOfOrigin: "England",
-		},
+		"anonymous": {},
 	},
 	Contexts: map[string]*api.Context{
 		"default/test123/anonymous": {
@@ -115,9 +113,16 @@ func TestAddElevationReasonToRawKubeconfig(t *testing.T) {
 }
 
 func TestRunElevate(t *testing.T) {
-	// We do ot want to realy override any config files or remove them
+	// TODO: Utilize a fake filesystem for tests and stop relying on local system state
+	tmpDir, err := os.MkdirTemp("", "backplane-cli-tests")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmpDir)
 
-	OsRemove = func(name string) error { return nil }
+	// We utilize the fact that elevate honors KUBECONFIG in order to not clobber the users real ~/.kube/config
+	kubeconfigPath := tmpDir + "config"
+	_ = os.Setenv("KUBECONFIG", kubeconfigPath)
 
 	t.Run("It returns an error if we cannot load the kubeconfig", func(t *testing.T) {
 		ExecCmd = exec.Command

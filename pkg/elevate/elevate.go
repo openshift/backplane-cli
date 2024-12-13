@@ -66,8 +66,8 @@ func RunElevate(argv []string) error {
 		return err
 	}
 
-	// As WriteKubeconfigToFile is also creating a tempory file reference by new KUBECONFIG variable setting,
-	// we need to take care of its cleanup
+	// As WriteKubeconfigToFile is also creating a temporary file referenced by new KUBECONFIG variable setting,
+	// we need to take care of it's cleanup
 	tempKubeconfigPath, _ := os.LookupEnv("KUBECONFIG")
 	defer func() {
 		logger.Debugln("Cleaning up temporary kubeconfig", tempKubeconfigPath)

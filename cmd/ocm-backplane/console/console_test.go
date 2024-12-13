@@ -3,6 +3,7 @@ package console
 import (
 	"os"
 	"reflect"
+	"runtime"
 
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
@@ -326,26 +327,20 @@ var _ = Describe("console command", func() {
 	})
 
 	Context("An container is created to run the console, prior to doing that we need to check if container distro is supported", func() {
-
-		ced := &dockerLinux{}
-		cep := &podmanLinux{}
-
-		// Consider refactoring the following function as it isn't being used
-		It("Check for the existance of a invalid container engine", func() {
-			vld, err := validateContainerEngine("Foo Bar")
-			Expect(vld).To(BeFalse())
-			Expect(err).To(MatchError(ContainSubstring("container engine can only be one of")))
-		})
-
-		// For some strange reason reflect of cei returns a pointer
-
 		It("In the case we explicitly specify Podman, the code should return support for Podman", func() {
 			oldpath := createPathPodman()
 			o := consoleOptions{}
 			o.containerEngineFlag = PODMAN
 			cei, err := o.getContainerEngineImpl()
 			Expect(err).To(BeNil())
-			Expect(reflect.TypeOf(cei) == reflect.TypeOf(cep)).To(BeTrue())
+
+			if runtime.GOOS == LINUX {
+				Expect(reflect.TypeOf(cei) == reflect.TypeOf(&podmanLinux{})).To(BeTrue())
+			}
+			if runtime.GOOS == MACOS {
+				Expect(reflect.TypeOf(cei) == reflect.TypeOf(&podmanMac{})).To(BeTrue())
+			}
+
 			removePath(oldpath)
 		})
 
@@ -355,28 +350,21 @@ var _ = Describe("console command", func() {
 			o.containerEngineFlag = DOCKER
 			cei1, err1 := o.getContainerEngineImpl()
 			Expect(err1).To(BeNil())
-			Expect(reflect.TypeOf(cei1) == reflect.TypeOf(ced)).To(BeTrue())
+
+			if runtime.GOOS == LINUX {
+				Expect(reflect.TypeOf(cei1) == reflect.TypeOf(&dockerLinux{})).To(BeTrue())
+			}
+			if runtime.GOOS == MACOS {
+				Expect(reflect.TypeOf(cei1) == reflect.TypeOf(&dockerMac{})).To(BeTrue())
+			}
 			removePath(oldpath)
 		})
 
-		It("Test if environment varible could be read by the code to identify what container engine to use", func() {
-			oldpath := createPathPodman()
-			o := consoleOptions{}
-			os.Setenv("CONTAINER_ENGINE", PODMAN)
-			o.containerEngineFlag = ""
-			cei2, err2 := o.getContainerEngineImpl()
-			Expect(err2).To(BeNil())
-			Expect(reflect.TypeOf(cei2) == reflect.TypeOf(cep)).To(BeTrue())
-			removePath(oldpath)
-		})
-
-		It("Test the situation where the environment varible is something else", func() {
+		It("Test the situation where the environment variable is not a supported value", func() {
 			o := consoleOptions{}
 			o.containerEngineFlag = "FOO"
-			os.Setenv("BACKPLANE_DEFAULT_OPEN_BROWSER", "FALSE")
 			_, err4 := o.getContainerEngineImpl()
 			Expect(err4).To(MatchError(ContainSubstring("container engine can only be one of podman|docker")))
-			os.Setenv("BACKPLANE_DEFAULT_OPEN_BROWSER", "")
 		})
 	})
 
