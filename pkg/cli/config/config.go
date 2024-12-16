@@ -42,6 +42,7 @@ type BackplaneConfiguration struct {
 	JiraConfigForAccessRequests AccessRequestsJiraConfiguration `json:"jira-config-for-access-requests"`
 	VPNCheckEndpoint            string                          `json:"vpn-check-endpoint"`
 	ProxyCheckEndpoint          string                          `json:"proxy-check-endpoint"`
+	DisplayClusterInfo          bool                            `json:"display-cluster-info"`
 }
 
 const (
@@ -150,6 +151,7 @@ func GetBackplaneConfiguration() (bpConfig BackplaneConfiguration, err error) {
 
 	bpConfig.SessionDirectory = viper.GetString("session-dir")
 	bpConfig.AssumeInitialArn = viper.GetString("assume-initial-arn")
+	bpConfig.DisplayClusterInfo = viper.GetBool("display-cluster-info")
 
 	// pagerDuty token is optional
 	pagerDutyAPIKey := viper.GetString("pd-key")
