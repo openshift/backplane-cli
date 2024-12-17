@@ -2,6 +2,8 @@ package utils
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/golang-jwt/jwt/v4"
 )
 
@@ -13,10 +15,6 @@ func GetStringFieldFromJWT(token string, field string) (string, error) {
 	jwtToken, _, err = parser.ParseUnverified(token, jwt.MapClaims{})
 	if err != nil {
 		return "", fmt.Errorf("failed to parse jwt")
-	}
-
-	if err != nil {
-		return "", err
 	}
 
 	claims, ok := jwtToken.Claims.(jwt.MapClaims)
@@ -35,4 +33,30 @@ func GetStringFieldFromJWT(token string, field string) (string, error) {
 	}
 
 	return claimString, nil
+}
+
+// GetUsernameFromJWT returns the username extracted from JWT token
+func GetUsernameFromJWT(token string) string {
+	var jwtToken *jwt.Token
+	var err error
+	parser := new(jwt.Parser)
+	jwtToken, _, err = parser.ParseUnverified(token, jwt.MapClaims{})
+	if err != nil {
+		return "anonymous"
+	}
+	claims, ok := jwtToken.Claims.(jwt.MapClaims)
+	if !ok {
+		return "anonymous"
+	}
+	claim, ok := claims["username"]
+	if !ok {
+		return "anonymous"
+	}
+	return claim.(string)
+}
+
+// GetContextNickname returns a nickname of a context
+func GetContextNickname(namespace, clusterNick, userNick string) string {
+	tokens := strings.SplitN(userNick, "/", 2)
+	return namespace + "/" + clusterNick + "/" + tokens[0]
 }
