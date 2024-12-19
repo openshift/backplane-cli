@@ -57,8 +57,8 @@ type containerEngineInterface interface {
 	putFileToMount(filename string, content []byte) error
 	stopContainer(containerName string) error
 	// some container engines have special handlings for different types of containers
-	runConsoleContainer(containerName string, port string, consoleArgs []string, envVars []envVar) error
-	runMonitorPlugin(containerName string, consoleContainerName string, nginxConf string, pluginArgs []string) error
+	runConsoleContainer(o *consoleOptions, containerName string, port string, consoleArgs []string, envVars []envVar) error
+	runMonitorPlugin(o *consoleOptions, containerName string, consoleContainerName string, nginxConf string, pluginArgs []string) error
 	containerIsExist(containerName string) (bool, error)
 }
 
@@ -200,7 +200,7 @@ func NewConsoleCmd() *cobra.Command {
 		"replace",
 		"",
 		false,
-		"Pass the --replace flag to the console container. Default: false",
+		"Pass the --replace flag to the console container. Default: false. This is not supported with Docker engine",
 	)
 	flags.StringVarP(
 		&ops.url,
@@ -214,6 +214,11 @@ func NewConsoleCmd() *cobra.Command {
 }
 
 func (o *consoleOptions) run(cmd *cobra.Command, argv []string) error {
+
+	logger.Debugf("Command-line arguments: %v", argv)
+	// Debug log to verify the value of enableReplace
+	logger.Debugf("enableReplace: %t", o.enableReplace)
+
 	err := o.determineOpenBrowser()
 	if err != nil {
 		return err
@@ -222,6 +227,17 @@ func (o *consoleOptions) run(cmd *cobra.Command, argv []string) error {
 	if err != nil {
 		return err
 	}
+
+	// Validate if Docker engine is used and --replace flag is set
+	if o.enableReplace {
+		if _, ok := ce.(*dockerLinux); ok {
+			return fmt.Errorf("the --replace flag is not supported with Docker")
+		}
+		if _, ok := ce.(*dockerMac); ok {
+			return fmt.Errorf("the --replace flag is not supported with Docker")
+		}
+	}
+
 	err = o.determineListenPort()
 	if err != nil {
 		return err
@@ -277,14 +293,26 @@ func (o *consoleOptions) run(cmd *cobra.Command, argv []string) error {
 }
 
 func (o *consoleOptions) runContainers(ce containerEngineInterface, done chan bool, errs chan<- error) {
-	if err := o.runConsoleContainer(ce); err != nil {
+	logger.Debugf("enableReplace in runContainers: %t", o.enableReplace)
 
+	if err := o.runMonitorPlugin(ce); err != nil {
+		errs <- err
+	}
+	// Wait for the monitor plugin container to stop
+	clusterID, err := getClusterID()
+	if err != nil {
+		errs <- err
+		return
+	}
+	monitorPluginContainerName := fmt.Sprintf("monitoring-plugin-%s", clusterID)
+	if err := ce.stopContainer(monitorPluginContainerName); err != nil {
 		errs <- err
 		return
 	}
 
-	if err := o.runMonitorPlugin(ce); err != nil {
+	if err := o.runConsoleContainer(ce); err != nil {
 		errs <- err
+		return
 	}
 
 	if err := o.printURL(); err != nil {
@@ -511,6 +539,8 @@ func (o *consoleOptions) getPlugins() (string, error) {
 }
 
 func (o *consoleOptions) runConsoleContainer(ce containerEngineInterface) error {
+	logger.Debugf("runConsoleContainer Interface start enableReplace: %t", o.enableReplace)
+
 	clusterID, err := getClusterID()
 	if err != nil {
 		return err
@@ -596,7 +626,10 @@ func (o *consoleOptions) runConsoleContainer(ce containerEngineInterface) error 
 		"-listen", bridgeListen,
 	}
 
-	return ce.runConsoleContainer(consoleContainerName, o.port, containerArgs, envVars)
+	logger.Debugf("runConsoleContainer Interface end enableReplace: %t", o.enableReplace)
+
+	return ce.runConsoleContainer(o, consoleContainerName, o.port, containerArgs, envVars)
+
 }
 
 func (o *consoleOptions) runMonitorPlugin(ce containerEngineInterface) error {
@@ -621,7 +654,7 @@ func (o *consoleOptions) runMonitorPlugin(ce containerEngineInterface) error {
 	pluginContainerName := fmt.Sprintf("monitoring-plugin-%s", clusterID)
 
 	pluginArgs := []string{o.monitorPluginImage}
-	return ce.runMonitorPlugin(pluginContainerName, consoleContainerName, nginxFilename, pluginArgs)
+	return ce.runMonitorPlugin(o, pluginContainerName, consoleContainerName, nginxFilename, pluginArgs)
 }
 
 // print the console URL and pop a browser if required
@@ -1061,11 +1094,18 @@ func podmanRunConsoleContainer(o *consoleOptions, containerName string, port str
 		"--publish", fmt.Sprintf("127.0.0.1:%s:%s", port, port),
 	}
 
+	// Debug log to verify the value of enableReplace
+	logger.Debugf("enableReplace start: %t", o.enableReplace)
+
 	// Add the --replace argument if needed
 
 	if o.enableReplace {
 		engRunArgs = append(engRunArgs, "--replace")
 	}
+
+	// Debug log to verify the contents of engRunArgs
+	logger.Debugf("engRunArgs: %v", engRunArgs)
+	logger.Debugf("enableReplace end: %t", o.enableReplace)
 
 	for _, e := range envVars {
 		engRunArgs = append(engRunArgs,
@@ -1083,15 +1123,18 @@ func podmanRunConsoleContainer(o *consoleOptions, containerName string, port str
 	if err != nil {
 		return err
 	}
+
 	return nil
 }
 
-func (ce *podmanMac) runConsoleContainer(containerName string, port string, consoleArgs []string, envVars []envVar) error {
-	return podmanRunConsoleContainer(nil, containerName, port, consoleArgs, envVars)
+func (ce *podmanMac) runConsoleContainer(o *consoleOptions, containerName string, port string, consoleArgs []string, envVars []envVar) error {
+
+	return podmanRunConsoleContainer(o, containerName, port, consoleArgs, envVars)
 }
 
-func (ce *podmanLinux) runConsoleContainer(containerName string, port string, consoleArgs []string, envVars []envVar) error {
-	return podmanRunConsoleContainer(nil, containerName, port, consoleArgs, envVars)
+func (ce *podmanLinux) runConsoleContainer(o *consoleOptions, containerName string, port string, consoleArgs []string, envVars []envVar) error {
+
+	return podmanRunConsoleContainer(o, containerName, port, consoleArgs, envVars)
 }
 
 // the shared function for docker to run console container for both linux and macos
@@ -1131,16 +1174,16 @@ func dockerRunConsoleContainer(containerName string, port string, consoleArgs []
 	return nil
 }
 
-func (ce *dockerMac) runConsoleContainer(containerName string, port string, consoleArgs []string, envVars []envVar) error {
+func (ce *dockerMac) runConsoleContainer(o *consoleOptions, containerName string, port string, consoleArgs []string, envVars []envVar) error {
 	return dockerRunConsoleContainer(containerName, port, consoleArgs, envVars)
 }
 
-func (ce *dockerLinux) runConsoleContainer(containerName string, port string, consoleArgs []string, envVars []envVar) error {
+func (ce *dockerLinux) runConsoleContainer(o *consoleOptions, containerName string, port string, consoleArgs []string, envVars []envVar) error {
 	return dockerRunConsoleContainer(containerName, port, consoleArgs, envVars)
 }
 
 // the shared function for podman to run monitoring plugin for both linux and macos
-func podmanRunMonitorPlugin(containerName string, consoleContainerName string, nginxConfPath string, pluginArgs []string) error {
+func podmanRunMonitorPlugin(o *consoleOptions, containerName string, consoleContainerName string, nginxConfPath string, pluginArgs []string) error {
 	_, authFilename, err := fetchPullSecretIfNotExist()
 	if err != nil {
 		return err
@@ -1155,6 +1198,12 @@ func podmanRunMonitorPlugin(containerName string, consoleContainerName string, n
 		"--network", fmt.Sprintf("container:%s", consoleContainerName),
 		"--mount", fmt.Sprintf("type=bind,source=%s,destination=/etc/nginx/nginx.conf,relabel=shared", nginxConfPath),
 	}
+
+	// Add the --replace argument if needed
+	if o.enableReplace {
+		engRunArgs = append(engRunArgs, "--replace")
+	}
+
 	engRunArgs = append(engRunArgs, pluginArgs...)
 
 	logger.WithField("Command", fmt.Sprintf("`%s %s`", PODMAN, strings.Join(engRunArgs, " "))).Infoln("Running container")
@@ -1169,14 +1218,14 @@ func podmanRunMonitorPlugin(containerName string, consoleContainerName string, n
 	return nil
 }
 
-func (ce *podmanMac) runMonitorPlugin(containerName string, consoleContainerName string, nginxConf string, pluginArgs []string) error {
+func (ce *podmanMac) runMonitorPlugin(o *consoleOptions, containerName string, consoleContainerName string, nginxConf string, pluginArgs []string) error {
 	nginxConfPath := filepath.Join("/tmp/", nginxConf)
-	return podmanRunMonitorPlugin(containerName, consoleContainerName, nginxConfPath, pluginArgs)
+	return podmanRunMonitorPlugin(o, containerName, consoleContainerName, nginxConfPath, pluginArgs)
 }
 
-func (ce *podmanLinux) runMonitorPlugin(containerName string, consoleContainerName string, nginxConf string, pluginArgs []string) error {
+func (ce *podmanLinux) runMonitorPlugin(o *consoleOptions, containerName string, consoleContainerName string, nginxConf string, pluginArgs []string) error {
 	nginxConfPath := filepath.Join(ce.fileMountDir, nginxConf)
-	return podmanRunMonitorPlugin(containerName, consoleContainerName, nginxConfPath, pluginArgs)
+	return podmanRunMonitorPlugin(o, containerName, consoleContainerName, nginxConfPath, pluginArgs)
 }
 
 // the shared function for docker to run monitoring plugin for both linux and macos
@@ -1209,7 +1258,7 @@ func dockerRunMonitorPlugin(containerName string, consoleContainerName string, n
 	return nil
 }
 
-func (ce *dockerLinux) runMonitorPlugin(containerName string, consoleContainerName string, nginxConf string, pluginArgs []string) error {
+func (ce *dockerLinux) runMonitorPlugin(o *consoleOptions, containerName string, consoleContainerName string, nginxConf string, pluginArgs []string) error {
 	configDirectory, err := config.GetConfigDirectory()
 	if err != nil {
 		return err
@@ -1218,7 +1267,7 @@ func (ce *dockerLinux) runMonitorPlugin(containerName string, consoleContainerNa
 	return dockerRunMonitorPlugin(containerName, consoleContainerName, nginxConfPath, pluginArgs)
 }
 
-func (ce *dockerMac) runMonitorPlugin(containerName string, consoleContainerName string, nginxConf string, pluginArgs []string) error {
+func (ce *dockerMac) runMonitorPlugin(o *consoleOptions, containerName string, consoleContainerName string, nginxConf string, pluginArgs []string) error {
 	configDirectory, err := config.GetConfigDirectory()
 	if err != nil {
 		return err
