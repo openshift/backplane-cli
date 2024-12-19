@@ -86,6 +86,7 @@ type consoleOptions struct {
 	monitorPluginPort   string
 	monitorPluginImage  string
 	terminationFunction execActionOnTermInterface
+	enableReplace       bool
 }
 
 // envVar for environment variable passing to container
@@ -193,6 +194,13 @@ func NewConsoleCmd() *cobra.Command {
 		"",
 		false,
 		"Load enabled dynamic console plugins on the cluster. Default: false",
+	)
+	flags.BoolVarP(
+		&ops.enableReplace,
+		"replace",
+		"",
+		false,
+		"Pass the --replace flag to the console container. Default: false",
 	)
 	flags.StringVarP(
 		&ops.url,
@@ -1038,7 +1046,7 @@ func (ce *dockerMac) pullImage(imageName string) error {
 }
 
 // the shared function for podman to run console container for both linux and macos
-func podmanRunConsoleContainer(containerName string, port string, consoleArgs []string, envVars []envVar) error {
+func podmanRunConsoleContainer(o *consoleOptions, containerName string, port string, consoleArgs []string, envVars []envVar) error {
 	_, authFilename, err := fetchPullSecretIfNotExist()
 	if err != nil {
 		return err
@@ -1052,6 +1060,13 @@ func podmanRunConsoleContainer(containerName string, port string, consoleArgs []
 		"--name", containerName,
 		"--publish", fmt.Sprintf("127.0.0.1:%s:%s", port, port),
 	}
+
+	// Add the --replace argument if needed
+
+	if o.enableReplace {
+		engRunArgs = append(engRunArgs, "--replace")
+	}
+
 	for _, e := range envVars {
 		engRunArgs = append(engRunArgs,
 			"--env", fmt.Sprintf("%s=%s", e.key, e.value),
@@ -1072,11 +1087,11 @@ func podmanRunConsoleContainer(containerName string, port string, consoleArgs []
 }
 
 func (ce *podmanMac) runConsoleContainer(containerName string, port string, consoleArgs []string, envVars []envVar) error {
-	return podmanRunConsoleContainer(containerName, port, consoleArgs, envVars)
+	return podmanRunConsoleContainer(nil, containerName, port, consoleArgs, envVars)
 }
 
 func (ce *podmanLinux) runConsoleContainer(containerName string, port string, consoleArgs []string, envVars []envVar) error {
-	return podmanRunConsoleContainer(containerName, port, consoleArgs, envVars)
+	return podmanRunConsoleContainer(nil, containerName, port, consoleArgs, envVars)
 }
 
 // the shared function for docker to run console container for both linux and macos
