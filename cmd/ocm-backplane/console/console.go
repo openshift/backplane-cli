@@ -1087,11 +1087,15 @@ func podmanRunConsoleContainer(o *consoleOptions, containerName string, port str
 }
 
 func (ce *podmanMac) runConsoleContainer(containerName string, port string, consoleArgs []string, envVars []envVar) error {
-	return podmanRunConsoleContainer(nil, containerName, port, consoleArgs, envVars)
+	options := &consoleOptions{}
+	return podmanRunConsoleContainer(options, containerName, port, consoleArgs, envVars)
 }
 
 func (ce *podmanLinux) runConsoleContainer(containerName string, port string, consoleArgs []string, envVars []envVar) error {
-	return podmanRunConsoleContainer(nil, containerName, port, consoleArgs, envVars)
+
+	options := &consoleOptions{}
+
+	return podmanRunConsoleContainer(options, containerName, port, consoleArgs, envVars)
 }
 
 // the shared function for docker to run console container for both linux and macos
