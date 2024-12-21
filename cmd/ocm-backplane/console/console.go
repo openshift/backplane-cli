@@ -86,6 +86,7 @@ type consoleOptions struct {
 	monitorPluginPort   string
 	monitorPluginImage  string
 	terminationFunction execActionOnTermInterface
+	enableReplace       bool
 }
 
 // envVar for environment variable passing to container
@@ -194,6 +195,13 @@ func NewConsoleCmd() *cobra.Command {
 		false,
 		"Load enabled dynamic console plugins on the cluster. Default: false",
 	)
+	flags.BoolVarP(
+		&ops.enableReplace,
+		"replace",
+		"",
+		false,
+		"Pass the --replace flag to the console container. Default: false. This is not supported with Docker engine",
+	)
 	flags.StringVarP(
 		&ops.url,
 		"url",
@@ -206,6 +214,11 @@ func NewConsoleCmd() *cobra.Command {
 }
 
 func (o *consoleOptions) run(cmd *cobra.Command, argv []string) error {
+
+	logger.Debugf("Command-line arguments: %v", argv)
+	// Debug log to verify the value of enableReplace
+	logger.Debugf("enableReplace: %t", o.enableReplace)
+
 	err := o.determineOpenBrowser()
 	if err != nil {
 		return err
@@ -213,6 +226,15 @@ func (o *consoleOptions) run(cmd *cobra.Command, argv []string) error {
 	ce, err := o.getContainerEngineImpl()
 	if err != nil {
 		return err
+	}
+	// Validate if Docker engine is used and --replace flag is set
+	if o.enableReplace {
+		if _, ok := ce.(*dockerLinux); ok {
+			return fmt.Errorf("the --replace flag is not supported with Docker")
+		}
+		if _, ok := ce.(*dockerMac); ok {
+			return fmt.Errorf("the --replace flag is not supported with Docker")
+		}
 	}
 	err = o.determineListenPort()
 	if err != nil {
@@ -1038,13 +1060,14 @@ func (ce *dockerMac) pullImage(imageName string) error {
 }
 
 // the shared function for podman to run console container for both linux and macos
-func podmanRunConsoleContainer(containerName string, port string, consoleArgs []string, envVars []envVar) error {
+func podmanRunConsoleContainer(o *consoleOptions, containerName string, port string, consoleArgs []string, envVars []envVar) error {
 	_, authFilename, err := fetchPullSecretIfNotExist()
 	if err != nil {
 		return err
 	}
 	engRunArgs := []string{
 		"run",
+		//"--replace", // replace the container if it already exists
 		"--authfile", authFilename,
 		"--platform=linux/amd64", // always run linux/amd64 image
 		"--rm",
@@ -1052,6 +1075,19 @@ func podmanRunConsoleContainer(containerName string, port string, consoleArgs []
 		"--name", containerName,
 		"--publish", fmt.Sprintf("127.0.0.1:%s:%s", port, port),
 	}
+
+	// Debug log to verify the value of enableReplace
+	logger.Debugf("enableReplace: %t", o.enableReplace)
+
+	// Add the --replace argument if needed
+
+	if o.enableReplace {
+		engRunArgs = append(engRunArgs, "--replace")
+	}
+
+	// Debug log to verify the contents of engRunArgs
+	logger.Debugf("engRunArgs: %v", engRunArgs)
+
 	for _, e := range envVars {
 		engRunArgs = append(engRunArgs,
 			"--env", fmt.Sprintf("%s=%s", e.key, e.value),
@@ -1072,11 +1108,13 @@ func podmanRunConsoleContainer(containerName string, port string, consoleArgs []
 }
 
 func (ce *podmanMac) runConsoleContainer(containerName string, port string, consoleArgs []string, envVars []envVar) error {
-	return podmanRunConsoleContainer(containerName, port, consoleArgs, envVars)
+	options := &consoleOptions{}
+	return podmanRunConsoleContainer(options, containerName, port, consoleArgs, envVars)
 }
 
 func (ce *podmanLinux) runConsoleContainer(containerName string, port string, consoleArgs []string, envVars []envVar) error {
-	return podmanRunConsoleContainer(containerName, port, consoleArgs, envVars)
+	options := &consoleOptions{}
+	return podmanRunConsoleContainer(options, containerName, port, consoleArgs, envVars)
 }
 
 // the shared function for docker to run console container for both linux and macos
