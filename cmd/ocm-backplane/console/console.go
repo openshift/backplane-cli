@@ -249,7 +249,11 @@ func (o *consoleOptions) run(cmd *cobra.Command, argv []string) error {
 	if err != nil {
 		return err
 	}
-
+	//Perform a cleanup before starting a new console
+	err = o.beforeStartCleanUp(ce)
+	if err != nil {
+		return err
+	}
 	done := make(chan bool)
 	errs := make(chan error)
 
@@ -640,6 +644,35 @@ func (o *consoleOptions) printURL() error {
 				logger.Warnf("failed opening a browser: %s", err)
 			}
 		}()
+	}
+	return nil
+}
+
+func (o *consoleOptions) beforeStartCleanUp(ce containerEngineInterface) error {
+	clusterID, err := getClusterID()
+	if err != nil {
+		return fmt.Errorf("error getting cluster ID: %v", err)
+	}
+	containersToCleanUp := []string{
+		fmt.Sprintf("monitoring-plugin-%s", clusterID),
+		fmt.Sprintf("console-%s", clusterID),
+	}
+
+	logger.Infoln("Starting initial cleanup of containers")
+
+	for _, c := range containersToCleanUp {
+		exist, err := ce.containerIsExist(c)
+		if err != nil {
+			return fmt.Errorf("failed to check if container %s exists: %v", c, err)
+		}
+		if exist {
+			err := ce.stopContainer(c)
+			if err != nil {
+				return fmt.Errorf("failed to stop container %s during the cleanup process: %v", c, err)
+			}
+		} else {
+			logger.Infof("Container %s does not exist, no need to clean up", c)
+		}
 	}
 	return nil
 }
