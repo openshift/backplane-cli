@@ -113,6 +113,36 @@ var _ = Describe("console command", func() {
 		err = utils.CreateTempKubeConfig(&testKubeCfg)
 		Expect(err).To(BeNil())
 	}
+	Context("Should perform existing pods cleanup before starting the console", func() {
+		It("Should not return an error if no pods are found", func() {
+			setupConfig()
+			createPathPodman()
+			o := consoleOptions{}
+			ce, err := o.getContainerEngineImpl()
+			Expect(err).To(BeNil())
+			err = o.beforeStartCleanUp(ce)
+			Expect(err).To(BeNil())
+		})
+
+		It("Should perform verification if console and monitoring plugin containers are present", func() {
+			setupConfig()
+			createPathPodman()
+			mockOcmInterface.EXPECT().GetClusterInfoByID(clusterID).Return(nil, nil).AnyTimes()
+			o := consoleOptions{}
+			ce, err := o.getContainerEngineImpl()
+			Expect(err).To(BeNil())
+			capturedCommands = nil
+
+			err = o.beforeStartCleanUp(ce)
+			Expect(err).To(BeNil())
+
+			Expect(len(capturedCommands)).To(Equal(2))
+			Expect(capturedCommands[0][0]).To(Equal("podman"))
+			Expect(capturedCommands[0][1]).To(Equal("ps"))
+			Expect(capturedCommands[1][0]).To(Equal("podman"))
+			Expect(capturedCommands[1][1]).To(Equal("ps"))
+		})
+	})
 
 	Context("when console command executes", func() {
 		It("should read the openbrowser variable from environment variables and it is true", func() {
