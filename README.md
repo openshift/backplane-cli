@@ -82,6 +82,7 @@ To setup the PS1(prompt) for bash/zsh, please follow [these instructions](https:
 | `ocm backplane upgrade`                                                     | Upgrade backplane-cli to the latest version                                              |
 | `ocm backplane version`                                                     | Display the installed backplane-cli version                                              |
 | `ocm backplane healthcheck`                                                 | Check the VPN and Proxy connectivity on the host network when experiencing isssues accessing the backplane API|
+| `ocm backplane cloud ssm --node <node-name>`                                | Start an aws ssm session for an HCP cluster                                    |
 
 ## Login
 
@@ -227,7 +228,27 @@ Logging into multiple clusters via different terminal instances.
   ```
   $ export BACKPLANE_DEFAULT_OPEN_BROWSER=true
   $ ocm backplane cloud console
-  `
+  ```
+
+## SSM Session
+Now you can directly start an AWS SSM session in your terminal using a single command for the HCP clusters without logging into their cloud consoles. It will start an AWS session directly in your terminal where you can debug into the worker node for the HCP cluster and carry out further operations.
+- Before using ssm command check if Session Manager plugin has been properly set up in your device. Follow this official AWS [documentation](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-prerequisites.html) for further information on setting up AWS SSM. And for installing SSM plugin directly on your device follow this [documentation](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html). Also check AWS CLI version and SSM version and ensure that those are in required versions. Update if required.
+- Login to the management cluster for the target HCP cluster 
+```
+$ ocm backplane login <cluster> --manager
+```
+- Run the following command by providing the correct worker node name where you want to start a SSM Session
+```
+$ ocm backplane cloud ssm --node <node-name>` 
+```
+- It will show something like this:
+```
+$ ocm-backplane cloud ssm --node ip-xx-x-xxx-xxx.xxxxxx.compute.internal 
+
+Starting session with SessionId: e4abf0bf76199710d76b3ecaa2c6f4ae-929p9nkk8yta7upy8el4ylidq4
+sh-5.1$
+```
+
 ## Monitoring
 Monitoring command can be used to launch the specified monitoring UI.
 
