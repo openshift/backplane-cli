@@ -195,6 +195,7 @@ func runCreateRemediation(args []string, clusterKey string, urlFlag string) erro
 		return err
 	}
 
+	fmt.Printf("Created remediation RBAC. You are logged in as remediation: %s\n", remediationName)
 	return nil
 }
 
