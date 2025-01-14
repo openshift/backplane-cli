@@ -1,14 +1,16 @@
 package console
 
 import (
-	"os"
-	"reflect"
-	"runtime"
-
+	"fmt"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/spf13/pflag"
+	"os"
+	"os/exec"
+	"reflect"
+	"runtime"
+	"testing"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -18,14 +20,17 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd/api"
 
-	"os/exec"
-
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/backplane-cli/pkg/info"
 	"github.com/openshift/backplane-cli/pkg/ocm"
 	ocmMock "github.com/openshift/backplane-cli/pkg/ocm/mocks"
 	"github.com/openshift/backplane-cli/pkg/utils"
 )
+
+func TestIt(t *testing.T) {
+	RegisterFailHandler(Fail)
+	RunSpecs(t, "Console Test Suite")
+}
 
 var _ = Describe("console command", func() {
 	var (
@@ -49,6 +54,14 @@ var _ = Describe("console command", func() {
 		os.Setenv("CONTAINER_ENGINE", PODMAN)
 
 		capturedCommands = nil
+		createCommand = func(prog string, args ...string) *exec.Cmd {
+			command := []string{prog}
+			command = append(command, args...)
+			capturedCommands = append(capturedCommands, command)
+
+			return exec.Command("true")
+		}
+
 		createCommand = func(prog string, args ...string) *exec.Cmd {
 			command := []string{prog}
 			command = append(command, args...)
@@ -117,7 +130,7 @@ var _ = Describe("console command", func() {
 		It("Should not return an error if no pods are found", func() {
 			setupConfig()
 			createPathPodman()
-			o := consoleOptions{}
+			o := newConsoleOptions()
 			ce, err := o.getContainerEngineImpl()
 			Expect(err).To(BeNil())
 			err = o.beforeStartCleanUp(ce)
@@ -128,7 +141,7 @@ var _ = Describe("console command", func() {
 			setupConfig()
 			createPathPodman()
 			mockOcmInterface.EXPECT().GetClusterInfoByID(clusterID).Return(nil, nil).AnyTimes()
-			o := consoleOptions{}
+			o := newConsoleOptions()
 			ce, err := o.getContainerEngineImpl()
 			Expect(err).To(BeNil())
 			capturedCommands = nil
@@ -148,7 +161,7 @@ var _ = Describe("console command", func() {
 		It("should read the openbrowser variable from environment variables and it is true", func() {
 			setupConfig()
 			os.Setenv(EnvBrowserDefault, "true")
-			o := consoleOptions{}
+			o := newConsoleOptions()
 			err := o.determineOpenBrowser()
 			os.Setenv(EnvBrowserDefault, "")
 			Expect(err).To(BeNil())
@@ -158,7 +171,7 @@ var _ = Describe("console command", func() {
 		It("should read the openbrowser variable from environment variables and it is false", func() {
 			setupConfig()
 			os.Setenv(EnvBrowserDefault, "false")
-			o := consoleOptions{}
+			o := newConsoleOptions()
 			err := o.determineOpenBrowser()
 			os.Setenv(EnvBrowserDefault, "")
 			Expect(err).To(BeNil())
@@ -168,7 +181,7 @@ var _ = Describe("console command", func() {
 		It("should read the openbrowser variable from environment variables and we it is undefined", func() {
 			setupConfig()
 			os.Setenv(EnvBrowserDefault, "")
-			o := consoleOptions{}
+			o := newConsoleOptions()
 			err := o.determineOpenBrowser()
 			Expect(err).To(MatchError(ContainSubstring("unable to parse boolean value from environment variable")))
 		})
@@ -183,7 +196,7 @@ var _ = Describe("console command", func() {
 
 		It("should pick a random port for listen if not specified", func() {
 			setupConfig()
-			o := consoleOptions{}
+			o := newConsoleOptions()
 			err := o.determineListenPort()
 			Expect(err).To(BeNil())
 			Expect(len(o.port)).ToNot(Equal(0))
@@ -217,7 +230,7 @@ var _ = Describe("console command", func() {
 				}}}), nil
 			}
 			setupConfig()
-			o := consoleOptions{}
+			o := newConsoleOptions()
 			// for testing, we don't need a real rest.Config
 			err := o.determineImage(nil)
 			Expect(err).To(BeNil())
@@ -236,7 +249,7 @@ var _ = Describe("console command", func() {
 		It("should not assgin a port for monitoring plugin", func() {
 			setupConfig()
 			mockOcmInterface.EXPECT().GetClusterInfoByID(clusterID).Return(clusterInfo, nil).AnyTimes()
-			o := consoleOptions{}
+			o := newConsoleOptions()
 			err := o.determineNeedMonitorPlugin()
 			Expect(err).To(BeNil())
 			err = o.determineMonitorPluginPort()
@@ -247,7 +260,7 @@ var _ = Describe("console command", func() {
 		It("should not lookup the monitoring plugin image", func() {
 			setupConfig()
 			mockOcmInterface.EXPECT().GetClusterInfoByID(clusterID).Return(clusterInfo, nil).AnyTimes()
-			o := consoleOptions{}
+			o := newConsoleOptions()
 			err := o.determineNeedMonitorPlugin()
 			Expect(err).To(BeNil())
 			err = o.determineMonitorPluginImage(nil)
@@ -258,7 +271,7 @@ var _ = Describe("console command", func() {
 		It("should not add monitoring plugin to console arguments", func() {
 			setupConfig()
 			mockOcmInterface.EXPECT().GetClusterInfoByID(clusterID).Return(clusterInfo, nil).AnyTimes()
-			o := consoleOptions{}
+			o := newConsoleOptions()
 			err := o.determineNeedMonitorPlugin()
 			Expect(err).To(BeNil())
 			plugins, err := o.getPlugins()
@@ -278,7 +291,7 @@ var _ = Describe("console command", func() {
 		It("should assgin a port for monitoring plugin", func() {
 			setupConfig()
 			mockOcmInterface.EXPECT().GetClusterInfoByID(clusterID).Return(clusterInfo, nil).AnyTimes()
-			o := consoleOptions{}
+			o := newConsoleOptions()
 			err := o.determineNeedMonitorPlugin()
 			Expect(err).To(BeNil())
 			err = o.determineMonitorPluginPort()
@@ -307,7 +320,7 @@ var _ = Describe("console command", func() {
 			}
 			setupConfig()
 			mockOcmInterface.EXPECT().GetClusterInfoByID(clusterID).Return(clusterInfo, nil).AnyTimes()
-			o := consoleOptions{}
+			o := newConsoleOptions()
 			err := o.determineNeedMonitorPlugin()
 			Expect(err).To(BeNil())
 			err = o.determineMonitorPluginImage(nil)
@@ -318,7 +331,7 @@ var _ = Describe("console command", func() {
 		It("should add monitoring plugin to console arguments", func() {
 			setupConfig()
 			mockOcmInterface.EXPECT().GetClusterInfoByID(clusterID).Return(clusterInfo, nil).AnyTimes()
-			o := consoleOptions{}
+			o := newConsoleOptions()
 			err := o.determineNeedMonitorPlugin()
 			Expect(err).To(BeNil())
 			plugins, err := o.getPlugins()
@@ -359,7 +372,7 @@ var _ = Describe("console command", func() {
 	Context("An container is created to run the console, prior to doing that we need to check if container distro is supported", func() {
 		It("In the case we explicitly specify Podman, the code should return support for Podman", func() {
 			oldpath := createPathPodman()
-			o := consoleOptions{}
+			o := newConsoleOptions()
 			o.containerEngineFlag = PODMAN
 			cei, err := o.getContainerEngineImpl()
 			Expect(err).To(BeNil())
@@ -371,12 +384,12 @@ var _ = Describe("console command", func() {
 				Expect(reflect.TypeOf(cei) == reflect.TypeOf(&podmanMac{})).To(BeTrue())
 			}
 
-			removePath(oldpath)
+			setPath(oldpath)
 		})
 
 		It("In the case we explicitly specify Docker, the code should return support for Docker", func() {
 			oldpath := createPathDocker()
-			o := consoleOptions{}
+			o := newConsoleOptions()
 			o.containerEngineFlag = DOCKER
 			cei1, err1 := o.getContainerEngineImpl()
 			Expect(err1).To(BeNil())
@@ -387,11 +400,11 @@ var _ = Describe("console command", func() {
 			if runtime.GOOS == MACOS {
 				Expect(reflect.TypeOf(cei1) == reflect.TypeOf(&dockerMac{})).To(BeTrue())
 			}
-			removePath(oldpath)
+			setPath(oldpath)
 		})
 
 		It("Test the situation where the environment variable is not a supported value", func() {
-			o := consoleOptions{}
+			o := newConsoleOptions()
 			o.containerEngineFlag = "FOO"
 			_, err4 := o.getContainerEngineImpl()
 			Expect(err4).To(MatchError(ContainSubstring("container engine can only be one of podman|docker")))
@@ -450,19 +463,61 @@ var _ = Describe("console command", func() {
 			ocmEnvironment, _ := cmv1.NewEnvironment().BackplaneURL("fakeBackPlaneUrl").Build()
 			// Tell mockOCM interface to return ocnEnvironment
 			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnvironment, nil).AnyTimes()
-			o := consoleOptions{terminationFunction: &execActionOnTermMockStruct{}}
+			o := newConsoleOptions()
+			o.terminationFunction = &execActionOnTermMockStruct{}
 			o.port = "1337"
 			o.url = "http://127.0.0.2:1447"
 			o.openBrowser = false
 			o.containerEngineFlag = DOCKER
 			ce, err := o.getContainerEngineImpl()
 			Expect(err).To(BeNil())
-			done := make(chan bool)
+
 			errs := make(chan error)
-			o.runContainers(ce, done, errs)
+			o.runContainers(ce, errs)
+
 			Expect(errs).To(BeEmpty())
 			os.Setenv("BACKPLANE_DEFAULT_OPEN_BROWSER", "")
-			removePath(oldpath)
+			setPath(oldpath)
 		})
 	})
 })
+
+type execActionOnTermMockStruct struct{}
+
+func (e *execActionOnTermMockStruct) execActionOnTerminationFunction(action postTerminateFunc) error {
+	return action()
+}
+
+func createPathPodman() string {
+	return createPath("podman")
+}
+
+func createPathDocker() string {
+	return createPath("docker")
+}
+
+// TODO: this creates a local tmp bin dir and puts files in it so tests find a given binary (docker/podman etc).
+// Refactor those test sites to utilize a fake filesystem or other mechanism that doesn't rely on local state.
+func createPath(binary string) string {
+	oldpath := os.Getenv("PATH")
+	setPath(oldpath + ":/tmp/tmp_bin")
+	err := os.MkdirAll("/tmp/tmp_bin", 0777)
+	if err != nil {
+		fmt.Printf("Failed to create the directory: %v\n", err)
+	}
+	dFile, err := os.CreateTemp("/tmp/tmp_bin", "")
+	if err != nil {
+		fmt.Printf("Failed to create the file: %v\n", err)
+	}
+	if err := os.Rename(dFile.Name(), "/tmp/tmp_bin/"+binary); err != nil {
+		fmt.Printf("Failed to rename the file: %v\n", err)
+	}
+	if err := os.Chmod("/tmp/tmp_bin/"+binary, 0777); err != nil {
+		fmt.Printf("Failed to chmod the file: %v\n", err)
+	}
+	return oldpath
+}
+
+func setPath(oldPath string) {
+	_ = os.Setenv("PATH", oldPath)
+}
