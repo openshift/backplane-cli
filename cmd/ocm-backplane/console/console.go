@@ -33,7 +33,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver"
-	homedir "github.com/mitchellh/go-homedir"
+	"github.com/mitchellh/go-homedir"
 	consolev1typedclient "github.com/openshift/client-go/console/clientset/versioned/typed/console/v1"
 	consolev1alpha1typedclient "github.com/openshift/client-go/console/clientset/versioned/typed/console/v1alpha1"
 	operatorv1typedclient "github.com/openshift/client-go/operator/clientset/versioned/typed/operator/v1"
@@ -56,7 +56,6 @@ type containerEngineInterface interface {
 	pullImage(imageName string) error
 	putFileToMount(filename string, content []byte) error
 	stopContainer(containerName string) error
-	// some container engines have special handlings for different types of containers
 	runConsoleContainer(containerName string, port string, consoleArgs []string, envVars []envVar) error
 	runMonitorPlugin(containerName string, consoleContainerName string, nginxConf string, pluginArgs []string) error
 	containerIsExist(containerName string) (bool, error)
@@ -70,7 +69,7 @@ type dockerLinux struct{}
 type dockerMac struct{}
 
 type execActionOnTermInterface interface {
-	execActionOnTerminationFunction(action postTerminationAction) error
+	execActionOnTerminationFunction(action postTerminateFunc) error
 }
 
 type execActionOnTermStruct struct{}
@@ -101,7 +100,7 @@ const (
 	PODMAN = "podman"
 	// Linux name in runtime.GOOS
 	LINUX = "linux"
-	// MacOS name in runtime.GOOS
+	// MACOS name in runtime.GOOS
 	MACOS = "darwin"
 
 	// Environment variable that indicates if open by browser is set as default
@@ -137,12 +136,12 @@ var (
 
 	// Pull Secret saving directory
 	pullSecretConfigDirectory string
-
-	ctx, cancel = context.WithCancel(context.Background())
 )
 
 func newConsoleOptions() *consoleOptions {
-	return &consoleOptions{terminationFunction: &execActionOnTermStruct{}}
+	return &consoleOptions{
+		terminationFunction: &execActionOnTermStruct{},
+	}
 }
 
 func NewConsoleCmd() *cobra.Command {
@@ -157,7 +156,9 @@ func NewConsoleCmd() *cobra.Command {
 		You can specify container engine with -c. If not specified, it will lookup the PATH in the order of podman and docker.
 `,
 		SilenceUsage: true,
-		RunE:         ops.run,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return ops.run()
+		},
 	}
 
 	flags := consoleCmd.Flags()
@@ -205,7 +206,7 @@ func NewConsoleCmd() *cobra.Command {
 	return consoleCmd
 }
 
-func (o *consoleOptions) run(cmd *cobra.Command, argv []string) error {
+func (o *consoleOptions) run() error {
 	err := o.determineOpenBrowser()
 	if err != nil {
 		return err
@@ -222,7 +223,6 @@ func (o *consoleOptions) run(cmd *cobra.Command, argv []string) error {
 	if err != nil {
 		return err
 	}
-	// finialize the console image url
 	err = o.determineImage(kubeconfig)
 	if err != nil {
 		return err
@@ -249,16 +249,14 @@ func (o *consoleOptions) run(cmd *cobra.Command, argv []string) error {
 	if err != nil {
 		return err
 	}
-	//Perform a cleanup before starting a new console
+	// Perform a cleanup before starting a new console
 	err = o.beforeStartCleanUp(ce)
 	if err != nil {
 		return err
 	}
-	done := make(chan bool)
+
 	errs := make(chan error)
-
-	go o.runContainers(ce, done, errs)
-
+	go o.runContainers(ce, errs)
 	if len(errs) != 0 {
 		err := <-errs
 		return err
@@ -272,9 +270,8 @@ func (o *consoleOptions) run(cmd *cobra.Command, argv []string) error {
 	return nil
 }
 
-func (o *consoleOptions) runContainers(ce containerEngineInterface, done chan bool, errs chan<- error) {
+func (o *consoleOptions) runContainers(ce containerEngineInterface, errs chan<- error) {
 	if err := o.runConsoleContainer(ce); err != nil {
-
 		errs <- err
 		return
 	}
@@ -286,8 +283,6 @@ func (o *consoleOptions) runContainers(ce containerEngineInterface, done chan bo
 	if err := o.printURL(); err != nil {
 		errs <- err
 	}
-
-	close(done)
 }
 
 // Parse environment variables
@@ -374,7 +369,6 @@ func (o *consoleOptions) getContainerEngineImpl() (containerEngineInterface, err
 	} else if runtime.GOOS == LINUX && containerEngine == DOCKER {
 		containerEngineImpl = &dockerLinux{}
 	} else if runtime.GOOS == MACOS && containerEngine == DOCKER {
-		logger.Warnln("Docker on MacOS is not tested")
 		containerEngineImpl = &dockerMac{}
 	}
 	return containerEngineImpl, nil
@@ -555,7 +549,7 @@ func (o *consoleOptions) runConsoleContainer(ce containerEngineInterface) error 
 
 	bridgeListen := fmt.Sprintf("http://0.0.0.0:%s", o.port)
 
-	envVars := []envVar{}
+	var envVars []envVar
 	// Set proxy URL to the container
 	proxyURL, err := getProxyURL()
 	if err != nil {
@@ -677,17 +671,19 @@ func (o *consoleOptions) beforeStartCleanUp(ce containerEngineInterface) error {
 	return nil
 }
 
+// cleanUp will first populate the containers needed to clean up, then call the blocking function
+// o.terminateFunction, which will block until a system signal is received.
 func (o *consoleOptions) cleanUp(ce containerEngineInterface) error {
 	clusterID, err := getClusterID()
 	if err != nil {
 		return err
 	}
 
-	containersToCleanUp := []string{}
+	var containersToCleanUp []string
 
 	// forcing order of removal as the order is not deterministic between container engines
 	if o.needMonitorPlugin {
-		logger.Debugln("monitoring plugin is needed, need to clean up monitoring plugin first")
+		logger.Debugln("adding monitoring plugin to containers for cleanup")
 		containersToCleanUp = append(containersToCleanUp, fmt.Sprintf("monitoring-plugin-%s", clusterID))
 	}
 	containersToCleanUp = append(containersToCleanUp, fmt.Sprintf("console-%s", clusterID))
@@ -698,7 +694,6 @@ func (o *consoleOptions) cleanUp(ce containerEngineInterface) error {
 		o.terminationFunction = &execActionOnTermStruct{}
 	}
 
-	<-ctx.Done()
 	err = o.terminationFunction.execActionOnTerminationFunction(func() error {
 		for _, c := range containersToCleanUp {
 			exist, err := ce.containerIsExist(c)
@@ -911,9 +906,6 @@ func GetConfigDirectory() (string, error) {
 
 		// Update config directory default path
 		pullSecretConfigDirectory = filepath.Join(home, ".kube/ocm-pull-secret")
-		if err != nil {
-			return "", fmt.Errorf("can't modify config directory. Error: %s", err.Error())
-		}
 	}
 
 	return pullSecretConfigDirectory, nil
@@ -979,24 +971,19 @@ func replaceConsoleURL(containerURL string, userProvidedURL string) (string, err
 	return u.String(), nil
 }
 
-type postTerminationAction func() error
+type postTerminateFunc func() error
 
 // keep the program running in frontend and wait for ctrl-c
-func (e *execActionOnTermStruct) execActionOnTerminationFunction(action postTerminationAction) error {
+func (e *execActionOnTermStruct) execActionOnTerminationFunction(action postTerminateFunc) error {
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-	done := make(chan bool, 1)
 	sig := <-sigs
-	fmt.Println(sig)
-	done <- true
-	err := action()
-	if err != nil {
-		return err
-	}
-	return nil
+	fmt.Printf("System signal '%v' received, cleaning up containers and exiting...\n", sig)
+
+	return action()
 }
 
-// ---- Contianer Engine Implementations ---- //
+// ---- Container Engine Implementations ---- //
 
 // podman pull - pull the image to local from registry
 // this action is OS independent
@@ -1070,7 +1057,7 @@ func (ce *dockerMac) pullImage(imageName string) error {
 	return generalDockerPullImage(imageName)
 }
 
-// the shared function for podman to run console container for both linux and macos
+// the shared function for podman to run console container for both linux and macOS
 func podmanRunConsoleContainer(containerName string, port string, consoleArgs []string, envVars []envVar) error {
 	_, authFilename, err := fetchPullSecretIfNotExist()
 	if err != nil {
@@ -1093,15 +1080,11 @@ func podmanRunConsoleContainer(containerName string, port string, consoleArgs []
 	engRunArgs = append(engRunArgs, consoleArgs...)
 	logger.WithField("Command", fmt.Sprintf("`%s %s`", PODMAN, strings.Join(engRunArgs, " "))).Infoln("Running container")
 
-	runCmd := exec.CommandContext(ctx, PODMAN, engRunArgs...)
-	defer cancel()
+	runCmd := createCommand(PODMAN, engRunArgs...)
 	runCmd.Stderr = os.Stderr
 	runCmd.Stdout = nil
-	err = runCmd.Run()
-	if err != nil {
-		return err
-	}
-	return nil
+
+	return runCmd.Run()
 }
 
 func (ce *podmanMac) runConsoleContainer(containerName string, port string, consoleArgs []string, envVars []envVar) error {
@@ -1112,7 +1095,7 @@ func (ce *podmanLinux) runConsoleContainer(containerName string, port string, co
 	return podmanRunConsoleContainer(containerName, port, consoleArgs, envVars)
 }
 
-// the shared function for docker to run console container for both linux and macos
+// the shared function for docker to run console container for both linux and macOS
 func dockerRunConsoleContainer(containerName string, port string, consoleArgs []string, envVars []envVar) error {
 	configDirectory, _, err := fetchPullSecretIfNotExist()
 	if err != nil {
@@ -1138,15 +1121,12 @@ func dockerRunConsoleContainer(containerName string, port string, consoleArgs []
 	}
 	engRunArgs = append(engRunArgs, consoleArgs...)
 	logger.WithField("Command", fmt.Sprintf("`%s %s`", DOCKER, strings.Join(engRunArgs, " "))).Infoln("Running container")
+
 	runCmd := createCommand(DOCKER, engRunArgs...)
 	runCmd.Stderr = os.Stderr
 	runCmd.Stdout = nil
 
-	err = runCmd.Run()
-	if err != nil {
-		return err
-	}
-	return nil
+	return runCmd.Run()
 }
 
 func (ce *dockerMac) runConsoleContainer(containerName string, port string, consoleArgs []string, envVars []envVar) error {
@@ -1157,7 +1137,7 @@ func (ce *dockerLinux) runConsoleContainer(containerName string, port string, co
 	return dockerRunConsoleContainer(containerName, port, consoleArgs, envVars)
 }
 
-// the shared function for podman to run monitoring plugin for both linux and macos
+// the shared function for podman to run monitoring plugin for both linux and macOS
 func podmanRunMonitorPlugin(containerName string, consoleContainerName string, nginxConfPath string, pluginArgs []string) error {
 	_, authFilename, err := fetchPullSecretIfNotExist()
 	if err != nil {
@@ -1180,11 +1160,7 @@ func podmanRunMonitorPlugin(containerName string, consoleContainerName string, n
 	runCmd.Stderr = os.Stderr
 	runCmd.Stdout = nil
 
-	err = runCmd.Run()
-	if err != nil {
-		return err
-	}
-	return nil
+	return runCmd.Run()
 }
 
 func (ce *podmanMac) runMonitorPlugin(containerName string, consoleContainerName string, nginxConf string, pluginArgs []string) error {
@@ -1197,8 +1173,8 @@ func (ce *podmanLinux) runMonitorPlugin(containerName string, consoleContainerNa
 	return podmanRunMonitorPlugin(containerName, consoleContainerName, nginxConfPath, pluginArgs)
 }
 
-// the shared function for docker to run monitoring plugin for both linux and macos
-func dockerRunMonitorPlugin(containerName string, consoleContainerName string, nginxConfPath string, pluginArgs []string) error {
+// the shared function for docker to run monitoring plugin for both linux and macOS
+func dockerRunMonitorPlugin(containerName string, _ string, nginxConfPath string, pluginArgs []string) error {
 	configDirectory, _, err := fetchPullSecretIfNotExist()
 	if err != nil {
 		return err
@@ -1220,11 +1196,7 @@ func dockerRunMonitorPlugin(containerName string, consoleContainerName string, n
 	runCmd.Stderr = os.Stderr
 	runCmd.Stdout = nil
 
-	err = runCmd.Run()
-	if err != nil {
-		return err
-	}
-	return nil
+	return runCmd.Run()
 }
 
 func (ce *dockerLinux) runMonitorPlugin(containerName string, consoleContainerName string, nginxConf string, pluginArgs []string) error {
@@ -1385,7 +1357,7 @@ func (ce *podmanLinux) stopContainer(containerName string) error {
 	return generalStopContainer(PODMAN, containerName)
 }
 
-// podman-stop for MacOS
+// podman-stop for macOS
 func (ce *podmanMac) stopContainer(containerName string) error {
 	return generalStopContainer(PODMAN, containerName)
 }
@@ -1395,7 +1367,7 @@ func (ce *dockerLinux) stopContainer(containerName string) error {
 	return generalStopContainer(DOCKER, containerName)
 }
 
-// docker-stop for MacOS
+// docker-stop for macOS
 func (ce *dockerMac) stopContainer(containerName string) error {
 	return generalStopContainer(DOCKER, containerName)
 }
@@ -1405,7 +1377,7 @@ func (ce *podmanLinux) containerIsExist(containerName string) (bool, error) {
 	return generalContainerIsExist(PODMAN, containerName)
 }
 
-// podman-exist for MacOS
+// podman-exist for macOS
 func (ce *podmanMac) containerIsExist(containerName string) (bool, error) {
 	return generalContainerIsExist(PODMAN, containerName)
 }
@@ -1415,7 +1387,7 @@ func (ce *dockerLinux) containerIsExist(containerName string) (bool, error) {
 	return generalContainerIsExist(DOCKER, containerName)
 }
 
-// docker-exist for MacOS
+// docker-exist for macOS
 func (ce *dockerMac) containerIsExist(containerName string) (bool, error) {
 	return generalContainerIsExist(DOCKER, containerName)
 }
