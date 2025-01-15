@@ -131,7 +131,6 @@ func init() {
 		"cluster-info",
 		false, "Print basic cluster information after login",
 	)
-	flags.StringVar(&args.remediation, "remediation", "", "The name of the remediation for which RBAC should get created")
 }
 
 // TODO there is something about the proxy config in relation to overriding with --url
