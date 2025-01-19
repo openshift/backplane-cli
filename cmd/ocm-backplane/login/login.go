@@ -244,19 +244,24 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 
 		logger.Debugln("Finding K8s namespaces")
 		// Print the related namespace if login to manager cluster
-		var namespaces []string
+		var namespaces map[string]string
 		namespaces, err = listNamespaces(targetClusterID, isHostedControlPlane)
 		if err != nil {
 			return err
 		}
-		fmt.Println("A list of associated namespaces for your given cluster:")
-		for _, ns := range namespaces {
-			fmt.Println("	" + ns)
+		fmt.Println("Execute the following command to export the list of associated namespaces for your given cluster")
+		for key, ns := range namespaces {
+			fmt.Printf("\texport %s=%s\n", key, ns)
 		}
 	}
 
 	if globalOpts.Service {
 		logger.WithField("Cluster ID", clusterID).Debugln("Finding service cluster")
+		targetClusterID := clusterID
+		_, managingClusterName, isHostedControlPlane, err := ocm.DefaultOCMInterface.GetManagingCluster(clusterID)
+		if err != nil {
+			return err
+		}
 		clusterID, clusterName, err = ocm.DefaultOCMInterface.GetServiceCluster(clusterID)
 		if err != nil {
 			return err
@@ -267,6 +272,16 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 		logger.WithFields(logger.Fields{
 			"ID":   clusterID,
 			"Name": clusterName}).Infoln("Service cluster")
+
+		if !isHostedControlPlane {
+			return fmt.Errorf("manifestworks are only available for hosted control plane clusters")
+		}
+		listManifestWork := fmt.Sprintf("oc get manifestworks -n %s -l api.openshift.com/id=%s", managingClusterName, targetClusterID)
+
+		fmt.Println("A list of associated manifestwork for your given cluster can be found using:")
+		fmt.Println("\t", listManifestWork)
+		fmt.Println("\nThe MC Namespace for the cluster can be exported using:")
+		fmt.Printf("\texport MC_NAME=%s\n", managingClusterName)
 	}
 
 	logger.Debugln("Validating K8s Config Path")
@@ -533,34 +548,33 @@ func doLogin(api, clusterID, accessToken string) (string, error) {
 	return api + *loginResp.JSON200.ProxyUri, nil
 }
 
-func listNamespaces(clusterID string, isHostedControlPlane bool) ([]string, error) {
+func listNamespaces(clusterID string, isHostedControlPlane bool) (map[string]string, error) {
 
 	env, err := ocm.DefaultOCMInterface.GetOCMEnvironment()
 	if err != nil {
-		return []string{}, err
+		return map[string]string{}, err
 	}
 	envName := env.Name()
 
 	clusterInfo, err := ocm.DefaultOCMInterface.GetClusterInfoByID(clusterID)
 	if err != nil {
-		return []string{}, err
+		return map[string]string{}, err
 	}
 
 	klusterletPrefix := "klusterlet-"
 	hivePrefix := fmt.Sprintf("uhc-%s-", envName)
 	hcpPrefix := fmt.Sprintf("ocm-%s-", envName)
 
-	var nsList []string
-
+	var nsList map[string]string
 	if isHostedControlPlane {
-		nsList = []string{
-			klusterletPrefix + clusterID,
-			hcpPrefix + clusterID,
-			hcpPrefix + clusterID + "-" + clusterInfo.DomainPrefix(),
+		nsList = map[string]string{
+			"KLUSTERLET_NS": klusterletPrefix + clusterID,
+			"HC_NAMESPACE":  hcpPrefix + clusterID,
+			"HCP_NAMESPACE": hcpPrefix + clusterID + "-" + clusterInfo.DomainPrefix(),
 		}
 	} else {
-		nsList = []string{
-			hivePrefix + clusterID,
+		nsList = map[string]string{
+			"HIVE_NS": hivePrefix + clusterID,
 		}
 	}
 

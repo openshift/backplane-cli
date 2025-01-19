@@ -385,6 +385,7 @@ var _ = Describe("Login command", func() {
 			globalOpts.Service = true
 			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, testClusterID, nil)
+			mockOcmInterface.EXPECT().GetManagingCluster(trueClusterID).Return(managingClusterID, managingClusterID, true, nil).AnyTimes() // isHostedControlPlane = true
 			mockOcmInterface.EXPECT().GetServiceCluster(trueClusterID).Return(serviceClusterID, serviceClusterName, nil)
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(serviceClusterID)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil)
