@@ -35,27 +35,21 @@ var _ = Describe("New Remediation command", func() {
 		mockCtrl         *gomock.Controller
 		mockOcmInterface *ocmMock.MockOCMInterface
 		mockClientUtil   *backplaneapiMock.MockClientUtils
-		//mockClient         *mocks.MockClientInterface
-		mockClientWithResp *mocks.MockClientWithResponsesInterface
-		//mockCluster        *cmv1.Cluster
+		mockClient       *mocks.MockClientInterface
 
-		testClusterID             string
-		trueClusterID             string
-		testToken                 string
-		testRemediationName       string
-		testProxyURI              string
-		fakeResp                  *http.Response
-		bpConfigPath              string
-		backplaneAPIURI           string
-		ocmEnv                    *cmv1.Environment
-		createRemediationResponse *BackplaneApi.CreateRemediationResponse
-		deleteRemediationResponse *BackplaneApi.DeleteRemediationResponse
+		testClusterID       string
+		trueClusterID       string
+		testToken           string
+		testRemediationName string
+		fakeResp            *http.Response
+		bpConfigPath        string
+		backplaneAPIURI     string
+		ocmEnv              *cmv1.Environment
 	)
 
 	BeforeEach(func() {
 		mockCtrl = gomock.NewController(GinkgoT())
-		mockClientWithResp = mocks.NewMockClientWithResponsesInterface(mockCtrl)
-		//ockClient = mocks.NewMockClientInterface(mockCtrl)
+		mockClient = mocks.NewMockClientInterface(mockCtrl)
 
 		err := utils.CreateTempKubeConfig(nil)
 		Expect(err).To(BeNil())
@@ -66,7 +60,7 @@ var _ = Describe("New Remediation command", func() {
 		mockClientUtil = backplaneapiMock.NewMockClientUtils(mockCtrl)
 		backplaneapi.DefaultClientUtils = mockClientUtil
 
-		mockClientWithResp.EXPECT().LoginClusterWithResponse(gomock.Any(), gomock.Any()).Return(nil, nil).Times(0)
+		mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Any()).Return(nil, nil).Times(0)
 
 		_ = clientcmd.ModifyConfig(clientcmd.NewDefaultPathOptions(), api.Config{}, true)
 		clientcmd.UseModifyConfigLock = false
@@ -75,29 +69,12 @@ var _ = Describe("New Remediation command", func() {
 
 		ocmEnv, _ = cmv1.NewEnvironment().BackplaneURL("https://api.example.com").Build()
 
-		//mockCluster = &cmv1.Cluster{}
-
-		//backplaneConfiguration = config.BackplaneConfiguration{URL: backplaneAPIURI}
-
 		fakeResp = &http.Response{
 			Body:       MakeIoReader(`{"proxy_uri":"proxy", "statusCode":200, "message":"msg"}`),
 			Header:     map[string][]string{},
 			StatusCode: http.StatusOK,
 		}
 		fakeResp.Header.Add("Content-Type", "json")
-
-		testProxyURI = "http://proxy.example.com/"
-
-		createRemediationResponse = &BackplaneApi.CreateRemediationResponse{
-			HTTPResponse: fakeResp,
-			Body:         []byte(""),
-			JSON200:      &BackplaneApi.LoginResponse{ProxyUri: &testProxyURI},
-		}
-
-		deleteRemediationResponse = &BackplaneApi.DeleteRemediationResponse{
-			HTTPResponse: fakeResp,
-			Body:         []byte(""),
-		}
 
 		testClusterID = "test123"
 		trueClusterID = "trueID123"
@@ -126,8 +103,8 @@ var _ = Describe("New Remediation command", func() {
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil)
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
 
-			mockClientUtil.EXPECT().MakeBackplaneAPIClientWithAccessToken(backplaneAPIURI, testToken).Return(mockClientWithResp, nil)
-			mockClientWithResp.EXPECT().CreateRemediationWithResponse(context.TODO(), trueClusterID, &BackplaneApi.CreateRemediationParams{Remediation: testRemediationName}).Return(createRemediationResponse, nil)
+			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken(backplaneAPIURI, testToken).Return(mockClient, nil)
+			mockClient.EXPECT().CreateRemediation(context.TODO(), trueClusterID, &BackplaneApi.CreateRemediationParams{Remediation: testRemediationName}).Return(fakeResp, nil)
 
 			err := runCreateRemediation([]string{testRemediationName}, testClusterID, backplaneAPIURI)
 
@@ -140,8 +117,8 @@ var _ = Describe("New Remediation command", func() {
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil)
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
 
-			mockClientUtil.EXPECT().MakeBackplaneAPIClientWithAccessToken("http://uri2.example.com", testToken).Return(mockClientWithResp, nil)
-			mockClientWithResp.EXPECT().CreateRemediationWithResponse(context.TODO(), trueClusterID, &BackplaneApi.CreateRemediationParams{Remediation: testRemediationName}).Return(createRemediationResponse, nil)
+			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken("http://uri2.example.com", testToken).Return(mockClient, nil)
+			mockClient.EXPECT().CreateRemediation(context.TODO(), trueClusterID, &BackplaneApi.CreateRemediationParams{Remediation: testRemediationName}).Return(fakeResp, nil)
 
 			err := runCreateRemediation([]string{testRemediationName}, testClusterID, "http://uri2.example.com")
 
@@ -158,8 +135,8 @@ var _ = Describe("New Remediation command", func() {
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil)
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
 
-			mockClientUtil.EXPECT().MakeBackplaneAPIClientWithAccessToken(backplaneAPIURI, testToken).Return(mockClientWithResp, nil)
-			mockClientWithResp.EXPECT().CreateRemediationWithResponse(context.TODO(), trueClusterID, &BackplaneApi.CreateRemediationParams{Remediation: testRemediationName}).Return(createRemediationResponse, nil)
+			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken(backplaneAPIURI, testToken).Return(mockClient, nil)
+			mockClient.EXPECT().CreateRemediation(context.TODO(), trueClusterID, &BackplaneApi.CreateRemediationParams{Remediation: testRemediationName}).Return(fakeResp, nil)
 
 			err := runCreateRemediation([]string{testRemediationName}, testClusterID, backplaneAPIURI)
 
@@ -183,7 +160,7 @@ var _ = Describe("New Remediation command", func() {
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil)
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
 
-			mockClientUtil.EXPECT().MakeBackplaneAPIClientWithAccessToken(backplaneAPIURI, testToken).Return(nil, errors.New("err"))
+			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken(backplaneAPIURI, testToken).Return(nil, errors.New("err"))
 
 			err := runCreateRemediation([]string{testRemediationName}, testClusterID, backplaneAPIURI)
 
@@ -208,8 +185,8 @@ var _ = Describe("New Remediation command", func() {
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil)
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
 
-			mockClientUtil.EXPECT().MakeBackplaneAPIClientWithAccessToken(backplaneAPIURI, testToken).Return(mockClientWithResp, nil)
-			mockClientWithResp.EXPECT().DeleteRemediationWithResponse(context.TODO(), trueClusterID, &BackplaneApi.DeleteRemediationParams{Remediation: &testRemediationName}).Return(deleteRemediationResponse, nil)
+			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken(backplaneAPIURI, testToken).Return(mockClient, nil)
+			mockClient.EXPECT().DeleteRemediation(context.TODO(), trueClusterID, &BackplaneApi.DeleteRemediationParams{Remediation: &testRemediationName}).Return(fakeResp, nil)
 
 			err := runDeleteRemediation([]string{testRemediationName}, testClusterID, backplaneAPIURI)
 
@@ -222,8 +199,8 @@ var _ = Describe("New Remediation command", func() {
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil)
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
 
-			mockClientUtil.EXPECT().MakeBackplaneAPIClientWithAccessToken("https://uri2.example.com/", testToken).Return(mockClientWithResp, nil)
-			mockClientWithResp.EXPECT().DeleteRemediationWithResponse(context.TODO(), trueClusterID, &BackplaneApi.DeleteRemediationParams{Remediation: &testRemediationName}).Return(deleteRemediationResponse, nil)
+			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken("https://uri2.example.com/", testToken).Return(mockClient, nil)
+			mockClient.EXPECT().DeleteRemediation(context.TODO(), trueClusterID, &BackplaneApi.DeleteRemediationParams{Remediation: &testRemediationName}).Return(fakeResp, nil)
 
 			err := runDeleteRemediation([]string{testRemediationName}, testClusterID, "https://uri2.example.com/")
 
@@ -247,7 +224,7 @@ var _ = Describe("New Remediation command", func() {
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil)
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
 
-			mockClientUtil.EXPECT().MakeBackplaneAPIClientWithAccessToken(backplaneAPIURI, testToken).Return(nil, errors.New("err"))
+			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken(backplaneAPIURI, testToken).Return(nil, errors.New("err"))
 
 			err := runDeleteRemediation([]string{testRemediationName}, testClusterID, backplaneAPIURI)
 
