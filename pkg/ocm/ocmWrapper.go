@@ -152,8 +152,15 @@ func (o *DefaultOCMInterfaceImpl) GetManagingCluster(targetClusterID string) (cl
 		clusterCollection := connection.ClustersMgmt().V1().Clusters()
 		resource := clusterCollection.Cluster(targetClusterID).ProvisionShard()
 		response, err := resource.Get().Send()
+		var errMsg string
+
+		if isHostedControlPlane {
+			errMsg = fmt.Sprintf("failed to find management cluster for cluster %s", targetClusterID)
+		} else {
+			errMsg = fmt.Sprintf("failed to find hive shard for cluster %s", targetClusterID)
+		}
 		if err != nil {
-			return "", "", isHostedControlPlane, fmt.Errorf("failed to find management cluster for cluster %s: %v", targetClusterID, err)
+			return "", "", isHostedControlPlane, fmt.Errorf(errMsg, err)
 		}
 		shard := response.Body()
 		hiveAPI := shard.HiveConfig().Server()
@@ -165,10 +172,10 @@ func (o *DefaultOCMInterfaceImpl) GetManagingCluster(targetClusterID string) (cl
 			Send()
 
 		if err != nil {
-			return "", "", isHostedControlPlane, fmt.Errorf("failed to find management cluster for cluster %s: %v", targetClusterID, err)
+			return "", "", isHostedControlPlane, fmt.Errorf(errMsg, err)
 		}
 		if mcResp.Items().Len() == 0 {
-			return "", "", isHostedControlPlane, fmt.Errorf("failed to find management cluster for cluster %s in %s env", targetClusterID, connection.URL())
+			return "", "", isHostedControlPlane, fmt.Errorf("%s in %s env", errMsg, connection.URL())
 		}
 		managingCluster = mcResp.Items().Get(0).Name()
 	}
