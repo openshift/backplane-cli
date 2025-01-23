@@ -103,12 +103,12 @@ func runCreateRemediation(args []string, clusterKey string, urlFlag string) erro
 		return err
 	}
 
-	backplaneHost := bpConfig.URL
+	bpURL := bpConfig.URL
 
 	clusterID := bpCluster.ClusterID
 
 	if urlFlag != "" {
-		backplaneHost = urlFlag
+		bpURL = urlFlag
 	}
 
 	// ======== Parsing Args ========
@@ -121,7 +121,23 @@ func runCreateRemediation(args []string, clusterKey string, urlFlag string) erro
 	if err != nil {
 		return err
 	}
-	proxyURI, err := remediation.DoCreateRemediation(backplaneHost, clusterID, *accessToken, remediationName)
+	// Add proxy URL to target cluster
+	proxyURL := globalOpts.ProxyURL
+	if proxyURL != "" {
+		err = backplaneapi.DefaultClientUtils.SetClientProxyURL(proxyURL)
+
+		if err != nil {
+			return err
+		}
+		logger.Debugf("Using backplane Proxy URL: %s\n", proxyURL)
+	}
+
+	if bpConfig.ProxyURL != nil {
+		proxyURL = *bpConfig.ProxyURL
+		logger.Debugln("backplane configuration file also contains a proxy url, using that one instead")
+		logger.Debugf("New backplane Proxy URL: %s\n", proxyURL)
+	}
+	proxyURI, err := remediation.DoCreateRemediation(bpURL, clusterID, *accessToken, remediationName)
 	// ======== Render Results ========
 	if err != nil {
 		return err
@@ -140,23 +156,6 @@ func runCreateRemediation(args []string, clusterKey string, urlFlag string) erro
 	targetContext := api.NewContext()
 
 	targetCluster.Server = proxyURI
-
-	// Add proxy URL to target cluster
-	proxyURL := globalOpts.ProxyURL
-	if proxyURL != "" {
-		err = backplaneapi.DefaultClientUtils.SetClientProxyURL(proxyURL)
-
-		if err != nil {
-			return err
-		}
-		logger.Debugf("Using backplane Proxy URL: %s\n", proxyURL)
-	}
-
-	if bpConfig.ProxyURL != nil {
-		proxyURL = *bpConfig.ProxyURL
-		logger.Debugln("backplane configuration file also contains a proxy url, using that one instead")
-		logger.Debugf("New backplane Proxy URL: %s\n", proxyURL)
-	}
 
 	logger.Debugln("Extracting target cluster ID and name")
 	clusterID, clusterName, err := ocm.DefaultOCMInterface.GetTargetCluster(clusterKey)
@@ -211,12 +210,12 @@ func runDeleteRemediation(args []string, clusterKey string, urlFlag string) erro
 		return err
 	}
 
-	backplaneHost := bpConfig.URL
+	bpURL := bpConfig.URL
 
 	clusterID := bpCluster.ClusterID
 
 	if urlFlag != "" {
-		backplaneHost = urlFlag
+		bpURL = urlFlag
 	}
 
 	// ======== Parsing Args ========
@@ -229,8 +228,25 @@ func runDeleteRemediation(args []string, clusterKey string, urlFlag string) erro
 	if err != nil {
 		return err
 	}
+
+	// Add proxy URL to target cluster
+	proxyURL := globalOpts.ProxyURL
+	if proxyURL != "" {
+		err = backplaneapi.DefaultClientUtils.SetClientProxyURL(proxyURL)
+
+		if err != nil {
+			return err
+		}
+		logger.Debugf("Using backplane Proxy URL: %s\n", proxyURL)
+	}
+
+	if bpConfig.ProxyURL != nil {
+		proxyURL = *bpConfig.ProxyURL
+		logger.Debugln("backplane configuration file also contains a proxy url, using that one instead")
+		logger.Debugf("New backplane Proxy URL: %s\n", proxyURL)
+	}
 	// ======== Call Endpoint ========
-	err = remediation.DoDeleteRemediation(backplaneHost, clusterID, *accessToken, remediationSA)
+	err = remediation.DoDeleteRemediation(bpURL, clusterID, *accessToken, remediationSA)
 	// ======== Render Results ========
 	if err != nil {
 		return err

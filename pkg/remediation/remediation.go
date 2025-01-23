@@ -2,52 +2,40 @@ package remediation
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
-	"strings"
 
 	ocmsdk "github.com/openshift-online/ocm-sdk-go"
 	BackplaneApi "github.com/openshift/backplane-api/pkg/client"
 	"github.com/openshift/backplane-cli/pkg/backplaneapi"
 	"github.com/openshift/backplane-cli/pkg/cli/config"
 	"github.com/openshift/backplane-cli/pkg/ocm"
-	logger "github.com/sirupsen/logrus"
+	"github.com/openshift/backplane-cli/pkg/utils"
 	"k8s.io/client-go/rest"
 )
 
-// TODO are we missusing the backplane api package? We have generated functions like backplaneapi.CreateRemediationWithResponse which already reads the body. All the utils functions do read the body again. Failing my calls here.
 func DoCreateRemediation(api string, clusterID string, accessToken string, remediationName string) (proxyURI string, err error) {
-	client, err := backplaneapi.DefaultClientUtils.MakeBackplaneAPIClientWithAccessToken(api, accessToken)
+	client, err := backplaneapi.DefaultClientUtils.MakeRawBackplaneAPIClientWithAccessToken(api, accessToken)
 	if err != nil {
 		return "", fmt.Errorf("unable to create backplane api client")
 	}
 
-	logger.Debug("Sending request...")
-	resp, err := client.CreateRemediationWithResponse(context.TODO(), clusterID, &BackplaneApi.CreateRemediationParams{Remediation: remediationName})
+	resp, err := client.CreateRemediation(context.TODO(), clusterID, &BackplaneApi.CreateRemediationParams{Remediation: remediationName})
 	if err != nil {
-		logger.Debug("unexpected...")
 		return "", err
 	}
-
-	// TODO figure out the error handling here
-	if resp.StatusCode() != http.StatusOK {
-		// logger.Debugf("Unmarshal error resp body: %s", resp.Body)
-		var dest BackplaneApi.Error
-		if err := json.Unmarshal(resp.Body, &dest); err != nil {
-			// Avoid squashing the HTTP response info with Unmarshal err...
-			logger.Debugf("Unmarshaled %s", *dest.Message)
-
-			bodyStr := strings.ReplaceAll(string(resp.Body[:]), "\n", " ")
-			err := fmt.Errorf("code:'%d'; failed to unmarshal response:'%s'; %w", resp.StatusCode(), bodyStr, err)
-			return "", err
-		}
-		return "", errors.New(*dest.Message)
-
+	if resp.StatusCode != http.StatusOK {
+		return "", utils.TryPrintAPIError(resp, false)
 	}
-	return api + *resp.JSON200.ProxyUri, nil
+
+	remediationResponse, err := BackplaneApi.ParseCreateRemediationResponse(resp)
+
+	if err != nil {
+		return "", fmt.Errorf("unable to parse response body from backplane: \n Status Code: %d", resp.StatusCode)
+	}
+
+	return api + *remediationResponse.JSON200.ProxyUri, nil
 }
 
 // CreateRemediationWithConn can be used to programtically interact with backplaneapi
@@ -76,28 +64,18 @@ func CreateRemediationWithConn(bp config.BackplaneConfiguration, ocmConnection *
 }
 
 func DoDeleteRemediation(api string, clusterID string, accessToken string, remediation string) error {
-	client, err := backplaneapi.DefaultClientUtils.MakeBackplaneAPIClientWithAccessToken(api, accessToken)
+	client, err := backplaneapi.DefaultClientUtils.MakeRawBackplaneAPIClientWithAccessToken(api, accessToken)
 	if err != nil {
 		return fmt.Errorf("unable to create backplane api client")
 	}
 
-	resp, err := client.DeleteRemediationWithResponse(context.TODO(), clusterID, &BackplaneApi.DeleteRemediationParams{Remediation: &remediation})
+	resp, err := client.DeleteRemediation(context.TODO(), clusterID, &BackplaneApi.DeleteRemediationParams{Remediation: &remediation})
 	if err != nil {
 		return err
 	}
 
-	if resp.StatusCode() != http.StatusOK {
-		// logger.Debugf("Unmarshal error resp body: %s", resp.Body)
-		var dest BackplaneApi.Error
-		if err := json.Unmarshal(resp.Body, &dest); err != nil {
-			// Avoid squashing the HTTP response info with Unmarshal err...
-			logger.Debugf("Unmarshaled %s", *dest.Message)
-
-			bodyStr := strings.ReplaceAll(string(resp.Body[:]), "\n", " ")
-			err := fmt.Errorf("code:'%d'; failed to unmarshal response:'%s'; %w", resp.StatusCode(), bodyStr, err)
-			return err
-		}
-		return errors.New(*dest.Message)
+	if resp.StatusCode != http.StatusOK {
+		return utils.TryPrintAPIError(resp, false)
 	}
 
 	return nil
