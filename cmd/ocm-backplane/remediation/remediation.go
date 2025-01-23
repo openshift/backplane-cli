@@ -103,10 +103,7 @@ func runCreateRemediation(args []string, clusterKey string, urlFlag string) erro
 		return err
 	}
 
-	bpURL := globalOpts.BackplaneURL
-	if bpURL == "" {
-		bpURL = bpConfig.URL
-	}
+	bpURL := bpConfig.URL
 
 	clusterID := bpCluster.ClusterID
 
@@ -212,10 +209,7 @@ func runDeleteRemediation(args []string, clusterKey string, urlFlag string) erro
 		return err
 	}
 
-	bpURL := globalOpts.BackplaneURL
-	if bpURL == "" {
-		bpURL = bpConfig.URL
-	}
+	bpURL := bpConfig.URL
 
 	clusterID := bpCluster.ClusterID
 
