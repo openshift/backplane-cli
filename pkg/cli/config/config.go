@@ -1,11 +1,13 @@
 package config
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	logger "github.com/sirupsen/logrus"
@@ -52,6 +54,7 @@ const (
 	JiraConfigForAccessRequestsKey = "jira-config-for-access-requests"
 	prodEnvNameDefaultValue        = "production"
 	JiraBaseURLDefaultValue        = "https://issues.redhat.com"
+	proxyTestTimeout               = 10 * time.Second
 )
 
 var JiraConfigForAccessRequestsDefaultValue = AccessRequestsJiraConfiguration{
@@ -190,43 +193,115 @@ func GetBackplaneConfiguration() (bpConfig BackplaneConfiguration, err error) {
 	return bpConfig, nil
 }
 
-var clientDo = func(client *http.Client, req *http.Request) (*http.Response, error) {
-	return client.Do(req)
+var testProxy = func(ctx context.Context, testURL string, proxyURL url.URL) error {
+	// Try call the test URL via the proxy
+	client := &http.Client{
+		Transport: &http.Transport{Proxy: http.ProxyURL(&proxyURL)},
+	}
+	req, _ := http.NewRequestWithContext(ctx, "GET", testURL, nil)
+	resp, err := client.Do(req)
+
+	// Check the result
+	if err != nil {
+		return fmt.Errorf("proxy returned an error %v", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("expected response code 200 but got %d", resp.StatusCode)
+	}
+
+	return nil
 }
 
 func (config *BackplaneConfiguration) getFirstWorkingProxyURL(s []string) string {
-	bpURL := config.URL + "/healthz"
-
-	client := &http.Client{
-		Timeout: 5 * time.Second,
+	if len(s) == 0 {
+		logger.Debug("No proxy to use")
+		return ""
 	}
 
-	for _, p := range s {
-		proxyURL, err := url.ParseRequestURI(p)
-		if err != nil {
-			logger.Debugf("proxy-url: '%v' could not be parsed.", p)
-			continue
-		}
-
-		client.Transport = &http.Transport{Proxy: http.ProxyURL(proxyURL)}
-		req, _ := http.NewRequest("GET", bpURL, nil)
-		resp, err := clientDo(client, req)
-		if err != nil {
-			logger.Infof("Proxy: %s returned an error: %s", proxyURL, err)
-			continue
-		}
-		if resp.StatusCode == http.StatusOK {
-			return p
-		}
-		logger.Infof("proxy: %s did not pass healthcheck, expected response code 200, got %d, discarding", p, resp.StatusCode)
-	}
-
-	if len(s) > 0 {
-		logger.Infof("falling back to first proxy-url after all proxies failed health checks: %s", s[0])
+	// If we only have one proxy, there is no need to waste time on tests, just use that one
+	if len(s) == 1 {
+		logger.Debug("Only one proxy to choose from, automatically using it")
 		return s[0]
 	}
 
-	return ""
+	// Context to time out or cancel all tests once we are done
+	ctx, cancel := context.WithTimeout(context.Background(), proxyTestTimeout)
+	var wg sync.WaitGroup
+	ch := make(chan *url.URL)
+
+	bpURL := config.URL + "/healthz"
+
+	failures := 0
+	for _, p := range s {
+		// Parse the proxy URL
+		proxyURL, err := url.ParseRequestURI(p)
+		if err != nil {
+			logger.Debugf("proxy-url: '%v' could not be parsed.", p)
+			failures++
+			continue
+		}
+
+		wg.Add(1)
+		go func(proxyURL url.URL) {
+			defer wg.Done()
+
+			// Do the proxy test
+			proxyErr := testProxy(ctx, bpURL, proxyURL)
+			if proxyErr != nil {
+				logger.Infof("Discarding proxy %s due to error: %s", proxyURL.String(), proxyErr)
+				ch <- nil
+				return
+			}
+
+			// This test succeeded, send to the main thread
+			ch <- &proxyURL
+		}(*proxyURL)
+	}
+
+	// Default to the first
+	chosenURL := s[0]
+
+	// Loop until all tests have failed or we get a single success
+loop:
+	for failures < len(s) {
+		select {
+		case proxyURL := <-ch: // A proxy returned a result
+			// nil means the test failed
+			if proxyURL == nil {
+				failures++
+				continue
+			}
+
+			// This proxy passed
+			chosenURL = proxyURL.String()
+			logger.Infof("proxy that responded first was %s", chosenURL)
+
+			break loop
+
+		case <-ctx.Done(): // We timed out waiting for a proxy to pass
+			logger.Warnf("falling back to first proxy-url after all proxies timed out: %s", s[0])
+
+			break loop
+		}
+	}
+
+	// Cancel any remaining requests
+	cancel()
+
+	// Ignore any other valid proxies, until the channel is closed
+	go func() {
+		for lateProxy := range ch {
+			if lateProxy != nil {
+				logger.Infof("proxy %s responded too late", lateProxy)
+			}
+		}
+	}()
+
+	// Wait for goroutines to end, then close the channel
+	wg.Wait()
+	close(ch)
+
+	return chosenURL
 }
 
 func validateConfig() error {

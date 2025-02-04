@@ -1,8 +1,11 @@
 package config
 
 import (
+	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"testing"
 
@@ -86,10 +89,10 @@ func TestGetBackplaneConnection(t *testing.T) {
 
 func TestBackplaneConfiguration_getFirstWorkingProxyURL(t *testing.T) {
 	tests := []struct {
-		name         string
-		proxies      []string
-		clientDoFunc func(client *http.Client, req *http.Request) (*http.Response, error)
-		want         string
+		name     string
+		proxies  []string
+		testFunc func(ctx context.Context, testURL string, proxyURL url.URL) error
+		want     string
 	}{
 		{
 			name:    "invalid-format-proxy",
@@ -102,26 +105,30 @@ func TestBackplaneConfiguration_getFirstWorkingProxyURL(t *testing.T) {
 			want:    "-",
 		},
 		{
-			name:    "valid-proxies",
+			name:    "single-valid-proxy",
 			proxies: []string{"https://proxy.invalid"},
-			clientDoFunc: func(client *http.Client, req *http.Request) (*http.Response, error) {
-				return &http.Response{StatusCode: http.StatusOK}, nil
+			testFunc: func(ctx context.Context, testURL string, proxyURL url.URL) error {
+				return nil
 			},
 			want: "https://proxy.invalid",
 		},
 		{
-			name:    "multiple-valid-proxies",
-			proxies: []string{"https://proxy.invalid", "https://dummy.proxy.invalid"},
-			clientDoFunc: func(client *http.Client, req *http.Request) (*http.Response, error) {
-				return &http.Response{StatusCode: http.StatusOK}, nil
+			name:    "one-proxy-fails",
+			proxies: []string{"http://this.proxy.succeeds", "http://this.proxy.fails"},
+			testFunc: func(ctx context.Context, testURL string, proxyURL url.URL) error {
+				if proxyURL.Host == "this.proxy.succeeds" {
+					return nil
+				}
+
+				return fmt.Errorf("Testing Error")
 			},
-			want: "https://proxy.invalid",
+			want: "http://this.proxy.succeeds",
 		},
 		{
 			name:    "multiple-mixed-proxies",
 			proxies: []string{"-", "gellso", "https://proxy.invalid"},
-			clientDoFunc: func(client *http.Client, req *http.Request) (*http.Response, error) {
-				return &http.Response{StatusCode: http.StatusOK}, nil
+			testFunc: func(ctx context.Context, testURL string, proxyURL url.URL) error {
+				return nil
 			},
 			want: "https://proxy.invalid",
 		},
@@ -132,7 +139,7 @@ func TestBackplaneConfiguration_getFirstWorkingProxyURL(t *testing.T) {
 				_, _ = w.Write([]byte("dummy data"))
 			}))
 
-			clientDo = tt.clientDoFunc
+			testProxy = tt.testFunc
 
 			config := &BackplaneConfiguration{
 				URL: svr.URL,
