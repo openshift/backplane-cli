@@ -193,7 +193,7 @@ func startSSMsession(cmd *cobra.Command, argv []string) error {
 	}
 
 	cmdArgs := []string{"session-manager-plugin", string(sessionJSON), creds.Region, "StartSession"}
-	pluginCmd := exec.Command(cmdArgs[0], cmdArgs[1:]...)
+	pluginCmd := exec.Command(cmdArgs[0], cmdArgs[1:]...) //#nosec G204: Command arguments are trusted
 	pluginCmd.Stdout = os.Stdout
 	pluginCmd.Stderr = os.Stderr
 	pluginCmd.Stdin = os.Stdin
