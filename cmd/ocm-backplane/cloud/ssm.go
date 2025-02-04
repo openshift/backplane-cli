@@ -2,6 +2,7 @@ package cloud
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -168,37 +169,28 @@ func startSSMsession(cmd *cobra.Command, argv []string) error {
 	logger.Infof("TokenValue: %v", *result.TokenValue)
 
 	// Prepare arguments for Session Manager Plugin
-	ssmPluginArgs := []string{
-		"us-west-2",           // AWS region
-		instanceID,            // Target instance ID
-		"AWS-StartSSHSession", // Document name for the session
-		*result.SessionId,     // Session ID
-		*result.StreamUrl,     // Stream URL
-		*result.TokenValue,    // Token value
-	}
-
-	// Log arguments for debugging
-	logger.Infof("SSM Plugin Arguments: %v", ssmPluginArgs)
-
-	// Command to run session-manager-plugin
-	cmdExec := exec.Command("session-manager-plugin", ssmPluginArgs...)
-
-	// Capture output for debugging
-	var outBuf, errBuf strings.Builder
-	cmdExec.Stdout = &outBuf
-	cmdExec.Stderr = &errBuf
-
-	err = cmdExec.Run()
+	sessionJSON, err := json.Marshal(map[string]string{
+		"SessionId":  *result.SessionId,
+		"StreamUrl":  *result.StreamUrl,
+		"TokenValue": *result.TokenValue,
+	})
 	if err != nil {
-		logger.Errorf("SSM Plugin Stdout: %s", outBuf.String())
-		logger.Errorf("SSM Plugin Stderr: %s", errBuf.String())
-		return fmt.Errorf("failed to start SSM session via Session Manager Plugin: %w", err)
+		return fmt.Errorf("failed to serialize session details: %w", err)
 	}
 
-	logger.Infof("SSM Plugin Output: %s", outBuf.String())
-	logger.Infof("SSM session started successfully for InstanceId: %s", instanceID)
+	validate_session_cmd := exec.Command("session-manager-plugin", "--version")
+	err = validate_session_cmd.Run()
+	if err != nil {
+		return fmt.Errorf("session-manager-plugin is not installed. Please refer AWS doc: https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html")
+	}
 
-	return nil
+	cmdArgs := []string{"session-manager-plugin", string(sessionJSON), creds.Region, "StartSession"}
+	pluginCmd := exec.Command(cmdArgs[0], cmdArgs[1:]...) //#nosec G204: Command arguments are trusted
+	pluginCmd.Stdout = os.Stdout
+	pluginCmd.Stderr = os.Stderr
+	pluginCmd.Stdin = os.Stdin
+
+	return pluginCmd.Run()
 }
 
 func getCurrentKubeconfig() (*rest.Config, error) {
