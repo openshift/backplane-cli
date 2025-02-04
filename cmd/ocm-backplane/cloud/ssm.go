@@ -178,8 +178,9 @@ func startSSMsession(cmd *cobra.Command, argv []string) error {
 		return fmt.Errorf("failed to serialize session details: %w", err)
 	}
 
-	validate_session_cmd := exec.Command("session-manager-plugin", "--version")
-	err = validate_session_cmd.Run()
+	//Check if session command is installed
+	ValidateSessionCmd := exec.Command("session-manager-plugin", "--version")
+	err = ValidateSessionCmd.Run()
 	if err != nil {
 		return fmt.Errorf("session-manager-plugin is not installed. Please refer AWS doc: https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html")
 	}
