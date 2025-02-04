@@ -9,6 +9,7 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.36.0
 	github.com/aws/aws-sdk-go-v2/config v1.29.2
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.57
+	github.com/aws/aws-sdk-go-v2/service/ssm v1.56.10
 	github.com/aws/aws-sdk-go-v2/service/sts v1.33.12
 	github.com/golang-jwt/jwt/v4 v4.5.1
 	github.com/golang/mock v1.6.0
