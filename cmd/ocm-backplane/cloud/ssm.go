@@ -136,13 +136,13 @@ func startSSMsession(cmd *cobra.Command, argv []string) error {
 		return fmt.Errorf("failed to fetch cloud credentials: %w", err)
 	}
 
-	// Set AWS credentials as environment variables
+	// Set AWS credentials as env variable
 	os.Setenv("AWS_ACCESS_KEY_ID", creds.AccessKeyID)
 	os.Setenv("AWS_SECRET_ACCESS_KEY", creds.SecretAccessKey)
 	os.Setenv("AWS_SESSION_TOKEN", creds.SessionToken)
 	os.Setenv("AWS_REGION", creds.Region)
 
-	// Load AWS SDK configuration
+	// Load AWS SDK config
 	cfg, err := awsConfig.LoadDefaultConfig(context.TODO())
 	if err != nil {
 		return fmt.Errorf("failed to load AWS SDK config: %w", err)
