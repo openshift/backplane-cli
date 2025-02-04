@@ -7,6 +7,9 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	awsConfig "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/ssm"
 	"github.com/openshift/backplane-cli/pkg/cli/config"
 	bpCredentials "github.com/openshift/backplane-cli/pkg/credentials"
 	"github.com/openshift/backplane-cli/pkg/ocm"
@@ -116,39 +119,84 @@ func startSSMsession(cmd *cobra.Command, argv []string) error {
 		return fmt.Errorf("--node flag is required")
 	}
 
+	// Fetch cloud credentials and export them as environment variables
 	creds, err := fetchCloudCredentials()
 	if err != nil {
 		return fmt.Errorf("failed to fetch cloud credentials: %w", err)
 	}
 
-	kubeconfig, err := getCurrentKubeconfig()
-	if err != nil {
-		return err
-	}
-
+	// Set AWS credentials in environment variables
 	os.Setenv("AWS_ACCESS_KEY_ID", creds.AccessKeyID)
 	os.Setenv("AWS_SECRET_ACCESS_KEY", creds.SecretAccessKey)
 	os.Setenv("AWS_SESSION_TOKEN", creds.SessionToken)
+
+	kubeconfig, err := getCurrentKubeconfig()
+	if err != nil {
+		return fmt.Errorf("failed to get kubeconfig: %w", err)
+	}
 
 	instanceID, err := getInstanceID(ssmArgs.node, kubeconfig)
 	if err != nil {
 		return fmt.Errorf("failed to get instance ID for node %s: %w", ssmArgs.node, err)
 	}
 
-	region := creds.Region
+	cfg, err := awsConfig.LoadDefaultConfig(context.TODO(), awsConfig.WithRegion("us-west-2"))
+	if err != nil {
+		return fmt.Errorf("unable to load SDK config: %v", err)
+	}
+	ssmClient := ssm.NewFromConfig(cfg)
 
 	logger.Infof("Starting SSM session for node: %s with Instance ID: %s", ssmArgs.node, instanceID)
 
-	cmdArgs := []string{"ssm", "start-session", "--target", instanceID, "--region", region}
-
-	awsCmd := exec.Command("aws", cmdArgs...)
-	awsCmd.Stdout = os.Stdout
-	awsCmd.Stderr = os.Stderr
-	awsCmd.Stdin = os.Stdin
-
-	if err := awsCmd.Run(); err != nil {
-		return fmt.Errorf("failed to start AWS SSM session: %v", err)
+	input := &ssm.StartSessionInput{
+		Target: aws.String(instanceID),
 	}
+
+	result, err := ssmClient.StartSession(context.TODO(), input)
+	if err != nil {
+		return fmt.Errorf("failed to start SSM session via SDK: %w", err)
+	}
+
+	// Ensure the session details are not nil
+	if result.SessionId == nil || result.StreamUrl == nil || result.TokenValue == nil {
+		return fmt.Errorf("session details are incomplete: SessionId=%v, StreamUrl=%v, TokenValue=%v", result.SessionId, result.StreamUrl, result.TokenValue)
+	}
+
+	// Log session details for debugging
+	logger.Infof("SessionId: %v", *result.SessionId)
+	logger.Infof("StreamUrl: %v", *result.StreamUrl)
+	logger.Infof("TokenValue: %v", *result.TokenValue)
+
+	// Prepare arguments for Session Manager Plugin
+	ssmPluginArgs := []string{
+		"us-west-2",           // AWS region
+		instanceID,            // Target instance ID
+		"AWS-StartSSHSession", // Document name for the session
+		*result.SessionId,     // Session ID
+		*result.StreamUrl,     // Stream URL
+		*result.TokenValue,    // Token value
+	}
+
+	// Log arguments for debugging
+	logger.Infof("SSM Plugin Arguments: %v", ssmPluginArgs)
+
+	// Command to run session-manager-plugin
+	cmdExec := exec.Command("session-manager-plugin", ssmPluginArgs...)
+
+	// Capture output for debugging
+	var outBuf, errBuf strings.Builder
+	cmdExec.Stdout = &outBuf
+	cmdExec.Stderr = &errBuf
+
+	err = cmdExec.Run()
+	if err != nil {
+		logger.Errorf("SSM Plugin Stdout: %s", outBuf.String())
+		logger.Errorf("SSM Plugin Stderr: %s", errBuf.String())
+		return fmt.Errorf("failed to start SSM session via Session Manager Plugin: %w", err)
+	}
+
+	logger.Infof("SSM Plugin Output: %s", outBuf.String())
+	logger.Infof("SSM session started successfully for InstanceId: %s", instanceID)
 
 	return nil
 }
