@@ -23,7 +23,8 @@ import (
 )
 
 var (
-	createClientSet = func(c *rest.Config) (kubernetes.Interface, error) { return kubernetes.NewForConfig(c) }
+	CreateClientSet = func(c *rest.Config) (kubernetes.Interface, error) { return kubernetes.NewForConfig(c) }
+	ExecCommand     = exec.Command
 )
 
 var ssmArgs struct {
@@ -35,14 +36,14 @@ var SSMSessionCmd = &cobra.Command{
 	Short: "Start an AWS SSM session for a node",
 	Long:  "Start an AWS SSM session for the specified node provided to debug.",
 	Args:  cobra.ExactArgs(0),
-	RunE:  startSSMsession,
+	RunE:  StartSSMsession,
 }
 
 func init() {
 	SSMSessionCmd.Flags().StringVar(&ssmArgs.node, "node", "", "Specify the node name to start the SSM session.")
 }
 
-func fetchCloudCredentials() (*bpCredentials.AWSCredentialsResponse, error) {
+func FetchCloudCredentials() (*bpCredentials.AWSCredentialsResponse, error) {
 	var clusterKey string
 	clusterInfo, err := GetBackplaneClusterFromConfig()
 	if err != nil {
@@ -91,10 +92,10 @@ func fetchCloudCredentials() (*bpCredentials.AWSCredentialsResponse, error) {
 	return awsCreds, nil
 }
 
-func getInstanceID(node string, config *rest.Config) (string, error) {
+func GetInstanceID(node string, config *rest.Config) (string, error) {
 	logger.Infof("Fetching instance ID for node: %s", node)
 
-	clientset, err := createClientSet(config)
+	clientset, err := CreateClientSet(config)
 	if err != nil {
 		return "", fmt.Errorf("failed to create Kubernetes client: %w", err)
 	}
@@ -115,13 +116,13 @@ func getInstanceID(node string, config *rest.Config) (string, error) {
 	return instanceID, nil
 }
 
-func startSSMsession(cmd *cobra.Command, argv []string) error {
+func StartSSMsession(cmd *cobra.Command, argv []string) error {
 	if ssmArgs.node == "" {
 		return fmt.Errorf("--node flag is required")
 	}
 
 	// Fetch cloud credentials and export them as environment variables
-	creds, err := fetchCloudCredentials()
+	creds, err := FetchCloudCredentials()
 	if err != nil {
 		return fmt.Errorf("failed to fetch cloud credentials: %w", err)
 	}
@@ -131,12 +132,12 @@ func startSSMsession(cmd *cobra.Command, argv []string) error {
 	os.Setenv("AWS_SECRET_ACCESS_KEY", creds.SecretAccessKey)
 	os.Setenv("AWS_SESSION_TOKEN", creds.SessionToken)
 
-	kubeconfig, err := getCurrentKubeconfig()
+	kubeconfig, err := GetCurrentKubeconfig()
 	if err != nil {
 		return fmt.Errorf("failed to get kubeconfig: %w", err)
 	}
 
-	instanceID, err := getInstanceID(ssmArgs.node, kubeconfig)
+	instanceID, err := GetInstanceID(ssmArgs.node, kubeconfig)
 	if err != nil {
 		return fmt.Errorf("failed to get instance ID for node %s: %w", ssmArgs.node, err)
 	}
@@ -186,7 +187,7 @@ func startSSMsession(cmd *cobra.Command, argv []string) error {
 	}
 
 	cmdArgs := []string{"session-manager-plugin", string(sessionJSON), creds.Region, "StartSession"}
-	pluginCmd := exec.Command(cmdArgs[0], cmdArgs[1:]...) //#nosec G204: Command arguments are trusted
+	pluginCmd := ExecCommand(cmdArgs[0], cmdArgs[1:]...) //#nosec G204: Command arguments are trusted
 	pluginCmd.Stdout = os.Stdout
 	pluginCmd.Stderr = os.Stderr
 	pluginCmd.Stdin = os.Stdin
@@ -194,7 +195,7 @@ func startSSMsession(cmd *cobra.Command, argv []string) error {
 	return pluginCmd.Run()
 }
 
-func getCurrentKubeconfig() (*rest.Config, error) {
+func GetCurrentKubeconfig() (*rest.Config, error) {
 	cf := genericclioptions.NewConfigFlags(true)
 	config, err := cf.ToRESTConfig()
 	if err != nil {
