@@ -555,6 +555,10 @@ func listNamespaces(clusterID string, isHostedControlPlane bool) (map[string]str
 	}
 	envName := env.Name()
 
+	if envName == "integration" {
+		envName = "int"
+	}
+
 	clusterInfo, err := ocm.DefaultOCMInterface.GetClusterInfoByID(clusterID)
 	if err != nil {
 		return map[string]string{}, err
