@@ -18,6 +18,7 @@ var CloudCmd = &cobra.Command{
 func init() {
 	CloudCmd.AddCommand(CredentialsCmd)
 	CloudCmd.AddCommand(ConsoleCmd)
+	CloudCmd.AddCommand(SSMSessionCmd)
 }
 
 func help(cmd *cobra.Command, _ []string) {
