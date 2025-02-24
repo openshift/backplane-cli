@@ -2,7 +2,10 @@ package cloud
 
 import (
 	"context"
+	"strings"
+
 	//nolint:gosec
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -225,7 +228,19 @@ func (cfg *QueryConfig) getIsolatedCredentials(ocmToken string) (aws.Credentials
 
 	email, err := utils.GetStringFieldFromJWT(ocmToken, "email")
 	if err != nil {
+		logger.Errorf("DEBUG: [OCM Token] Failed to extract email from token: %v", err)
 		return aws.Credentials{}, fmt.Errorf("unable to extract email from given token: %w", err)
+	}
+	logger.Infof("DEBUG: [OCM Token] Extracted email: %s", email)
+
+	decodedToken := DecodeJWT(ocmToken)
+	logger.Infof("DEBUG: [OCM Token] Decoded Claims: %v", decodedToken)
+
+	aud, ok := decodedToken["aud"]
+	if ok {
+		logger.Infof("DEBUG: [OCM Token] Audience: %v", aud)
+	} else {
+		logger.Warnf("DEBUG: [OCM Token] No audience (aud) field found in token!")
 	}
 
 	if cfg.BackplaneConfiguration.AssumeInitialArn == "" {
@@ -238,20 +253,26 @@ func (cfg *QueryConfig) getIsolatedCredentials(ocmToken string) (aws.Credentials
 		case integrationOCMUrl:
 			cfg.BackplaneConfiguration.AssumeInitialArn = integrationAssumeInitialArn
 		default:
-			logger.Infof("failed to automatically set assume-initial-arn based on OCM url: %s", cfg.OcmConnection.URL())
+			logger.Infof("DEBUG: [getIsolatedCredentials] Failed to set assume-initial-arn automatically for OCM URL: %s", cfg.OcmConnection.URL())
 			return aws.Credentials{}, errors.New("backplane config is missing required `assume-initial-arn` property")
 		}
 
-		logger.Debugf("set assume-initial-arn to: %s", cfg.BackplaneConfiguration.AssumeInitialArn)
 	}
+	logger.Infof("DEBUG: [getIsolatedCredentials] Determined Assume Initial ARN for Payer Account: %s", cfg.BackplaneConfiguration.AssumeInitialArn)
 
 	initialClient, err := StsClient(cfg.BackplaneConfiguration.ProxyURL)
 	if err != nil {
 		return aws.Credentials{}, fmt.Errorf("failed to create sts client: %w", err)
 	}
 
+	logger.Infof("DEBUG: [STS AssumeRoleWithWebIdentity] Calling AssumeRoleWithJWT with role: %s", cfg.BackplaneConfiguration.AssumeInitialArn)
+	logger.Infof("DEBUG: [STS AssumeRoleWithWebIdentity] Using OCM Token: Issuer=%s, Audience=%v", decodedToken["iss"], decodedToken["aud"])
+
 	seedCredentials, err := AssumeRoleWithJWT(ocmToken, cfg.BackplaneConfiguration.AssumeInitialArn, initialClient)
+	logger.Infof("DEBUG: [IAM Policy Check] Checking if OCM Token email (%s) matches IAM Condition", email)
 	if err != nil {
+		logger.Errorf("DEBUG: [STS AssumeRoleWithWebIdentity] Failed to assume role %s with JWT: %v", cfg.BackplaneConfiguration.AssumeInitialArn, err)
+		logger.Errorf("DEBUG: [STS AssumeRoleWithWebIdentity] Possible issues: Invalid token, missing permissions, incorrect role session policies")
 		return aws.Credentials{}, fmt.Errorf("failed to assume role using JWT: %w", err)
 	}
 
@@ -265,6 +286,7 @@ func (cfg *QueryConfig) getIsolatedCredentials(ocmToken string) (aws.Credentials
 		return aws.Credentials{}, fmt.Errorf("failed to fetch arn sequence: %w", err)
 	}
 	if response.StatusCode != http.StatusOK {
+		logger.Errorf("DEBUG: [AssumeRoleSequence] Failed to retrieve assume role chain. Status Code: %d", response.StatusCode)
 		return aws.Credentials{}, fmt.Errorf("failed to fetch arn sequence: %w", utils.TryPrintAPIError(response, false))
 	}
 
@@ -288,6 +310,14 @@ func (cfg *QueryConfig) getIsolatedCredentials(ocmToken string) (aws.Credentials
 			roleArnSession.RoleSessionName = email
 		}
 		assumeRoleArnSessionSequence = append(assumeRoleArnSessionSequence, roleArnSession)
+	}
+
+	logger.Infof("DEBUG: [STS AssumeRole] Using seed credentials in region %s: AccessKey=%s, Expiration=%s", cfg.Cluster.Region().ID(), seedCredentials.AccessKeyID, seedCredentials.Expires)
+	logger.Infof("DEBUG: [STS AssumeRole] Initiating AssumeRoleSequence for customer AWS account")
+
+	if len(assumeRoleArnSessionSequence) == 0 {
+		logger.Errorf("DEBUG: [STS AssumeRoleSequence] No role assumption chain returned from backplane. Possible misconfiguration.")
+		return aws.Credentials{}, fmt.Errorf("empty assume role sequence")
 	}
 
 	seedClient := sts.NewFromConfig(aws.Config{
@@ -320,4 +350,18 @@ func isIsolatedBackplaneAccess(cluster *cmv1.Cluster, ocmConnection *ocmsdk.Conn
 	} else {
 		return false, nil
 	}
+}
+
+func DecodeJWT(token string) map[string]interface{} {
+	parts := strings.Split(token, ".")
+	if len(parts) < 2 {
+		return nil
+	}
+	decoded, err := base64.RawStdEncoding.DecodeString(parts[1])
+	if err != nil {
+		return nil
+	}
+	var claims map[string]interface{}
+	json.Unmarshal(decoded, &claims)
+	return claims
 }
