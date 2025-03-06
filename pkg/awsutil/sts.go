@@ -91,9 +91,17 @@ func AssumeRoleWithJWT(jwt string, roleArn string, stsClient stscreds.AssumeRole
 	return result, nil
 }
 
-func AssumeRole(stsClient stscreds.AssumeRoleAPIClient, roleSessionName string, roleArn string) (aws.Credentials, error) {
+func AssumeRole(
+	stsClient stscreds.AssumeRoleAPIClient,
+	roleSessionName string,
+	roleArn string,
+	inlinePolicy *PolicyDocument,
+) (aws.Credentials, error) {
 	assumeRoleProvider := stscreds.NewAssumeRoleProvider(stsClient, roleArn, func(options *stscreds.AssumeRoleOptions) {
 		options.RoleSessionName = roleSessionName
+		if inlinePolicy != nil {
+			options.Policy = aws.String(inlinePolicy.String())
+		}
 	})
 	result, err := assumeRoleProvider.Retrieve(context.TODO())
 	if err != nil {
@@ -118,7 +126,13 @@ type RoleArnSession struct {
 	RoleArn         string
 }
 
-func AssumeRoleSequence(seedClient stscreds.AssumeRoleAPIClient, roleArnSessionSequence []RoleArnSession, proxyURL *string, stsClientProviderFunc STSClientProviderFunc) (aws.Credentials, error) {
+func AssumeRoleSequence(
+	seedClient stscreds.AssumeRoleAPIClient,
+	roleArnSessionSequence []RoleArnSession,
+	proxyURL *string,
+	stsClientProviderFunc STSClientProviderFunc,
+	inlinePolicy *PolicyDocument,
+) (aws.Credentials, error) {
 	if len(roleArnSessionSequence) == 0 {
 		return aws.Credentials{}, errors.New("role ARN sequence cannot be empty")
 	}
@@ -127,7 +141,7 @@ func AssumeRoleSequence(seedClient stscreds.AssumeRoleAPIClient, roleArnSessionS
 	var lastCredentials aws.Credentials
 
 	for i, roleArnSession := range roleArnSessionSequence {
-		result, err := AssumeRole(nextClient, roleArnSession.RoleSessionName, roleArnSession.RoleArn)
+		result, err := AssumeRole(nextClient, roleArnSession.RoleSessionName, roleArnSession.RoleArn, inlinePolicy)
 		retryCount := 0
 		for err != nil {
 			// IAM policy updates can take a few seconds to resolve, and the sts.Client in AWS' Go SDK doesn't refresh itself on retries.
@@ -140,7 +154,7 @@ func AssumeRoleSequence(seedClient stscreds.AssumeRoleAPIClient, roleArnSessionS
 					return aws.Credentials{}, fmt.Errorf("failed to create client with credentials for role %v: %w", roleArnSession.RoleArn, err)
 				}
 
-				result, err = AssumeRole(nextClient, roleArnSession.RoleSessionName, roleArnSession.RoleArn)
+				result, err = AssumeRole(nextClient, roleArnSession.RoleSessionName, roleArnSession.RoleArn, inlinePolicy)
 				retryCount++
 			} else {
 				return aws.Credentials{}, fmt.Errorf("failed to assume role %v: %w", roleArnSession.RoleArn, err)

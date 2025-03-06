@@ -124,20 +124,43 @@ func TestAssumeRoleWithJWT(t *testing.T) {
 }
 
 func TestAssumeRole(t *testing.T) {
+	var allAllow = NewPolicyStatement("AllowAll", "Allow", []string{"*"}).
+		AddResource(aws.String("*")).
+		AddCondition(nil)
+
 	tests := []struct {
-		name      string
-		stsClient stscreds.AssumeRoleAPIClient
-		want      aws.Credentials
-		wantErr   bool
+		name         string
+		stsClient    stscreds.AssumeRoleAPIClient
+		want         aws.Credentials
+		inlinePolicy *PolicyDocument
+		wantErr      bool
 	}{
 		{
-			name:      "Fails to assume role",
-			stsClient: defaultErrorMockSTSClient(),
-			wantErr:   true,
+			name:         "Fails to assume role",
+			stsClient:    defaultErrorMockSTSClient(),
+			inlinePolicy: nil,
+			wantErr:      true,
 		},
 		{
-			name:      "Successfully assumes role",
+			name:         "Successfully assumes role",
+			stsClient:    defaultSuccessMockSTSClient(),
+			inlinePolicy: nil,
+			want: aws.Credentials{
+				AccessKeyID:     "test-access-key-id",
+				SecretAccessKey: "test-secret-access-key",
+				SessionToken:    "test-session-token",
+				Source:          "AssumeRoleProvider",
+				CanExpire:       true,
+				Expires:         time.UnixMilli(1),
+			},
+		},
+		{
+			name:      "Successfully assumes role with inline policy",
 			stsClient: defaultSuccessMockSTSClient(),
+			inlinePolicy: &PolicyDocument{
+				Version:   PolicyVersion,
+				Statement: []PolicyStatement{allAllow},
+			},
 			want: aws.Credentials{
 				AccessKeyID:     "test-access-key-id",
 				SecretAccessKey: "test-secret-access-key",
@@ -150,7 +173,7 @@ func TestAssumeRole(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := AssumeRole(tt.stsClient, "", "")
+			got, err := AssumeRole(tt.stsClient, "", "", tt.inlinePolicy)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("AssumeRole() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -163,10 +186,15 @@ func TestAssumeRole(t *testing.T) {
 }
 
 func TestAssumeRoleSequence(t *testing.T) {
+	var allAllow = NewPolicyStatement("AllowAll", "Allow", []string{"*"}).
+		AddResource(aws.String("*")).
+		AddCondition(nil)
+
 	type args struct {
 		seedClient            stscreds.AssumeRoleAPIClient
 		roleArnSequence       []RoleArnSession
 		stsClientProviderFunc STSClientProviderFunc
+		inlinePolicy          *PolicyDocument
 	}
 	tests := []struct {
 		name    string
@@ -178,6 +206,7 @@ func TestAssumeRoleSequence(t *testing.T) {
 			name: "role arn sequence is nil",
 			args: args{
 				roleArnSequence: nil,
+				inlinePolicy:    nil,
 			},
 			wantErr: true,
 		},
@@ -185,6 +214,7 @@ func TestAssumeRoleSequence(t *testing.T) {
 			name: "role arn sequence is empty",
 			args: args{
 				roleArnSequence: []RoleArnSession{},
+				inlinePolicy:    nil,
 			},
 			wantErr: true,
 		},
@@ -195,6 +225,29 @@ func TestAssumeRoleSequence(t *testing.T) {
 				roleArnSequence: []RoleArnSession{{RoleArn: "a"}},
 				stsClientProviderFunc: func(optFns ...func(*config.LoadOptions) error) (stscreds.AssumeRoleAPIClient, error) {
 					return defaultSuccessMockSTSClient(), nil
+				},
+				inlinePolicy: nil,
+			},
+			want: aws.Credentials{
+				AccessKeyID:     "test-access-key-id",
+				SecretAccessKey: "test-secret-access-key",
+				SessionToken:    "test-session-token",
+				Source:          "AssumeRoleProvider",
+				CanExpire:       true,
+				Expires:         time.UnixMilli(1),
+			},
+		},
+		{
+			name: "Role arn sequence with inline policy",
+			args: args{
+				seedClient:      defaultSuccessMockSTSClient(),
+				roleArnSequence: []RoleArnSession{{RoleArn: "arn-a"}, {RoleArn: "arn-b"}},
+				stsClientProviderFunc: func(optFns ...func(*config.LoadOptions) error) (stscreds.AssumeRoleAPIClient, error) {
+					return defaultSuccessMockSTSClient(), nil
+				},
+				inlinePolicy: &PolicyDocument{
+					Version:   PolicyVersion,
+					Statement: []PolicyStatement{allAllow},
 				},
 			},
 			want: aws.Credentials{
@@ -209,7 +262,7 @@ func TestAssumeRoleSequence(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := AssumeRoleSequence(tt.args.seedClient, tt.args.roleArnSequence, nil, tt.args.stsClientProviderFunc)
+			got, err := AssumeRoleSequence(tt.args.seedClient, tt.args.roleArnSequence, nil, tt.args.stsClientProviderFunc, tt.args.inlinePolicy)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("AssumeRoleSequence() error = %v, wantErr %v", err, tt.wantErr)
 				return
