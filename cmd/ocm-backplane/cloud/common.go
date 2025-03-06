@@ -2,6 +2,8 @@ package cloud
 
 import (
 	"context"
+	"strings"
+
 	//nolint:gosec
 	"encoding/json"
 	"errors"
@@ -295,7 +297,38 @@ func (cfg *QueryConfig) getIsolatedCredentials(ocmToken string) (aws.Credentials
 		Credentials: NewStaticCredentialsProvider(seedCredentials.AccessKeyID, seedCredentials.SecretAccessKey, seedCredentials.SessionToken),
 	})
 
-	targetCredentials, err := AssumeRoleSequence(seedClient, assumeRoleArnSessionSequence, cfg.BackplaneConfiguration.ProxyURL, awsutil.DefaultSTSClientProviderFunc)
+	ipList, err := ocm.DefaultOCMInterface.GetTrustedIpList()
+	if err != nil {
+		return aws.Credentials{}, fmt.Errorf("failed to fetch trusted IP list: %w", err)
+	}
+
+	sourceIpList := []string{}
+	for _, ip := range ipList.Items() {
+		if ip.Enabled() {
+			//This is hack for now to filter only proxy IP's
+			if strings.HasPrefix(ip.ID(), "209.") ||
+				strings.HasPrefix(ip.ID(), "66.") {
+				sourceIpList = append(sourceIpList, fmt.Sprintf("%s/24", ip.ID()))
+			}
+		}
+
+	}
+
+	ipAddress := awsutil.IpAddress{
+		SourceIp: sourceIpList,
+	}
+
+	inlinePolicy, err := awsutil.GetAssumeRoleInlinePolicy(ipAddress)
+	if err != nil {
+		return aws.Credentials{}, fmt.Errorf("failed to build inline policy: %w", err)
+	}
+	targetCredentials, err := AssumeRoleSequence(
+		seedClient,
+		assumeRoleArnSessionSequence,
+		cfg.BackplaneConfiguration.ProxyURL,
+		awsutil.DefaultSTSClientProviderFunc,
+		inlinePolicy,
+	)
 	if err != nil {
 		return aws.Credentials{}, fmt.Errorf("failed to assume role sequence: %w", err)
 	}
