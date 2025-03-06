@@ -1,8 +1,10 @@
 package cloud
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -17,6 +19,7 @@ import (
 	"github.com/openshift/backplane-cli/pkg/backplaneapi"
 	backplaneapiMock "github.com/openshift/backplane-cli/pkg/backplaneapi/mocks"
 	"github.com/openshift/backplane-cli/pkg/cli/config"
+	"github.com/openshift/backplane-cli/pkg/client/mocks"
 	"github.com/openshift/backplane-cli/pkg/ocm"
 	ocmMock "github.com/openshift/backplane-cli/pkg/ocm/mocks"
 )
@@ -27,6 +30,7 @@ var _ = Describe("getIsolatedCredentials", func() {
 		mockCtrl         *gomock.Controller
 		mockOcmInterface *ocmMock.MockOCMInterface
 		mockClientUtil   *backplaneapiMock.MockClientUtils
+		mockClient       *mocks.MockClientInterface
 
 		testOcmToken        string
 		testClusterID       string
@@ -34,6 +38,7 @@ var _ = Describe("getIsolatedCredentials", func() {
 		testSecretAccessKey string
 		testSessionToken    string
 		testQueryConfig     QueryConfig
+		fakeHTTPResp        *http.Response
 	)
 
 	BeforeEach(func() {
@@ -41,6 +46,8 @@ var _ = Describe("getIsolatedCredentials", func() {
 
 		mockOcmInterface = ocmMock.NewMockOCMInterface(mockCtrl)
 		ocm.DefaultOCMInterface = mockOcmInterface
+
+		mockClient = mocks.NewMockClientInterface(mockCtrl)
 
 		mockClientUtil = backplaneapiMock.NewMockClientUtils(mockCtrl)
 		backplaneapi.DefaultClientUtils = mockClientUtil
@@ -63,6 +70,17 @@ var _ = Describe("getIsolatedCredentials", func() {
 
 		cluster, _ := clusterBuilder.Build()
 		testQueryConfig = QueryConfig{OcmConnection: &sdk.Connection{}, BackplaneConfiguration: config.BackplaneConfiguration{URL: "test", AssumeInitialArn: "test"}, Cluster: cluster}
+
+		fakeHTTPResp = &http.Response{
+			Body: MakeIoReader(
+				`{"assumptionSequence":[{"name":"SRE-Role-Arn","arn":"arn:aws:iam::10000000:role/TEST_USER"},
+				{"name":"Org-Role-Arn","arn":"arn:aws:iam::10000000:role/TEST_USER"},
+				{"name":"Target-Role-Arn","arn":"arn:aws:iam::10000000:role/TEST_USER"}],
+				"customerRoleSessionName":"b7bb29e58495b17412e15701cea805b7"}`,
+			),
+			Header:     map[string][]string{},
+			StatusCode: http.StatusOK,
+		}
 	})
 
 	AfterEach(func() {
@@ -70,6 +88,7 @@ var _ = Describe("getIsolatedCredentials", func() {
 	})
 
 	Context("Execute getIsolatedCredentials", func() {
+
 		It("should fail if empty cluster ID is provided", func() {
 			clusterBuilder := cmv1.ClusterBuilder{}
 			clusterBuilder.ID("")
@@ -115,6 +134,31 @@ var _ = Describe("getIsolatedCredentials", func() {
 			_, err := testQueryConfig.getIsolatedCredentials(testOcmToken)
 			Expect(err.Error()).To(Equal("unable to extract email from given token: no field email on given token"))
 		})
+		It("should fail credentials with inline policy", func() {
+			ip1 := cmv1.NewTrustedIp().ID("209.10.10.10").Enabled(true)
+			ip2 := cmv1.NewTrustedIp().ID("200.20.20.20").Enabled(true)
+			expectedIPList, err := cmv1.NewTrustedIpList().Items(ip1, ip2).Build()
+			Expect(err).To(BeNil())
+			mockOcmInterface.EXPECT().GetTrustedIPList().Return(expectedIPList, nil)
+
+			StsClient = func(proxyURL *string) (*sts.Client, error) {
+				return &sts.Client{}, nil
+			}
+			AssumeRoleWithJWT = func(jwt string, roleArn string, stsClient stscreds.AssumeRoleWithWebIdentityAPIClient) (aws.Credentials, error) {
+				return aws.Credentials{
+					AccessKeyID:     testAccessKeyID,
+					SecretAccessKey: testSecretAccessKey,
+					SessionToken:    testSessionToken,
+				}, nil
+			}
+
+			mockClientUtil.EXPECT().GetBackplaneClient(testQueryConfig.BackplaneConfiguration.URL, testOcmToken, nil).Return(mockClient, nil)
+			mockClient.EXPECT().GetAssumeRoleSequence(context.TODO(), testClusterID).Return(fakeHTTPResp, nil)
+
+			_, err = testQueryConfig.getIsolatedCredentials(testOcmToken)
+			Expect(err).NotTo(BeNil())
+			Expect(err.Error()).To(ContainSubstring("failed to assume role sequence:"))
+		})
 		It("should fail if error creating backplane api client", func() {
 			StsClient = func(proxyURL *string) (*sts.Client, error) {
 				return &sts.Client{}, nil
@@ -133,6 +177,22 @@ var _ = Describe("getIsolatedCredentials", func() {
 
 			_, err := testQueryConfig.getIsolatedCredentials(testOcmToken)
 			Expect(err.Error()).To(Equal("failed to create backplane client with access token: foo"))
+		})
+
+	})
+	Context("Execute getTrustedIpInlinePolicy", func() {
+		It("should Return inline policy with TrustedIP list", func() {
+			ip1 := cmv1.NewTrustedIp().ID("209.10.10.10").Enabled(true)
+			ip2 := cmv1.NewTrustedIp().ID("200.20.20.20").Enabled(true)
+			expectedIPList, err := cmv1.NewTrustedIpList().Items(ip1, ip2).Build()
+			Expect(err).To(BeNil())
+			mockOcmInterface.EXPECT().GetTrustedIPList().Return(expectedIPList, nil)
+			policy, err := getTrustedIPInlinePolicy()
+			//Only allow 209 IP
+			Expect(policy).To(ContainSubstring("209.10.10.10"))
+			//Not allow 200 IP
+			Expect(policy).NotTo(ContainSubstring("200.20.20.20"))
+			Expect(err).To(BeNil())
 		})
 	})
 })
