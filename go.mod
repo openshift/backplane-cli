@@ -2,6 +2,8 @@ module github.com/openshift/backplane-cli
 
 go 1.22.7
 
+toolchain go1.24.1
+
 require (
 	github.com/Masterminds/semver v1.5.0
 	github.com/PagerDuty/go-pagerduty v1.8.0
@@ -17,7 +19,7 @@ require (
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.36.2
 	github.com/openshift-online/ocm-cli v1.0.4
-	github.com/openshift-online/ocm-sdk-go v0.1.460
+	github.com/openshift-online/ocm-sdk-go v0.1.461
 	github.com/openshift/backplane-api v0.0.0-20241127094828-0f66644ff53d
 	github.com/openshift/client-go v0.0.0-20221019143426-16aed247da5c
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
