@@ -18,8 +18,8 @@ RUN yum install --assumeyes \
     go-toolset
 
 # This is a hack to install go1.22 version until ubi9 supports golang 1.22 
-RUN go install golang.org/dl/go1.22.7@latest
-RUN go env -w GOTOOLCHAIN=go1.22.7+auto
+RUN go install golang.org/dl/go1.23.7@latest
+RUN go env -w GOTOOLCHAIN=go1.23.7+auto
 
 ENV GOOS=linux GO111MODULE=on GOPROXY=https://proxy.golang.org 
 ENV GOBIN=/gobin GOPATH=/usr/src/go CGO_ENABLED=0
