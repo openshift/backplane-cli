@@ -15,15 +15,19 @@ FROM registry.access.redhat.com/ubi9/ubi:9.5 as bp-cli-builder
 RUN yum install --assumeyes \
     make \
     git \
-    go-toolset
+    wget
 
-# This is a hack to install go1.22 version until ubi9 supports golang 1.22 
+# Install Go 1.23.7 properly
 RUN go install golang.org/dl/go1.23.7@latest
-RUN go env -w GOTOOLCHAIN=go1.23.7+auto
+RUN /root/go/bin/go1.23.7 download
 
+# Configure the env
+ENV PATH="/root/sdk/go1.23.7/bin:${PATH}"
+RUN go1.23.7 env -w GOTOOLCHAIN=go1.23.7+auto
+
+#Environment variables
 ENV GOOS=linux GO111MODULE=on GOPROXY=https://proxy.golang.org 
 ENV GOBIN=/gobin GOPATH=/usr/src/go CGO_ENABLED=0
-ENV PATH=/usr/local/go/bin/:${PATH}
 
 # Directory for the binary
 RUN mkdir /out
