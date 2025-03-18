@@ -15,15 +15,16 @@ FROM registry.access.redhat.com/ubi9/ubi:9.5 as bp-cli-builder
 RUN yum install --assumeyes \
     make \
     git \
-    wget
+    wget \
+    go-toolset
 
-# Install Go 1.23.7 properly
-RUN go install golang.org/dl/go1.23.7@latest
-RUN /root/go/bin/go1.23.7 download
+# Install Go 1.23.6 properly
+RUN go install golang.org/dl/go1.23.6@latest
+RUN /root/go/bin/go1.23.6 download
 
 # Configure the env
-ENV PATH="/root/sdk/go1.23.7/bin:${PATH}"
-RUN go1.23.7 env -w GOTOOLCHAIN=go1.23.7+auto
+ENV PATH="/root/sdk/go1.23.6/bin:${PATH}"
+RUN go env -w GOTOOLCHAIN=go1.23.6+auto
 
 #Environment variables
 ENV GOOS=linux GO111MODULE=on GOPROXY=https://proxy.golang.org 
