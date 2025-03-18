@@ -1,6 +1,6 @@
 module github.com/openshift/backplane-cli
 
-go 1.22.7
+go 1.23.6
 
 toolchain go1.24.1
 

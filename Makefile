@@ -154,3 +154,31 @@ skopeo-push: image
 		--dest-creds "${QUAY_USER}:${QUAY_TOKEN}" \
 		"docker-daemon:${IMAGE_URI_LATEST}" \
 		"docker://${IMAGE_URI_LATEST}"
+
+.PHONY: help
+help:
+	@echo
+	@echo "================================================"
+	@echo "           ocm-backplane Makefile Help           "
+	@echo "================================================"
+	@echo
+	@echo "Targets:"
+	@echo "  lint        Install/Run golangci-lint checks"
+	@echo "  clean       Remove compiled binaries and build artifacts"
+	@echo "  build       Compile project (set ARCH= for cross-compilation)"
+	@echo "  install     Install binary system-wide (set ARCH= for architecture)"
+	@echo "  test        Run unit tests"
+	@echo "  cross-build Create multi-architecture binaries"
+	@echo "  image       Build container image"
+	@echo "  help        Show this help message"
+	@echo
+	@echo "Variables:"
+	@echo "  ARCH        Target architecture (e.g., amd64, arm64 - sets GOARCH)"
+	@echo "  GOOS        Target OS (default: linux)"
+	@echo
+	@echo "Examples:"
+	@echo "  make build ARCH=arm64       # Cross-compile for ARM64"
+	@echo "  make clean && make install  # Fresh install"
+	@echo "  GOOS=darwin make build      # Build for macOS"
+	@echo
+	
