@@ -18,12 +18,8 @@ RUN yum install --assumeyes \
     wget \
     go-toolset
 
-# Install Go 1.23.6 properly
-RUN go install golang.org/dl/go1.23.6@latest
-RUN /root/go/bin/go1.23.6 download
-
 # Configure the env
-ENV PATH="/root/sdk/go1.23.6/bin:${PATH}"
+
 RUN go env -w GOTOOLCHAIN=go1.23.6+auto
 
 #Environment variables
