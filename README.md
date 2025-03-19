@@ -455,3 +455,23 @@ To manually execute a vulnerability scan locally, run the following command:
 ```
 make scan
 ```
+
+## Fixing Go Version Compatibility Issues
+When build failures occur due to Go version mismatches, follow these steps:
+
+- Create Release Repository PR
+Open a PR against the openshift/release repository to update the CI configuration to the latest Go version.
+Example: PR [#62885](https://github.com/openshift/release/pull/62885): Bump to Go 1.21
+
+- Merge Release PR
+Wait for the release repository PR to be merged by the CI bot.
+
+- Update Backplane CLI
+Update the Go version in the Backplane CLI Dockerfile and verify CI builds:
+
+```
+FROM golang:1.21  # Update version to match release PR
+```
+Example Implementation: PR [#636](https://github.com/openshift/backplane-cli/pull/636): OSD-28717 Fix build failures
+Update the dockerfile of backplane-cli with the latest go version and check if build passes.
+Check for any issues while updating the dockerfile and start a thread in #sd-ims-backplane channel to mitigate this issue.
