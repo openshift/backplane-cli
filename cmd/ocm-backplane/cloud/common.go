@@ -2,6 +2,8 @@ package cloud
 
 import (
 	"context"
+	"strings"
+
 	//nolint:gosec
 	"encoding/json"
 	"errors"
@@ -295,11 +297,52 @@ func (cfg *QueryConfig) getIsolatedCredentials(ocmToken string) (aws.Credentials
 		Credentials: NewStaticCredentialsProvider(seedCredentials.AccessKeyID, seedCredentials.SecretAccessKey, seedCredentials.SessionToken),
 	})
 
-	targetCredentials, err := AssumeRoleSequence(seedClient, assumeRoleArnSessionSequence, cfg.BackplaneConfiguration.ProxyURL, awsutil.DefaultSTSClientProviderFunc)
+	inlinePolicy, err := getTrustedIPInlinePolicy()
+	if err != nil {
+		return aws.Credentials{}, fmt.Errorf("failed to build inline policy: %w", err)
+	}
+
+	targetCredentials, err := AssumeRoleSequence(
+		seedClient,
+		assumeRoleArnSessionSequence,
+		cfg.BackplaneConfiguration.ProxyURL,
+		awsutil.DefaultSTSClientProviderFunc,
+		&inlinePolicy,
+	)
 	if err != nil {
 		return aws.Credentials{}, fmt.Errorf("failed to assume role sequence: %w", err)
 	}
 	return targetCredentials, nil
+}
+
+func getTrustedIPInlinePolicy() (awsutil.PolicyDocument, error) {
+	IPList, err := ocm.DefaultOCMInterface.GetTrustedIPList()
+	if err != nil {
+		return awsutil.PolicyDocument{}, fmt.Errorf("failed to fetch trusted IP list: %w", err)
+	}
+
+	sourceIPList := []string{}
+	for _, ip := range IPList.Items() {
+		if ip.Enabled() {
+			// TODO:Update OCM GetTrustedIPList endpoint with trusted IP category( ex: VPN, Proxy etc)
+			//  which may help filter proxy IP's efficiently
+
+			//This is hack for now to filter only proxy IP's
+			if strings.HasPrefix(ip.ID(), "209.") ||
+				strings.HasPrefix(ip.ID(), "66.") {
+				sourceIPList = append(sourceIPList, fmt.Sprintf("%s/32", ip.ID()))
+			}
+		}
+
+	}
+
+	ipAddress := awsutil.IPAddress{
+		SourceIp: sourceIPList,
+	}
+
+	policy := awsutil.NewPolicyDocument(awsutil.PolicyVersion, []awsutil.PolicyStatement{})
+
+	return policy.BuildPolicyWithRestrictedIP(ipAddress)
 }
 
 func isIsolatedBackplaneAccess(cluster *cmv1.Cluster, ocmConnection *ocmsdk.Connection) (bool, error) {

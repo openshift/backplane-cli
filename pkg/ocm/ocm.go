@@ -37,6 +37,7 @@ type OCMInterface interface {
 	GetClusterActiveAccessRequest(ocmConnection *ocmsdk.Connection, clusterID string) (*acctrspv1.AccessRequest, error)
 	CreateClusterAccessRequest(ocmConnection *ocmsdk.Connection, clusterID, reason, jiraIssueID, approvalDuration string) (*acctrspv1.AccessRequest, error)
 	CreateAccessRequestDecision(ocmConnection *ocmsdk.Connection, accessRequest *acctrspv1.AccessRequest, decision acctrspv1.DecisionDecision, justification string) (*acctrspv1.Decision, error)
+	GetTrustedIPList() (*cmv1.TrustedIpList, error)
 	SetupOCMConnection() (*ocmsdk.Connection, error)
 }
 
@@ -475,6 +476,23 @@ func (o *DefaultOCMInterfaceImpl) CreateAccessRequestDecision(ocmConnection *ocm
 	}
 
 	return accessRequestDecision, nil
+}
+
+func (o *DefaultOCMInterfaceImpl) GetTrustedIPList() (*cmv1.TrustedIpList, error) {
+	// Create the client for the OCM API
+	connection, err := o.SetupOCMConnection()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create OCM connection: %v", err)
+	}
+	defer connection.Close()
+
+	responseTrustedIP, err := connection.ClustersMgmt().V1().TrustedIPAddresses().List().Send()
+	if err != nil {
+
+		return nil, err
+	}
+
+	return responseTrustedIP.Items(), nil
 }
 
 func getClusters(client *cmv1.ClustersClient, clusterKey string) ([]*cmv1.Cluster, error) {
