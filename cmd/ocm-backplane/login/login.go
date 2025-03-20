@@ -14,6 +14,7 @@ import (
 	logger "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd/api"
 
@@ -334,13 +335,6 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 	// Query backplane-api for proxy url
 	bpAPIClusterURL, err := doLogin(bpURL, clusterID, *accessToken)
 	if err != nil {
-		// If login failed, we try to find out if the cluster is hibernating
-		isHibernating, _ := ocm.DefaultOCMInterface.IsClusterHibernating(clusterID)
-		if isHibernating {
-			// Hibernating, print an error
-			return fmt.Errorf("cluster %s is hibernating, login failed", clusterKey)
-		}
-
 		// Declare helperMsg
 		helperMsg := "\n\033[1mNOTE: To troubleshoot the connectivity issues, please run `ocm-backplane health-check`\033[0m\n\n"
 
@@ -421,7 +415,42 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 		return err
 	}
 
+	// We return without error from here because the user is still successfully logged in
+	// however, we just cannot check for other logged in users for some reason. Therefore,
+	// we should still return that this command exited successfully, as checking for
+	// the other logged in users should not give an SRE the idea they cannot use the credentials.
+
+	logger.Debugln("Checking for other backplane sessions...")
+	cfg, _ := BuildRestConfig(bpAPIClusterURL, accessToken, proxyURL)
+	clientset, err := kubernetes.NewForConfig(cfg)
+	if err != nil {
+		logger.Errorln("Unable to build kube client from rest config")
+		return nil
+	}
+
+	sessions, err := login.FindOtherSessions(clientset, cfg)
+	if err != nil {
+		logger.Error("Could not check for other sessions.")
+		return nil
+	}
+
+	login.PrintSessions(os.Stdout, sessions)
+
 	return nil
+}
+
+// BuildRestConfig takes a host, token and optional proxy URL and generates a rest config
+func BuildRestConfig(host string, token *string, proxyURL string) (*rest.Config, error) {
+	cfg := &rest.Config{
+		Host:        host,
+		BearerToken: *token,
+	}
+	if proxyURL != "" {
+		cfg.Proxy = func(*http.Request) (*url.URL, error) {
+			return url.Parse(proxyURL)
+		}
+	}
+	return cfg, nil
 }
 
 // GetRestConfig returns a client-go *rest.Config which can be used to programmatically interact with the
@@ -442,18 +471,12 @@ func GetRestConfig(bp config.BackplaneConfiguration, clusterID string) (*rest.Co
 		return nil, fmt.Errorf("failed to backplane login to cluster %s: %v", cluster.Name(), err)
 	}
 
-	cfg := &rest.Config{
-		Host:        bpAPIClusterURL,
-		BearerToken: *accessToken,
-	}
-
+	proxyURL := ""
 	if bp.ProxyURL != nil {
-		cfg.Proxy = func(*http.Request) (*url.URL, error) {
-			return url.Parse(*bp.ProxyURL)
-		}
+		proxyURL = *bp.ProxyURL
 	}
 
-	return cfg, nil
+	return BuildRestConfig(bpAPIClusterURL, accessToken, proxyURL)
 }
 
 // GetRestConfig returns a client-go *rest.Config which can be used to programmatically interact with the
@@ -474,18 +497,12 @@ func GetRestConfigWithConn(bp config.BackplaneConfiguration, ocmConnection *ocms
 		return nil, fmt.Errorf("failed to backplane login to cluster %s: %v", cluster.Name(), err)
 	}
 
-	cfg := &rest.Config{
-		Host:        bpAPIClusterURL,
-		BearerToken: *accessToken,
-	}
-
+	proxyURL := ""
 	if bp.ProxyURL != nil {
-		cfg.Proxy = func(*http.Request) (*url.URL, error) {
-			return url.Parse(*bp.ProxyURL)
-		}
+		proxyURL = *bp.ProxyURL
 	}
 
-	return cfg, nil
+	return BuildRestConfig(bpAPIClusterURL, accessToken, proxyURL)
 }
 
 // GetRestConfigAsUser returns a client-go *rest.Config like GetRestConfig, but supports configuring an
