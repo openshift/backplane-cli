@@ -1,6 +1,6 @@
 # This is for CI test and should build on x86_64 environment
 
-FROM registry.access.redhat.com/ubi9:9.5 as base
+FROM brew.registry.redhat.io/rh-osbs/openshift-golang-builder:rhel_8_1.23 as base
 
 ### Pre-install dependencies
 # These packages will end up in the final image
@@ -10,13 +10,12 @@ RUN yum --assumeyes install \
     && yum clean all;
 
 ### Build backplane-cli
-FROM registry.access.redhat.com/ubi9/ubi:9.5 as bp-cli-builder
+FROM brew.registry.redhat.io/rh-osbs/openshift-golang-builder:rhel_8_1.23 as bp-cli-builder
 
 RUN yum install --assumeyes \
     make \
     git \
-    wget \
-    go-toolset
+    wget 
 
 # Configure the env
 
@@ -39,7 +38,7 @@ RUN cp ./ocm-backplane /out
 RUN chmod -R +x /out
 
 ### Build dependencies
-FROM registry.access.redhat.com/ubi9/ubi:9.5 as dep-builder
+FROM brew.registry.redhat.io/rh-osbs/openshift-golang-builder:rhel_8_1.23 as dep-builder
 
 RUN yum install --assumeyes \
     jq \
