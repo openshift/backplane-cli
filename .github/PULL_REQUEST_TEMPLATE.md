@@ -1,12 +1,17 @@
 ### What type of PR is this?
 
-_(bug/feature/cleanup/documentation/unit-test)_
-
+- [ ] Bug
+- [ ] Feature
+- [ ] Documentation
+- [ ] Test Coverage
+- [ ] Clean Up
+- [ ] Others
 ### What this PR does / Why we need it?
 
 ### Which Jira/Github issue(s) does this PR fix?
 
-_Resolves #_
+- Related Issue #
+- Closes #
 
 ### Special notes for your reviewer
 
