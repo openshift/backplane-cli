@@ -10,12 +10,8 @@ RUN yum --assumeyes install \
     && yum clean all;
 
 ### Build backplane-cli
-FROM brew.registry.redhat.io/rh-osbs/openshift-golang-builder:rhel_8_1.23 as bp-cli-builder
+FROM brew.registry.redhat.io/rh-osbs/openshift-golang-builder:rhel_9_golang_1.23 as bp-cli-builder
 
-RUN yum install --assumeyes \
-    make \
-    git \
-    wget 
 
 # Configure the env
 
@@ -38,12 +34,8 @@ RUN cp ./ocm-backplane /out
 RUN chmod -R +x /out
 
 ### Build dependencies
-FROM brew.registry.redhat.io/rh-osbs/openshift-golang-builder:rhel_8_1.23 as dep-builder
+FROM brew.registry.redhat.io/rh-osbs/openshift-golang-builder:rhel_9_golang_1.23 as dep-builder
 
-RUN yum install --assumeyes \
-    jq \
-    unzip \
-    wget
 
 ARG GITHUB_URL="https://api.github.com"
 ARG GITHUB_TOKEN=""
@@ -62,6 +54,10 @@ RUN mkdir /out
 # Install the latest OC Binary from the mirror
 RUN mkdir /oc
 WORKDIR /oc
+
+# Download jq packages 
+RUN curl -sSLo /usr/bin/jq https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64 && chmod +x /usr/bin/jq
+
 # Download the checksum
 RUN curl -sSLf ${OC_URL}/sha256sum.txt -o sha256sum.txt
 # Download the amd64 binary tarball
