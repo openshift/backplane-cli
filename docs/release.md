@@ -11,7 +11,7 @@ To release to GitHub, you'll need to export a `GITHUB_TOKEN` environment variabl
 It will be used to deploy releases to your GitHub repository. You can create a new GitHub token [here](https://github.com/settings/tokens/new).
 
 - Pick a name and a reasonable expiration date (1 day should be enough).
-- Grant API and write_repository permissions.
+- Grant the `write:packages` permission.
 - Export the token for later use:
 
 ```bash
