@@ -5,6 +5,7 @@ package login
 
 import (
 	"context"
+	"crypto/md5"
 	"fmt"
 	"io"
 	"os"
@@ -26,6 +27,8 @@ const (
 	McsTierTwo                   = "mcs-tier-two"
 	LPSRE                        = "lpsre"
 	SREP                         = "srep"
+
+	unknownNamespace = "UNKNOWNNAMESPACE"
 )
 
 var backplaneUserNamespacesToCheck []string = []string{
@@ -35,7 +38,7 @@ var backplaneUserNamespacesToCheck []string = []string{
 	SREP,
 }
 
-func FindOtherSessions(clientset kubernetes.Interface, config *rest.Config) (map[string]int, error) {
+func FindOtherSessions(clientset kubernetes.Interface, config *rest.Config, user string) (map[string]int, error) {
 	sessions := map[string]int{}
 
 	token, err := getTokenFromConfig(config)
@@ -46,8 +49,9 @@ func FindOtherSessions(clientset kubernetes.Interface, config *rest.Config) (map
 
 	myUsername, err := whoami(clientset, token)
 	if err != nil {
-		logger.Warn("Unable to determine who I am to find other sessions")
-		return sessions, err
+		logger.WithField("error", err).Debug("Unable to determine who I am to find other sessions")
+		saName := userToMd5(user)
+		myUsername = fmt.Sprintf("system:serviceaccount:%s:%s", unknownNamespace, saName)
 	}
 
 	myNS, myUser, err := splitServiceAccountUserString(myUsername)
@@ -61,13 +65,21 @@ func FindOtherSessions(clientset kubernetes.Interface, config *rest.Config) (map
 			LabelSelector: "managed.openshift.io/backplane=true",
 		})
 		if err != nil {
-			logger.Warnf("Unable to list %s ServiceAccounts", role)
+			logger.WithField("error", err).Debugf("Unable to list %s ServiceAccounts", role)
 		}
-		logger.Debugf("Found %d service accounts for %s: %+v", len(saList.Items), role, saList)
 
 		count := len(saList.Items)
+
+		logger.Debugf("Found %d service accounts for %s", count, role)
+
+		if count == 0 {
+			logger.Debugf("ns is empty, skipping")
+			continue
+		}
+
 		// Remove me from the count if I'm already logged in
-		if ns == myNS {
+		if ns == myNS || myNS == unknownNamespace {
+			logger.Debugf("Checking for my user %q in namespace %q", myUser, ns)
 			found := false
 			for _, sa := range saList.Items {
 				if sa.Name == myUser {
@@ -96,7 +108,7 @@ func PrintSessions(w io.Writer, sessions map[string]int) {
 
 	fmt.Fprintf(w, "Checking for other backplane sessions:\n")
 	for sessionRole, sessionCount := range sessions {
-		fmt.Fprintf(w, "  - There are %d users logged in under the %s role.\n", sessionCount, sessionRole)
+		fmt.Fprintf(w, "  - There are %d other users logged in under the %s role.\n", sessionCount, sessionRole)
 	}
 }
 
@@ -173,4 +185,9 @@ func getUsernameFromError(err error) (string, error) {
 		return "", fmt.Errorf("could not extract username from error string: %v", err)
 	}
 	return user, nil
+}
+
+func userToMd5(user string) string {
+	bytes := []byte(user)
+	return fmt.Sprintf("%x", md5.Sum(bytes)) // #nosec
 }

@@ -424,13 +424,14 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 	cfg, _ := BuildRestConfig(bpAPIClusterURL, accessToken, proxyURL)
 	clientset, err := kubernetes.NewForConfig(cfg)
 	if err != nil {
-		logger.Debug("Unable to build kube client from rest config to check for other Backplane sessions")
+		logger.WithField("error", err).Debug("Unable to build kube client from rest config to check for other Backplane sessions")
 		logger.Warn("Can not check for other Backplane sessions. You should still be logged in")
 		return nil
 	}
 
-	sessions, err := login.FindOtherSessions(clientset, cfg)
+	sessions, err := login.FindOtherSessions(clientset, cfg, targetUserNickName)
 	if err != nil {
+		logger.Debug("error", err)
 		logger.Warn("Could not check for other Backplane sessions. You should still be logged in")
 		return nil
 	}
