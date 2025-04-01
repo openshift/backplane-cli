@@ -50,6 +50,8 @@ func FindOtherSessions(clientset kubernetes.Interface, config *rest.Config, user
 	myUsername, err := whoami(clientset, token)
 	if err != nil {
 		logger.WithField("error", err).Debug("Unable to determine who I am to find other sessions")
+		// If we cannot determine who we are from the bearer token, fall back
+		// to a naive lookup of who we are by transforming the username to the SA name
 		saName := userToMd5(user)
 		myUsername = fmt.Sprintf("system:serviceaccount:%s:%s", unknownNamespace, saName)
 	}
