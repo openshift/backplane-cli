@@ -2,6 +2,7 @@ package login
 
 import (
 	"bytes"
+	"crypto/md5" // #nosec
 	"fmt"
 	"os"
 	"path/filepath"
@@ -50,8 +51,8 @@ var _ = Describe("AdditionalLoginDetector", func() {
 
 			PrintSessions(&output, sessions)
 			Expect(output.String()).Should(ContainSubstring("Checking for other"))
-			Expect(output.String()).Should(ContainSubstring("2 users logged in under the role_one"))
-			Expect(output.String()).Should(ContainSubstring("5 users logged in under the anotherRole"))
+			Expect(output.String()).Should(ContainSubstring("2 other users logged in under the role_one"))
+			Expect(output.String()).Should(ContainSubstring("5 other users logged in under the anotherRole"))
 		})
 	})
 
@@ -236,7 +237,7 @@ var _ = Describe("AdditionalLoginDetector", func() {
 				return true, successfulTokenReviewResponse, nil
 			})
 
-			sessions, err := FindOtherSessions(client, cfg)
+			sessions, err := FindOtherSessions(client, cfg, "")
 			Expect(err).NotTo(HaveOccurred())
 			// We populate 2 cee SAs and 2 SRE SAs, so we expect
 			// the len of the sessions map to be 2 (cee, srep) and
@@ -245,6 +246,31 @@ var _ = Describe("AdditionalLoginDetector", func() {
 			Expect(len(sessions)).To(Equal(2))
 			Expect(sessions["cee"]).To(Equal(2))
 			Expect(sessions["srep"]).To(Equal(1))
+		})
+
+		It("bypasses an uknown failure of the whoami function", func() {
+			cfg := &rest.Config{}
+			cfg.BearerToken = "abcdefg"
+
+			client := fake.NewSimpleClientset(
+				&corev1.ServiceAccount{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      fmt.Sprintf("%x", md5.Sum([]byte("myUser"))), // #nosec
+						Namespace: "openshift-backplane-srep",
+						Labels: map[string]string{
+							"managed.openshift.io/backplane": "true",
+						},
+					},
+				},
+			)
+
+			client.PrependReactor("create", "tokenreviews", func(a ctest.Action) (h bool, r runtime.Object, e error) {
+				return true, successfulTokenReviewResponse, fmt.Errorf("UnknownError")
+			})
+
+			sessions, err := FindOtherSessions(client, cfg, "myUser")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(len(sessions)).To(Equal(0))
 		})
 	})
 })
