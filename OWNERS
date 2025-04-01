@@ -10,6 +10,8 @@ reviewers:
   - xiaoyu74
   - typeid
   - Tessg22
+  - smarthall
+  - diakovnec
 
 approvers:
   - wanghaoran1988
@@ -21,6 +23,8 @@ approvers:
   - Dee-6777
   - xiaoyu74
   - MitaliBhalla
+  - smarthall
+  - diakovnec
 
 maintainers:
   - wanghaoran1988
