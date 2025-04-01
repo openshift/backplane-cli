@@ -37,12 +37,12 @@ var _ = Describe("Info", func() {
 			info.Version = ""
 			mockBuildInfoService.EXPECT().GetBuildInfo().Return(&debug.BuildInfo{
 				Main: debug.Module{
-					Version: "v1.2.3",
+					Version: "v2.23.3",
 				},
 			}, true).Times(1)
 
 			version := info.DefaultInfoService.GetVersion()
-			Expect(version).To(Equal("1.2.3"))
+			Expect(version).To(Equal("2.23.3"))
 		})
 		It("Should return an unknown when no way to determine version", func() {
 			info.Version = ""
