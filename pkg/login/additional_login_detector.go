@@ -40,13 +40,13 @@ func FindOtherSessions(clientset kubernetes.Interface, config *rest.Config) (map
 
 	token, err := getTokenFromConfig(config)
 	if err != nil {
-		logger.Error("Unable to get token for self review to find other sessions")
+		logger.Warn("Unable to get token for self review to find other sessions")
 		return sessions, err
 	}
 
 	myUsername, err := whoami(clientset, token)
 	if err != nil {
-		logger.Error("Unable to determine who I am to find other sessions")
+		logger.Warn("Unable to determine who I am to find other sessions")
 		return sessions, err
 	}
 
