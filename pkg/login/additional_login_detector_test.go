@@ -2,7 +2,7 @@ package login
 
 import (
 	"bytes"
-	"crypto/md5"
+	"crypto/md5" // #nosec
 	"fmt"
 	"os"
 	"path/filepath"
@@ -255,7 +255,7 @@ var _ = Describe("AdditionalLoginDetector", func() {
 			client := fake.NewSimpleClientset(
 				&corev1.ServiceAccount{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      fmt.Sprintf("%x", md5.Sum([]byte("myUser"))),
+						Name:      fmt.Sprintf("%x", md5.Sum([]byte("myUser"))), // #nosec
 						Namespace: "openshift-backplane-srep",
 						Labels: map[string]string{
 							"managed.openshift.io/backplane": "true",

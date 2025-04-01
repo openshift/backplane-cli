@@ -5,7 +5,7 @@ package login
 
 import (
 	"context"
-	"crypto/md5"
+	"crypto/md5" // #nosec
 	"fmt"
 	"io"
 	"os"
