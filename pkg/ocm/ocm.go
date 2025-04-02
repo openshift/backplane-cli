@@ -36,6 +36,7 @@ type OCMInterface interface {
 	GetOCMEnvironment() (*cmv1.Environment, error)
 	GetOCMAccessTokenWithConn(ocmConnection *ocmsdk.Connection) (*string, error)
 	GetClusterInfoByIDWithConn(ocmConnection *ocmsdk.Connection, clusterID string) (*cmv1.Cluster, error)
+	GetOCMEnvironmentWithConn(connection *ocmsdk.Connection) (*cmv1.Environment, error)
 	IsClusterAccessProtectionEnabled(ocmConnection *ocmsdk.Connection, clusterID string) (bool, error)
 	GetClusterActiveAccessRequest(ocmConnection *ocmsdk.Connection, clusterID string) (*acctrspv1.AccessRequest, error)
 	CreateClusterAccessRequest(ocmConnection *ocmsdk.Connection, clusterID, reason, jiraIssueID, approvalDuration string) (*acctrspv1.AccessRequest, error)
@@ -387,7 +388,7 @@ func (o *DefaultOCMInterfaceImpl) GetStsSupportJumpRoleARN(ocmConnection *ocmsdk
 	return response.Body().RoleArn(), nil
 }
 
-// GetOCMEnvironment returns the Backplane API URL based on the OCM env
+// GetOCMEnvironment returns the OCM v1.environment response (containing the Backplane API URL).
 func (o *DefaultOCMInterfaceImpl) GetOCMEnvironment() (*cmv1.Environment, error) {
 	// Create the client for the OCM API
 	connection, err := o.SetupOCMConnection()
@@ -395,6 +396,16 @@ func (o *DefaultOCMInterfaceImpl) GetOCMEnvironment() (*cmv1.Environment, error)
 		return nil, fmt.Errorf("failed to create OCM connection: %v", err)
 	}
 
+	defer connection.Close()
+	return o.GetOCMEnvironmentWithConn(connection)
+}
+
+// GetOCMEnvironmentWithConn returns the v1.environment response for the provided
+// OCM connection (containing the Backplane API URL)
+func (o *DefaultOCMInterfaceImpl) GetOCMEnvironmentWithConn(connection *ocmsdk.Connection) (*cmv1.Environment, error) {
+	if connection == nil {
+		return nil, fmt.Errorf("err GetOCMEnvironmentWithConn() provided nil OCM connection")
+	}
 	responseEnv, err := connection.ClustersMgmt().V1().Environment().Get().Send()
 	if err != nil {
 		// Check if the error indicates a forbidden status

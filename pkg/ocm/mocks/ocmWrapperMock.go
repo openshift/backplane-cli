@@ -179,6 +179,21 @@ func (mr *MockOCMInterfaceMockRecorder) GetOCMEnvironment() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOCMEnvironment", reflect.TypeOf((*MockOCMInterface)(nil).GetOCMEnvironment))
 }
 
+// GetOCMEnvironmentWithConn mocks base method.
+func (m *MockOCMInterface) GetOCMEnvironmentWithConn(arg0 *sdk.Connection) (*v10.Environment, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetOCMEnvironmentWithConn")
+	ret0, _ := ret[0].(*v10.Environment)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetOCMEnvironmentWithConn indicates an expected call of GetOCMEnvironmentWithConn.
+func (mr *MockOCMInterfaceMockRecorder) GetOCMEnvironmentWithConn(arg0 *sdk.Connection) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOCMEnvironmentWithConn", reflect.TypeOf((*MockOCMInterface)(nil).GetOCMEnvironment))
+}
+
 // GetPullSecret mocks base method.
 func (m *MockOCMInterface) GetPullSecret() (string, error) {
 	m.ctrl.T.Helper()

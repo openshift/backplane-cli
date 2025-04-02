@@ -13,6 +13,7 @@ import (
 	logger "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 
+	ocmsdk "github.com/openshift-online/ocm-sdk-go"
 	"github.com/openshift/backplane-cli/pkg/info"
 	"github.com/openshift/backplane-cli/pkg/ocm"
 )
@@ -103,6 +104,12 @@ func GetConfigFilePath() (string, error) {
 
 // GetBackplaneConfiguration parses and returns the given backplane configuration
 func GetBackplaneConfiguration() (bpConfig BackplaneConfiguration, err error) {
+	return GetBackplaneConfigurationWithConn(nil)
+}
+
+// GetBackplaneConfiguration parses and returns the given backplane configuration using attributes
+// from provided OCM connection
+func GetBackplaneConfigurationWithConn(ocmConn *ocmsdk.Connection) (bpConfig BackplaneConfiguration, err error) {
 	viper.SetDefault(prodEnvNameKey, prodEnvNameDefaultValue)
 	viper.SetDefault(jiraBaseURLKey, JiraBaseURLDefaultValue)
 	viper.SetDefault(JiraConfigForAccessRequestsKey, JiraConfigForAccessRequestsDefaultValue)
@@ -146,21 +153,30 @@ func GetBackplaneConfiguration() (bpConfig BackplaneConfiguration, err error) {
 	} else {
 		logger.Debug("This is govcloud, no proxy to use")
 	}
-
 	// Warn user if url defined in the config file
 	if viper.GetString("url") != "" {
 		logger.Warn("Manual URL configuration is deprecated, please remove URL key from Backplane configuration")
 	}
-
 	// Warn if user has explicitly defined backplane URL via env
-	url, ok := getBackplaneEnv(info.BackplaneURLEnvName)
-	if ok {
-		logger.Warn(fmt.Sprintf("Manual URL configuration is deprecated, please unset the environment %s", info.BackplaneURLEnvName))
-		bpConfig.URL = url
-	} else {
-		// Fetch backplane URL from ocm env
-		if bpConfig.URL, err = bpConfig.GetBackplaneURL(); err != nil {
+	url, envURLok := getBackplaneEnv(info.BackplaneURLEnvName)
+	if envURLok {
+		logger.Warn(fmt.Printf("Manual URL configuration is deprecated, please unset the environment %s", info.BackplaneURLEnvName))
+	}
+
+	if ocmConn != nil {
+		// If an OCM connection is provided use this to fetch BP URL
+		// from its v1.environment info
+		if bpConfig.URL, err = bpConfig.GetBackplaneURLWithConn(ocmConn); err != nil {
 			return bpConfig, err
+		}
+	} else {
+		if envURLok {
+			bpConfig.URL = url
+		} else {
+			// Fetch backplane URL from ocm env
+			if bpConfig.URL, err = bpConfig.GetBackplaneURL(); err != nil {
+				return bpConfig, err
+			}
 		}
 	}
 
@@ -253,6 +269,10 @@ var testProxy = func(ctx context.Context, testURL string, proxyURL url.URL) erro
 	}
 
 	return nil
+}
+
+func (config *BackplaneConfiguration) GetFirstWorkingProxyURL(s []string) string {
+	return config.getFirstWorkingProxyURL(s)
 }
 
 func (config *BackplaneConfiguration) getFirstWorkingProxyURL(s []string) string {
@@ -369,6 +389,20 @@ func GetConfigDirectory() (string, error) {
 	configDirectory := filepath.Dir(bpConfigFilePath)
 
 	return configDirectory, nil
+}
+
+// GetBackplaneURL returns API URL
+func (config *BackplaneConfiguration) GetBackplaneURLWithConn(ocmConn *ocmsdk.Connection) (string, error) {
+	ocmEnv, err := ocm.DefaultOCMInterface.GetOCMEnvironmentWithConn(ocmConn)
+	if err != nil {
+		return "", err
+	}
+	url, ok := ocmEnv.GetBackplaneURL()
+	if !ok {
+		return "", fmt.Errorf("the requested API endpoint is not available for the OCM environment: %v", ocmEnv.Name())
+	}
+	logger.Infof("Backplane URL retrieved via OCM environment: %s", url)
+	return url, nil
 }
 
 // GetBackplaneURL returns API URL
