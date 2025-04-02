@@ -9,7 +9,7 @@ import (
 	"path"
 
 	"github.com/golang/mock/gomock"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/spf13/cobra"
 	"sigs.k8s.io/kustomize/api/konfig"
