@@ -54,7 +54,7 @@ func (s *DefaultClientUtilsImpl) MakeRawBackplaneAPIClientWithAccessTokenWithCon
 	// Inject client Proxy Url from config
 	if s.clientProxyURL == "" {
 		var bpConfig config.BackplaneConfiguration
-		var err error = nil
+		var err error
 		if ocmConn != nil {
 			bpConfig, err = config.GetBackplaneConfigurationWithConn(ocmConn)
 		} else {
