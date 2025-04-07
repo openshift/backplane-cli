@@ -7,18 +7,19 @@ import (
 	"net/http"
 	"net/url"
 
+	ocmsdk "github.com/openshift-online/ocm-sdk-go"
 	BackplaneApi "github.com/openshift/backplane-api/pkg/client"
-	logger "github.com/sirupsen/logrus"
-
 	"github.com/openshift/backplane-cli/pkg/cli/config"
 	"github.com/openshift/backplane-cli/pkg/info"
 	"github.com/openshift/backplane-cli/pkg/ocm"
+	logger "github.com/sirupsen/logrus"
 )
 
 type ClientUtils interface {
 	MakeBackplaneAPIClient(base string) (BackplaneApi.ClientWithResponsesInterface, error)
 	MakeBackplaneAPIClientWithAccessToken(base, accessToken string) (BackplaneApi.ClientWithResponsesInterface, error)
 	MakeRawBackplaneAPIClientWithAccessToken(base, accessToken string) (BackplaneApi.ClientInterface, error)
+	MakeRawBackplaneAPIClientWithAccessTokenWithConn(base, accessToken string, ocmConn *ocmsdk.Connection) (BackplaneApi.ClientInterface, error)
 	MakeRawBackplaneAPIClient(base string) (BackplaneApi.ClientInterface, error)
 	GetBackplaneClient(backplaneURL string, ocmToken string, proxyURL *string) (client BackplaneApi.ClientInterface, err error)
 	SetClientProxyURL(proxyURL string) error
@@ -45,9 +46,20 @@ func makeClientOptions(accessToken string) BackplaneApi.ClientOption {
 }
 
 func (s *DefaultClientUtilsImpl) MakeRawBackplaneAPIClientWithAccessToken(base, accessToken string) (BackplaneApi.ClientInterface, error) {
+	return s.MakeRawBackplaneAPIClientWithAccessTokenWithConn(base, accessToken, nil)
+}
+
+func (s *DefaultClientUtilsImpl) MakeRawBackplaneAPIClientWithAccessTokenWithConn(base, accessToken string, ocmConn *ocmsdk.Connection) (BackplaneApi.ClientInterface, error) {
+
 	// Inject client Proxy Url from config
 	if s.clientProxyURL == "" {
-		bpConfig, err := config.GetBackplaneConfiguration()
+		var bpConfig config.BackplaneConfiguration
+		var err error
+		if ocmConn != nil {
+			bpConfig, err = config.GetBackplaneConfigurationWithConn(ocmConn)
+		} else {
+			bpConfig, err = config.GetBackplaneConfiguration()
+		}
 		if err != nil {
 			return nil, err
 		}
