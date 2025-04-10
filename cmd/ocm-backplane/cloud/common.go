@@ -3,6 +3,7 @@ package cloud
 import (
 	"context"
 	"strings"
+	"time"
 
 	//nolint:gosec
 	"encoding/json"
@@ -302,6 +303,9 @@ func (cfg *QueryConfig) getIsolatedCredentials(ocmToken string) (aws.Credentials
 		return aws.Credentials{}, fmt.Errorf("failed to build inline policy: %w", err)
 	}
 
+	// collect the startTime before Assuming Role so that we can report this for
+	// debug purposes if we hit an error, so we can find these in Cloudtrail
+	startTime := time.Now()
 	targetCredentials, err := AssumeRoleSequence(
 		seedClient,
 		assumeRoleArnSessionSequence,
@@ -310,6 +314,13 @@ func (cfg *QueryConfig) getIsolatedCredentials(ocmToken string) (aws.Credentials
 		&inlinePolicy,
 	)
 	if err != nil {
+		// log out some helpful information for debugging the assume role
+		errTime := time.Now()
+		logger.WithFields(logger.Fields{
+			"Start Time": startTime,
+			"End Time":   errTime,
+		}).Debug("Assume Role Debug Info")
+		// and then return an error after we've dumped the debug info
 		return aws.Credentials{}, fmt.Errorf("failed to assume role sequence: %w", err)
 	}
 	return targetCredentials, nil

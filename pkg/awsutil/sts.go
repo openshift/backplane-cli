@@ -175,17 +175,38 @@ func AssumeRoleSequence(
 
 func createAssumeRoleSequenceClient(stsClientProviderFunc STSClientProviderFunc, creds aws.Credentials, proxyURL *string) (stscreds.AssumeRoleAPIClient, error) {
 	if proxyURL != nil {
-		return stsClientProviderFunc(
-			config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(creds.AccessKeyID, creds.SecretAccessKey, creds.SessionToken)),
-			config.WithHTTPClient(&http.Client{
-				Transport: &http.Transport{
-					Proxy: func(*http.Request) (*url.URL, error) {
-						return url.Parse(*proxyURL)
-					},
+		proxyClient := &http.Client{
+			Transport: &http.Transport{
+				Proxy: func(*http.Request) (*url.URL, error) {
+					return url.Parse(*proxyURL)
 				},
-			}),
+			},
+		}
+
+		// Build the assume role client here so we can return it if there's an error getting debug information
+		assumeRoleClient, assumeRoleClientErr := stsClientProviderFunc(
+			config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(creds.AccessKeyID, creds.SecretAccessKey, creds.SessionToken)),
+			config.WithHTTPClient(proxyClient),
 			config.WithRegion("us-east-1"), // We don't care about region here, but the API still wants to see one set
 		)
+
+		// from here on out, we don't really care if there's an error, we'll just log it and continue.
+		// We want this to fail open
+		resp, err := proxyClient.Get("https://ifconfig.me")
+		if err != nil {
+			logger.Debug("Error getting debug output for Proxy IP. This error only affects debug output")
+			return assumeRoleClient, assumeRoleClientErr
+		}
+		defer resp.Body.Close()
+
+		proxyIP, err := io.ReadAll(resp.Body)
+		if err != nil {
+			logger.Debug("Error reading response body for proxy IP debugging. This error only affects debug output")
+			return assumeRoleClient, assumeRoleClientErr
+		}
+
+		logger.Debugf("Using ProxyClient with IP: %q", proxyIP)
+		return assumeRoleClient, assumeRoleClientErr
 	}
 
 	return stsClientProviderFunc(
