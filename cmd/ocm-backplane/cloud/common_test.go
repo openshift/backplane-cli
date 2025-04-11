@@ -4,7 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/openshift/backplane-cli/pkg/awsutil"
+	"net"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -88,7 +91,6 @@ var _ = Describe("getIsolatedCredentials", func() {
 	})
 
 	Context("Execute getIsolatedCredentials", func() {
-
 		It("should fail if empty cluster ID is provided", func() {
 			clusterBuilder := cmv1.ClusterBuilder{}
 			clusterBuilder.ID("")
@@ -135,6 +137,7 @@ var _ = Describe("getIsolatedCredentials", func() {
 			Expect(err.Error()).To(Equal("unable to extract email from given token: no field email on given token"))
 		})
 		It("should fail credentials with inline policy", func() {
+
 			ip1 := cmv1.NewTrustedIp().ID("209.10.10.10").Enabled(true)
 			ip2 := cmv1.NewTrustedIp().ID("200.20.20.20").Enabled(true)
 			expectedIPList, err := cmv1.NewTrustedIpList().Items(ip1, ip2).Build()
@@ -151,8 +154,8 @@ var _ = Describe("getIsolatedCredentials", func() {
 					SessionToken:    testSessionToken,
 				}, nil
 			}
-
-			mockClientUtil.EXPECT().GetBackplaneClient(testQueryConfig.BackplaneConfiguration.URL, testOcmToken, nil).Return(mockClient, nil)
+			mockClientUtil.EXPECT().GetBackplaneClient(
+				testQueryConfig.BackplaneConfiguration.URL, testOcmToken, testQueryConfig.ProxyURL).Return(mockClient, nil)
 			mockClient.EXPECT().GetAssumeRoleSequence(context.TODO(), testClusterID).Return(fakeHTTPResp, nil)
 
 			_, err = testQueryConfig.getIsolatedCredentials(testOcmToken)
@@ -180,14 +183,89 @@ var _ = Describe("getIsolatedCredentials", func() {
 		})
 
 	})
+	Context("Check the client egress IP", func() {
+		var (
+			client *http.Client
+			server *httptest.Server
+		)
+		It("Should return the correct client IP", func() {
+			mockIP := "1.1.1.1"
+			server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+				_, err := writer.Write([]byte(mockIP))
+				if err != nil {
+					return
+				}
+			}))
+			defer server.Close()
+
+			client := &http.Client{}
+			ip, err := checkEgressIP(client, server.URL)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(ip).To(Equal(net.ParseIP(mockIP)))
+		})
+		It("should return an error when the HTTP GET fails", func() {
+			client = &http.Client{}
+			// Invalid URL to force error
+			ip, err := checkEgressIP(client, "http://invalid_url")
+			Expect(err).To(HaveOccurred())
+			Expect(ip).To(BeNil())
+		})
+		It("should return an error when response body is not a valid IP", func() {
+			server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				fmt.Fprint(w, "not-an-ip")
+			}))
+			client = server.Client()
+
+			ip, err := checkEgressIP(client, server.URL)
+			Expect(err).To(MatchError(ContainSubstring("failed to parse IP")))
+			Expect(ip).To(BeNil())
+		})
+
+	})
+
+	Context("Compare IP with trusted list", func() {
+		var (
+			ip         net.IP
+			trustedIPs awsutil.IPAddress
+		)
+
+		BeforeEach(func() {
+			trustedIPs = awsutil.IPAddress{
+				SourceIp: []string{
+					"192.168.1.1/32",
+					"10.0.0.0/8",
+				},
+			}
+		})
+
+		It("should return nil if IP included in trusted list", func() {
+			ip = net.ParseIP("192.168.1.1")
+			err := verifyIPTrusted(ip, trustedIPs)
+			Expect(err).To(BeNil())
+		})
+		It("should return nil if IP not included in trusted list", func() {
+			ip = net.ParseIP("172.16.0.1")
+			err := verifyIPTrusted(ip, trustedIPs)
+			Expect(err).To(BeNil())
+		})
+		It("should return an error if give the wrong format", func() {
+			trustedIPs.SourceIp = []string{"invalid-cidr"}
+			ip = net.ParseIP("192.168.1.1")
+			err := verifyIPTrusted(ip, trustedIPs)
+			Expect(err).To(HaveOccurred())
+		})
+	})
 	Context("Execute getTrustedIpInlinePolicy", func() {
+
 		It("should Return inline policy with TrustedIP list", func() {
 			ip1 := cmv1.NewTrustedIp().ID("209.10.10.10").Enabled(true)
 			ip2 := cmv1.NewTrustedIp().ID("200.20.20.20").Enabled(true)
 			expectedIPList, err := cmv1.NewTrustedIpList().Items(ip1, ip2).Build()
 			Expect(err).To(BeNil())
 			mockOcmInterface.EXPECT().GetTrustedIPList().Return(expectedIPList, nil)
-			policy, err := getTrustedIPInlinePolicy()
+			IPList, _ := getTrustedIPList()
+			policy, _ := getTrustedIPInlinePolicy(IPList)
 			//Only allow 209 IP
 			Expect(policy).To(ContainSubstring("209.10.10.10"))
 			//Not allow 200 IP
