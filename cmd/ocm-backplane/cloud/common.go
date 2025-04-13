@@ -2,6 +2,8 @@ package cloud
 
 import (
 	"context"
+	"net"
+	"net/url"
 	"strings"
 
 	//nolint:gosec
@@ -246,7 +248,6 @@ func (cfg *QueryConfig) getIsolatedCredentials(ocmToken string) (aws.Credentials
 
 		logger.Debugf("set assume-initial-arn to: %s", cfg.BackplaneConfiguration.AssumeInitialArn)
 	}
-
 	initialClient, err := StsClient(cfg.BackplaneConfiguration.ProxyURL)
 	if err != nil {
 		return aws.Credentials{}, fmt.Errorf("failed to create sts client: %w", err)
@@ -297,7 +298,35 @@ func (cfg *QueryConfig) getIsolatedCredentials(ocmToken string) (aws.Credentials
 		Credentials: NewStaticCredentialsProvider(seedCredentials.AccessKeyID, seedCredentials.SecretAccessKey, seedCredentials.SessionToken),
 	})
 
-	inlinePolicy, err := getTrustedIPInlinePolicy()
+	var proxyURL *url.URL
+
+	if cfg.BackplaneConfiguration.ProxyURL != nil {
+		proxyURL, err = url.Parse(*cfg.BackplaneConfiguration.ProxyURL)
+		if err != nil {
+			return aws.Credentials{}, fmt.Errorf("failed to parse proxy URL: %w", err)
+		}
+	}
+	httpClient := &http.Client{
+		Transport: &http.Transport{
+			Proxy: http.ProxyURL(proxyURL),
+		},
+	}
+	clientIP, err := checkEgressIP(httpClient, "https://checkip.amazonaws.com/")
+	if err != nil {
+		return aws.Credentials{}, fmt.Errorf("failed to determine client IP: %w", err)
+	}
+
+	trustedRange, err := getTrustedIPList()
+	if err != nil {
+		return aws.Credentials{}, err
+	}
+
+	err = verifyIPTrusted(clientIP, trustedRange)
+	if err != nil {
+		return aws.Credentials{}, err
+	}
+
+	inlinePolicy, err := getTrustedIPInlinePolicy(trustedRange)
 	if err != nil {
 		return aws.Credentials{}, fmt.Errorf("failed to build inline policy: %w", err)
 	}
@@ -315,10 +344,47 @@ func (cfg *QueryConfig) getIsolatedCredentials(ocmToken string) (aws.Credentials
 	return targetCredentials, nil
 }
 
-func getTrustedIPInlinePolicy() (awsutil.PolicyDocument, error) {
+func checkEgressIP(client *http.Client, url string) (net.IP, error) {
+	resp, err := client.Get(url)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch IP: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	ip := net.ParseIP(strings.TrimSpace(string(body)))
+	if ip == nil {
+		return nil, fmt.Errorf("failed to parse IP %s", body)
+	}
+
+	return ip, nil
+}
+
+func verifyIPTrusted(ip net.IP, trustedIPs awsutil.IPAddress) error {
+	for _, trustedIP := range trustedIPs.SourceIp {
+		parsedIP, _, err := net.ParseCIDR(trustedIP)
+		if err != nil {
+			return fmt.Errorf("failed to parse the given trusted IP: %w", err)
+		}
+		if parsedIP.Equal(ip) {
+			return nil
+		}
+	}
+
+	logger.Warnf("Your client side IP does not include in the given trusted IP range, " +
+		"please consider using a different VPN instead")
+
+	return nil
+}
+
+func getTrustedIPList() (awsutil.IPAddress, error) {
 	IPList, err := ocm.DefaultOCMInterface.GetTrustedIPList()
 	if err != nil {
-		return awsutil.PolicyDocument{}, fmt.Errorf("failed to fetch trusted IP list: %w", err)
+		return awsutil.IPAddress{}, fmt.Errorf("failed to fetch trusted IP list: %w", err)
 	}
 
 	sourceIPList := []string{}
@@ -329,7 +395,8 @@ func getTrustedIPInlinePolicy() (awsutil.PolicyDocument, error) {
 
 			//This is hack for now to filter only proxy IP's
 			if strings.HasPrefix(ip.ID(), "209.") ||
-				strings.HasPrefix(ip.ID(), "66.") {
+				strings.HasPrefix(ip.ID(), "66.") ||
+				strings.HasPrefix(ip.ID(), "91.") {
 				sourceIPList = append(sourceIPList, fmt.Sprintf("%s/32", ip.ID()))
 			}
 		}
@@ -340,9 +407,14 @@ func getTrustedIPInlinePolicy() (awsutil.PolicyDocument, error) {
 		SourceIp: sourceIPList,
 	}
 
+	return ipAddress, nil
+}
+
+func getTrustedIPInlinePolicy(IPAddress awsutil.IPAddress) (awsutil.PolicyDocument, error) {
+
 	policy := awsutil.NewPolicyDocument(awsutil.PolicyVersion, []awsutil.PolicyStatement{})
 
-	return policy.BuildPolicyWithRestrictedIP(ipAddress)
+	return policy.BuildPolicyWithRestrictedIP(IPAddress)
 }
 
 func isIsolatedBackplaneAccess(cluster *cmv1.Cluster, ocmConnection *ocmsdk.Connection) (bool, error) {
