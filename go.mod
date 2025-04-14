@@ -17,7 +17,7 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/onsi/ginkgo/v2 v2.23.4
-	github.com/onsi/gomega v1.36.3
+	github.com/onsi/gomega v1.37.0
 	github.com/openshift-online/ocm-cli v1.0.5
 	github.com/openshift-online/ocm-sdk-go v0.1.464
 	github.com/openshift/backplane-api v0.0.0-20241127094828-0f66644ff53d
