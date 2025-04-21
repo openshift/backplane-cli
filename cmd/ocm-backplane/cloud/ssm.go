@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"strings"
@@ -54,6 +56,9 @@ var SSMSessionCmd = &cobra.Command{
 
 func init() {
 	SSMSessionCmd.Flags().StringVar(&ssmArgs.node, "node", "", "Specify the node name to start the SSM session.")
+	if err := SSMSessionCmd.MarkFlagRequired("node"); err != nil {
+		fmt.Printf("Error marking flag as required: %v\n", err)
+	}
 }
 
 func fetchCloudCredentials() (*bpCredentials.AWSCredentialsResponse, error) {
@@ -102,6 +107,7 @@ func fetchCloudCredentials() (*bpCredentials.AWSCredentialsResponse, error) {
 	}
 
 	logger.Info("Successfully fetched cloud credentials.")
+
 	return awsCreds, nil
 }
 
@@ -126,12 +132,49 @@ func getInstanceID(nodeName string, config *rest.Config) (string, error) {
 }
 
 func startSSMsession(cmd *cobra.Command, argv []string) error {
+	// Check if session-manager-plugin is installed
+	ValidateSessionCmd := ExecCommand("session-manager-plugin", "--version")
+	err := ValidateSessionCmd.Run()
+	if err != nil {
+		return fmt.Errorf("failed to validate session-manager-plugin: %w. Please refer AWS doc to make sure session-manager-plugin is properly installed: https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html", err)
+	}
+
+	// Check if the node argument is provided
 	if ssmArgs.node == "" {
 		return fmt.Errorf("--node flag is required")
 	}
 
-	// Fetch cloud credentials and export them as environment variables
-	creds, err := FetchCloudCredentials() // Use the variable instead of direct call
+	// Fetch proxy variable from backplane configuration
+	backplaneConfig, err := GetBackplaneConfiguration()
+	if err != nil {
+		return fmt.Errorf("failed to get backplane configuration: %w", err)
+	}
+	proxyURL := backplaneConfig.ProxyURL
+	if proxyURL == nil {
+		return fmt.Errorf("proxy URL is not set in backplane configuration")
+	}
+
+	// Validate the proxy URL
+	parsedProxyURL, err := url.Parse(*proxyURL)
+	if err != nil {
+		return fmt.Errorf("invalid proxy URL in backplane configuration: %w", err)
+	}
+	if parsedProxyURL.Scheme == "" || parsedProxyURL.Host == "" {
+		return fmt.Errorf("invalid proxy URL in backplane configuration: missing scheme or host: %w", err)
+	}
+
+	// Log the proxy being used for debugging
+	logger.Infof("Using proxy: %s", parsedProxyURL.String())
+
+	// Create a custom HTTP client with the proxy configuration
+	customHTTPClient := &http.Client{
+		Transport: &http.Transport{
+			Proxy: http.ProxyURL(parsedProxyURL),
+		},
+	}
+
+	// Fetch AWS credentials
+	creds, err := FetchCloudCredentials()
 	if err != nil {
 		return fmt.Errorf("failed to fetch cloud credentials: %w", err)
 	}
@@ -141,11 +184,26 @@ func startSSMsession(cmd *cobra.Command, argv []string) error {
 	os.Setenv("AWS_SECRET_ACCESS_KEY", creds.SecretAccessKey)
 	os.Setenv("AWS_SESSION_TOKEN", creds.SessionToken)
 
+	// Load AWS SDK configuration with the custom HTTP client
+	cfg, err := awsConfig.LoadDefaultConfig(
+		context.TODO(),
+		awsConfig.WithRegion(creds.Region),
+		awsConfig.WithHTTPClient(customHTTPClient),
+	)
+	if err != nil {
+		return fmt.Errorf("unable to load AWS SDK configuration: %w", err)
+	}
+
+	// Create SSM client
+	ssmClient := NewFromConfig(cfg)
+
+	// Get the current kubeconfig
 	kubeconfig, err := getCurrentKubeconfig()
 	if err != nil {
 		return fmt.Errorf("failed to get kubeconfig: %w", err)
 	}
 
+	// Get the instance ID for the specified node
 	instanceID, err := getInstanceID(ssmArgs.node, kubeconfig)
 	if err != nil {
 		return fmt.Errorf("failed to get instance ID for node %s: %w", ssmArgs.node, err)
@@ -153,12 +211,7 @@ func startSSMsession(cmd *cobra.Command, argv []string) error {
 
 	logger.Infof("Starting SSM session for node: %s with Instance ID: %s", ssmArgs.node, instanceID)
 
-	cfg, err := awsConfig.LoadDefaultConfig(context.TODO(), awsConfig.WithRegion(creds.Region))
-	if err != nil {
-		return fmt.Errorf("unable to load SDK config: %v", err)
-	}
-	ssmClient := NewFromConfig(cfg)
-
+	// Start the SSM session
 	input := &ssm.StartSessionInput{
 		Target: aws.String(instanceID),
 	}
@@ -188,13 +241,7 @@ func startSSMsession(cmd *cobra.Command, argv []string) error {
 		return fmt.Errorf("failed to serialize session details: %w", err)
 	}
 
-	//Check if session command is installed
-	ValidateSessionCmd := ExecCommand("session-manager-plugin", "--version")
-	err = ValidateSessionCmd.Run()
-	if err != nil {
-		return fmt.Errorf("session-manager-plugin is not installed. Please refer AWS doc: https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html")
-	}
-
+	// Start the ssm-session using the session-manager-plugin
 	cmdArgs := []string{"session-manager-plugin", string(sessionJSON), creds.Region, "StartSession"}
 	pluginCmd := ExecCommand(cmdArgs[0], cmdArgs[1:]...) //#nosec G204: Command arguments are trusted
 	pluginCmd.Stdout = os.Stdout
