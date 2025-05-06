@@ -41,10 +41,10 @@ func NewRemediationCmd() *cobra.Command {
 
 func newCreateRemediationCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:          "create",
-		Short:        "create remediation SA and RBAC",
-		Args:         cobra.ExactArgs(1),
-		SilenceUsage: true,
+		Use:   "create REMEDIATION_NAME",
+		Short: "Instantiate a new remediation instance",
+		Long:  "Instantiate a new remediation instance from the given remediation name - also create the SA & the RBAC on the target cluster for the new remediation instance",
+		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// ======== Parsing Flags ========
 			// Cluster ID flag
@@ -67,10 +67,10 @@ func newCreateRemediationCmd() *cobra.Command {
 
 func newDeleteRemediationCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:          "delete",
-		Short:        "Delete remediation SA and RBAC",
-		Args:         cobra.ExactArgs(1),
-		SilenceUsage: true,
+		Use:   "delete REMEDIATION_INSTANCE_ID",
+		Short: "Delete an existing remediation instance",
+		Long:  "Delete the remediation instance referenced by the given id - also delete the SA & the RBAC linked to the remediation instance on the target cluster",
+		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// ======== Parsing Flags ========
 			// Cluster ID flag
@@ -137,11 +137,16 @@ func runCreateRemediation(args []string, clusterKey string, urlFlag string) erro
 		logger.Debugln("backplane configuration file also contains a proxy url, using that one instead")
 		logger.Debugf("New backplane Proxy URL: %s\n", proxyURL)
 	}
-	proxyURI, err := remediation.DoCreateRemediation(bpURL, clusterID, *accessToken, remediationName)
+	proxyURI, remediationInstanceID, err := remediation.DoCreateRemediation(bpURL, clusterID, *accessToken, remediationName)
 	// ======== Render Results ========
 	if err != nil {
 		return err
 	}
+
+	defer func() {
+		fmt.Printf("Remediation instance id: %s\n", remediationInstanceID)
+		fmt.Println("Use this id when deleting the remediation instance with 'ocm-backplane remediation delete'")
+	}()
 
 	logger.Infof("Created remediation RBAC and serviceaccount\nuri: %s", proxyURI)
 	// TODO needs code to create local kubeconfig factorized from login command
@@ -195,6 +200,7 @@ func runCreateRemediation(args []string, clusterKey string, urlFlag string) erro
 	}
 
 	fmt.Printf("Created remediation RBAC. You are logged in as remediation: %s\n", remediationName)
+
 	return nil
 }
 
@@ -222,7 +228,7 @@ func runDeleteRemediation(args []string, clusterKey string, urlFlag string) erro
 	if len(args) < 1 {
 		return fmt.Errorf("missing remediations service account name as an argument")
 	}
-	remediationSA := args[0]
+	remediationInstanceID := args[0]
 
 	accessToken, err := ocm.DefaultOCMInterface.GetOCMAccessToken()
 	if err != nil {
@@ -246,7 +252,7 @@ func runDeleteRemediation(args []string, clusterKey string, urlFlag string) erro
 		logger.Debugf("New backplane Proxy URL: %s\n", proxyURL)
 	}
 	// ======== Call Endpoint ========
-	err = remediation.DoDeleteRemediation(bpURL, clusterID, *accessToken, remediationSA)
+	err = remediation.DoDeleteRemediation(bpURL, clusterID, *accessToken, remediationInstanceID)
 	// ======== Render Results ========
 	if err != nil {
 		return err
