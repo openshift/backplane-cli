@@ -16,6 +16,7 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/backplane-cli/pkg/backplaneapi"
 	backplaneapiMock "github.com/openshift/backplane-cli/pkg/backplaneapi/mocks"
+	"github.com/openshift/backplane-cli/pkg/cli/config"
 	bpCredentials "github.com/openshift/backplane-cli/pkg/credentials"
 	"github.com/openshift/backplane-cli/pkg/info"
 	"github.com/openshift/backplane-cli/pkg/ocm"
@@ -153,6 +154,7 @@ var _ = Describe("SSM command", func() {
 			originalExecCommand func(string, ...string) *exec.Cmd
 			cmdArgs             []string
 			testNode            *v1.Node
+			fakeProxyURL        string
 		)
 
 		BeforeEach(func() {
@@ -182,6 +184,12 @@ var _ = Describe("SSM command", func() {
 			}
 
 			// Mock credentials
+			fakeProxyURL = "https://proxy.example.com:8080"
+			GetBackplaneConfiguration = func() (config.BackplaneConfiguration, error) {
+				return config.BackplaneConfiguration{
+					ProxyURL: &fakeProxyURL,
+				}, nil
+			}
 			FetchCloudCredentials = func() (*bpCredentials.AWSCredentialsResponse, error) {
 				return &bpCredentials.AWSCredentialsResponse{
 					AccessKeyID:     "TEST_ACCESS_KEY",
@@ -219,7 +227,7 @@ var _ = Describe("SSM command", func() {
 				err := StartSSMsession(&cobra.Command{}, []string{})
 				Expect(err).ToNot(HaveOccurred())
 
-				// Verify AWS credentials
+				// Verify ENV variables
 				Expect(os.Getenv("AWS_ACCESS_KEY_ID")).To(Equal("TEST_ACCESS_KEY"))
 				Expect(os.Getenv("AWS_SECRET_ACCESS_KEY")).To(Equal("TEST_SECRET_KEY"))
 				Expect(os.Getenv("AWS_SESSION_TOKEN")).To(Equal("TEST_SESSION_TOKEN"))
@@ -238,11 +246,44 @@ var _ = Describe("SSM command", func() {
 
 			It("should handle credential fetch errors", func() {
 				FetchCloudCredentials = func() (*bpCredentials.AWSCredentialsResponse, error) {
-					return nil, fmt.Errorf("credential error")
+					return nil, fmt.Errorf("backplane config error")
 				}
 
-				err := StartSSMsession(&cobra.Command{}, []string{})
-				Expect(err).To(MatchError("failed to fetch cloud credentials: credential error"))
+				err := startSSMsession(&cobra.Command{}, []string{})
+				Expect(err).To(MatchError("failed to fetch cloud credentials: backplane config error"))
+			})
+
+			It("fails on invalid proxy URL", func() {
+				// Mock GetBackplaneConfiguration to return invalid proxy URL
+				originalGetBackplaneConfig := GetBackplaneConfiguration
+				GetBackplaneConfiguration = func() (config.BackplaneConfiguration, error) {
+					invalidURL := "invalid-proxy-format"
+					return config.BackplaneConfiguration{
+						ProxyURL: &invalidURL,
+					}, nil
+				}
+				defer func() { GetBackplaneConfiguration = originalGetBackplaneConfig }()
+
+				err := startSSMsession(&cobra.Command{}, []string{})
+				Expect(err).To(MatchError(ContainSubstring("invalid proxy URL")))
+				// Ensure StartSession is NOT called
+				mockSSMClient.EXPECT().StartSession(gomock.Any(), gomock.Any()).Times(0)
+			})
+
+			It("fails when proxy URL is nil", func() {
+				// Mock GetBackplaneConfiguration to return invalid proxy URL
+				originalGetBackplaneConfig := GetBackplaneConfiguration
+				GetBackplaneConfiguration = func() (config.BackplaneConfiguration, error) {
+					return config.BackplaneConfiguration{
+						ProxyURL: nil,
+					}, nil
+				}
+				defer func() { GetBackplaneConfiguration = originalGetBackplaneConfig }()
+
+				err := startSSMsession(&cobra.Command{}, []string{})
+				Expect(err).To(MatchError(ContainSubstring("proxy URL is not set")))
+				// Ensure StartSession is NOT called
+				mockSSMClient.EXPECT().StartSession(gomock.Any(), gomock.Any()).Times(0)
 			})
 
 			It("should handle missing node name", func() {
