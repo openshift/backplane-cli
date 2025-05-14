@@ -15,39 +15,39 @@ import (
 	"k8s.io/client-go/rest"
 )
 
-func DoCreateRemediation(api string, clusterID string, accessToken string, remediationName string) (proxyURI string, err error) {
+func DoCreateRemediation(api string, clusterID string, accessToken string, remediationName string) (proxyURI string, remediationInstanceID string, err error) {
 	client, err := backplaneapi.DefaultClientUtils.MakeRawBackplaneAPIClientWithAccessToken(api, accessToken)
 	if err != nil {
-		return "", fmt.Errorf("unable to create backplane api client")
+		return "", "", fmt.Errorf("unable to create backplane api client")
 	}
 
-	resp, err := client.CreateRemediation(context.TODO(), clusterID, &BackplaneApi.CreateRemediationParams{Remediation: remediationName})
+	resp, err := client.CreateRemediation(context.TODO(), clusterID, &BackplaneApi.CreateRemediationParams{RemediationName: remediationName})
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	if resp.StatusCode != http.StatusOK {
-		return "", utils.TryPrintAPIError(resp, false)
+		return "", "", utils.TryPrintAPIError(resp, false)
 	}
 
 	remediationResponse, err := BackplaneApi.ParseCreateRemediationResponse(resp)
 
 	if err != nil {
-		return "", fmt.Errorf("unable to parse response body from backplane: \n Status Code: %d", resp.StatusCode)
+		return "", "", fmt.Errorf("unable to parse response body from backplane: \n Status Code: %d", resp.StatusCode)
 	}
 
-	return api + *remediationResponse.JSON200.ProxyUri, nil
+	return api + *remediationResponse.JSON200.ProxyUri, remediationResponse.JSON200.RemediationInstanceId, nil
 }
 
 // CreateRemediationWithConn can be used to programtically interact with backplaneapi
-func CreateRemediationWithConn(bp config.BackplaneConfiguration, ocmConnection *ocmsdk.Connection, clusterID string, remediationName string) (config *rest.Config, err error) {
+func CreateRemediationWithConn(bp config.BackplaneConfiguration, ocmConnection *ocmsdk.Connection, clusterID string, remediationName string) (config *rest.Config, remediationInstanceID string, err error) {
 	accessToken, err := ocm.DefaultOCMInterface.GetOCMAccessTokenWithConn(ocmConnection)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
-	bpAPIClusterURL, err := DoCreateRemediation(bp.URL, clusterID, *accessToken, remediationName)
+	bpAPIClusterURL, remediationInstanceID, err := DoCreateRemediation(bp.URL, clusterID, *accessToken, remediationName)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	cfg := &rest.Config{
@@ -60,16 +60,16 @@ func CreateRemediationWithConn(bp config.BackplaneConfiguration, ocmConnection *
 			return url.Parse(*bp.ProxyURL)
 		}
 	}
-	return cfg, nil
+	return cfg, remediationInstanceID, nil
 }
 
-func DoDeleteRemediation(api string, clusterID string, accessToken string, remediation string) error {
+func DoDeleteRemediation(api string, clusterID string, accessToken string, remediationInstanceID string) error {
 	client, err := backplaneapi.DefaultClientUtils.MakeRawBackplaneAPIClientWithAccessToken(api, accessToken)
 	if err != nil {
 		return fmt.Errorf("unable to create backplane api client")
 	}
 
-	resp, err := client.DeleteRemediation(context.TODO(), clusterID, &BackplaneApi.DeleteRemediationParams{Remediation: &remediation})
+	resp, err := client.DeleteRemediation(context.TODO(), clusterID, &BackplaneApi.DeleteRemediationParams{RemediationInstanceId: remediationInstanceID})
 	if err != nil {
 		return err
 	}
@@ -82,11 +82,11 @@ func DoDeleteRemediation(api string, clusterID string, accessToken string, remed
 }
 
 // DeleteRemediationWithConn can be used to programtically interact with backplaneapi
-func DeleteRemediationWithConn(bp config.BackplaneConfiguration, ocmConnection *ocmsdk.Connection, clusterID string, remediation string) error {
+func DeleteRemediationWithConn(bp config.BackplaneConfiguration, ocmConnection *ocmsdk.Connection, clusterID string, remediationInstanceID string) error {
 	accessToken, err := ocm.DefaultOCMInterface.GetOCMAccessTokenWithConn(ocmConnection)
 	if err != nil {
 		return err
 	}
 
-	return DoDeleteRemediation(bp.URL, clusterID, *accessToken, remediation)
+	return DoDeleteRemediation(bp.URL, clusterID, *accessToken, remediationInstanceID)
 }
