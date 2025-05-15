@@ -56,20 +56,18 @@ func setConfig(cmd *cobra.Command, args []string) error {
 		}
 
 		bpConfig.Govcloud = viper.GetBool("govcloud")
-		log.Printf("viper.GetBool(\"govcloud\")::::: %v", viper.GetBool("govcloud"))
-		log.Printf("bpConfig.Govcloud::::: %v", bpConfig.Govcloud)
 
-		// if (bpConfig.Govcloud) {
-		// 	// if the govcloud flag is set, set the Govcloud field in the config
-		// 	// to true. This is used to determine which backplane URL
-		// 	// when creating the backplane client.
-		// 	bpConfig.Govcloud = true
-		// } else {
-		// 	// if the govcloud flag is not set, set the Govcloud field in the config
-		// 	// to false. This is used to determine which backplane URL
-		// 	// when creating the backplane client.
-		// 	bpConfig.Govcloud = false
-		// }
+		if (bpConfig.Govcloud) {
+			// if the govcloud flag is set, set the Govcloud field in the config
+			// to true. This is used to determine which backplane URL
+			// when creating the backplane client.
+			bpConfig.Govcloud = true
+		} else {
+			// if the govcloud flag is not set, set the Govcloud field in the config
+			// to false. This is used to determine which backplane URL
+			// when creating the backplane client.
+			bpConfig.Govcloud = false
+		}
 
 		bpConfig.SessionDirectory = viper.GetString("session-dir")
 		bpConfig.JiraToken = viper.GetString(config.JiraTokenViperKey)
