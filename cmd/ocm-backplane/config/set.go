@@ -7,8 +7,10 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"log"
 	"golang.org/x/term"
 	"gopkg.in/AlecAivazis/survey.v1"
+	"strconv"
 
 	"github.com/openshift/backplane-cli/pkg/cli/config"
 )
@@ -52,6 +54,22 @@ func setConfig(cmd *cobra.Command, args []string) error {
 			bpConfig.PagerDutyAPIKey = pagerDutyAPIKey
 		}
 
+		bpConfig.Govcloud = viper.GetBool("govcloud")
+		log.Printf("viper.GetBool(\"govcloud\")::::: %v", viper.GetBool("govcloud"))
+		log.Printf("bpConfig.Govcloud::::: %v", bpConfig.Govcloud)
+
+		// if (bpConfig.Govcloud) {
+		// 	// if the govcloud flag is set, set the Govcloud field in the config
+		// 	// to true. This is used to determine which backplane URL 
+		// 	// when creating the backplane client.
+		// 	bpConfig.Govcloud = true
+		// } else {
+		// 	// if the govcloud flag is not set, set the Govcloud field in the config
+		// 	// to false. This is used to determine which backplane URL 
+		// 	// when creating the backplane client.
+		// 	bpConfig.Govcloud = false
+		// }
+
 		bpConfig.SessionDirectory = viper.GetString("session-dir")
 		bpConfig.JiraToken = viper.GetString(config.JiraTokenViperKey)
 	}
@@ -93,8 +111,10 @@ func setConfig(cmd *cobra.Command, args []string) error {
 		bpConfig.PagerDutyAPIKey = args[1]
 	case config.JiraTokenViperKey:
 		bpConfig.JiraToken = args[1]
+	case GovcloudVar:
+		bpConfig.Govcloud, err = strconv.ParseBool(args[1])
 	default:
-		return fmt.Errorf("supported config variables are %s, %s, %s, %s & %s", URLConfigVar, ProxyURLConfigVar, SessionConfigVar, PagerDutyAPIConfigVar, config.JiraTokenViperKey)
+		return fmt.Errorf("supported config variables are %s, %s, %s, %s, %s & %s", URLConfigVar, ProxyURLConfigVar, SessionConfigVar, PagerDutyAPIConfigVar, config.JiraTokenViperKey, GovcloudVar)
 	}
 
 	viper.SetConfigType("json")
@@ -103,6 +123,7 @@ func setConfig(cmd *cobra.Command, args []string) error {
 	viper.Set(SessionConfigVar, bpConfig.SessionDirectory)
 	viper.Set(PagerDutyAPIConfigVar, bpConfig.PagerDutyAPIKey)
 	viper.Set(config.JiraTokenViperKey, bpConfig.JiraToken)
+	viper.Set(GovcloudVar, bpConfig.Govcloud)
 
 	err = viper.WriteConfigAs(configPath)
 	if err != nil {
