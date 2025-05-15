@@ -5,7 +5,6 @@ import (
 	"os"
 	"path"
 
-	"log"
 	"strconv"
 
 	"github.com/spf13/cobra"
