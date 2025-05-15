@@ -40,8 +40,8 @@ func getConfig(cmd *cobra.Command, args []string) error {
 		fmt.Printf("%s: %s\n", SessionConfigVar, config.SessionDirectory)
 	case PagerDutyAPIConfigVar:
 		fmt.Printf("%s: %s\n", PagerDutyAPIConfigVar, config.PagerDutyAPIKey)
-	// case GovcloudVar:
-	// 	fmt.Printf("%s: %t\n", GovcloudVar, config.Govcloud)
+	case GovcloudVar:
+		fmt.Printf("%s: %t\n", GovcloudVar, config.Govcloud)
 	case "all":
 		fmt.Printf("%s: %s\n", URLConfigVar, config.URL)
 		fmt.Printf("%s: %s\n", ProxyURLConfigVar, proxyURL)
