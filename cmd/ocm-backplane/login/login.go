@@ -41,6 +41,28 @@ const (
 	LoginTypeJira               = "jira"
 )
 
+var govcloud bool
+
+var govcloudCmd = &cobra.Command{
+	Use:   "govcloud",
+	Short: "govcloud",
+	Run: func(cmd *cobra.Command, args []string) {
+		// Check if the flag was explicitly set
+		govcloudFlag, err := cmd.Flags().GetBool("govcloud")
+		if err != nil {
+			fmt.Println("Error retrieving govcloud flag:", err)
+			return
+		}
+
+		if cmd.Flags().Changed("govcloud") {
+			fmt.Printf("GovCloud mode is set to: %v\n", govcloudFlag)
+		} else {
+			fmt.Println("GovCloud mode is disabled")
+			fmt.Printf("GovCloud mode is set to: %v\n", govcloudFlag)
+		}
+	},
+}
+
 var (
 	args struct {
 		multiCluster     bool
@@ -50,6 +72,7 @@ var (
 		ohss             string
 		clusterInfo      bool
 		remediation      string
+		govcloud         bool
 	}
 
 	// loginType derive the login type based on flags and args
@@ -119,7 +142,7 @@ func init() {
 		"namespace",
 		"n",
 		"default",
-		"The  default namespace for a user to execute commands in",
+		"The default namespace for a user to execute commands in",
 	)
 	flags.StringVar(
 		&args.ohss,
@@ -185,22 +208,28 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 
 	logger.Debugf("Backplane Cluster Key is: %v \n", clusterKey)
 
-	logger.Debugln("Setting Proxy URL from global options")
 	// Set proxy url to http client
 	proxyURL := globalOpts.ProxyURL
-	if proxyURL != "" {
-		err = backplaneapi.DefaultClientUtils.SetClientProxyURL(proxyURL)
 
-		if err != nil {
-			return err
+	if !(bpConfig.Govcloud) {
+		logger.Debugln("Setting Proxy URL from global options")
+
+		if proxyURL != "" {
+			err = backplaneapi.DefaultClientUtils.SetClientProxyURL(proxyURL)
+
+			if err != nil {
+				return err
+			}
+			logger.Debugf("Using backplane Proxy URL: %s\n", proxyURL)
 		}
-		logger.Debugf("Using backplane Proxy URL: %s\n", proxyURL)
-	}
 
-	if bpConfig.ProxyURL != nil {
-		proxyURL = *bpConfig.ProxyURL
-		logger.Debugln("backplane configuration file also contains a proxy url, using that one instead")
-		logger.Debugf("New backplane Proxy URL: %s\n", proxyURL)
+		if bpConfig.ProxyURL != nil {
+			proxyURL = *bpConfig.ProxyURL
+			logger.Debugln("backplane configuration file also contains a proxy url, using that one instead")
+			logger.Debugf("New backplane Proxy URL: %s\n", proxyURL)
+		}
+	} else {
+		logger.Debugln("govcloud identified, no proxy to use")
 	}
 
 	logger.Debugln("Extracting target cluster ID and name")
