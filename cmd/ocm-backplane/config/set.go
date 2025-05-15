@@ -58,13 +58,11 @@ func setConfig(cmd *cobra.Command, args []string) error {
 
 		if (bpConfig.Govcloud) {
 			// if the govcloud flag is set, set the Govcloud field in the config
-			// to true. This is used to determine which backplane URL
-			// when creating the backplane client.
+			// to true.
 			bpConfig.Govcloud = true
 		} else {
 			// if the govcloud flag is not set, set the Govcloud field in the config
-			// to false. This is used to determine which backplane URL
-			// when creating the backplane client.
+			// to false.
 			bpConfig.Govcloud = false
 		}
 
@@ -111,7 +109,6 @@ func setConfig(cmd *cobra.Command, args []string) error {
 		bpConfig.JiraToken = args[1]
 	case GovcloudVar:
 		bpConfig.Govcloud, err = strconv.ParseBool(args[1])
-		fmt.Fprintf(os.Stdout, "%t\n", bpConfig.Govcloud)
 	default:
 		return fmt.Errorf("supported config variables are %s, %s, %s, %s, %s & %s", URLConfigVar, ProxyURLConfigVar, SessionConfigVar, PagerDutyAPIConfigVar, config.JiraTokenViperKey, GovcloudVar)
 	}
