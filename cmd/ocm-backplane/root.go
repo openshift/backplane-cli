@@ -21,6 +21,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/accessrequest"
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/cloud"
@@ -65,6 +66,12 @@ func Execute() {
 func init() {
 	// Add Verbosity flag for all commands
 	globalflags.AddVerbosityFlag(rootCmd)
+
+	// Add the --govcloud flag as a global flag
+	rootCmd.PersistentFlags().Bool("govcloud", false, "Enable GovCloud mode")
+
+	// Bind the flag to Viper for global access
+	viper.BindPFlag("govcloud", rootCmd.PersistentFlags().Lookup("govcloud"))
 
 	// Register sub-commands
 	rootCmd.AddCommand(accessrequest.NewAccessRequestCmd())
