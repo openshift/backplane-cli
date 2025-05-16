@@ -236,18 +236,18 @@ func (mr *MockOCMInterfaceMockRecorder) GetTargetCluster(arg0 interface{}) *gomo
 }
 
 // GetTrustedIPList mocks base method.
-func (m *MockOCMInterface) GetTrustedIPList() (*v10.TrustedIpList, error) {
+func (m *MockOCMInterface) GetTrustedIPList(arg0 *sdk.Connection) (*v10.TrustedIpList, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetTrustedIPList")
+	ret := m.ctrl.Call(m, "GetTrustedIPList", arg0)
 	ret0, _ := ret[0].(*v10.TrustedIpList)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetTrustedIPList indicates an expected call of GetTrustedIPList.
-func (mr *MockOCMInterfaceMockRecorder) GetTrustedIPList() *gomock.Call {
+func (mr *MockOCMInterfaceMockRecorder) GetTrustedIPList(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTrustedIPList", reflect.TypeOf((*MockOCMInterface)(nil).GetTrustedIPList))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTrustedIPList", reflect.TypeOf((*MockOCMInterface)(nil).GetTrustedIPList), arg0)
 }
 
 // IsClusterAccessProtectionEnabled mocks base method.

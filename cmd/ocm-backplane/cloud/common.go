@@ -316,7 +316,7 @@ func (cfg *QueryConfig) getIsolatedCredentials(ocmToken string) (aws.Credentials
 		return aws.Credentials{}, fmt.Errorf("failed to determine client IP: %w", err)
 	}
 
-	trustedRange, err := getTrustedIPList()
+	trustedRange, err := getTrustedIPList(cfg.OcmConnection)
 	if err != nil {
 		return aws.Credentials{}, err
 	}
@@ -381,8 +381,8 @@ func verifyIPTrusted(ip net.IP, trustedIPs awsutil.IPAddress) error {
 	return nil
 }
 
-func getTrustedIPList() (awsutil.IPAddress, error) {
-	IPList, err := ocm.DefaultOCMInterface.GetTrustedIPList()
+func getTrustedIPList(connection *ocmsdk.Connection) (awsutil.IPAddress, error) {
+	IPList, err := ocm.DefaultOCMInterface.GetTrustedIPList(connection)
 	if err != nil {
 		return awsutil.IPAddress{}, fmt.Errorf("failed to fetch trusted IP list: %w", err)
 	}
