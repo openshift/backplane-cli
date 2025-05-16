@@ -142,7 +142,7 @@ var _ = Describe("getIsolatedCredentials", func() {
 			ip2 := cmv1.NewTrustedIp().ID("200.20.20.20").Enabled(true)
 			expectedIPList, err := cmv1.NewTrustedIpList().Items(ip1, ip2).Build()
 			Expect(err).To(BeNil())
-			mockOcmInterface.EXPECT().GetTrustedIPList().Return(expectedIPList, nil)
+			mockOcmInterface.EXPECT().GetTrustedIPList(gomock.Any()).Return(expectedIPList, nil)
 
 			StsClient = func(proxyURL *string) (*sts.Client, error) {
 				return &sts.Client{}, nil
@@ -263,8 +263,8 @@ var _ = Describe("getIsolatedCredentials", func() {
 			ip2 := cmv1.NewTrustedIp().ID("200.20.20.20").Enabled(true)
 			expectedIPList, err := cmv1.NewTrustedIpList().Items(ip1, ip2).Build()
 			Expect(err).To(BeNil())
-			mockOcmInterface.EXPECT().GetTrustedIPList().Return(expectedIPList, nil)
-			IPList, _ := getTrustedIPList()
+			mockOcmInterface.EXPECT().GetTrustedIPList(gomock.Any()).Return(expectedIPList, nil)
+			IPList, _ := getTrustedIPList(testQueryConfig.OcmConnection)
 			policy, _ := getTrustedIPInlinePolicy(IPList)
 			//Only allow 209 IP
 			Expect(policy).To(ContainSubstring("209.10.10.10"))
