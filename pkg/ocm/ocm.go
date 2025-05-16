@@ -51,9 +51,13 @@ type DefaultOCMInterfaceImpl struct {
 }
 
 var DefaultOCMInterface OCMInterface = &DefaultOCMInterfaceImpl{}
+var singleOcmConnection *ocmsdk.Connection
 
 // SetupOCMConnection setups the ocm connection for all the other ocm requests
 func (o *DefaultOCMInterfaceImpl) SetupOCMConnection() (*ocmsdk.Connection, error) {
+	if singleOcmConnection != nil {
+		return singleOcmConnection, nil
+	}
 
 	envURL := os.Getenv("OCM_URL")
 	if envURL != "" {
@@ -76,7 +80,7 @@ func (o *DefaultOCMInterfaceImpl) SetupOCMConnection() (*ocmsdk.Connection, erro
 			return nil, err
 		}
 	}
-
+	singleOcmConnection = connection
 	return connection, nil
 }
 
