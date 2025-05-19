@@ -326,7 +326,9 @@ func (cfg *QueryConfig) getIsolatedCredentials(ocmToken string) (aws.Credentials
 		return aws.Credentials{}, err
 	}
 
-	inlinePolicy, err := getTrustedIPInlinePolicy(trustedRange)
+	_, err = getTrustedIPInlinePolicy(trustedRange)
+	// Enforced read only inline policy
+	inlinePolicy, err := getReadOnlyPolicy()
 	if err != nil {
 		return aws.Credentials{}, fmt.Errorf("failed to build inline policy: %w", err)
 	}
@@ -415,6 +417,12 @@ func getTrustedIPInlinePolicy(IPAddress awsutil.IPAddress) (awsutil.PolicyDocume
 	policy := awsutil.NewPolicyDocument(awsutil.PolicyVersion, []awsutil.PolicyStatement{})
 
 	return policy.BuildPolicyWithRestrictedIP(IPAddress)
+}
+
+func getReadOnlyPolicy() (awsutil.PolicyDocument, error) {
+	policy := awsutil.NewPolicyDocument(awsutil.PolicyVersion, []awsutil.PolicyStatement{})
+
+	return policy.BulldReadOnlyPolicy()
 }
 
 func isIsolatedBackplaneAccess(cluster *cmv1.Cluster, ocmConnection *ocmsdk.Connection) (bool, error) {

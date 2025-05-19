@@ -67,6 +67,22 @@ func (p PolicyDocument) BuildPolicyWithRestrictedIP(ipAddress IPAddress) (Policy
 	return p, nil
 }
 
+func (p PolicyDocument) BulldReadOnlyPolicy() (PolicyDocument, error) {
+
+	allAllow := NewPolicyStatement("AllowAll", "Allow", []string{"*"}).
+		AddResource(aws.String("*")).
+		AddCondition(nil)
+
+	// This is just a test, and need to add more write deny resources
+	writeDenyActions := []string{
+		"ec2:CreateTags",
+		"ec2:DeleteTags",
+	}
+	writeDeny := NewPolicyStatement("DenyWrite", "Deny", writeDenyActions).AddResource(aws.String("*")).AddCondition(nil)
+	p.Statement = []PolicyStatement{allAllow, writeDeny}
+	return p, nil
+}
+
 func NewPolicyStatement(sid string, affect string, action []string) PolicyStatement {
 	return PolicyStatement{
 		Sid:    sid,
