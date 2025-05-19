@@ -5,6 +5,7 @@ import (
 
 	"github.com/openshift/backplane-cli/pkg/ocm"
 	logger "github.com/sirupsen/logrus"
+	"github.com/spf13/viper"
 )
 
 //displayClusterInfo retrieves and displays basic information about the target cluster.
@@ -42,16 +43,21 @@ func GetAccessProtectionStatus(clusterID string) string {
 	if ocmConnection != nil {
 		defer ocmConnection.Close()
 	}
-	enabled, err := ocm.DefaultOCMInterface.IsClusterAccessProtectionEnabled(ocmConnection, clusterID)
-	if err != nil {
-		fmt.Println("Error retrieving access protection status: ", err)
-		return "Error retrieving access protection status: " + err.Error()
-	}
 
 	accessProtectionStatus := "Disabled"
-	if enabled {
-		accessProtectionStatus = "Enabled"
+
+	if !(viper.GetBool("govcloud")){
+		enabled, err := ocm.DefaultOCMInterface.IsClusterAccessProtectionEnabled(ocmConnection, clusterID)
+		if err != nil {
+			fmt.Println("Error retrieving access protection status: ", err)
+			return "Error retrieving access protection status: " + err.Error()
+		}
+
+		if enabled {
+			accessProtectionStatus = "Enabled"
+		}
 	}
+	
 	fmt.Printf("%-25s %s\n", "Access Protection:", accessProtectionStatus)
 
 	return accessProtectionStatus

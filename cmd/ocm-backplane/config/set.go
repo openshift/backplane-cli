@@ -54,18 +54,11 @@ func setConfig(cmd *cobra.Command, args []string) error {
 			bpConfig.PagerDutyAPIKey = pagerDutyAPIKey
 		}
 
-		bpConfig.Govcloud = viper.GetBool("govcloud")
-
-		if (bpConfig.Govcloud) {
-			// if the govcloud flag is set, set the Govcloud field in the config
-			// to true.
+		if (viper.GetBool("govcloud")) {
 			bpConfig.Govcloud = true
 		} else {
-			// if the govcloud flag is not set, set the Govcloud field in the config
-			// to false.
 			bpConfig.Govcloud = false
 		}
-
 		bpConfig.SessionDirectory = viper.GetString("session-dir")
 		bpConfig.JiraToken = viper.GetString(config.JiraTokenViperKey)
 	}
