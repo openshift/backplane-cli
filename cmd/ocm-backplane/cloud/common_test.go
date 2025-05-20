@@ -266,10 +266,9 @@ var _ = Describe("getIsolatedCredentials", func() {
 			mockOcmInterface.EXPECT().GetTrustedIPList(gomock.Any()).Return(expectedIPList, nil)
 			IPList, _ := getTrustedIPList(testQueryConfig.OcmConnection)
 			policy, _ := getTrustedIPInlinePolicy(IPList)
-			//Only allow 209 IP
+			// Check all trusted IPs are allowed
 			Expect(policy).To(ContainSubstring("209.10.10.10"))
-			//Not allow 200 IP
-			Expect(policy).NotTo(ContainSubstring("200.20.20.20"))
+			Expect(policy).To(ContainSubstring("200.20.20.20"))
 			Expect(err).To(BeNil())
 		})
 	})
