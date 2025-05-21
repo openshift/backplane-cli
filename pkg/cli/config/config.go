@@ -45,16 +45,19 @@ type BackplaneConfiguration struct {
 	VPNCheckEndpoint            string                          `json:"vpn-check-endpoint"`
 	ProxyCheckEndpoint          string                          `json:"proxy-check-endpoint"`
 	DisplayClusterInfo          bool                            `json:"display-cluster-info"`
+	Govcloud                    bool                            `json:"govcloud"`
 }
 
 const (
-	prodEnvNameKey                 = "prod-env-name"
-	jiraBaseURLKey                 = "jira-base-url"
-	JiraTokenViperKey              = "jira-token"
-	JiraConfigForAccessRequestsKey = "jira-config-for-access-requests"
-	prodEnvNameDefaultValue        = "production"
-	JiraBaseURLDefaultValue        = "https://issues.redhat.com"
-	proxyTestTimeout               = 10 * time.Second
+	prodEnvNameKey                      = "prod-env-name"
+	jiraBaseURLKey                      = "jira-base-url"
+	JiraTokenViperKey                   = "jira-token"
+	JiraConfigForAccessRequestsKey      = "jira-config-for-access-requests"
+	prodEnvNameDefaultValue             = "production"
+	JiraBaseURLDefaultValue             = "https://issues.redhat.com"
+	proxyTestTimeout                    = 10 * time.Second
+	GovcloudDefaultValue           bool = false
+	GovcloudDefaultValueKey             = "govcloud"
 )
 
 var JiraConfigForAccessRequestsDefaultValue = AccessRequestsJiraConfiguration{
@@ -99,7 +102,7 @@ func GetBackplaneConfiguration() (bpConfig BackplaneConfiguration, err error) {
 	viper.SetDefault(prodEnvNameKey, prodEnvNameDefaultValue)
 	viper.SetDefault(jiraBaseURLKey, JiraBaseURLDefaultValue)
 	viper.SetDefault(JiraConfigForAccessRequestsKey, JiraConfigForAccessRequestsDefaultValue)
-
+	viper.SetDefault(GovcloudDefaultValueKey, GovcloudDefaultValue)
 	filePath, err := GetConfigFilePath()
 	if err != nil {
 		return bpConfig, err
@@ -112,6 +115,7 @@ func GetBackplaneConfiguration() (bpConfig BackplaneConfiguration, err error) {
 		// Load config file
 		viper.SetConfigFile(filePath)
 		viper.SetConfigType("json")
+		logger.Debugf("Reading config file %s", filePath)
 
 		if err := viper.ReadInConfig(); err != nil {
 			return bpConfig, err
@@ -122,10 +126,16 @@ func GetBackplaneConfiguration() (bpConfig BackplaneConfiguration, err error) {
 		logger.Warn(err)
 	}
 
-	// Check if user has explicitly defined proxy; it has higher precedence over the config file
-	err = viper.BindEnv("proxy-url", info.BackplaneProxyEnvName)
-	if err != nil {
-		return bpConfig, err
+	bpConfig.Govcloud = viper.GetBool("govcloud")
+
+	if !(bpConfig.Govcloud) {
+		// Check if user has explicitly defined proxy; it has higher precedence over the config file
+		err = viper.BindEnv("proxy-url", info.BackplaneProxyEnvName)
+		if err != nil {
+			return bpConfig, err
+		}
+	} else {
+		logger.Debug("This is govcloud, no proxy to use")
 	}
 
 	// Warn user if url defined in the config file
@@ -152,16 +162,25 @@ func GetBackplaneConfiguration() (bpConfig BackplaneConfiguration, err error) {
 		bpConfig.ProxyURL = &proxyURL
 	}
 
+	if (bpConfig.Govcloud) {
+		str := ""
+		bpConfig.ProxyURL = &str
+	}
+
 	bpConfig.SessionDirectory = viper.GetString("session-dir")
 	bpConfig.AssumeInitialArn = viper.GetString("assume-initial-arn")
 	bpConfig.DisplayClusterInfo = viper.GetBool("display-cluster-info")
 
-	// pagerDuty token is optional
-	pagerDutyAPIKey := viper.GetString("pd-key")
-	if pagerDutyAPIKey != "" {
-		bpConfig.PagerDutyAPIKey = pagerDutyAPIKey
+	// pagerDuty token is optional. Don't even check for FedRAMP
+	if !(bpConfig.Govcloud) {
+		pagerDutyAPIKey := viper.GetString("pd-key")
+		if pagerDutyAPIKey != "" {
+			bpConfig.PagerDutyAPIKey = pagerDutyAPIKey
+		} else {
+			logger.Info("No PagerDuty API Key configuration available. This will result in failure of `ocm-backplane login --pd <incident-id>` command.")
+		}
 	} else {
-		logger.Info("No PagerDuty API Key configuration available. This will result in failure of `ocm-backplane login --pd <incident-id>` command.")
+		logger.Debug("No PagerDuty API Key to use in govcloud")
 	}
 
 	// OCM prod env name is optional as there is a default value
@@ -187,9 +206,15 @@ func GetBackplaneConfiguration() (bpConfig BackplaneConfiguration, err error) {
 	}
 
 	// Load VPN and Proxy check endpoints from the local backplane configuration file
-	bpConfig.VPNCheckEndpoint = viper.GetString("vpn-check-endpoint")
-	bpConfig.ProxyCheckEndpoint = viper.GetString("proxy-check-endpoint")
-
+	// Don't even check for FedRAMP
+	if !(bpConfig.Govcloud) {
+		bpConfig.VPNCheckEndpoint = viper.GetString("vpn-check-endpoint")
+		bpConfig.ProxyCheckEndpoint = viper.GetString("proxy-check-endpoint")
+	} else {
+		logger.Debug("This is govcloud, no VPN and Proxy check endpoints to use")
+		bpConfig.VPNCheckEndpoint = ""
+		bpConfig.ProxyCheckEndpoint = ""
+	}
 	return bpConfig, nil
 }
 
@@ -306,9 +331,12 @@ loop:
 
 func validateConfig() error {
 
-	// Validate the proxy url
-	if viper.GetStringSlice("proxy-url") == nil && os.Getenv(info.BackplaneProxyEnvName) == "" {
-		return fmt.Errorf("proxy-url must be set explicitly in either config file or via the environment HTTPS_PROXY")
+	// No Proxy used in FedRAMP
+	if !(viper.GetBool("govcloud")) {
+		// Validate the proxy url
+		if viper.GetStringSlice("proxy-url") == nil && os.Getenv(info.BackplaneProxyEnvName) == "" {
+			return fmt.Errorf("proxy-url must be set explicitly in either config file or via the environment HTTPS_PROXY")
+		}
 	}
 
 	return nil
