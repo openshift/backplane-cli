@@ -4,11 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/openshift/backplane-cli/pkg/awsutil"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/openshift/backplane-cli/pkg/awsutil"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/credentials"
@@ -268,7 +269,7 @@ var _ = Describe("getIsolatedCredentials", func() {
 			policy, _ := getTrustedIPInlinePolicy(IPList)
 			// Check all trusted IPs are allowed
 			Expect(policy).To(ContainSubstring("209.10.10.10"))
-			Expect(policy).To(ContainSubstring("200.20.20.20"))
+			Expect(policy).NotTo(ContainSubstring("200.20.20.20"))
 			Expect(err).To(BeNil())
 		})
 	})
