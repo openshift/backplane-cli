@@ -399,6 +399,20 @@ func getTrustedIPList(connection *ocmsdk.Connection) (awsutil.IPAddress, error) 
 				strings.HasPrefix(ip.ID(), "91.") {
 				sourceIPList = append(sourceIPList, fmt.Sprintf("%s/32", ip.ID()))
 			}
+
+			// Add cad stg IPS
+			if strings.HasPrefix(ip.ID(), "3.216") ||
+				strings.HasPrefix(ip.ID(), "34.227") ||
+				strings.HasPrefix(ip.ID(), "98.85") {
+				sourceIPList = append(sourceIPList, fmt.Sprintf("%s/32", ip.ID()))
+			}
+
+			// Add cad prd IPS
+			if strings.HasPrefix(ip.ID(), "34.193") ||
+				strings.HasPrefix(ip.ID(), "52.203") ||
+				strings.HasPrefix(ip.ID(), "54.145") {
+				sourceIPList = append(sourceIPList, fmt.Sprintf("%s/32", ip.ID()))
+			}
 		}
 
 	}
