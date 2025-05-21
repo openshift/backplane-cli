@@ -389,26 +389,31 @@ func getTrustedIPList(connection *ocmsdk.Connection) (awsutil.IPAddress, error) 
 
 	sourceIPList := []string{}
 
+	// (!) We are adding filtering on top of the trusted IP list here.
+	// This additional filtering is to only add the IPs that are expected to access customer AWS accounts.
+	// The reason behind this is a limitation in the trust policy length (2048 characters, see https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_iam-quotas.html).
+	// This AWS restriction prevents us from adding all IPs, as the policy would become too long.
 	for _, ip := range IPList.Items() {
 		if ip.Enabled() {
-			// TODO:Update OCM GetTrustedIPList endpoint with trusted IP category( ex: VPN, Proxy etc)
-			//  which may help filter proxy IP's efficiently
+			// TODO: Enable ourselves to pull the subset of IPs that need to be allowlisted in the trust policy.
+			// Examples: add a field to the OCM trust policy to filter by subtype (vpn, proxy, automation), which could be re-used to filter here.
+			// We don't want to hardcode these IPs in code, as these IPs are expected to change.
 
-			//This is hack for now to filter only proxy IP's
+			// Proxy IPs
 			if strings.HasPrefix(ip.ID(), "209.") ||
 				strings.HasPrefix(ip.ID(), "66.") ||
 				strings.HasPrefix(ip.ID(), "91.") {
 				sourceIPList = append(sourceIPList, fmt.Sprintf("%s/32", ip.ID()))
 			}
 
-			// Add cad stg IPS
+			// CAD stage IPs
 			if strings.HasPrefix(ip.ID(), "3.216") ||
 				strings.HasPrefix(ip.ID(), "34.227") ||
 				strings.HasPrefix(ip.ID(), "98.85") {
 				sourceIPList = append(sourceIPList, fmt.Sprintf("%s/32", ip.ID()))
 			}
 
-			// Add cad prd IPS
+			// CAD Prod IPs
 			if strings.HasPrefix(ip.ID(), "34.193") ||
 				strings.HasPrefix(ip.ID(), "52.203") ||
 				strings.HasPrefix(ip.ID(), "54.145") {
