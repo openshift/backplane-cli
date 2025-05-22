@@ -85,6 +85,7 @@ type consoleOptions struct {
 	monitorPluginPort   string
 	monitorPluginImage  string
 	terminationFunction execActionOnTermInterface
+	monitorPort         string
 }
 
 // envVar for environment variable passing to container
@@ -377,19 +378,36 @@ func (o *consoleOptions) getContainerEngineImpl() (containerEngineInterface, err
 // determine a port for the console container to expose
 // if not specified, pick a random port
 func (o *consoleOptions) determineListenPort() error {
+	// Handle user-specified port
 	if len(o.port) > 0 {
 		_, err := strconv.Atoi(o.port)
 		if err != nil {
 			return fmt.Errorf("port should be an integer")
 		}
 	} else {
+		// Auto-assign free port for console
 		port, err := utils.GetFreePort()
 		if err != nil {
-			return fmt.Errorf("failed looking up a free port: %s", err)
+			return fmt.Errorf("failed looking up a free port for console: %s", err)
 		}
 		o.port = strconv.Itoa(port)
 	}
+
+	// Ensure monitorPort is different from console port
+	for {
+		monitorPort, err := utils.GetFreePort()
+		if err != nil {
+			return fmt.Errorf("failed looking up a free port for monitoring: %s", err)
+		}
+		if strconv.Itoa(monitorPort) != o.port {
+			o.monitorPort = strconv.Itoa(monitorPort)
+			break
+		}
+	}
+
 	logger.Debugf("using listen port: %s\n", o.port)
+	logger.Debugf("using monitoring port: %s\n", o.monitorPort)
+
 	return nil
 }
 
