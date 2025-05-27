@@ -77,12 +77,14 @@ type execActionOnTermStruct struct{}
 type consoleOptions struct {
 	image               string
 	port                string
+	consoleHost         string
 	containerEngineFlag string
 	url                 string
 	openBrowser         bool
 	enablePlugins       bool
 	needMonitorPlugin   bool
 	monitorPluginPort   string
+	monitorHost         string
 	monitorPluginImage  string
 	terminationFunction execActionOnTermInterface
 }
@@ -150,11 +152,10 @@ func NewConsoleCmd() *cobra.Command {
 		Use:   "console",
 		Short: "Launch OpenShift web console for the current cluster",
 		Long: `console will start the Openshift console application locally for the currently logged in cluster.
-		Default behaviour is to run the same console image as the cluster.
-		Clusters below 4.8 will not display metrics, alerts, or dashboards. If you need to view metrics, alerts, or dashboards use the latest console image
-		with --image=quay.io/openshift/origin-console .
-		You can specify container engine with -c. If not specified, it will lookup the PATH in the order of podman and docker.
-`,
+Default behaviour is to run the same console image as the cluster.
+Clusters below 4.8 will not display metrics, alerts, or dashboards. If you need to view metrics, alerts, or dashboards use the latest console image
+with --image=quay.io/openshift/origin-console .
+You can specify container engine with -c. If not specified, it will lookup the PATH in the order of podman and docker.`,
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return ops.run()
@@ -170,9 +171,27 @@ func NewConsoleCmd() *cobra.Command {
 	)
 	flags.StringVar(
 		&ops.port,
-		"port",
+		"console-port",
 		"",
-		"Specify port to listen to. Default: A random available port",
+		"Specify port for console. Default: A random available port",
+	)
+	flags.StringVar(
+		&ops.consoleHost,
+		"console-host",
+		"127.0.0.1",
+		"Specify host for console. Default: 127.0.0.1",
+	)
+	flags.StringVar(
+		&ops.monitorHost,
+		"monitor-host",
+		"127.0.0.1",
+		"Specify host for monitoring plugin. Default: 127.0.0.1",
+	)
+	flags.StringVar(
+		&ops.monitorPluginPort,
+		"monitor-port",
+		"",
+		"Specify port for monitoring plugin. Default: A random available port",
 	)
 	flags.BoolVarP(
 		&ops.openBrowser,
@@ -494,7 +513,7 @@ func (o *consoleOptions) getPlugins() (string, error) {
 	// monitoring plugin
 	if o.needMonitorPlugin {
 		logger.Debugln("monitoring plugin is needed, adding the monitoring plugin parameter to console container")
-		plugins = append(plugins, fmt.Sprintf("monitoring-plugin=http://127.0.0.1:%s", o.monitorPluginPort))
+		plugins = append(plugins, fmt.Sprintf("monitoring-plugin=http://%s:%s", o.monitorHost, o.monitorPluginPort))
 	}
 
 	return strings.Join(plugins, ","), nil
@@ -547,7 +566,7 @@ func (o *consoleOptions) runConsoleContainer(ce containerEngineInterface) error 
 		return err
 	}
 
-	bridgeListen := fmt.Sprintf("http://0.0.0.0:%s", o.port)
+	bridgeListen := fmt.Sprintf("http://%s:%s", o.consoleHost, o.port)
 
 	var envVars []envVar
 	// Set proxy URL to the container
@@ -572,7 +591,7 @@ func (o *consoleOptions) runConsoleContainer(ce containerEngineInterface) error 
 		o.image,
 		"/opt/bridge/bin/bridge",
 		"--public-dir=/opt/bridge/static",
-		"-base-address", fmt.Sprintf("http://127.0.0.1:%s", o.port),
+		"-base-address", fmt.Sprintf("http://%s:%s", o.consoleHost, o.port),
 		"-branding", branding,
 		"-documentation-base-url", documentationURL,
 		"-user-settings-location", "localstorage",
@@ -589,6 +608,52 @@ func (o *consoleOptions) runConsoleContainer(ce containerEngineInterface) error 
 	return ce.runConsoleContainer(consoleContainerName, o.port, containerArgs, envVars)
 }
 
+func podmanRunMonitorPluginDedicated(containerName string, nginxConfPath string, pluginArgs []string, host string, port string) error {
+	_, authFilename, err := fetchPullSecretIfNotExist()
+	if err != nil {
+		return err
+	}
+	engRunArgs := []string{
+		"run",
+		"--authfile", authFilename,
+		"--platform=linux/amd64",
+		"--rm",
+		"--detach",
+		"--name", containerName,
+		"--publish", fmt.Sprintf("%s:%s:%s", host, port, port), // Expose dedicated port
+		"--mount", fmt.Sprintf("type=bind,source=%s,destination=/etc/nginx/nginx.conf,relabel=shared", nginxConfPath),
+	}
+	engRunArgs = append(engRunArgs, pluginArgs...)
+	logger.WithField("Command", fmt.Sprintf("`%s %s`", PODMAN, strings.Join(engRunArgs, " "))).Infoln("Running container")
+	runCmd := createCommand(PODMAN, engRunArgs...)
+	runCmd.Stderr = os.Stderr
+	runCmd.Stdout = nil
+	return runCmd.Run()
+}
+
+func dockerRunMonitorPluginDedicated(containerName string, nginxConfPath string, pluginArgs []string, host string, port string) error {
+	configDirectory, _, err := fetchPullSecretIfNotExist()
+	if err != nil {
+		return err
+	}
+	engRunArgs := []string{
+		"--config", configDirectory,
+		"run",
+		"--platform=linux/amd64",
+		"--rm",
+		"--detach",
+		"--name", containerName,
+		"--publish", fmt.Sprintf("%s:%s:%s", host, port, port),
+		"--volume", fmt.Sprintf("%s:/etc/nginx/nginx.conf:z", nginxConfPath),
+	}
+	engRunArgs = append(engRunArgs, pluginArgs...)
+	logger.WithField("Command", fmt.Sprintf("`%s %s`", DOCKER, strings.Join(engRunArgs, " "))).Infoln("Running container")
+	runCmd := createCommand(DOCKER, engRunArgs...)
+	runCmd.Stderr = os.Stderr
+	runCmd.Stdout = nil
+	return runCmd.Run()
+}
+
 func (o *consoleOptions) runMonitorPlugin(ce containerEngineInterface) error {
 	if !o.needMonitorPlugin {
 		logger.Debugln("monitoring plugin is not needed, not to run monitoring plugin")
@@ -601,17 +666,30 @@ func (o *consoleOptions) runMonitorPlugin(ce containerEngineInterface) error {
 	}
 
 	// Setup nginx configurations
-	config := fmt.Sprintf(info.MonitoringPluginNginxConfigTemplate, o.monitorPluginPort)
+	configStr := fmt.Sprintf(info.MonitoringPluginNginxConfigTemplate, o.monitorPluginPort)
 	nginxFilename := fmt.Sprintf(info.MonitoringPluginNginxConfigFilename, clusterID)
-	if err := ce.putFileToMount(nginxFilename, []byte(config)); err != nil {
+	if err := ce.putFileToMount(nginxFilename, []byte(configStr)); err != nil {
 		return err
 	}
 
-	consoleContainerName := fmt.Sprintf("console-%s", clusterID)
 	pluginContainerName := fmt.Sprintf("monitoring-plugin-%s", clusterID)
 
 	pluginArgs := []string{o.monitorPluginImage}
-	return ce.runMonitorPlugin(pluginContainerName, consoleContainerName, nginxFilename, pluginArgs)
+
+	switch ce.(type) {
+	case *podmanLinux, *podmanMac:
+		nginxConfPath := filepath.Join("/tmp/", nginxFilename)
+		return podmanRunMonitorPluginDedicated(pluginContainerName, nginxConfPath, pluginArgs, o.monitorHost, o.monitorPluginPort)
+	case *dockerLinux, *dockerMac:
+		configDir, err := config.GetConfigDirectory() // Correct usage
+		if err != nil {
+			return err
+		}
+		nginxConfPath := filepath.Join(configDir, nginxFilename)
+		return dockerRunMonitorPluginDedicated(pluginContainerName, nginxConfPath, pluginArgs, o.monitorHost, o.monitorPluginPort)
+	default:
+		return fmt.Errorf("unsupported container engine type")
+	}
 }
 
 // print the console URL and pop a browser if required
