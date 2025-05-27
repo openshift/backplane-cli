@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/golang-jwt/jwt/v4"
+	logger "github.com/sirupsen/logrus"
 )
 
 func GetStringFieldFromJWT(token string, field string) (string, error) {
@@ -46,13 +47,20 @@ func GetUsernameFromJWT(token string) string {
 	}
 	claims, ok := jwtToken.Claims.(jwt.MapClaims)
 	if !ok {
+		logger.Errorf("failed to assert claims as jwt.MapClaims")
 		return "anonymous"
 	}
 	claim, ok := claims["username"]
 	if !ok {
+		logger.Errorf("token does not contain 'username' claim")
 		return "anonymous"
 	}
-	return claim.(string)
+	username, ok := claim.(string)
+	if !ok {
+		logger.Errorf("'username' claim is not a string, actual type: %T", claim)
+		return "anonymous"
+	}
+	return username
 }
 
 // GetContextNickname returns a nickname of a context
