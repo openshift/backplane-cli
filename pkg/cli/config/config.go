@@ -31,7 +31,8 @@ type AccessRequestsJiraConfiguration struct {
 	ProjectToTransitionsNames map[string]JiraTransitionsNamesForAccessRequests `json:"project-to-transitions-names"`
 }
 
-// Please update the validateConfig function if there is any required config key added
+// BackplaneConfiguration represents the configuration for backplane-cli.
+// Note: Please update the validateConfig function if there are any required keys added.
 type BackplaneConfiguration struct {
 	URL                         string                          `json:"url"`
 	ProxyURL                    *string                         `json:"proxy-url"`
@@ -45,6 +46,7 @@ type BackplaneConfiguration struct {
 	VPNCheckEndpoint            string                          `json:"vpn-check-endpoint"`
 	ProxyCheckEndpoint          string                          `json:"proxy-check-endpoint"`
 	DisplayClusterInfo          bool                            `json:"display-cluster-info"`
+	DisableKubePS1Warning       bool                            `json:"disable-kube-ps1-warning"`
 }
 
 const (
@@ -155,6 +157,7 @@ func GetBackplaneConfiguration() (bpConfig BackplaneConfiguration, err error) {
 	bpConfig.SessionDirectory = viper.GetString("session-dir")
 	bpConfig.AssumeInitialArn = viper.GetString("assume-initial-arn")
 	bpConfig.DisplayClusterInfo = viper.GetBool("display-cluster-info")
+	bpConfig.DisableKubePS1Warning = viper.GetBool("disable-kube-ps1-warning")
 
 	// pagerDuty token is optional
 	pagerDutyAPIKey := viper.GetString("pd-key")
@@ -351,7 +354,7 @@ func getBackplaneEnv(key string) (string, bool) {
 }
 
 // CheckAPIConnection validate API connection via configured proxy and VPN
-func (config BackplaneConfiguration) CheckAPIConnection() error {
+func (config *BackplaneConfiguration) CheckAPIConnection() error {
 
 	// make test api connection
 	connectionOk, err := config.testHTTPRequestToBackplaneAPI()
@@ -363,8 +366,12 @@ func (config BackplaneConfiguration) CheckAPIConnection() error {
 	return nil
 }
 
+func (config *BackplaneConfiguration) DisplayKubePS1Warning() bool {
+	return !config.DisableKubePS1Warning
+}
+
 // testHTTPRequestToBackplaneAPI returns status of the API connection
-func (config BackplaneConfiguration) testHTTPRequestToBackplaneAPI() (bool, error) {
+func (config *BackplaneConfiguration) testHTTPRequestToBackplaneAPI() (bool, error) {
 	client := http.Client{
 		Timeout: 5 * time.Second,
 	}
