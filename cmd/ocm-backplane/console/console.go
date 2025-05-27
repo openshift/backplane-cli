@@ -621,7 +621,7 @@ func podmanRunMonitorPluginDedicated(containerName string, nginxConfPath string,
 		"--detach",
 		"--name", containerName,
 		"--publish", fmt.Sprintf("%s:%s:%s", host, port, port), // Expose dedicated port
-		"--mount", fmt.Sprintf("type=bind,source=%s,destination=/etc/nginx/nginx.conf,relabel=shared", nginxConfPath),
+		"--mount", fmt.Sprintf("type=bind,source=%s,destination=/etc/nginx/nginx.conf", nginxConfPath),
 	}
 	engRunArgs = append(engRunArgs, pluginArgs...)
 	logger.WithField("Command", fmt.Sprintf("`%s %s`", PODMAN, strings.Join(engRunArgs, " "))).Infoln("Running container")
