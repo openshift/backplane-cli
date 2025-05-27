@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"time"
 
@@ -180,6 +181,15 @@ func initParams(cmd *cobra.Command, argv []string) (err error) {
 	options.url, err = cmd.Flags().GetString("url")
 	if err != nil {
 		return err
+	}
+	if options.url != "" {
+		parsedURL, parseErr := url.ParseRequestURI(options.url)
+		if parseErr != nil {
+			return fmt.Errorf("invalid --url: %v", parseErr)
+		}
+		if parsedURL.Scheme != "https" {
+			return fmt.Errorf("invalid --url '%s': scheme must be https", options.url)
+		}
 	}
 
 	// init raw flag
