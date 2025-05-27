@@ -4,6 +4,7 @@ import (
 	"context"
 	"net"
 	"net/url"
+	"slices"
 	"strings"
 
 	//nolint:gosec
@@ -246,7 +247,22 @@ func (cfg *QueryConfig) getIsolatedCredentials(ocmToken string) (aws.Credentials
 			return aws.Credentials{}, errors.New("backplane config is missing required `assume-initial-arn` property")
 		}
 
-		logger.Debugf("set assume-initial-arn to: %s", cfg.BackplaneConfiguration.AssumeInitialArn)
+	} else if !slices.Contains(
+		[]string{
+			productionAssumeInitialArn,
+			stagingAssumeInitialArn,
+			integrationAssumeInitialArn,
+		},
+		cfg.BackplaneConfiguration.AssumeInitialArn,
+	) {
+		logger.Warnf("assume-initial-arn in backplane config is not set to a valid payer ARN, using: %s", cfg.BackplaneConfiguration.AssumeInitialArn)
+		return aws.Credentials{}, fmt.Errorf("invalid assume-initial-arn: %s, must be one of: prod: %s, stage: %s, int: %s",
+			cfg.BackplaneConfiguration.AssumeInitialArn,
+			productionAssumeInitialArn,
+			stagingAssumeInitialArn,
+			integrationAssumeInitialArn,
+		)
+
 	}
 	initialClient, err := StsClient(cfg.BackplaneConfiguration.ProxyURL)
 	if err != nil {
