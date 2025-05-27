@@ -54,34 +54,43 @@ func TestGetFieldFromJWT(t *testing.T) {
 }
 
 func TestGetUsernameFromJWT(t *testing.T) {
-	type testCase struct {
-		name  string
-		token string
-		want  string
-	}
-	tests := []testCase{
+	tests := []struct {
+		description      string
+		token            string
+		expectedUsername string
+	}{
 		{
-			name:  "Get username",
-			token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJyZWRoYXQuY29tIiwiZXhwIjoxMTIwODI4MzQ0LCJ1c2VybmFtZSI6InRlc3R1c2VyIn0.2uBp-c/dIUtipUsnT1J6zjkJNVlIE640ZbuCvWevWRQ", // notsecret
-			want:  "testuser",
+			description:      "Valid JWT with string username claim",
+			token:            "eyJhbGciOiJub25lIn0.eyJ1c2VybmFtZSI6InRlc3R1c2VyIn0.", // {"alg":"none"}{"username":"testuser"}.
+			expectedUsername: "testuser",
 		},
 		{
-			name:  "Get username when username field is missing",
-			token: "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJPbmxpbmUgSldUIEJ1aWxkZXIiLCJpYXQiOjAsImV4cCI6MTcxNjY1MDA3MSwiYXVkIjoid3d3LmV4YW1wbGUuY29tIiwic3ViIjoianJvY2tldEBleGFtcGxlLmNvbSJ9._CyJxncO4NBOH6a-Q_2oIVelCRZKJh9YiPBm4XEBZgI", // notsecret
-			want:  "anonymous",
+			description:      "Valid JWT with integer username claim",
+			token:            "eyJhbGciOiJub25lIn0.eyJ1c2VybmFtZSI6MTIzfQ.", // {"alg":"none"}{"username":123}.
+			expectedUsername: "anonymous",
 		},
 		{
-			name:  "Invalid token",
-			token: "abcdefg", // notsecret
-			want:  "anonymous",
+			description:      "Valid JWT missing username claim",
+			token:            "eyJhbGciOiJub25lIn0.eyJlbWFpbCI6InRlc3RAZXhhbXBsZS5jb20ifQ.", // {"alg":"none"}{"email":"test@example.com"}.
+			expectedUsername: "anonymous",
+		},
+		{
+			description:      "Malformed JWT string",
+			token:            "this.is.not.a.jwt",
+			expectedUsername: "anonymous",
+		},
+		{
+			description:      "Empty token string",
+			token:            "",
+			expectedUsername: "anonymous",
 		},
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		t.Run(tt.description, func(t *testing.T) {
 			got := GetUsernameFromJWT(tt.token)
-			if got != tt.want {
-				t.Errorf("GetUsernameFromJWT() got = %v, want %v", got, tt.want)
+			if got != tt.expectedUsername {
+				t.Errorf("GetUsernameFromJWT() for token '%s' got = %v, want %v", tt.token, got, tt.expectedUsername)
 			}
 		})
 	}
