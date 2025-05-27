@@ -1,6 +1,6 @@
 # How to setup PS1 in bash/zsh
 
-You can use the below methods to set the shell prompt, so you can learn which cluster operating on, like
+You can use the below methods to set the shell prompt, so you can easily see which cluster you are connected to, like:
 ~~~
 [user@user ~ (⎈ |stg/user-test-1.zlob.s1:default)]$ date
 Tue Sep  7 17:40:35 CST 2021
@@ -64,3 +64,9 @@ KUBE_PS1_BINARY=oc
 export KUBE_PS1_CLUSTER_FUNCTION=cluster_function
 PS1='[\u@\h \W $(kube_ps1)]\$ '
 ~~~
+
+
+## Disabling warning when PS1 is not configured
+
+If you would like to disable warnings from `ocm-backplane` when `kube-ps1` is not configured, you can set the
+`disable-kube-ps1-warning` value to `false` in your configuration file.
