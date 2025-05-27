@@ -188,6 +188,12 @@ func GetBackplaneConfiguration() (bpConfig BackplaneConfiguration, err error) {
 
 	// JIRA base URL is optional as there is a default value
 	bpConfig.JiraBaseURL = viper.GetString(jiraBaseURLKey)
+	if bpConfig.JiraBaseURL != "" {
+		parsedURL, parseErr := url.ParseRequestURI(bpConfig.JiraBaseURL)
+		if parseErr != nil || parsedURL.Scheme != "https" {
+			logger.Warnf("Invalid JiraBaseURL '%s': not a valid HTTPS URL. Proceeding with potentially insecure or invalid URL.", bpConfig.JiraBaseURL)
+		}
+	}
 
 	// JIRA token is optional
 	bpConfig.JiraToken = viper.GetString(JiraTokenViperKey)
