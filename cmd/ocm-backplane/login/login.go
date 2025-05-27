@@ -356,11 +356,12 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 	}
 	logger.Debugf("API Config Generated %+v \n", rc)
 
-	logger.Debugln("Check for PS1 ENV varible")
-	// Check PS1 env is set or not
-	EnvPs1, ok := os.LookupEnv(EnvPs1)
-	if !ok {
-		logger.Warn("Env KUBE_PS1_CLUSTER_FUNCTION is not detected. It is recommended to set PS1 to learn which cluster you are operating on, refer https://github.com/openshift/backplane-cli/blob/main/docs/PS1-setup.md", EnvPs1)
+	logger.Debugln("Check for PS1 ENV variable")
+	if bpConfig.DisplayKubePS1Warning() {
+		_, ok := os.LookupEnv(EnvPs1)
+		if !ok {
+			logger.Warn("Env KUBE_PS1_CLUSTER_FUNCTION is not detected. It is recommended to set PS1 to learn which cluster you are operating on, refer https://github.com/openshift/backplane-cli/blob/main/docs/PS1-setup.md")
+		}
 	}
 
 	// Add a new cluster & context & user
