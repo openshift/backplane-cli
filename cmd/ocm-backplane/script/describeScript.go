@@ -19,6 +19,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
 
 	"github.com/spf13/cobra"
 
@@ -53,12 +54,21 @@ func newDescribeScriptCmd() *cobra.Command {
 			}
 			// ======== Initialize backplaneURL == ========
 			backplaneHost := urlFlag
-			if backplaneHost == "" {
+			if backplaneHost != "" {
+				// Validate urlFlag if it's provided
+				parsedURL, parseErr := url.ParseRequestURI(urlFlag)
+				if parseErr != nil {
+					return fmt.Errorf("invalid --url: %v", parseErr)
+				}
+				if parsedURL.Scheme != "https" {
+					return fmt.Errorf("invalid --url '%s': scheme must be https", urlFlag)
+				}
+			} else {
+				// If urlFlag is empty, get it from cluster config
 				bpCluster, err := utils.DefaultClusterUtils.GetBackplaneCluster(clusterKey, urlFlag)
 				if err != nil {
 					return err
 				}
-
 				backplaneHost = bpCluster.BackplaneHost
 			}
 
