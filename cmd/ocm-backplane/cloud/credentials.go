@@ -42,7 +42,7 @@ func init() {
 		&credentialArgs.backplaneURL,
 		"url",
 		"",
-		"URL of backplane API",
+		"URL of backplane API. Must be an HTTPS URL.",
 	)
 	flags.StringVarP(
 		&credentialArgs.output,

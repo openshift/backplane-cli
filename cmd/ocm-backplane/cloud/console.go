@@ -66,7 +66,7 @@ func init() {
 		&consoleArgs.backplaneURL,
 		"url",
 		"",
-		"URL of backplane API",
+		"URL of backplane API. Must be an HTTPS URL.",
 	)
 	flags.StringVarP(
 		&consoleArgs.output,

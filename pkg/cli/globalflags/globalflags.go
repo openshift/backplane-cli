@@ -17,7 +17,7 @@ func AddGlobalFlags(cmd *cobra.Command, opts *GlobalOptions) {
 		&opts.BackplaneURL,
 		"url",
 		"",
-		"URL of backplane API",
+		"URL of backplane API. Must be an HTTPS URL.",
 	)
 	cmd.PersistentFlags().StringVar(
 		&opts.ProxyURL,
