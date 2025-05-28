@@ -102,6 +102,9 @@ func setConfig(cmd *cobra.Command, args []string) error {
 		bpConfig.JiraToken = args[1]
 	case GovcloudVar:
 		bpConfig.Govcloud, err = strconv.ParseBool(args[1])
+		if err != nil {
+			return fmt.Errorf("invalid value for %s: %v", GovcloudVar, err)
+		}
 	default:
 		return fmt.Errorf("supported config variables are %s, %s, %s, %s, %s & %s", URLConfigVar, ProxyURLConfigVar, SessionConfigVar, PagerDutyAPIConfigVar, config.JiraTokenViperKey, GovcloudVar)
 	}
