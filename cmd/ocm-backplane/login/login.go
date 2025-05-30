@@ -50,6 +50,7 @@ var (
 		ohss             string
 		clusterInfo      bool
 		remediation      string
+		govcloud         bool
 	}
 
 	// loginType derive the login type based on flags and args
@@ -119,7 +120,7 @@ func init() {
 		"namespace",
 		"n",
 		"default",
-		"The  default namespace for a user to execute commands in",
+		"The default namespace for a user to execute commands in",
 	)
 	flags.StringVar(
 		&args.ohss,
@@ -149,7 +150,27 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 	if err != nil {
 		return err
 	}
-	logger.Debugf("Backplane Config File Contains: %v \n", bpConfig)
+	// Log non-sensitive fields of BackplaneConfiguration
+	loggableBpConfig := map[string]interface{}{
+		"URL":                         bpConfig.URL,
+		"SessionDirectory":            bpConfig.SessionDirectory,
+		"ProdEnvName":                 bpConfig.ProdEnvName,
+		"JiraBaseURL":                 bpConfig.JiraBaseURL,
+		"VPNCheckEndpoint":            bpConfig.VPNCheckEndpoint,
+		"ProxyCheckEndpoint":          bpConfig.ProxyCheckEndpoint,
+		"DisplayClusterInfo":          bpConfig.DisplayClusterInfo,
+		"Govcloud":                    bpConfig.Govcloud,
+		"JiraDefaultProject":          bpConfig.JiraConfigForAccessRequests.DefaultProject,
+		"JiraDefaultIssueType":        bpConfig.JiraConfigForAccessRequests.DefaultIssueType,
+		"JiraProdProject":             bpConfig.JiraConfigForAccessRequests.ProdProject,
+		"JiraProdIssueType":           bpConfig.JiraConfigForAccessRequests.ProdIssueType,
+		// ProxyURL is a pointer, so handle nil case
+		"ProxyURL": nil,
+	}
+	if bpConfig.ProxyURL != nil {
+		loggableBpConfig["ProxyURL"] = *bpConfig.ProxyURL
+	}
+	logger.Debugf("Backplane Config File (Non-Sensitive Fields): %+v \n", loggableBpConfig)
 
 	// login to the cluster based on login type
 	logger.Debugf("Extracting Backplane Cluster ID")
@@ -185,22 +206,27 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 
 	logger.Debugf("Backplane Cluster Key is: %v \n", clusterKey)
 
-	logger.Debugln("Setting Proxy URL from global options")
 	// Set proxy url to http client
 	proxyURL := globalOpts.ProxyURL
-	if proxyURL != "" {
-		err = backplaneapi.DefaultClientUtils.SetClientProxyURL(proxyURL)
+	if !(bpConfig.Govcloud) {
+		logger.Debugln("Setting Proxy URL from global options")
 
-		if err != nil {
-			return err
+		if proxyURL != "" {
+			err = backplaneapi.DefaultClientUtils.SetClientProxyURL(proxyURL)
+
+			if err != nil {
+				return err
+			}
+			logger.Debugf("Using backplane Proxy URL: %s\n", proxyURL)
 		}
-		logger.Debugf("Using backplane Proxy URL: %s\n", proxyURL)
-	}
 
-	if bpConfig.ProxyURL != nil {
-		proxyURL = *bpConfig.ProxyURL
-		logger.Debugln("backplane configuration file also contains a proxy url, using that one instead")
-		logger.Debugf("New backplane Proxy URL: %s\n", proxyURL)
+		if bpConfig.ProxyURL != nil {
+			proxyURL = *bpConfig.ProxyURL
+			logger.Debugln("backplane configuration file also contains a proxy url, using that one instead")
+			logger.Debugf("New backplane Proxy URL: %s\n", proxyURL)
+		}
+	} else {
+		logger.Debugln("govcloud identified, no proxy to use")
 	}
 
 	logger.Debugln("Extracting target cluster ID and name")

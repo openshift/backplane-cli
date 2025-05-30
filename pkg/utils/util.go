@@ -117,10 +117,13 @@ func TryParseBackplaneAPIError(rsp *http.Response) (*BackplaneApi.Error, error) 
 	} else {
 		var dest BackplaneApi.Error
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			// Avoid squashing the HTTP response info with Unmarshal err...
-			bodyStr := strings.ReplaceAll(string(bodyBytes[:]), "\n", " ")
-			err := fmt.Errorf("status:'%s', code:'%d'; failed to unmarshal response:'%s'; %w", rsp.Status, rsp.StatusCode, bodyStr, err)
-			return nil, err
+			bodyStr := strings.ReplaceAll(string(bodyBytes), "\n", " ")
+			maxLen := 200
+			if len(bodyStr) > maxLen {
+				bodyStr = bodyStr[:maxLen] + "..."
+			}
+			// Return an error that includes the status, code, a truncated body, and the original unmarshal error.
+			return nil, fmt.Errorf("status:'%s', code:'%d'; failed to unmarshal JSON response from backplane (body starts with: '%s'). Original error: %w", rsp.Status, rsp.StatusCode, bodyStr, err)
 		}
 		return &dest, nil
 	}
@@ -161,13 +164,17 @@ func TryPrintAPIError(rsp *http.Response, rawFlag bool) error {
 func ParseParamsFlag(paramsFlag []string) (map[string]string, error) {
 	var result = map[string]string{}
 	for _, s := range paramsFlag {
-		keyVal := strings.Split(s, "=")
-		if len(keyVal) >= 2 {
-			key := strings.TrimSpace(keyVal[0])
-			value := strings.TrimSpace(strings.Join(keyVal[1:], ""))
+		parts := strings.SplitN(s, "=", 2)
+		if len(parts) == 2 {
+			key := strings.TrimSpace(parts[0])
+			value := strings.TrimSpace(parts[1])
+			if key == "" {
+				return nil, fmt.Errorf("error parsing params flag: key cannot be empty in '%s'", s)
+			}
 			result[key] = value
 		} else {
-			return nil, fmt.Errorf("error parsing params flag, %s", s)
+			// This means there was no equals sign in 's'
+			return nil, fmt.Errorf("error parsing params flag: missing '=' in '%s'", s)
 		}
 	}
 	return result, nil
