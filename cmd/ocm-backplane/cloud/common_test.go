@@ -73,7 +73,8 @@ var _ = Describe("getIsolatedCredentials", func() {
 		clusterBuilder.ID(testClusterID)
 
 		cluster, _ := clusterBuilder.Build()
-		testQueryConfig = QueryConfig{OcmConnection: &sdk.Connection{}, BackplaneConfiguration: config.BackplaneConfiguration{URL: "test", AssumeInitialArn: "test"}, Cluster: cluster}
+		// Use a valid ARN from the allowed list to avoid "invalid assume-initial-arn" errors in tests
+		testQueryConfig = QueryConfig{OcmConnection: &sdk.Connection{}, BackplaneConfiguration: config.BackplaneConfiguration{URL: "test", AssumeInitialArn: "arn:aws:iam::922711891673:role/SRE-Support-Role"}, Cluster: cluster}
 
 		fakeHTTPResp = &http.Response{
 			Body: MakeIoReader(
@@ -100,6 +101,12 @@ var _ = Describe("getIsolatedCredentials", func() {
 
 			_, err := testQueryConfig.getIsolatedCredentials(testOcmToken)
 			Expect(err).To(Equal(fmt.Errorf("must provide non-empty cluster ID")))
+		})
+		It("should fail if wrong assume initial ARN is provided", func() {
+			testQueryConfig.BackplaneConfiguration.AssumeInitialArn = "arn:aws:iam::10000000:role/TEST_USER"
+			_, err := testQueryConfig.getIsolatedCredentials(testOcmToken)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("invalid assume-initial-arn: arn:aws:iam::10000000:role/TEST_USER, must be one of:"))
 		})
 		It("should fail if cannot create sts client with proxy", func() {
 			StsClient = func(proxyURL *string) (*sts.Client, error) {
