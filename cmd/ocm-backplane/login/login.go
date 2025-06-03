@@ -164,13 +164,14 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 		"JiraDefaultIssueType":        bpConfig.JiraConfigForAccessRequests.DefaultIssueType,
 		"JiraProdProject":             bpConfig.JiraConfigForAccessRequests.ProdProject,
 		"JiraProdIssueType":           bpConfig.JiraConfigForAccessRequests.ProdIssueType,
+		"AssumeInitialArn":        	   bpConfig.AssumeInitialArn,
 		// ProxyURL is a pointer, so handle nil case
 		"ProxyURL": nil,
 	}
 	if bpConfig.ProxyURL != nil {
 		loggableBpConfig["ProxyURL"] = *bpConfig.ProxyURL
 	}
-	logger.Debugf("Backplane Config File (Non-Sensitive Fields): %+v \n", loggableBpConfig)
+	logger.Debugf("Backplane Config File: %+v \n", loggableBpConfig)
 
 	// login to the cluster based on login type
 	logger.Debugf("Extracting Backplane Cluster ID")
