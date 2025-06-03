@@ -55,7 +55,6 @@ var _ = Describe("getIsolatedCredentials", func() {
 
 		mockClientUtil = backplaneapiMock.NewMockClientUtils(mockCtrl)
 		backplaneapi.DefaultClientUtils = mockClientUtil
-
 		testOcmToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiZW1haWwiOiJ0ZXN0QGZvby5jb20iLCJpYXQiOjE1MTYyMzkwMjJ9.5NG4wFhitEKZyzftSwU67kx4JVTEWcEoKhCl_AFp8T4"
 		testClusterID = "test123"
 		testAccessKeyID = "test-access-key-id"
@@ -144,8 +143,40 @@ var _ = Describe("getIsolatedCredentials", func() {
 			_, err := testQueryConfig.getIsolatedCredentials(testOcmToken)
 			Expect(err.Error()).To(Equal("unable to extract email from given token: no field email on given token"))
 		})
+		It("should fail if unable to connect to AWS STS endpoint (GetCallerIdentity fails)", func() {
+			GetCallerIdentity = func(client *sts.Client) error {
+				return errors.New("failed to connect to AWS STS endpoint")
+			}
+			defer func() {
+				GetCallerIdentity = func(client *sts.Client) error {
+					_, err := client.GetCallerIdentity(context.TODO(), &sts.GetCallerIdentityInput{})
+					return err
+				}
+			}()
+			StsClient = func(proxyURL *string) (*sts.Client, error) {
+				return &sts.Client{}, nil
+			}
+			AssumeRoleWithJWT = func(jwt string, roleArn string, stsClient stscreds.AssumeRoleWithWebIdentityAPIClient) (aws.Credentials, error) {
+				return aws.Credentials{
+					AccessKeyID:     testAccessKeyID,
+					SecretAccessKey: testSecretAccessKey,
+					SessionToken:    testSessionToken,
+				}, nil
+			}
+			_, err := testQueryConfig.getIsolatedCredentials(testOcmToken)
+			Expect(err.Error()).To(ContainSubstring("unable to connect to AWS STS endpoint (GetCallerIdentity failed):"))
+		})
 		It("should fail credentials with inline policy", func() {
-
+			GetCallerIdentity = func(client *sts.Client) error {
+				return nil // Simulate success; use errors.New("fail") to simulate failure
+			}
+			defer func() {
+				GetCallerIdentity = func(client *sts.Client) error {
+					_, err := client.GetCallerIdentity(context.TODO(), &sts.GetCallerIdentityInput{})
+					return err
+				}
+			}()
+			testOcmToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiZW1haWwiOiJURVNUX1VTRVJAZm9vLmNvbSIsImlhdCI6MTUxNjIzOTAyMn0.dummy"
 			ip1 := cmv1.NewTrustedIp().ID("209.10.10.10").Enabled(true)
 			ip2 := cmv1.NewTrustedIp().ID("200.20.20.20").Enabled(true)
 			expectedIPList, err := cmv1.NewTrustedIpList().Items(ip1, ip2).Build()
@@ -168,9 +199,54 @@ var _ = Describe("getIsolatedCredentials", func() {
 
 			_, err = testQueryConfig.getIsolatedCredentials(testOcmToken)
 			Expect(err).NotTo(BeNil())
-			Expect(err.Error()).To(ContainSubstring("failed to assume role sequence:"))
+
+			Expect(err.Error()).To(ContainSubstring("client IP"))
+			Expect(err.Error()).To(ContainSubstring("is not in the trusted IP range"))
+		})
+		It("should fail if assume role sequence cannot be retrieved", func() {
+			GetCallerIdentity = func(client *sts.Client) error {
+				return nil // Simulate success; use errors.New("fail") to simulate failure
+			}
+			defer func() {
+				GetCallerIdentity = func(client *sts.Client) error {
+					_, err := client.GetCallerIdentity(context.TODO(), &sts.GetCallerIdentityInput{})
+					return err
+				}
+			}()
+			ip1 := cmv1.NewTrustedIp().ID("209.10.10.10").Enabled(true)
+			expectedIPList, err := cmv1.NewTrustedIpList().Items(ip1).Build()
+			Expect(err).To(BeNil())
+			mockOcmInterface.EXPECT().GetTrustedIPList(gomock.Any()).Return(expectedIPList, nil).AnyTimes()
+
+			StsClient = func(proxyURL *string) (*sts.Client, error) {
+				return &sts.Client{}, nil
+			}
+			AssumeRoleWithJWT = func(jwt string, roleArn string, stsClient stscreds.AssumeRoleWithWebIdentityAPIClient) (aws.Credentials, error) {
+				return aws.Credentials{
+					AccessKeyID:     testAccessKeyID,
+					SecretAccessKey: testSecretAccessKey,
+					SessionToken:    testSessionToken,
+				}, nil
+			}
+			mockClientUtil.EXPECT().GetBackplaneClient(
+				testQueryConfig.BackplaneConfiguration.URL, testOcmToken, testQueryConfig.ProxyURL).Return(mockClient, nil)
+			// Simulate failure in GetAssumeRoleSequence
+			mockClient.EXPECT().GetAssumeRoleSequence(context.TODO(), testClusterID).Return(nil, errors.New("assume sequence failed"))
+
+			_, err = testQueryConfig.getIsolatedCredentials(testOcmToken)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("failed to fetch arn sequence:"))
 		})
 		It("should fail if error creating backplane api client", func() {
+			GetCallerIdentity = func(client *sts.Client) error {
+				return nil // Simulate success; use errors.New("fail") to simulate failure
+			}
+			defer func() {
+				GetCallerIdentity = func(client *sts.Client) error {
+					_, err := client.GetCallerIdentity(context.TODO(), &sts.GetCallerIdentityInput{})
+					return err
+				}
+			}()
 			StsClient = func(proxyURL *string) (*sts.Client, error) {
 				return &sts.Client{}, nil
 			}
@@ -252,10 +328,11 @@ var _ = Describe("getIsolatedCredentials", func() {
 			err := verifyIPTrusted(ip, trustedIPs)
 			Expect(err).To(BeNil())
 		})
-		It("should return nil if IP not included in trusted list", func() {
+		It("should return error if IP not included in trusted list", func() {
 			ip = net.ParseIP("172.16.0.1")
 			err := verifyIPTrusted(ip, trustedIPs)
-			Expect(err).To(BeNil())
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("client IP 172.16.0.1 is not in the trusted IP range"))
 		})
 		It("should return an error if give the wrong format", func() {
 			trustedIPs.SourceIp = []string{"invalid-cidr"}

@@ -40,6 +40,10 @@ var StsClient = awsutil.StsClient
 var AssumeRoleWithJWT = awsutil.AssumeRoleWithJWT
 var NewStaticCredentialsProvider = credentials.NewStaticCredentialsProvider
 var AssumeRoleSequence = awsutil.AssumeRoleSequence
+var GetCallerIdentity = func(client *sts.Client) error {
+	_, err := client.GetCallerIdentity(context.TODO(), &sts.GetCallerIdentityInput{})
+	return err
+}
 
 // QueryConfig Wrapper for the configuration needed for cloud requests
 type QueryConfig struct {
@@ -273,6 +277,15 @@ func (cfg *QueryConfig) getIsolatedCredentials(ocmToken string) (aws.Credentials
 	if err != nil {
 		return aws.Credentials{}, fmt.Errorf("failed to assume role using JWT: %w", err)
 	}
+	// Verify Sts connection with the seed credentials
+	stsClient := sts.NewFromConfig(aws.Config{
+		Region:      "us-east-1",
+		Credentials: NewStaticCredentialsProvider(seedCredentials.AccessKeyID, seedCredentials.SecretAccessKey, seedCredentials.SessionToken),
+	})
+	err = GetCallerIdentity(stsClient)
+	if err != nil {
+		return aws.Credentials{}, fmt.Errorf("unable to connect to AWS STS endpoint (GetCallerIdentity failed): %w", err)
+	}
 
 	backplaneClient, err := backplaneapi.DefaultClientUtils.GetBackplaneClient(cfg.BackplaneConfiguration.URL, ocmToken, cfg.BackplaneConfiguration.ProxyURL)
 	if err != nil {
@@ -393,8 +406,7 @@ func verifyIPTrusted(ip net.IP, trustedIPs awsutil.IPAddress) error {
 
 	logger.Warnf("Your client side IP does not include in the given trusted IP range, " +
 		"please consider using a different VPN instead")
-
-	return nil
+	return fmt.Errorf("client IP %s is not in the trusted IP range", ip)
 }
 
 func getTrustedIPList(connection *ocmsdk.Connection) (awsutil.IPAddress, error) {
