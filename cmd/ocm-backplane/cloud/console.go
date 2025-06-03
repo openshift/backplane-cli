@@ -132,11 +132,9 @@ func runConsole(cmd *cobra.Command, argv []string) (err error) {
 			return fmt.Errorf("invalid --url '%s': scheme must be https", consoleArgs.backplaneURL)
 		}
 		backplaneConfiguration.URL = consoleArgs.backplaneURL
-		logger.Infof("Using backplane URL: %s\n", backplaneConfiguration.URL)
-	} else {
-		// Log the URL from config if custom one isn't provided
-		logger.Infof("Using backplane URL: %s\n", backplaneConfiguration.URL)
 	}
+
+	logger.Infof("Using backplane URL: %s\n", backplaneConfiguration.URL)
 
 	// Initialize OCM connection
 	ocmConnection, err := ocm.DefaultOCMInterface.SetupOCMConnection()
