@@ -150,28 +150,6 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 	if err != nil {
 		return err
 	}
-	// Log non-sensitive fields of BackplaneConfiguration
-	loggableBpConfig := map[string]interface{}{
-		"URL":                         bpConfig.URL,
-		"SessionDirectory":            bpConfig.SessionDirectory,
-		"ProdEnvName":                 bpConfig.ProdEnvName,
-		"JiraBaseURL":                 bpConfig.JiraBaseURL,
-		"VPNCheckEndpoint":            bpConfig.VPNCheckEndpoint,
-		"ProxyCheckEndpoint":          bpConfig.ProxyCheckEndpoint,
-		"DisplayClusterInfo":          bpConfig.DisplayClusterInfo,
-		"Govcloud":                    bpConfig.Govcloud,
-		"JiraDefaultProject":          bpConfig.JiraConfigForAccessRequests.DefaultProject,
-		"JiraDefaultIssueType":        bpConfig.JiraConfigForAccessRequests.DefaultIssueType,
-		"JiraProdProject":             bpConfig.JiraConfigForAccessRequests.ProdProject,
-		"JiraProdIssueType":           bpConfig.JiraConfigForAccessRequests.ProdIssueType,
-		"AssumeInitialArn":        	   bpConfig.AssumeInitialArn,
-		// ProxyURL is a pointer, so handle nil case
-		"ProxyURL": nil,
-	}
-	if bpConfig.ProxyURL != nil {
-		loggableBpConfig["ProxyURL"] = *bpConfig.ProxyURL
-	}
-	logger.Debugf("Backplane Config File: %+v \n", loggableBpConfig)
 
 	// login to the cluster based on login type
 	logger.Debugf("Extracting Backplane Cluster ID")
