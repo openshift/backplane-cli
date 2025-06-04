@@ -69,6 +69,7 @@ func (j IdentityTokenValue) GetIdentityToken() ([]byte, error) {
 }
 
 func AssumeRoleWithJWT(jwt string, roleArn string, stsClient stscreds.AssumeRoleWithWebIdentityAPIClient) (aws.Credentials, error) {
+	logger.Debug("JWT Assuming role: ", roleArn)
 	email, err := utils.GetStringFieldFromJWT(jwt, "email")
 	if err != nil {
 		return aws.Credentials{}, fmt.Errorf("unable to extract email from given token: %w", err)
@@ -141,6 +142,7 @@ func AssumeRoleSequence(
 	var lastCredentials aws.Credentials
 
 	for i, roleArnSession := range roleArnSessionSequence {
+		logger.Debug("Assuming role in sequence: ", roleArnSession.RoleArn, " ", roleArnSession.RoleSessionName)
 		result, err := AssumeRole(nextClient, roleArnSession.RoleSessionName, roleArnSession.RoleArn, inlinePolicy)
 		retryCount := 0
 		for err != nil {
