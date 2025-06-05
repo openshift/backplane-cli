@@ -276,7 +276,7 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 		if !isHostedControlPlane {
 			return fmt.Errorf("manifestworks are only available for hosted control plane clusters")
 		}
-		listManifestWork := fmt.Sprintf("oc get manifestworks -n %s -l api.openshift.com/id=%s", managingClusterName, targetClusterID)
+		listManifestWork := fmt.Sprintf("ocm backplane elevate -- oc get manifestworks -n %s -l api.openshift.com/id=%s", managingClusterName, targetClusterID)
 
 		fmt.Println("A list of associated manifestwork for your given cluster can be found using:")
 		fmt.Println("\t", listManifestWork)
