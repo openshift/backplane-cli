@@ -225,6 +225,16 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 		}
 	}
 
+	// Print related handover announcements before changing the cluster
+	clusterRecord, err := ocm.DefaultOCMInterface.ClusterDetails(clusterID)
+	if err != nil {
+		return err
+	}
+	err = login.RelatedHandoverAnnouncements(clusterRecord)
+	if err != nil {
+		logger.Debugf("Error in getting related handover announcements: %v", err)
+	}
+
 	if globalOpts.Manager {
 		logger.WithField("Cluster ID", clusterID).Debugln("Finding managing cluster")
 		var isHostedControlPlane bool

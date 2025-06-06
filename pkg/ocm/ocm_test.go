@@ -6,19 +6,19 @@ import (
 	. "github.com/onsi/gomega"
 	ocmsdk "github.com/openshift-online/ocm-sdk-go"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
-	"github.com/openshift/backplane-cli/pkg/ocm/mocks"
+	mock_ocm "github.com/openshift/backplane-cli/pkg/ocm/mocks"
 )
 
 var _ = Describe("OCM Wrapper Test", func() {
 	var (
 		ctrl             *gomock.Controller
-		mockOcmInterface *mocks.MockOCMInterface
+		mockOcmInterface *mock_ocm.MockOCMInterface
 		ocmConnection    *ocmsdk.Connection
 	)
 
 	BeforeEach(func() {
 		ctrl = gomock.NewController(GinkgoT()) // Initialize the controller
-		mockOcmInterface = mocks.NewMockOCMInterface(ctrl)
+		mockOcmInterface = mock_ocm.NewMockOCMInterface(ctrl)
 		ocmConnection = &ocmsdk.Connection{}
 	})
 
