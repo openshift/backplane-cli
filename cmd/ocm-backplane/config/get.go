@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -21,32 +22,43 @@ func newGetCmd() *cobra.Command {
 }
 
 func getConfig(cmd *cobra.Command, args []string) error {
-	config, err := config.GetBackplaneConfiguration()
+	bpConfig, err := config.GetBackplaneConfiguration()
 	if err != nil {
 		return err
 	}
 
 	proxyURL := ""
-	if config.ProxyURL != nil {
-		proxyURL = *config.ProxyURL
+	if bpConfig.ProxyURL != nil {
+		proxyURL = *bpConfig.ProxyURL
 	}
 
 	switch args[0] {
 	case URLConfigVar:
-		fmt.Printf("%s: %s\n", URLConfigVar, config.URL)
+		fmt.Printf("%s: %s\n", URLConfigVar, bpConfig.URL)
 	case ProxyURLConfigVar:
 		fmt.Printf("%s: %s\n", ProxyURLConfigVar, proxyURL)
 	case SessionConfigVar:
-		fmt.Printf("%s: %s\n", SessionConfigVar, config.SessionDirectory)
+		fmt.Printf("%s: %s\n", SessionConfigVar, bpConfig.SessionDirectory)
 	case PagerDutyAPIConfigVar:
-		fmt.Printf("%s: %s\n", PagerDutyAPIConfigVar, config.PagerDutyAPIKey)
+		fmt.Printf("%s: %s\n", PagerDutyAPIConfigVar, bpConfig.PagerDutyAPIKey)
+	case config.PluginViperKey:
+		if len(bpConfig.PluginList) == 0 {
+			fmt.Println("No plugins configured")
+		} else {
+			fmt.Printf("%s: [%s]\n", config.PluginViperKey, strings.Join(bpConfig.PluginList, ","))
+		}
 	case "all":
-		fmt.Printf("%s: %s\n", URLConfigVar, config.URL)
+		fmt.Printf("%s: %s\n", URLConfigVar, bpConfig.URL)
 		fmt.Printf("%s: %s\n", ProxyURLConfigVar, proxyURL)
-		fmt.Printf("%s: %s\n", SessionConfigVar, config.SessionDirectory)
-		fmt.Printf("%s: %s\n", PagerDutyAPIConfigVar, config.PagerDutyAPIKey)
+		fmt.Printf("%s: %s\n", SessionConfigVar, bpConfig.SessionDirectory)
+		fmt.Printf("%s: %s\n", PagerDutyAPIConfigVar, bpConfig.PagerDutyAPIKey)
+		if len(bpConfig.PluginList) == 0 {
+			fmt.Println("No plugins configured")
+		} else {
+			fmt.Printf("%s: [%s]\n", config.PluginViperKey, strings.Join(bpConfig.PluginList, ","))
+		}
 	default:
-		return fmt.Errorf("supported config variables are %s, %s, %s & %s", URLConfigVar, ProxyURLConfigVar, SessionConfigVar, PagerDutyAPIConfigVar)
+		return fmt.Errorf("supported config variables are %s, %s, %s, %s & %s", URLConfigVar, ProxyURLConfigVar, SessionConfigVar, PagerDutyAPIConfigVar, config.PluginViperKey)
 	}
 
 	return nil

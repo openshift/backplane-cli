@@ -47,6 +47,8 @@ type BackplaneConfiguration struct {
 	ProxyCheckEndpoint          string                          `json:"proxy-check-endpoint"`
 	DisplayClusterInfo          bool                            `json:"display-cluster-info"`
 	DisableKubePS1Warning       bool                            `json:"disable-kube-ps1-warning"`
+	PluginList                  []string                        `json:"plugins"`
+	Plugins                     map[string]bool                 `json:"-"`
 }
 
 const (
@@ -57,6 +59,7 @@ const (
 	prodEnvNameDefaultValue        = "production"
 	JiraBaseURLDefaultValue        = "https://issues.redhat.com"
 	proxyTestTimeout               = 10 * time.Second
+	PluginViperKey                 = "plugins"
 )
 
 var JiraConfigForAccessRequestsDefaultValue = AccessRequestsJiraConfiguration{
@@ -192,6 +195,12 @@ func GetBackplaneConfiguration() (bpConfig BackplaneConfiguration, err error) {
 	// Load VPN and Proxy check endpoints from the local backplane configuration file
 	bpConfig.VPNCheckEndpoint = viper.GetString("vpn-check-endpoint")
 	bpConfig.ProxyCheckEndpoint = viper.GetString("proxy-check-endpoint")
+
+	bpConfig.PluginList = viper.GetStringSlice("plugins")
+	bpConfig.Plugins = map[string]bool{}
+	for _, name := range bpConfig.PluginList {
+		bpConfig.Plugins[name] = true
+	}
 
 	return bpConfig, nil
 }

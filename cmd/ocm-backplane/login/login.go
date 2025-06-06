@@ -29,6 +29,7 @@ import (
 	"github.com/openshift/backplane-cli/pkg/login"
 	"github.com/openshift/backplane-cli/pkg/ocm"
 	"github.com/openshift/backplane-cli/pkg/pagerduty"
+	"github.com/openshift/backplane-cli/pkg/plugin/announcements"
 	"github.com/openshift/backplane-cli/pkg/utils"
 )
 
@@ -222,6 +223,16 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 	if bpConfig.DisplayClusterInfo {
 		if err := login.PrintClusterInfo(clusterID); err != nil {
 			return fmt.Errorf("failed to print cluster info: %v", err)
+		}
+	}
+
+	// If handover-announcements plugin is enabled
+	// Print related handover announcements before changing the cluster
+	if bpConfig.Plugins["handover-announcements"] {
+		logger.Debug("Plugin handover-announcements is enabled. Getting related handover ..")
+		err = announcements.HandoverAnnouncements(clusterID)
+		if err != nil {
+			logger.Debugf("Error in getting related handover announcements: %v", err)
 		}
 	}
 

@@ -79,14 +79,18 @@ type DefaultIssueServiceGetterImpl struct {
 	issueService *jira.IssueService
 }
 
-func createIssueService() (*jira.IssueService, error) {
+// Create and return a new JIRA Client
+func CreateJiraClient() (*jira.Client, error) {
 	bpConfig, err := config.GetBackplaneConfiguration()
 	if err != nil {
 		return nil, fmt.Errorf("failed to load backplane config: %v", err)
 	}
 
 	if bpConfig.JiraToken == "" {
-		return nil, fmt.Errorf("JIRA token is not defined, consider defining it running 'ocm-backplane config set %s <token value>'", config.JiraTokenViperKey)
+		return nil, fmt.Errorf(
+			"JIRA token is not defined, consider defining it by running 'ocm-backplane config set %s <token value>'",
+			config.JiraTokenViperKey,
+		)
 	}
 
 	transport := jira.PATAuthTransport{
@@ -94,18 +98,24 @@ func createIssueService() (*jira.IssueService, error) {
 	}
 
 	jiraClient, err := jira.NewClient(transport.Client(), bpConfig.JiraBaseURL)
-
 	if err != nil || jiraClient == nil {
 		return nil, fmt.Errorf("failed to create the JIRA client: %v", err)
 	}
 
-	issueService := jiraClient.Issue
+	return jiraClient, nil
+}
 
-	if issueService == nil {
+func createIssueService() (*jira.IssueService, error) {
+	jiraClient, err := CreateJiraClient()
+	if err != nil {
+		return nil, err
+	}
+
+	if jiraClient.Issue == nil {
 		return nil, errors.New("no issue service in the JIRA client")
 	}
 
-	return issueService, nil
+	return jiraClient.Issue, nil
 }
 
 func (getter *DefaultIssueServiceGetterImpl) GetIssueService() (*jira.IssueService, error) {

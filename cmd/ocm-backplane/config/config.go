@@ -23,6 +23,7 @@ url         Backplane API URL
 proxy-url   Squid proxy URL
 session-dir Backplane CLI session directory
 pd-key		PagerDuty API User Key
+plugins		Comma separated list of plugins. Currently supported plugins: handover-announcements
 `,
 		SilenceUsage: true,
 	}

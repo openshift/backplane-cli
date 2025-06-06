@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -81,7 +82,7 @@ func setConfig(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("config directory does not exist: %s", path.Dir(configPath))
 		}
 	}
-
+	var plugins []string
 	switch args[0] {
 	case URLConfigVar:
 		bpConfig.URL = args[1]
@@ -93,8 +94,18 @@ func setConfig(cmd *cobra.Command, args []string) error {
 		bpConfig.PagerDutyAPIKey = args[1]
 	case config.JiraTokenViperKey:
 		bpConfig.JiraToken = args[1]
+	case config.PluginViperKey:
+		plugins = strings.Split(args[1], ",")
+		for i := range plugins {
+			plugins[i] = strings.TrimSpace(plugins[i])
+		}
+		bpConfig.PluginList = plugins
+		bpConfig.Plugins = make(map[string]bool)
+		for _, p := range plugins {
+			bpConfig.Plugins[p] = true
+		}
 	default:
-		return fmt.Errorf("supported config variables are %s, %s, %s, %s & %s", URLConfigVar, ProxyURLConfigVar, SessionConfigVar, PagerDutyAPIConfigVar, config.JiraTokenViperKey)
+		return fmt.Errorf("supported config variables are %s, %s, %s, %s, %s & %s", URLConfigVar, ProxyURLConfigVar, SessionConfigVar, PagerDutyAPIConfigVar, config.JiraTokenViperKey, config.PluginViperKey)
 	}
 
 	viper.SetConfigType("json")
@@ -103,6 +114,7 @@ func setConfig(cmd *cobra.Command, args []string) error {
 	viper.Set(SessionConfigVar, bpConfig.SessionDirectory)
 	viper.Set(PagerDutyAPIConfigVar, bpConfig.PagerDutyAPIKey)
 	viper.Set(config.JiraTokenViperKey, bpConfig.JiraToken)
+	viper.Set(config.PluginViperKey, plugins)
 
 	err = viper.WriteConfigAs(configPath)
 	if err != nil {
