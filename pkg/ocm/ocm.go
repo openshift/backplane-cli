@@ -10,7 +10,9 @@ import (
 	ocmocm "github.com/openshift-online/ocm-cli/pkg/ocm"
 	ocmurls "github.com/openshift-online/ocm-cli/pkg/urls"
 	ocmsdk "github.com/openshift-online/ocm-sdk-go"
+	sdk "github.com/openshift-online/ocm-sdk-go"
 	acctrspv1 "github.com/openshift-online/ocm-sdk-go/accesstransparency/v1"
+	amv1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	logger "github.com/sirupsen/logrus"
 
@@ -39,6 +41,7 @@ type OCMInterface interface {
 	CreateAccessRequestDecision(ocmConnection *ocmsdk.Connection, accessRequest *acctrspv1.AccessRequest, decision acctrspv1.DecisionDecision, justification string) (*acctrspv1.Decision, error)
 	GetTrustedIPList(*ocmsdk.Connection) (*cmv1.TrustedIpList, error)
 	SetupOCMConnection() (*ocmsdk.Connection, error)
+	ClusterDetails(clusterKey string) (*ClusterRecord, error)
 }
 
 const (
@@ -51,6 +54,14 @@ type DefaultOCMInterfaceImpl struct {
 }
 
 var DefaultOCMInterface OCMInterface = &DefaultOCMInterfaceImpl{}
+
+type ClusterRecord struct {
+	ClusterID  string
+	ExternalID string
+	OrgName    string
+	Version    string
+	Product    string
+}
 
 // SetupOCMConnection setups the ocm connection for all the other ocm requests
 func (o *DefaultOCMInterfaceImpl) SetupOCMConnection() (*ocmsdk.Connection, error) {
@@ -124,6 +135,107 @@ func (o *DefaultOCMInterfaceImpl) GetTargetCluster(clusterKey string) (clusterID
 		clusterName = cluster.Name()
 	}
 	return clusterID, clusterName, nil
+}
+
+func (o *DefaultOCMInterfaceImpl) ClusterDetails(clusterKey string) (*ClusterRecord, error) {
+	// Create the client for the OCM API:
+	var cluster *ClusterRecord = &ClusterRecord{}
+	connection, err := o.SetupOCMConnection()
+	if err != nil {
+		return cluster, fmt.Errorf("failed to create OCM connection: %v", err)
+	}
+	defer connection.Close()
+	// Get the client for the resource that manages the collection of clusters:
+	clusterCollection := connection.ClustersMgmt().V1().Clusters()
+	clusters, err := getClusters(clusterCollection, clusterKey)
+	if err != nil {
+		return cluster, fmt.Errorf("failed to get cluster '%s': %v", clusterKey, err)
+	}
+	org, err := getOrganization(connection, clusterKey)
+	if err != nil {
+		return cluster, fmt.Errorf("failed to get org '%s': %v", clusterKey, err)
+	}
+
+	if len(clusters) == 1 {
+		for _, v := range clusters {
+			cluster.ClusterID = v.ID()
+			cluster.ExternalID = v.ExternalID()
+			cluster.Version = v.Version().RawID()
+			cluster.Product = determineClusterProduct(v.Product().ID(), v.Hypershift().Enabled())
+			cluster.OrgName = org.Name()
+		}
+	} else {
+		correctCluster, err := doSurvey(clusters)
+		cluster.ClusterID = correctCluster.ID()
+		cluster.ExternalID = correctCluster.ExternalID()
+		cluster.Version = correctCluster.Version().RawID()
+		cluster.Product = determineClusterProduct(correctCluster.Product().ID(), correctCluster.Hypershift().Enabled())
+		cluster.OrgName = org.Name()
+		if err != nil {
+			return cluster, fmt.Errorf("can't find cluster: %v", err)
+		}
+	}
+	return cluster, nil
+}
+
+func determineClusterProduct(productID string, isHCP bool) (productName string) {
+	if productID == "rosa" && isHCP {
+		productName = "Red Hat OpenShift on AWS with Hosted Control Planes"
+	} else if productID == "rosa" {
+		productName = "Red Hat OpenShift on AWS"
+	} else if productID == "osd" {
+		productName = "OpenShift Dedicated"
+	}
+	return productName
+}
+
+func getOrganization(connection *sdk.Connection, key string) (*amv1.Organization, error) {
+	subscription, err := getSubscription(connection, key)
+	if err != nil {
+		return nil, err
+	}
+	orgResponse, err := connection.AccountsMgmt().V1().Organizations().Organization(subscription.OrganizationID()).Get().Send()
+	if err != nil {
+		return nil, err
+	}
+	return orgResponse.Body(), nil
+}
+
+func getSubscription(connection *sdk.Connection, key string) (subscription *amv1.Subscription, err error) {
+	// Prepare the resources that we will be using:
+	subsResource := connection.AccountsMgmt().V1().Subscriptions()
+
+	// Try to find a matching subscription:
+	subsSearch := fmt.Sprintf(
+		"(display_name = '%s' or cluster_id = '%s' or external_cluster_id = '%s' or id = '%s')",
+		key, key, key, key)
+	subsListResponse, err := subsResource.List().Parameter("search", subsSearch).Send()
+	if err != nil {
+		err = fmt.Errorf("can't retrieve subscription for key '%s': %v", key, err)
+		return
+	}
+
+	// If there is exactly one matching subscription then return the corresponding cluster:
+	subsTotal := subsListResponse.Total()
+	if subsTotal == 1 {
+		return subsListResponse.Items().Get(0), nil
+	}
+
+	// If there are multiple subscriptions that match the key then we should report it as
+	// an error:
+	if subsTotal > 1 {
+		err = fmt.Errorf(
+			"there are %d subscriptions with cluster identifier or name '%s'",
+			subsTotal, key,
+		)
+		return
+	}
+	// If we are here then there are no subscriptions matching the passed key:
+	err = fmt.Errorf(
+		"there are no subscriptions with identifier or name '%s'",
+		key,
+	)
+	return
 }
 
 // GetManagingCluster returns the managing cluster (hive shard or hypershift management cluster)
