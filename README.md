@@ -49,6 +49,8 @@ For more information about ocm plugins, please refer https://github.com/openshif
 
 The configuration file of backplane-cli is expected to be located at `$HOME/.config/backplane/config.json`.
 
+**Security Note:** This configuration file may store sensitive information such as PagerDuty API keys or JIRA tokens. It is recommended to ensure its permissions are restrictive (e.g., `chmod 600 $HOME/.config/backplane/config.json`) to protect this data.
+
 ## Setup bash/zsh prompt
 
 To setup the PS1(prompt) for bash/zsh, please follow [these instructions](https://github.com/openshift/backplane-cli/blob/main/docs/PS1-setup.md).
@@ -442,11 +444,11 @@ Please help us to improve. To contact the backplane team:
 ## Vulnerability Scanning with `govulncheck`
 
 As part of our continuous integration (CI) process, we've incorporated `govulncheck` to identify known vulnerabilities in the `backplane-cli` codebase.
-Following each CI execution, especially when PRs are submitted, a detailed vulnerability report can be found in `build-log.txt`. This is nested within
+In the CI environment (specifically the `ci/prow/scan-optional` test), vulnerability reports may be available as artifacts, potentially named `build-log.txt` or similar, within the test's artifact storage. This is nested within
 the `artifacts/test/` directory of the `ci/prow/scan-optional` test. To retrieve the report:
 - Click on `Details` next to `ci/prow/scan-optional` in a specific PR.
 - Click `Artifacts` at the top-right corner of the page.
-- Navigate to `artifacts/test/` to view the `build-log.txt` containing vulnerability information.
+- Navigate to `artifacts/test/` to view the `build-log.txt` (or similarly named file) containing vulnerability information.
 
 While some detected vulnerabilities might be non-blocking at the moment, they are still reported. We encourage both users and developers to thoroughly
 review these reports. If any Go packages are flagged, consider updating them to their fixed versions.
@@ -455,6 +457,8 @@ To manually execute a vulnerability scan locally, run the following command:
 ```
 make scan
 ```
+
+**Note on Local Scans:** Running `govulncheck` (e.g., via `make scan`) locally can be sensitive to the Go version and your development environment. If you encounter errors, ensure your Go version aligns with the one used in CI, or refer to the "Fixing Go Version Compatibility Issues" section. The `make scan` command currently prints output to standard output; it does not generate a `build-log.txt` file locally.
 
 ## Fixing Go Version Compatibility Issues
 When build failures occur due to Go version mismatches, follow these steps:

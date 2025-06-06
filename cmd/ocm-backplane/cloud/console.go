@@ -3,6 +3,7 @@ package cloud
 import (
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"os"
 	"strconv"
 
@@ -65,7 +66,7 @@ func init() {
 		&consoleArgs.backplaneURL,
 		"url",
 		"",
-		"URL of backplane API",
+		"URL of backplane API. Must be an HTTPS URL.",
 	)
 	flags.StringVarP(
 		&consoleArgs.output,
@@ -123,9 +124,17 @@ func runConsole(cmd *cobra.Command, argv []string) (err error) {
 
 	// ============Get Backplane URl ==========================
 	if consoleArgs.backplaneURL != "" { // Overwrite if parameter is set
+		parsedURL, parseErr := url.ParseRequestURI(consoleArgs.backplaneURL)
+		if parseErr != nil {
+			return fmt.Errorf("invalid --url: %v", parseErr)
+		}
+		if parsedURL.Scheme != "https" {
+			return fmt.Errorf("invalid --url '%s': scheme must be https", consoleArgs.backplaneURL)
+		}
 		backplaneConfiguration.URL = consoleArgs.backplaneURL
 	}
-	logger.Infof("Using backplane URL: %s\n", consoleArgs.backplaneURL)
+
+	logger.Infof("Using backplane URL: %s\n", backplaneConfiguration.URL)
 
 	// Initialize OCM connection
 	ocmConnection, err := ocm.DefaultOCMInterface.SetupOCMConnection()

@@ -9,6 +9,7 @@ const (
 	URLConfigVar          = "url"
 	SessionConfigVar      = "session-dir"
 	PagerDutyAPIConfigVar = "pd-key"
+	GovcloudVar		  	  = "govcloud"
 )
 
 func NewConfigCmd() *cobra.Command {
@@ -23,6 +24,7 @@ url         Backplane API URL
 proxy-url   Squid proxy URL
 session-dir Backplane CLI session directory
 pd-key		PagerDuty API User Key
+govcloud    Set to true if used in FedRAMP
 `,
 		SilenceUsage: true,
 	}
