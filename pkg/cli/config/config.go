@@ -196,11 +196,7 @@ func GetBackplaneConfiguration() (bpConfig BackplaneConfiguration, err error) {
 	bpConfig.VPNCheckEndpoint = viper.GetString("vpn-check-endpoint")
 	bpConfig.ProxyCheckEndpoint = viper.GetString("proxy-check-endpoint")
 
-	bpConfig.PluginList = viper.GetStringSlice("plugins")
-	bpConfig.Plugins = map[string]bool{}
-	for _, name := range bpConfig.PluginList {
-		bpConfig.Plugins[name] = true
-	}
+	bpConfig.LoadPlugins()
 
 	return bpConfig, nil
 }
@@ -403,4 +399,12 @@ func (config *BackplaneConfiguration) testHTTPRequestToBackplaneAPI() (bool, err
 	}
 
 	return true, nil
+}
+
+func (c *BackplaneConfiguration) LoadPlugins() {
+	c.PluginList = viper.GetStringSlice("plugins")
+	c.Plugins = make(map[string]bool, len(c.PluginList))
+	for _, name := range c.PluginList {
+		c.Plugins[name] = true
+	}
 }

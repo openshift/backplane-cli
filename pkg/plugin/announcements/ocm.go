@@ -18,7 +18,7 @@ type clusterRecord struct {
 
 // Create a Cluster Record Object required for the handover announcements
 func createClusterRecord(clusterKey string) (*clusterRecord, error) {
-	var ClusterRecord *clusterRecord = &clusterRecord{}
+	var ClusterRecord = &clusterRecord{}
 	connection, err := ocm.DefaultOCMInterface.SetupOCMConnection()
 	if err != nil {
 		return ClusterRecord, fmt.Errorf("failed to create OCM connection: %v", err)

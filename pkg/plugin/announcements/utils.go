@@ -32,7 +32,8 @@ func hasProduct(items []interface{}, target string) bool {
 func buildJQL(projectKey string, filters []fieldQuery) string {
 	var conditions []string
 	for _, q := range filters {
-		if q.Operator == "~*" {
+		switch q.Operator {
+		case "~*":
 			values := strings.Split(q.Value, ",")
 			var orParts []string
 			for _, v := range values {
@@ -40,11 +41,13 @@ func buildJQL(projectKey string, filters []fieldQuery) string {
 					fmt.Sprintf(`(project = "%s" AND "%s" ~ "%s")`, projectKey, q.Field, strings.TrimSpace(v)))
 			}
 			conditions = append(conditions, "("+strings.Join(orParts, " OR ")+")")
-		} else if q.Operator == "in" {
+
+		case "in":
 			conditions = append(conditions,
 				fmt.Sprintf(`(project = "%s" AND "%s" in (%s))`, projectKey, q.Field, q.Value),
 			)
-		} else {
+
+		default:
 			conditions = append(conditions,
 				fmt.Sprintf(`(project = "%s" AND "%s" %s "%s")`, projectKey, q.Field, q.Operator, q.Value),
 			)
@@ -98,14 +101,12 @@ func isValidMatch(i jira.Issue, cluster clusterRecord) bool {
 	versionMatch := false
 	clusterFormattedVersion := formatVersion(cluster.Version)
 
-	if versionRaw != nil {
-		for _, v := range versionRaw {
-			if v != nil {
-				vFormatted := formatVersion(v.Name)
-				if vFormatted == clusterFormattedVersion || isIgnored(v.Name) {
-					versionMatch = true
-					break
-				}
+	for _, v := range versionRaw {
+		if v != nil {
+			vFormatted := formatVersion(v.Name)
+			if vFormatted == clusterFormattedVersion || isIgnored(v.Name) {
+				versionMatch = true
+				break
 			}
 		}
 	}
