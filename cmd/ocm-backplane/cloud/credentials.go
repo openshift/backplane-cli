@@ -41,7 +41,7 @@ func init() {
 		&credentialArgs.backplaneURL,
 		"url",
 		"",
-		"URL of backplane API",
+		"URL of backplane API.",
 	)
 	flags.StringVarP(
 		&credentialArgs.output,

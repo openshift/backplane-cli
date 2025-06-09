@@ -65,7 +65,7 @@ func init() {
 		&consoleArgs.backplaneURL,
 		"url",
 		"",
-		"URL of backplane API",
+		"URL of backplane API.",
 	)
 	flags.StringVarP(
 		&consoleArgs.output,
@@ -125,7 +125,8 @@ func runConsole(cmd *cobra.Command, argv []string) (err error) {
 	if consoleArgs.backplaneURL != "" { // Overwrite if parameter is set
 		backplaneConfiguration.URL = consoleArgs.backplaneURL
 	}
-	logger.Infof("Using backplane URL: %s\n", consoleArgs.backplaneURL)
+
+	logger.Infof("Using backplane URL: %s\n", backplaneConfiguration.URL)
 
 	// Initialize OCM connection
 	ocmConnection, err := ocm.DefaultOCMInterface.SetupOCMConnection()

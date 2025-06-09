@@ -58,7 +58,6 @@ func newDescribeScriptCmd() *cobra.Command {
 				if err != nil {
 					return err
 				}
-
 				backplaneHost = bpCluster.BackplaneHost
 			}
 
