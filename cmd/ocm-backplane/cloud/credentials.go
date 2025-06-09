@@ -3,7 +3,6 @@ package cloud
 import (
 	"encoding/json"
 	"fmt"
-	"net/url"
 
 	logger "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -42,7 +41,7 @@ func init() {
 		&credentialArgs.backplaneURL,
 		"url",
 		"",
-		"URL of backplane API. Must be an HTTPS URL.",
+		"URL of backplane API.",
 	)
 	flags.StringVarP(
 		&credentialArgs.output,
@@ -93,13 +92,6 @@ func runCredentials(cmd *cobra.Command, argv []string) error {
 
 	// ============Get Backplane URl ==========================
 	if credentialArgs.backplaneURL != "" { // Overwrite if parameter is set
-		parsedURL, parseErr := url.ParseRequestURI(credentialArgs.backplaneURL)
-		if parseErr != nil {
-			return fmt.Errorf("invalid --url: %v", parseErr)
-		}
-		if parsedURL.Scheme != "https" {
-			return fmt.Errorf("invalid --url '%s': scheme must be https", credentialArgs.backplaneURL)
-		}
 		backplaneConfiguration.URL = credentialArgs.backplaneURL
 	}
 	logger.Infof("Using backplane URL: %s\n", backplaneConfiguration.URL)
