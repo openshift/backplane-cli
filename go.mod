@@ -10,8 +10,8 @@ require (
 	github.com/andygrunwald/go-jira v1.16.0
 	github.com/aws/aws-sdk-go-v2 v1.36.3
 	github.com/aws/aws-sdk-go-v2/config v1.29.14
-	github.com/aws/aws-sdk-go-v2/credentials v1.17.67
-	github.com/aws/aws-sdk-go-v2/service/sts v1.33.19
+	github.com/aws/aws-sdk-go-v2/credentials v1.17.68
+	github.com/aws/aws-sdk-go-v2/service/sts v1.33.20
 	github.com/golang-jwt/jwt/v4 v4.5.2
 	github.com/golang/mock v1.6.0
 	github.com/mitchellh/go-homedir v1.1.0
