@@ -36,11 +36,13 @@ We divide the commands into the below groups based on different aspects.
 
 To add a new command, create it as a child command of one of the above group commands, or add another dedicated group if it is a completely new thing.
 
-#### Alias
+#### Name and Alias
+When naming a command, choose concise words which most related to the function. If multiple words are needed, separate the words by `-`. Eg, `test-job`.
 
-For a long subcommand name, optionally provide an alias.
-Example:  
-`ocm-backplane testjob`  has an alias `ocm-backplane tj.`
+Depends on the situation, provide alias for the command name:
+- For common abbreviations, provide alias to improve productive. Eg, `list` \-\> `ls`, `namespace` \-\> `ns`.
+- For common synonyms, provide alias to make better user-experience. Eg, `search` \-\> `lookup`.
+
 
 ### Command Help messages
 
@@ -84,7 +86,8 @@ By default, the dependency components respect their environment variables.
 - kube client
 
 For backplane related environments, if we want to introduce one for backplane, name it with prefix BP\_\*.
-It would be a good idea to allow users to set the same via a flag.
+
+The environment variable name should be defined in [info.go](pkg/info/info.go).
 
 #### Config file
 
