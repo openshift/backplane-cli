@@ -48,18 +48,23 @@ Depends on the situation, provide alias for the command name:
 
 Provide the Use of Short, Long, Example in the subcommand.
 
-**Short**: one sentence of what this command does.
-  Eg: login to a cluster.
+**Short**: one sentence of what this command does. Eg,
+```
+login to a cluster.
+```
 
 **Long**: a detailed description of what this command does, what the user should expect from this command.
-  Eg:  
-  The login command configures the kubeconfig file, enabling access to the specified cluster. It retrieves the necessary URL from the backplane-api and constructs the kubeconfig file. Authentication to the backplane-api is performed using your OCM token.
+```
+The login command configures the kubeconfig file, enabling access to the specified cluster. It retrieves the necessary URL from the backplane-api and constructs the kubeconfig file. Authentication to the backplane-api is performed using your OCM token.
+```
 
 **Example**: provide a few examples of how to use this command, including the common usage of the flags.
+```
  backplane login \<id\>
  backplane login %test%
  backplane login \<external\_id\>
  backplane login \--pd \<incident-id\>
+```
 
 ### Command Tunnables
 
