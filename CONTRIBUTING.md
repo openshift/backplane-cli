@@ -4,6 +4,9 @@
 
 Thank you for your interest in contributing to backplane-cli\! We believe a consistent and intuitive user experience is paramount for our CLI application. This document outlines our guidelines for user experience.
 
+> [!NOTE]
+> Not all existing commands currently follow this guide. However, future development and ongoing refactoring efforts will gradually bring them into alignment.
+
 ### Goal of backplane-cli
 
 Assist users to get access to managed OSD/ROSA clusters by interacting with backplane-api and configuring local environments.
@@ -11,8 +14,6 @@ Assist users to get access to managed OSD/ROSA clusters by interacting with back
 ### Goal of this document
 
 This document provides a guideline on what we should follow when creating a new sub-command and refactoring an existing command.
-
-The current existing commands may not behave as described in this document.
 
 ### Command Structure
 
@@ -34,7 +35,7 @@ We divide the commands into the below groups based on different aspects.
 | accessrequest | related to access request which gets customer approval for certain access |
 |  |  |
 
-To add a new command, create it as a child command of one of the above group commands, or add another dedicated group if it is a completely new thing.
+To add a new command, create it as a sub-command of one of the above group commands, or add another dedicated group if it is a completely new thing.
 
 #### Name and Alias
 When naming a command, choose concise words which most related to the function. If multiple words are needed, separate the words by `-`. Eg, `test-job`.
@@ -66,13 +67,18 @@ The login command configures the kubeconfig file, enabling access to the specifi
  backplane login \--pd \<incident-id\>
 ```
 
-### Command Tunnables
+**README**:
+
+Also, please provide an example of the common usage of the command in the repo's [README usage section](https://github.com/openshift/backplane-cli/blob/main/README.md#usage).
+
+
+### Command Tunables
 
 #### Global flags
 
-When adding a new flag, it should be a global flag only if all child commands, including existing ones, must respect it. Otherwise, add it as a local flag.
+When adding a new flag, it should be a global flag only if all sub-commands of this command, including existing ones, must respect it. Otherwise, add it as a local flag.
 
-Any new child commands must also respect all existing global flags.
+Any new sub-command must also respect all existing global flags of its parent command.
 
 Currently, the root global flag we have is `-v, --verbosity` , all subcommands should respect this flag when handing outputs.
 
