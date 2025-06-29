@@ -57,7 +57,7 @@ type containerEngineInterface interface {
 	putFileToMount(filename string, content []byte) error
 	stopContainer(containerName string) error
 	runConsoleContainer(containerName string, port string, consoleArgs []string, envVars []envVar) error
-	runMonitorPlugin(containerName string, consoleContainerName string, nginxConf string, pluginArgs []string) error
+	runMonitorPlugin(containerName string, consoleContainerName string, nginxConf string, pluginArgs []string, envVars []envVar) error
 	containerIsExist(containerName string) (bool, error)
 }
 
@@ -112,6 +112,9 @@ const (
 	// Minimum required version for monitoring-plugin container
 	versionForMonitoringPlugin = "4.14"
 
+	// Minimum required version for monitoring-plugin runs without nginx
+	versionForMonitoringPluginWithoutNginx = "4.17"
+
 	// Minimum required version to use backend service for plugins
 	versionForConsolePluginsBackendService = "4.12"
 
@@ -126,6 +129,9 @@ const (
 
 	// The deployment name of monitoring plugin
 	MonitoringPluginDeployment = "monitoring-plugin"
+
+	// The default monitoring plugin port
+	DefaultMonitoringPluginPort = "9443"
 )
 
 var (
@@ -432,7 +438,12 @@ func (o *consoleOptions) determineMonitorPluginPort() error {
 	if err != nil {
 		return fmt.Errorf("failed looking up a free port for monitoring plugin: %s", err)
 	}
-	o.monitorPluginPort = strconv.Itoa(port)
+	if isRunningHigherOrEqualTo(versionForMonitoringPluginWithoutNginx) {
+		o.monitorPluginPort = DefaultMonitoringPluginPort
+	} else {
+		o.monitorPluginPort = strconv.Itoa(port)
+	}
+
 	logger.Debugf("using monitoring plugin port: %s\n", o.monitorPluginPort)
 	return nil
 }
@@ -611,7 +622,12 @@ func (o *consoleOptions) runMonitorPlugin(ce containerEngineInterface) error {
 	pluginContainerName := fmt.Sprintf("monitoring-plugin-%s", clusterID)
 
 	pluginArgs := []string{o.monitorPluginImage}
-	return ce.runMonitorPlugin(pluginContainerName, consoleContainerName, nginxFilename, pluginArgs)
+	var envVars []envVar
+
+	if isRunningHigherOrEqualTo(versionForMonitoringPluginWithoutNginx) {
+		envVars = append(envVars, envVar{key: "PORT", value: o.monitorPluginPort})
+	}
+	return ce.runMonitorPlugin(pluginContainerName, consoleContainerName, nginxFilename, pluginArgs, envVars)
 }
 
 // print the console URL and pop a browser if required
@@ -1138,7 +1154,13 @@ func (ce *dockerLinux) runConsoleContainer(containerName string, port string, co
 }
 
 // the shared function for podman to run monitoring plugin for both linux and macOS
-func podmanRunMonitorPlugin(containerName string, consoleContainerName string, nginxConfPath string, pluginArgs []string) error {
+func podmanRunMonitorPlugin(
+	containerName string,
+	consoleContainerName string,
+	nginxConfPath string,
+	pluginArgs []string,
+	envVars []envVar,
+) error {
 	_, authFilename, err := fetchPullSecretIfNotExist()
 	if err != nil {
 		return err
@@ -1153,6 +1175,13 @@ func podmanRunMonitorPlugin(containerName string, consoleContainerName string, n
 		"--network", fmt.Sprintf("container:%s", consoleContainerName),
 		"--mount", fmt.Sprintf("type=bind,source=%s,destination=/etc/nginx/nginx.conf,relabel=shared", nginxConfPath),
 	}
+
+	for _, e := range envVars {
+		engRunArgs = append(engRunArgs,
+			"--env", fmt.Sprintf("%s=%s", e.key, e.value),
+		)
+	}
+
 	engRunArgs = append(engRunArgs, pluginArgs...)
 
 	logger.WithField("Command", fmt.Sprintf("`%s %s`", PODMAN, strings.Join(engRunArgs, " "))).Infoln("Running container")
@@ -1163,18 +1192,18 @@ func podmanRunMonitorPlugin(containerName string, consoleContainerName string, n
 	return runCmd.Run()
 }
 
-func (ce *podmanMac) runMonitorPlugin(containerName string, consoleContainerName string, nginxConf string, pluginArgs []string) error {
+func (ce *podmanMac) runMonitorPlugin(containerName string, consoleContainerName string, nginxConf string, pluginArgs []string, envVars []envVar) error {
 	nginxConfPath := filepath.Join("/tmp/", nginxConf)
-	return podmanRunMonitorPlugin(containerName, consoleContainerName, nginxConfPath, pluginArgs)
+	return podmanRunMonitorPlugin(containerName, consoleContainerName, nginxConfPath, pluginArgs, envVars)
 }
 
-func (ce *podmanLinux) runMonitorPlugin(containerName string, consoleContainerName string, nginxConf string, pluginArgs []string) error {
+func (ce *podmanLinux) runMonitorPlugin(containerName string, consoleContainerName string, nginxConf string, pluginArgs []string, envVars []envVar) error {
 	nginxConfPath := filepath.Join(ce.fileMountDir, nginxConf)
-	return podmanRunMonitorPlugin(containerName, consoleContainerName, nginxConfPath, pluginArgs)
+	return podmanRunMonitorPlugin(containerName, consoleContainerName, nginxConfPath, pluginArgs, envVars)
 }
 
 // the shared function for docker to run monitoring plugin for both linux and macOS
-func dockerRunMonitorPlugin(containerName string, _ string, nginxConfPath string, pluginArgs []string) error {
+func dockerRunMonitorPlugin(containerName string, _ string, nginxConfPath string, pluginArgs []string, envVars []envVar) error {
 	configDirectory, _, err := fetchPullSecretIfNotExist()
 	if err != nil {
 		return err
@@ -1189,6 +1218,12 @@ func dockerRunMonitorPlugin(containerName string, _ string, nginxConfPath string
 		"--network", "host",
 		"--volume", fmt.Sprintf("%s:/etc/nginx/nginx.conf:z", nginxConfPath),
 	}
+
+	for _, e := range envVars {
+		engRunArgs = append(engRunArgs,
+			"--env", fmt.Sprintf("%s=%s", e.key, e.value),
+		)
+	}
 	engRunArgs = append(engRunArgs, pluginArgs...)
 
 	logger.WithField("Command", fmt.Sprintf("`%s %s`", DOCKER, strings.Join(engRunArgs, " "))).Infoln("Running container")
@@ -1199,22 +1234,22 @@ func dockerRunMonitorPlugin(containerName string, _ string, nginxConfPath string
 	return runCmd.Run()
 }
 
-func (ce *dockerLinux) runMonitorPlugin(containerName string, consoleContainerName string, nginxConf string, pluginArgs []string) error {
+func (ce *dockerLinux) runMonitorPlugin(containerName string, consoleContainerName string, nginxConf string, pluginArgs []string, envVars []envVar) error {
 	configDirectory, err := config.GetConfigDirectory()
 	if err != nil {
 		return err
 	}
 	nginxConfPath := filepath.Join(configDirectory, nginxConf)
-	return dockerRunMonitorPlugin(containerName, consoleContainerName, nginxConfPath, pluginArgs)
+	return dockerRunMonitorPlugin(containerName, consoleContainerName, nginxConfPath, pluginArgs, envVars)
 }
 
-func (ce *dockerMac) runMonitorPlugin(containerName string, consoleContainerName string, nginxConf string, pluginArgs []string) error {
+func (ce *dockerMac) runMonitorPlugin(containerName string, consoleContainerName string, nginxConf string, pluginArgs []string, envVars []envVar) error {
 	configDirectory, err := config.GetConfigDirectory()
 	if err != nil {
 		return err
 	}
 	nginxConfPath := filepath.Join(configDirectory, nginxConf)
-	return dockerRunMonitorPlugin(containerName, consoleContainerName, nginxConfPath, pluginArgs)
+	return dockerRunMonitorPlugin(containerName, consoleContainerName, nginxConfPath, pluginArgs, envVars)
 }
 
 // put a file in place for container to mount
