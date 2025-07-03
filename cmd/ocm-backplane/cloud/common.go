@@ -466,6 +466,12 @@ func getTrustedIPInlinePolicy(IPAddress awsutil.IPAddress) (awsutil.PolicyDocume
 }
 
 func isIsolatedBackplaneAccess(cluster *cmv1.Cluster, ocmConnection *ocmsdk.Connection) (bool, error) {
+	// Check if the cluster's base domain ends with specified US GOV domains
+	baseDomain := cluster.DNS().BaseDomain()
+	if strings.HasSuffix(baseDomain, "devshiftusgov.com") || strings.HasSuffix(baseDomain, "openshiftusgov.com") {
+		return false, nil
+	}
+	
 	if cluster.Hypershift().Enabled() {
 		return true, nil
 	}
