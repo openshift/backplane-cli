@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
@@ -14,16 +15,12 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
-	"github.com/openshift/backplane-cli/pkg/backplaneapi"
-	backplaneapiMock "github.com/openshift/backplane-cli/pkg/backplaneapi/mocks"
 	"github.com/openshift/backplane-cli/pkg/cli/config"
 	bpCredentials "github.com/openshift/backplane-cli/pkg/credentials"
-	"github.com/openshift/backplane-cli/pkg/info"
 	"github.com/openshift/backplane-cli/pkg/ocm"
 	ocmMock "github.com/openshift/backplane-cli/pkg/ocm/mocks"
 	"github.com/openshift/backplane-cli/pkg/ssm/mocks"
 	"github.com/openshift/backplane-cli/pkg/utils"
-	mocks2 "github.com/openshift/backplane-cli/pkg/utils/mocks"
 	"github.com/spf13/cobra"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -36,8 +33,6 @@ var _ = Describe("SSM command", func() {
 	var (
 		mockCtrl         *gomock.Controller
 		mockOcmInterface *ocmMock.MockOCMInterface
-		mockClientUtil   *backplaneapiMock.MockClientUtils
-		mockClusterUtils *mocks2.MockClusterUtils
 		mockSSMClient    *mocks.MockSSMClient
 	)
 
@@ -45,13 +40,6 @@ var _ = Describe("SSM command", func() {
 		mockCtrl = gomock.NewController(GinkgoT())
 		mockOcmInterface = ocmMock.NewMockOCMInterface(mockCtrl)
 		ocm.DefaultOCMInterface = mockOcmInterface
-		mockClientUtil = backplaneapiMock.NewMockClientUtils(mockCtrl)
-		backplaneapi.DefaultClientUtils = mockClientUtil
-		mockClusterUtils = mocks2.NewMockClusterUtils(mockCtrl)
-		utils.DefaultClusterUtils = mockClusterUtils
-		backplaneapi.DefaultClientUtils = mockClientUtil
-
-		// Initialize the mock SSM client
 		mockSSMClient = mocks.NewMockSSMClient(mockCtrl)
 
 		// Override CreateClientSet to return a fake Kubernetes client
@@ -66,7 +54,6 @@ var _ = Describe("SSM command", func() {
 	})
 
 	AfterEach(func() {
-		os.Setenv(info.BackplaneURLEnvName, "")
 		mockCtrl.Finish()
 	})
 
@@ -210,8 +197,8 @@ var _ = Describe("SSM command", func() {
 			os.Unsetenv("AWS_SESSION_TOKEN")
 		})
 
-		Context("StartSSMsession", func() {
-			It("should execute session-manager-plugin with correct arguments", func() {
+		Context("startSSMsession", func() {
+			It("should execute session-manager-plugin with correct arguments for a regular (interacting) session", func() {
 				// Mock SSM client call
 				mockSSMClient.EXPECT().StartSession(
 					context.TODO(),
@@ -224,7 +211,7 @@ var _ = Describe("SSM command", func() {
 					TokenValue: aws.String("test-token-value"),
 				}, nil)
 
-				err := StartSSMsession(&cobra.Command{}, []string{})
+				err := startSSMsession(&cobra.Command{}, nil)
 				Expect(err).ToNot(HaveOccurred())
 
 				// Verify ENV variables
@@ -239,9 +226,37 @@ var _ = Describe("SSM command", func() {
 				// Validate session details
 				var sessionDetails map[string]string
 				Expect(json.Unmarshal([]byte(cmdArgs[1]), &sessionDetails)).To(Succeed())
-				Expect(sessionDetails).To(HaveKey("SessionId"))
+				Expect(sessionDetails["SessionId"]).To(Equal("test-session-id"))
 				Expect(sessionDetails).To(HaveKey("StreamUrl"))
 				Expect(sessionDetails).To(HaveKey("TokenValue"))
+			})
+
+			It("Should execute a non-interactive session when provided a command to execute", func() {
+				command := []string{"free", "-m"}
+
+				// Mock SSM client call
+				mockSSMClient.EXPECT().StartSession(
+					context.TODO(),
+					&ssm.StartSessionInput{
+						Target:       aws.String("i-1234567890abcdef0"),
+						DocumentName: aws.String("AWS-StartInteractiveCommand"),
+						Parameters:   map[string][]string{"command": {strings.Join(command, " ")}},
+					},
+				).Return(&ssm.StartSessionOutput{
+					SessionId:  aws.String("test-session-id"),
+					StreamUrl:  aws.String("test-stream-url"),
+					TokenValue: aws.String("test-token-value"),
+				}, nil)
+
+				err := startSSMsession(&cobra.Command{}, command)
+				Expect(err).ToNot(HaveOccurred())
+
+				// Verify command struture
+				Expect(cmdArgs[0]).To(Equal("session-manager-plugin"))
+				var sessionDetails map[string]string
+				Expect(json.Unmarshal([]byte(cmdArgs[1]), &sessionDetails)).To(Succeed())
+				Expect(sessionDetails["SessionId"]).To(Equal("test-session-id"))
+
 			})
 
 			It("should handle credential fetch errors", func() {
@@ -249,12 +264,11 @@ var _ = Describe("SSM command", func() {
 					return nil, fmt.Errorf("backplane config error")
 				}
 
-				err := startSSMsession(&cobra.Command{}, []string{})
+				err := startSSMsession(&cobra.Command{}, nil)
 				Expect(err).To(MatchError("failed to fetch cloud credentials: backplane config error"))
 			})
 
 			It("fails on invalid proxy URL", func() {
-				// Mock GetBackplaneConfiguration to return invalid proxy URL
 				originalGetBackplaneConfig := GetBackplaneConfiguration
 				GetBackplaneConfiguration = func() (config.BackplaneConfiguration, error) {
 					invalidURL := "invalid-proxy-format"
@@ -264,14 +278,11 @@ var _ = Describe("SSM command", func() {
 				}
 				defer func() { GetBackplaneConfiguration = originalGetBackplaneConfig }()
 
-				err := startSSMsession(&cobra.Command{}, []string{})
+				err := startSSMsession(&cobra.Command{}, nil)
 				Expect(err).To(MatchError(ContainSubstring("invalid proxy URL")))
-				// Ensure StartSession is NOT called
-				mockSSMClient.EXPECT().StartSession(gomock.Any(), gomock.Any()).Times(0)
 			})
 
 			It("fails when proxy URL is nil", func() {
-				// Mock GetBackplaneConfiguration to return invalid proxy URL
 				originalGetBackplaneConfig := GetBackplaneConfiguration
 				GetBackplaneConfiguration = func() (config.BackplaneConfiguration, error) {
 					return config.BackplaneConfiguration{
@@ -280,15 +291,13 @@ var _ = Describe("SSM command", func() {
 				}
 				defer func() { GetBackplaneConfiguration = originalGetBackplaneConfig }()
 
-				err := startSSMsession(&cobra.Command{}, []string{})
+				err := startSSMsession(&cobra.Command{}, nil)
 				Expect(err).To(MatchError(ContainSubstring("proxy URL is not set")))
-				// Ensure StartSession is NOT called
-				mockSSMClient.EXPECT().StartSession(gomock.Any(), gomock.Any()).Times(0)
 			})
 
 			It("should handle missing node name", func() {
 				ssmArgs.node = ""
-				err := StartSSMsession(&cobra.Command{}, []string{})
+				err := startSSMsession(&cobra.Command{}, nil)
 				Expect(err).To(MatchError("--node flag is required"))
 			})
 		})

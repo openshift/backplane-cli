@@ -40,9 +40,7 @@ func NewFromConfigVar(cfg aws.Config) SSMClient {
 	return ssm.NewFromConfig(cfg)
 }
 
-var (
-	createClientSet = func(c *rest.Config) (kubernetes.Interface, error) { return kubernetes.NewForConfig(c) }
-)
+var createClientSet = func(c *rest.Config) (kubernetes.Interface, error) { return kubernetes.NewForConfig(c) }
 
 var ssmArgs struct {
 	node string
@@ -52,8 +50,12 @@ var SSMSessionCmd = &cobra.Command{
 	Use:   "ssm",
 	Short: "Start an AWS SSM session for a node",
 	Long:  "Start an AWS SSM session for the specified node provided to debug.",
-	Args:  cobra.ExactArgs(0),
-	RunE:  startSSMsession,
+	Args:  cobra.ArbitraryArgs,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		originalArgs := os.Args
+		execCommand := parseArgsWithDoubleDash(originalArgs)
+		return startSSMsession(cmd, execCommand)
+	},
 }
 
 func init() {
@@ -83,7 +85,8 @@ func fetchCloudCredentials() (*bpCredentials.AWSCredentialsResponse, error) {
 
 	logger.WithFields(logger.Fields{
 		"ID":   clusterID,
-		"Name": clusterName}).Infoln("Target cluster")
+		"Name": clusterName,
+	}).Infoln("Target cluster")
 
 	backplaneConfig, err := config.GetBackplaneConfiguration()
 	if err != nil {
@@ -133,7 +136,20 @@ func getInstanceID(nodeName string, config *rest.Config) (string, error) {
 	return instanceID, nil
 }
 
-func startSSMsession(cmd *cobra.Command, argv []string) error {
+// look for the -- separator, and return all arguments succeeding it
+func parseArgsWithDoubleDash(args []string) []string {
+	for i, arg := range args {
+		if arg == "--" {
+			if i+1 < len(args) {
+				return args[i+1:]
+			}
+			break
+		}
+	}
+	return nil
+}
+
+func startSSMsession(cmd *cobra.Command, execCommand []string) error {
 	// Check if session-manager-plugin is installed
 	ValidateSessionCmd := ExecCommand("session-manager-plugin", "--version")
 	err := ValidateSessionCmd.Run()
@@ -211,8 +227,64 @@ func startSSMsession(cmd *cobra.Command, argv []string) error {
 		return fmt.Errorf("failed to get instance ID for node %s: %w", ssmArgs.node, err)
 	}
 
-	logger.Infof("Starting SSM session for node: %s with Instance ID: %s", ssmArgs.node, instanceID)
+	logger.Infof("Non-interactive command to be executed: %s", strings.Join(execCommand, " "))
+	if execCommand != nil {
+		logger.Infof("Starting SSM session for node: %s with Instance ID: %s to execute command: %s",
+			ssmArgs.node, instanceID, strings.Join(execCommand, " "))
+		return startSSMSessionWithCommand(ssmClient, instanceID, execCommand, creds.Region)
+	} else {
+		logger.Infof("Starting interactive SSM session for node: %s with Instance ID: %s", ssmArgs.node, instanceID)
+		return startSSMSessionRegular(ssmClient, instanceID, creds.Region)
+	}
+}
 
+// Start an SSM session to execute the provided command non-interactively
+func startSSMSessionWithCommand(ssmClient SSMClient, instanceID string, command []string, region string) error {
+	commandStr := strings.Join(command, " ")
+
+	input := &ssm.StartSessionInput{
+		Target:       aws.String(instanceID),
+		DocumentName: aws.String("AWS-StartInteractiveCommand"),
+		Parameters: map[string][]string{
+			"command": {commandStr},
+		},
+	}
+	result, err := ssmClient.StartSession(context.TODO(), input)
+	if err != nil {
+		return fmt.Errorf("failed to send command via SSM: %w", err)
+	}
+
+	// Ensure the session details are not nil
+	if result.SessionId == nil || result.StreamUrl == nil || result.TokenValue == nil {
+		return fmt.Errorf("session details are incomplete: SessionId=%v, StreamUrl=%v, TokenValue=%v", result.SessionId, result.StreamUrl, result.TokenValue)
+	}
+
+	// Log session details for debugging
+	logger.Infof("SessionId: %v", *result.SessionId)
+	logger.Infof("StreamUrl: %v", *result.StreamUrl)
+	logger.Infof("TokenValue: %v", *result.TokenValue)
+
+	sessionJSON, err := json.Marshal(map[string]string{
+		"SessionId":  *result.SessionId,
+		"StreamUrl":  *result.StreamUrl,
+		"TokenValue": *result.TokenValue,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to serialize session details: %w", err)
+	}
+
+	cmdArgs := []string{"session-manager-plugin", string(sessionJSON), region, "StartSession"}
+	pluginCmd := ExecCommand(cmdArgs[0], cmdArgs[1:]...) //#nosec G204: Command arguments are trusted
+
+	pluginCmd.Stdout = os.Stdout
+	pluginCmd.Stderr = os.Stderr
+	pluginCmd.Stdin = os.Stdin
+
+	return pluginCmd.Run()
+}
+
+// Start an SSM session regularly
+func startSSMSessionRegular(ssmClient SSMClient, instanceID, region string) error {
 	// Start the SSM session
 	input := &ssm.StartSessionInput{
 		Target: aws.String(instanceID),
@@ -247,7 +319,7 @@ func startSSMsession(cmd *cobra.Command, argv []string) error {
 	signal.Notify(signals, syscall.SIGINT)
 
 	// Start the ssm-session using the session-manager-plugin
-	cmdArgs := []string{"session-manager-plugin", string(sessionJSON), creds.Region, "StartSession"}
+	cmdArgs := []string{"session-manager-plugin", string(sessionJSON), region, "StartSession"}
 	pluginCmd := ExecCommand(cmdArgs[0], cmdArgs[1:]...) //#nosec G204: Command arguments are trusted
 	pluginCmd.Stdout = os.Stdout
 	pluginCmd.Stderr = os.Stderr
