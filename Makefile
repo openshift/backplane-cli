@@ -73,10 +73,13 @@ lint: getlint
 	$(GOPATH)/bin/golangci-lint run --timeout 5m
 
 ensure-goreleaser:
-	@ls $(GOPATH)/bin/goreleaser 1>/dev/null || go install github.com/goreleaser/goreleaser@${GORELEASER_VERSION}
+	@command -v goreleaser >/dev/null 2>&1 || go install github.com/goreleaser/goreleaser@${GORELEASER_VERSION}
 
 release: ensure-goreleaser
 	goreleaser release --rm-dist
+
+release-with-note: ensure-goreleaser
+	goreleaser release --rm-dist --release-notes="$(NOTE)"
 
 test:
 	go test -v $(TESTOPTS) ./...
@@ -181,4 +184,3 @@ help:
 	@echo "  make clean && make install  # Fresh install"
 	@echo "  GOOS=darwin make build      # Build for macOS"
 	@echo
-	
