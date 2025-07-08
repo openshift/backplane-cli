@@ -385,6 +385,16 @@ func TestIsIsolatedBackplaneAccess(t *testing.T) {
 			cluster:  newTestCluster(t, cmv1.NewCluster().GCP(cmv1.NewGCP())),
 			expected: false,
 		},
+		{
+			name:     "devshiftusgov.com domain",
+			cluster:  newTestCluster(t, cmv1.NewCluster().DNS(cmv1.NewDNS().BaseDomain("cluster.devshiftusgov.com"))),
+			expected: false,
+		},
+		{
+			name:     "openshiftusgov.com domain",
+			cluster:  newTestCluster(t, cmv1.NewCluster().DNS(cmv1.NewDNS().BaseDomain("cluster.openshiftusgov.com"))),
+			expected: false,
+		},
 	}
 
 	//cmv1.NewStsSupportJumpRole().RoleArn(OldFlowSupportRole)

@@ -8,7 +8,9 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"os/signal"
 	"strings"
+	"syscall"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsConfig "github.com/aws/aws-sdk-go-v2/config"
@@ -261,12 +263,30 @@ func runSSMsession(ssmClient SSMClient, instanceID string, command []string, reg
 		return fmt.Errorf("failed to serialize session details: %w", err)
 	}
 
+	signals := make(chan (os.Signal), 1)
+	signal.Notify(signals, syscall.SIGINT)
+
+	// Start the ssm-session using the session-manager-plugin
 	cmdArgs := []string{"session-manager-plugin", string(sessionJSON), region, "StartSession"}
+
 	pluginCmd := ExecCommand(cmdArgs[0], cmdArgs[1:]...) //#nosec G204: Command arguments are trusted
 
 	pluginCmd.Stdout = os.Stdout
 	pluginCmd.Stderr = os.Stderr
 	pluginCmd.Stdin = os.Stdin
+
+	// We capture the SIGINT signal and send it to the PID of the subprocess
+	//
+	// FIXME? We probably don't need to unregister the signal handler as once the subprocess returns the parent process also gets terminated.
+	go func() {
+		<-signals
+		if pluginCmd.Process != nil {
+			err := syscall.Kill(pluginCmd.Process.Pid, syscall.SIGINT)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Could not deliver SIGINT to child-process: %d", pluginCmd.Process.Pid)
+			}
+		}
+	}()
 
 	return pluginCmd.Run()
 }
