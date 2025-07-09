@@ -72,21 +72,22 @@ END {
 ```
 This saves the grouped commits in `/tmp/release-note.md`, please review and modify the release note file.
 
-Increase `Major` when:
-- It has changes that breaks backward compatibility:
-    - For example, refactoring the CLI which changes the subcommand and argument format.
-    - The user need to use a new command to perform a task which the old command no longer works.
+Increase `Major`:
+- When it has changes that break backward compatibility:
+   - For example, the CLI has been refactored and the same command in the old version is not longer working with the new CLI version.
+   - If the new CLI is compatible with the old command, we don't consider it as a breaking change and we shouldn't change the major version.
+   - We should try to provide backward compatibility to avoid frequent major version bump.
 - Reset `Minor` and `Patch` to 0.
 
 Increase `Minor` when:
-- It adds a new feature:
+- When it adds a new feature:
     - For example, adding a new subcommand, adding a new functionality to a subcommand.
     - The same commands in the old version can still work in the new version.
 - Keep `Major` unchanged, and reset `Patch` to 0.
 
-Increase `Patch` when:
-- It has a bug fix that doesn't change the expected behaviors of a subcommand.
-- It has dependency updates.
+Increase `Patch`:
+- When it has a bug fix that doesn't change the expected behaviors of a subcommand.
+- Or it has dependency updates.
 - Keep `Major` and `Minor` unchanged.
 
 ### Cutting a new release
