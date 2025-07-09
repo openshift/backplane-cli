@@ -93,6 +93,12 @@ Increase `Patch` when:
 
 Create a tag on the latest main.
 
+Determine a version number based on the above section. For example,
+```bash
+VERSION="v0.2.0"
+```
+**Note:** We follow [semver](https://semver.org/) for versioning. Release tags are expected to be suffixed with a `v` for consistent naming; For example, `v1.0.0`.
+
 ```bash
 git fetch upstream
 git checkout upstream/main
@@ -100,7 +106,6 @@ git tag -a ${VERSION} -m "release ${VERSION}"
 git push upstream $VERSION
 ```
 
-**Note:** We follow [semver](https://semver.org/) for versioning. Release tags are expected to be suffixed with a `v` for consistent naming; For example, `v1.0.0`.
 
 Run goreleaser to build the binaries and create the release page.
 
