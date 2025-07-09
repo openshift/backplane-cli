@@ -250,6 +250,10 @@ $ ocm-backplane cloud ssm --node ip-xx-x-xxx-xxx.xxxxxx.compute.internal
 Starting session with SessionId: e4abf0bf76199710d76b3ecaa2c6f4ae-929p9nkk8yta7upy8el4ylidq4
 sh-5.1$
 ```
+- It is also possible to non-interactively execute commands within the SSM session, i.e. by entering the command to be run inside of the SSM session following the `--` separator:
+```
+$ ocm backplane cloud ssm --node ip-xx-x-xxx-xxx.xxxxxx.compute.internal -- free -m
+```
 
 ## Monitoring
 Monitoring command can be used to launch the specified monitoring UI.
