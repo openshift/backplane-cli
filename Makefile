@@ -121,6 +121,7 @@ mock-gen:
 	mockgen -destination=./pkg/info/mocks/infoMock.go -package=mocks github.com/openshift/backplane-cli/pkg/info InfoService
 	mockgen -destination=./pkg/info/mocks/buildInfoMock.go -package=mocks github.com/openshift/backplane-cli/pkg/info BuildInfoService
 	mockgen -destination=./pkg/ssm/mocks/mock_ssmclient.go -package=mocks github.com/openshift/backplane-cli/cmd/ocm-backplane/cloud SSMClient
+	mockgen -destination=./pkg/container/mocks/containerEngineMock.go -package=mocks github.com/openshift/backplane-cli/pkg/container ContainerEngine
 
 .PHONY: build-image
 build-image:
