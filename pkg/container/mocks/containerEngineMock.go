@@ -92,17 +92,17 @@ func (mr *MockContainerEngineMockRecorder) RunConsoleContainer(arg0, arg1, arg2,
 }
 
 // RunMonitorPlugin mocks base method.
-func (m *MockContainerEngine) RunMonitorPlugin(arg0, arg1, arg2 string, arg3 []string) error {
+func (m *MockContainerEngine) RunMonitorPlugin(arg0, arg1, arg2 string, arg3 []string, arg4 []container.EnvVar) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RunMonitorPlugin", arg0, arg1, arg2, arg3)
+	ret := m.ctrl.Call(m, "RunMonitorPlugin", arg0, arg1, arg2, arg3, arg4)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // RunMonitorPlugin indicates an expected call of RunMonitorPlugin.
-func (mr *MockContainerEngineMockRecorder) RunMonitorPlugin(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+func (mr *MockContainerEngineMockRecorder) RunMonitorPlugin(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RunMonitorPlugin", reflect.TypeOf((*MockContainerEngine)(nil).RunMonitorPlugin), arg0, arg1, arg2, arg3)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RunMonitorPlugin", reflect.TypeOf((*MockContainerEngine)(nil).RunMonitorPlugin), arg0, arg1, arg2, arg3, arg4)
 }
 
 // StopContainer mocks base method.

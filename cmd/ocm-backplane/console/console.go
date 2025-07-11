@@ -87,6 +87,9 @@ const (
 	// Minimum required version for monitoring-plugin container
 	versionForMonitoringPlugin = "4.14"
 
+	// Minimum required version for monitoring-plugin runs without nginx
+	versionForMonitoringPluginWithoutNginx = "4.17"
+
 	// Minimum required version to use backend service for plugins
 	versionForConsolePluginsBackendService = "4.12"
 
@@ -101,6 +104,9 @@ const (
 
 	// The deployment name of monitoring plugin
 	MonitoringPluginDeployment = "monitoring-plugin"
+
+	// The default monitoring plugin port
+	DefaultMonitoringPluginPort = "9443"
 )
 
 var (
@@ -391,6 +397,15 @@ func (o *consoleOptions) determineMonitorPluginPort() error {
 		logger.Debugln("monitoring plugin is not needed, not to assign monitoring plugin port")
 		return nil
 	}
+
+	// We use a default port for the plugin which doesn't need Nginx
+	if isRunningHigherOrEqualTo(versionForMonitoringPluginWithoutNginx) {
+		o.monitorPluginPort = DefaultMonitoringPluginPort
+		logger.Debugf("monitoring plugin does not require Nginx, assign a default port %s", o.monitorPluginPort)
+		return nil
+	}
+
+	// Lookup and assign a free port for monitoring plugin
 	port, err := utils.GetFreePort()
 	if err != nil {
 		return fmt.Errorf("failed looking up a free port for monitoring plugin: %s", err)
@@ -563,18 +578,28 @@ func (o *consoleOptions) runMonitorPlugin(ce container.ContainerEngine) error {
 		return err
 	}
 
-	// Setup nginx configurations
+	consoleContainerName := fmt.Sprintf("console-%s", clusterID)
+	pluginContainerName := fmt.Sprintf("monitoring-plugin-%s", clusterID)
+	pluginArgs := []string{o.monitorPluginImage}
+
+	var envVars []container.EnvVar
+
+	// no need nginx but need an environment to specify port
+	if isRunningHigherOrEqualTo(versionForMonitoringPluginWithoutNginx) {
+		logger.Debugln("monitoring plugin does not require nginx, passing an environment variable to specify the port")
+		envVars = append(envVars, container.EnvVar{Key: "PORT", Value: o.monitorPluginPort})
+		return ce.RunMonitorPlugin(pluginContainerName, consoleContainerName, "", pluginArgs, envVars)
+	}
+
+	// Setup nginx configurations for the plugin that needs Nginx
+	logger.Debugln("setting up nginx config for monitoring plugin")
 	config := fmt.Sprintf(info.MonitoringPluginNginxConfigTemplate, o.monitorPluginPort)
 	nginxFilename := fmt.Sprintf(info.MonitoringPluginNginxConfigFilename, clusterID)
 	if err := ce.PutFileToMount(nginxFilename, []byte(config)); err != nil {
 		return err
 	}
 
-	consoleContainerName := fmt.Sprintf("console-%s", clusterID)
-	pluginContainerName := fmt.Sprintf("monitoring-plugin-%s", clusterID)
-
-	pluginArgs := []string{o.monitorPluginImage}
-	return ce.RunMonitorPlugin(pluginContainerName, consoleContainerName, nginxFilename, pluginArgs)
+	return ce.RunMonitorPlugin(pluginContainerName, consoleContainerName, nginxFilename, pluginArgs, envVars)
 }
 
 // print the console URL and pop a browser if required

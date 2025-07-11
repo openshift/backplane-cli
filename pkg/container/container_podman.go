@@ -90,7 +90,13 @@ func (ce *podmanLinux) RunConsoleContainer(containerName string, port string, co
 }
 
 // the shared function for podman to run monitoring plugin for both linux and macOS
-func podmanRunMonitorPlugin(containerName string, consoleContainerName string, nginxConfPath string, pluginArgs []string) error {
+func podmanRunMonitorPlugin(
+	containerName string,
+	consoleContainerName string,
+	nginxConfPath string,
+	pluginArgs []string,
+	envVars []EnvVar,
+) error {
 	_, authFilename, err := fetchPullSecretIfNotExist()
 	if err != nil {
 		return err
@@ -103,8 +109,20 @@ func podmanRunMonitorPlugin(containerName string, consoleContainerName string, n
 		"--detach", // run in background
 		"--name", containerName,
 		"--network", fmt.Sprintf("container:%s", consoleContainerName),
-		"--mount", fmt.Sprintf("type=bind,source=%s,destination=/etc/nginx/nginx.conf,relabel=shared", nginxConfPath),
 	}
+
+	// nginxConfPath is optional. Add --mount when the nginxConfPath is not empty.
+	if nginxConfPath != "" {
+		mountArg := fmt.Sprintf("type=bind,source=%s,destination=/etc/nginx/nginx.conf,relabel=shared", nginxConfPath)
+		engRunArgs = append(engRunArgs, "--mount", mountArg)
+	}
+
+	for _, e := range envVars {
+		engRunArgs = append(engRunArgs,
+			"--env", fmt.Sprintf("%s=%s", e.Key, e.Value),
+		)
+	}
+
 	engRunArgs = append(engRunArgs, pluginArgs...)
 
 	logger.WithField("Command", fmt.Sprintf("`%s %s`", PODMAN, strings.Join(engRunArgs, " "))).Infoln("Running container")
@@ -115,14 +133,20 @@ func podmanRunMonitorPlugin(containerName string, consoleContainerName string, n
 	return runCmd.Run()
 }
 
-func (ce *podmanMac) RunMonitorPlugin(containerName string, consoleContainerName string, nginxConf string, pluginArgs []string) error {
-	nginxConfPath := filepath.Join("/tmp/", nginxConf)
-	return podmanRunMonitorPlugin(containerName, consoleContainerName, nginxConfPath, pluginArgs)
+func (ce *podmanMac) RunMonitorPlugin(containerName string, consoleContainerName string, nginxConf string, pluginArgs []string, envVars []EnvVar) error {
+	var nginxConfPath string
+	if nginxConf != "" {
+		nginxConfPath = filepath.Join("/tmp/", nginxConf)
+	}
+	return podmanRunMonitorPlugin(containerName, consoleContainerName, nginxConfPath, pluginArgs, envVars)
 }
 
-func (ce *podmanLinux) RunMonitorPlugin(containerName string, consoleContainerName string, nginxConf string, pluginArgs []string) error {
-	nginxConfPath := filepath.Join(ce.fileMountDir, nginxConf)
-	return podmanRunMonitorPlugin(containerName, consoleContainerName, nginxConfPath, pluginArgs)
+func (ce *podmanLinux) RunMonitorPlugin(containerName string, consoleContainerName string, nginxConf string, pluginArgs []string, envVars []EnvVar) error {
+	var nginxConfPath string
+	if nginxConf != "" {
+		nginxConfPath = filepath.Join(ce.fileMountDir, nginxConf)
+	}
+	return podmanRunMonitorPlugin(containerName, consoleContainerName, nginxConfPath, pluginArgs, envVars)
 }
 
 // put a file in place for container to mount
