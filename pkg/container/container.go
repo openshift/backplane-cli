@@ -24,7 +24,7 @@ type ContainerEngine interface {
 	PutFileToMount(filename string, content []byte) error
 	StopContainer(containerName string) error
 	RunConsoleContainer(containerName string, port string, consoleArgs []string, envVars []EnvVar) error
-	RunMonitorPlugin(containerName string, consoleContainerName string, nginxConf string, pluginArgs []string) error
+	RunMonitorPlugin(containerName string, consoleContainerName string, nginxConf string, pluginArgs []string, envVars []EnvVar) error
 	ContainerIsExist(containerName string) (bool, error)
 }
 

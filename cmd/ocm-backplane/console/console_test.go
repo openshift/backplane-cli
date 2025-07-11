@@ -316,6 +316,58 @@ var _ = Describe("console command", func() {
 		})
 	})
 
+	Context("For cluster version greater or equal 4.17", func() {
+		clusterInfo, _ := cmv1.NewCluster().
+			CloudProvider(cmv1.NewCloudProvider().ID("aws")).
+			Product(cmv1.NewProduct().ID("dedicated")).
+			AdditionalTrustBundle("REDACTED").
+			Proxy(cmv1.NewProxy().HTTPProxy("http://my.proxy:80").HTTPSProxy("https://my.proxy:443")).
+			OpenshiftVersion("4.17.1").Build()
+
+		It("should assgin a default port for monitoring plugin", func() {
+			setupConfig()
+			mockOcmInterface.EXPECT().GetClusterInfoByID(clusterID).Return(clusterInfo, nil).AnyTimes()
+			o := newConsoleOptions()
+			err := o.determineNeedMonitorPlugin()
+			Expect(err).To(BeNil())
+			err = o.determineMonitorPluginPort()
+			Expect(err).To(BeNil())
+			Expect(o.monitorPluginPort).To(Equal(DefaultMonitoringPluginPort))
+		})
+
+		It("should add monitoring plugin to console arguments", func() {
+			setupConfig()
+			mockOcmInterface.EXPECT().GetClusterInfoByID(clusterID).Return(clusterInfo, nil).AnyTimes()
+			o := newConsoleOptions()
+			err := o.determineNeedMonitorPlugin()
+			Expect(err).To(BeNil())
+			plugins, err := o.getPlugins()
+			Expect(err).To(BeNil())
+			Expect(plugins).To(ContainSubstring("monitoring-plugin"))
+		})
+
+		It("should run the monitoring plugin with an environment variable that specifies the default port", func() {
+			setupConfig()
+			ce := mockEngine
+			mockOcmInterface.EXPECT().GetClusterInfoByID(clusterID).Return(clusterInfo, nil).AnyTimes()
+			o := newConsoleOptions()
+			err := o.determineNeedMonitorPlugin()
+			Expect(err).To(BeNil())
+			err = o.determineMonitorPluginPort()
+			Expect(err).To(BeNil())
+
+			ce.EXPECT().RunMonitorPlugin(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Do(
+				func(containerName, consoleContainerName, nginxConf string, pluginArgs []string, envVars []container.EnvVar) {
+					Expect(envVars).To(ContainElement(container.EnvVar{
+						Key:   "PORT",
+						Value: DefaultMonitoringPluginPort,
+					}))
+				}).Return(nil).Times(1)
+			err = o.runMonitorPlugin(ce)
+			Expect(err).To(BeNil())
+		})
+	})
+
 	Context("An container is created to run the console, prior to doing that we need to check if container distro is supported", func() {
 		It("In the case we explicitly specify Podman, the code should return support for Podman", func() {
 
@@ -420,7 +472,7 @@ var _ = Describe("console command", func() {
 				return mockEngine, nil
 			}
 			mockEngine.EXPECT().RunConsoleContainer(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
-			mockEngine.EXPECT().RunMonitorPlugin(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+			mockEngine.EXPECT().RunMonitorPlugin(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
 			ce, err := o.getContainerEngineImpl()
 			Expect(err).To(BeNil())
