@@ -28,9 +28,77 @@ cd backplane-cli
 git remote add upstream https://github.com/openshift/backplane-cli.git
 ```
 
+### Determine a new version
+backplane-cli follows [semver](https://semver.org/). The version is in format `v[Major].[Minor].[Patch]`.
+
+- MAJOR version when you make incompatible API changes
+- MINOR version when you add functionality in a backward compatible manner
+- PATCH version when you make backward compatible bug fixes
+
+Review the commits since last release:
+```
+$ git fetch upstream
+
+$ git log $(git describe --tags --abbrev=0 upstream/main)..upstream/main --pretty=format:"%h %s" |
+gawk '
+{
+  # Extract the commit message without the hash and ticket prefix
+  # Pattern: hash + space + [ticket] + space + type + ":"
+  # Example: "a1b2c3d [PROJ-123] feat: some message"
+
+  # Remove the hash and space
+  msg = substr($0, index($0,$2))
+
+  # Regex to extract type: after "] " followed by letters, colon
+  if (match(msg, /\] *([a-z]+):/, m)) {
+    type = m[1]
+    groups[type] = groups[type] "\n- " $0
+  } else {
+    groups["others"] = groups["others"] "\n- " $0
+  }
+}
+END {
+  order = "feat fix chore docs test others"
+  split(order, o)
+  for (i in o) {
+    t = o[i]
+    if (t in groups) {
+      print "## " toupper(substr(t,1,1)) substr(t,2)
+      print groups[t] "\n"
+    }
+  }
+}
+'  > /tmp/release-note.md
+```
+This saves the grouped commits in `/tmp/release-note.md`, please review and modify the release note file.
+
+Increase `Major`:
+- When it has changes that break backward compatibility:
+   - For example, the CLI has been refactored and the same command in the old version is not longer working with the new CLI version.
+   - If the new CLI is compatible with the old command, we don't consider it as a breaking change and we shouldn't change the major version.
+   - We should try to provide backward compatibility to avoid frequent major version bump.
+- Reset `Minor` and `Patch` to 0.
+
+Increase `Minor` when:
+- When it adds a new feature:
+    - For example, adding a new subcommand, adding a new functionality to a subcommand.
+    - The same commands in the old version can still work in the new version.
+- Keep `Major` unchanged, and reset `Patch` to 0.
+
+Increase `Patch`:
+- When it has a bug fix that doesn't change the expected behaviors of a subcommand.
+- Or it has dependency updates.
+- Keep `Major` and `Minor` unchanged.
+
 ### Cutting a new release
 
 Create a tag on the latest main.
+
+Determine a version number based on the above section. For example,
+```bash
+VERSION="v0.2.0"
+```
+**Note:** We follow [semver](https://semver.org/) for versioning. Release tags are expected to be suffixed with a `v` for consistent naming; For example, `v1.0.0`.
 
 ```bash
 git fetch upstream
@@ -39,13 +107,12 @@ git tag -a ${VERSION} -m "release ${VERSION}"
 git push upstream $VERSION
 ```
 
-**Note:** We follow [semver](https://semver.org/) for versioning. Release tags are expected to be suffixed with a `v` for consistent naming; For example, `v1.0.0`.
 
 Run goreleaser to build the binaries and create the release page.
 
 ```bash
 git checkout upstream/main
-make release
+make release-with-note NOTE=/tmp/release-note.md
 ```
 
 A new release will show up in the [releases](https://github.com/openshift/backplane-cli/releases) page.
