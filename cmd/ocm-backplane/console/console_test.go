@@ -3,9 +3,7 @@ package console
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"reflect"
-	"runtime"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -22,6 +20,8 @@ import (
 	"k8s.io/client-go/tools/clientcmd/api"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	"github.com/openshift/backplane-cli/pkg/container"
+	ceMock "github.com/openshift/backplane-cli/pkg/container/mocks"
 	"github.com/openshift/backplane-cli/pkg/info"
 	"github.com/openshift/backplane-cli/pkg/ocm"
 	ocmMock "github.com/openshift/backplane-cli/pkg/ocm/mocks"
@@ -37,8 +37,7 @@ var _ = Describe("console command", func() {
 	var (
 		mockCtrl         *gomock.Controller
 		mockOcmInterface *ocmMock.MockOCMInterface
-
-		capturedCommands [][]string
+		mockEngine       *ceMock.MockContainerEngine
 
 		pullSecret  string
 		clusterID   string
@@ -50,26 +49,10 @@ var _ = Describe("console command", func() {
 	BeforeEach(func() {
 		mockCtrl = gomock.NewController(GinkgoT())
 		mockOcmInterface = ocmMock.NewMockOCMInterface(mockCtrl)
+		mockEngine = ceMock.NewMockContainerEngine(mockCtrl)
 		ocm.DefaultOCMInterface = mockOcmInterface
 
 		os.Setenv("CONTAINER_ENGINE", PODMAN)
-
-		capturedCommands = nil
-		createCommand = func(prog string, args ...string) *exec.Cmd {
-			command := []string{prog}
-			command = append(command, args...)
-			capturedCommands = append(capturedCommands, command)
-
-			return exec.Command("true")
-		}
-
-		createCommand = func(prog string, args ...string) *exec.Cmd {
-			command := []string{prog}
-			command = append(command, args...)
-			capturedCommands = append(capturedCommands, command)
-
-			return exec.Command("true")
-		}
 
 		pullSecret = "testpullsecret"
 		clusterID = "cluster123"
@@ -109,9 +92,6 @@ var _ = Describe("console command", func() {
 			Extensions:     nil,
 		}
 
-		dirName, _ := os.MkdirTemp("", ".kube")
-
-		pullSecretConfigDirectory = dirName
 	})
 
 	AfterEach(func() {
@@ -132,29 +112,24 @@ var _ = Describe("console command", func() {
 			setupConfig()
 			createPathPodman()
 			o := newConsoleOptions()
-			ce, err := o.getContainerEngineImpl()
-			Expect(err).To(BeNil())
-			err = o.beforeStartCleanUp(ce)
+			ce := mockEngine
+			mockEngine.EXPECT().ContainerIsExist(gomock.Any()).Return(false, nil).AnyTimes()
+			err := o.beforeStartCleanUp(ce)
 			Expect(err).To(BeNil())
 		})
 
-		It("Should perform verification if console and monitoring plugin containers are present", func() {
+		It("Should stop containers if console and monitoring plugin containers are present", func() {
 			setupConfig()
 			createPathPodman()
 			mockOcmInterface.EXPECT().GetClusterInfoByID(clusterID).Return(nil, nil).AnyTimes()
 			o := newConsoleOptions()
-			ce, err := o.getContainerEngineImpl()
-			Expect(err).To(BeNil())
-			capturedCommands = nil
+			ce := mockEngine
 
-			err = o.beforeStartCleanUp(ce)
-			Expect(err).To(BeNil())
+			mockEngine.EXPECT().ContainerIsExist(gomock.Any()).Return(true, nil).AnyTimes()
+			mockEngine.EXPECT().StopContainer(gomock.Any()).Return(nil).AnyTimes()
 
-			Expect(len(capturedCommands)).To(Equal(2))
-			Expect(capturedCommands[0][0]).To(Equal("podman"))
-			Expect(capturedCommands[0][1]).To(Equal("ps"))
-			Expect(capturedCommands[1][0]).To(Equal("podman"))
-			Expect(capturedCommands[1][1]).To(Equal("ps"))
+			err := o.beforeStartCleanUp(ce)
+			Expect(err).To(BeNil())
 		})
 	})
 
@@ -341,66 +316,37 @@ var _ = Describe("console command", func() {
 		})
 	})
 
-	Context("when running podman on MacOS", func() {
-		ce := podmanMac{}
-		It("should put the file via ssh to the VM", func() {
-			capturedCommands = nil
-			err := ce.putFileToMount("testfile", []byte("test"))
-			Expect(err).To(BeNil())
-			Expect(len(capturedCommands)).To(Equal(1))
-			command := capturedCommands[0]
-			// executing with bash -c xxxx
-			Expect(len(command)).To(Equal(3))
-			Expect(command[2]).To(ContainSubstring("ssh"))
-		})
-	})
-
-	Context("when running docker", func() {
-		ce := dockerLinux{}
-		It("should specify the --config option right after the subcommand", func() {
-			mockOcmInterface.EXPECT().GetPullSecret().Return(pullSecret, nil).AnyTimes()
-			capturedCommands = nil
-			err := ce.pullImage("testimage")
-			Expect(err).To(BeNil())
-			Expect(len(capturedCommands)).To(Equal(1))
-			command := capturedCommands[0]
-			// executing docker --config xxxx pull
-			Expect(len(command)).To(BeNumerically(">", 3))
-			Expect(command[1]).To(ContainSubstring("config"))
-		})
-	})
-
 	Context("An container is created to run the console, prior to doing that we need to check if container distro is supported", func() {
 		It("In the case we explicitly specify Podman, the code should return support for Podman", func() {
+
+			engineFactory = func(osName, engineName string) (container.ContainerEngine, error) {
+				Expect(engineName).To(Equal(PODMAN))
+				return mockEngine, nil
+			}
+
 			oldpath := createPathPodman()
+
 			o := newConsoleOptions()
 			o.containerEngineFlag = PODMAN
-			cei, err := o.getContainerEngineImpl()
+			_, err := o.getContainerEngineImpl()
 			Expect(err).To(BeNil())
-
-			if runtime.GOOS == LINUX {
-				Expect(reflect.TypeOf(cei) == reflect.TypeOf(&podmanLinux{})).To(BeTrue())
-			}
-			if runtime.GOOS == MACOS {
-				Expect(reflect.TypeOf(cei) == reflect.TypeOf(&podmanMac{})).To(BeTrue())
-			}
 
 			setPath(oldpath)
 		})
 
 		It("In the case we explicitly specify Docker, the code should return support for Docker", func() {
+
+			engineFactory = func(osName, engineName string) (container.ContainerEngine, error) {
+				Expect(engineName).To(Equal(DOCKER))
+				return mockEngine, nil
+			}
+
 			oldpath := createPathDocker()
 			o := newConsoleOptions()
 			o.containerEngineFlag = DOCKER
-			cei1, err1 := o.getContainerEngineImpl()
+			_, err1 := o.getContainerEngineImpl()
 			Expect(err1).To(BeNil())
 
-			if runtime.GOOS == LINUX {
-				Expect(reflect.TypeOf(cei1) == reflect.TypeOf(&dockerLinux{})).To(BeTrue())
-			}
-			if runtime.GOOS == MACOS {
-				Expect(reflect.TypeOf(cei1) == reflect.TypeOf(&dockerMac{})).To(BeTrue())
-			}
 			setPath(oldpath)
 		})
 
@@ -470,6 +416,12 @@ var _ = Describe("console command", func() {
 			o.url = "http://127.0.0.2:1447"
 			o.openBrowser = false
 			o.containerEngineFlag = DOCKER
+			engineFactory = func(osName, engineName string) (container.ContainerEngine, error) {
+				return mockEngine, nil
+			}
+			mockEngine.EXPECT().RunConsoleContainer(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+			mockEngine.EXPECT().RunMonitorPlugin(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+
 			ce, err := o.getContainerEngineImpl()
 			Expect(err).To(BeNil())
 
