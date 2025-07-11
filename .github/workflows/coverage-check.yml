@@ -1,0 +1,57 @@
+name: Test and Coverage Check
+
+on: [pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'  # Match your repo's Go version
+
+      - name: Run Tests with Coverage
+        run: |
+          go test -coverprofile=coverage.out ./...
+
+      - name: Check if bypass label is set
+        id: check_bypass
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const labels = await github.rest.issues.listLabelsOnIssue({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number
+            });
+
+            const bypass = labels.data.some(label => label.name === 'bypass-coverage');
+            core.setOutput('bypass', bypass);
+
+      - name: Enforce Coverage
+        if: steps.check_bypass.outputs.bypass != 'true'
+        run: |
+          echo "Checking coverage threshold..."
+          go tool cover -func=coverage.out
+
+      - name: Notify on Bypass
+        if: steps.check_bypass.outputs.bypass == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number
+            });
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `🚨 *Test coverage check was bypassed.*\n\n**Reason (if provided):**\n${pr.data.body || "No reason given."}\n\nPlease ensure this PR is reviewed with extra care.`
+            });
+
