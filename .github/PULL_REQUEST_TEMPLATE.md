@@ -41,3 +41,6 @@ fix: fix timezone convertion
 - [ ] Validated the changes in a cluster
 - [ ] Included documentation changes with PR
 - [ ] Backward compatible
+
+<!-- Keep the below label to auto squash commits -->
+/label tide/merge-method-squash

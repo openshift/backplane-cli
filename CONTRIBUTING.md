@@ -255,8 +255,7 @@ If the PR is a new feature with tests, use the type `feat`.
 | Use lowercase (except proper nouns) | `add support for OCM login`       | `Add Support For OCM Login`    |
 
 ### Squash
-After raising the PR, add a comment:
+The PR template has the below line to squash commits by default, please keep it:
 ```
 /label tide/merge-method-squash
 ```
-so that the commits will be squashed once the PR is merged.
