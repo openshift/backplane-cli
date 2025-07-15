@@ -215,3 +215,47 @@ if err != nil {
 #### Validate arguments
 
 Validate the arguments/inputs at the earliest possible.
+
+
+## Pull Request Guideline
+
+Guideline for making a Pull Request (PR) in the backplane-cli repo.
+
+### Title
+The title should follow this format:
+```
+[Ticket] type: short description
+```
+Example: `[PROJ-123] feat: add SSM support`
+
+#### Ticket number
+The ticket number is optional. If no associated ticket, the title can be `feat: add SSM support`.
+
+#### Type
+
+| Type   | Description                                |
+|--------|--------------------------------------------|
+| feat   | A new feature or capability                |
+| fix    | A bug fix or correction                    |
+| chore  | Maintenance tasks, config, or dependencies |
+| docs   | Documentation-only changes                 |
+| test   | Adding or updating tests                   |
+| other  | Anything that doesn't fit the above types  |
+
+If the PR is a new feature with tests, use the type `feat`.
+
+
+#### Short Description
+
+| Rule                                | Example ✅                         | Example ❌                      |
+|-------------------------------------|-----------------------------------|---------------------------------|
+| Use imperative mood (command form)  | `add login endpoint`              | `added login endpoint`         |
+| Be concise and specific             | `handle missing token error`      | `make login better`            |
+| Do not end with a period            | `refactor cloud service`          | `refactor cloud service.`      |
+| Use lowercase (except proper nouns) | `add support for OCM login`       | `Add Support For OCM Login`    |
+
+### Squash
+The PR template has the below line to squash commits by default, please keep it:
+```
+/label tide/merge-method-squash
+```

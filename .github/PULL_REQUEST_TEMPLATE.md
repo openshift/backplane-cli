@@ -1,11 +1,22 @@
+<!--
+PR Title Format (please follow):
+
+[Ticket(optional)] type: short description
+
+Examples:
+[SREP-1234] feat: add gcp cloud support
+fix: fix timezone convertion
+-->
+
 ### What type of PR is this?
 
-- [ ] Bug
-- [ ] Feature
-- [ ] Documentation
-- [ ] Test Coverage
-- [ ] Clean Up
-- [ ] Others
+- [ ] fix (Bug Fix)
+- [ ] feat (New Feature)
+- [ ] docs (Documentation)
+- [ ] test (Test Coverage)
+- [ ] chore (Clean Up / Maintenance Tasks)
+- [ ] other (Anything that doesn't fit the above)
+
 ### What this PR does / Why we need it?
 
 ### Which Jira/Github issue(s) does this PR fix?
@@ -29,3 +40,7 @@
 - [ ] Ran unit tests locally
 - [ ] Validated the changes in a cluster
 - [ ] Included documentation changes with PR
+- [ ] Backward compatible
+
+<!-- Keep the below label to auto squash commits -->
+/label tide/merge-method-squash
