@@ -190,7 +190,7 @@ func runCreateTestJob(cmd *cobra.Command, args []string) error {
 		sourceDir = sourceDirFlag + "/"
 	}
 
-	cj, err := createTestScriptFromFiles(sourceDir, dryRun)
+	cj, err := createTestScriptFromFiles(sourceDir, dryRun, parsedParams)
 	if err != nil {
 		return err
 	}
@@ -235,7 +235,7 @@ func checkDirectory(dir string) bool {
 	return info.IsDir()
 }
 
-func createTestScriptFromFiles(sourceDir string, dryRun bool) (*backplaneApi.CreateTestScriptRunJSONRequestBody, error) {
+func createTestScriptFromFiles(sourceDir string, dryRun bool, jobParams map[string]string) (*backplaneApi.CreateTestScriptRunJSONRequestBody, error) {
 
 	if !checkDirectory(sourceDir) {
 		return nil, fmt.Errorf("the specified source dir does not exist or it is not a directory")
@@ -256,6 +256,34 @@ func createTestScriptFromFiles(sourceDir string, dryRun bool) (*backplaneApi.Cre
 	if err != nil {
 		logger.Errorf("Error reading metadata: %v", err)
 		return nil, err
+	}
+
+	// Validates job parameters
+	if scriptMeta.Envs != nil {
+		// Ensure there is no required parameters missing
+		for _, scriptParam := range scriptMeta.Envs {
+			if !*scriptParam.Optional {
+				if _, ok := jobParams[*scriptParam.Key]; !ok {
+					return nil, fmt.Errorf("missing required parameter: %s", *scriptParam.Key)
+				}
+			}
+		}
+
+		// Check for any invalid/unknown parameters
+		for jobParam := range jobParams {
+			found := false
+			for _, scriptParam := range scriptMeta.Envs {
+				if jobParam == *scriptParam.Key {
+					found = true
+					break
+				}
+			}
+			if !found {
+				return nil, fmt.Errorf("invalid parameter: %s", jobParam)
+			}
+		}
+	} else if len(jobParams) > 0 {
+		return nil, fmt.Errorf(" script doesn't accept a parameter")
 	}
 
 	scriptFile := sourceDir + scriptMeta.File

@@ -18,22 +18,19 @@ import (
 	"github.com/openshift/backplane-cli/pkg/utils"
 )
 
-var (
-	options struct {
-		canonicalName string
-		params        []string
-		wait          bool
-		clusterID     string
-		url           string
-		raw           bool
-		logs          bool
-		manager       bool
-	}
-)
+var options struct {
+	canonicalName string
+	params        []string
+	wait          bool
+	clusterID     string
+	url           string
+	raw           bool
+	logs          bool
+	manager       bool
+}
 
 // newCreateManagedJobCmd returns cobra command
 func newCreateManagedJobCmd() *cobra.Command {
-
 	cmd := &cobra.Command{
 		Use:           "create <script name>",
 		Short:         "Creates a backplane managedjob resource",
@@ -76,10 +73,8 @@ func newCreateManagedJobCmd() *cobra.Command {
 
 // runCreateManagedJob creates managed job in the specific cluster
 func runCreateManagedJob(cmd *cobra.Command, args []string) (err error) {
-
 	// init params and validate
 	err = initParams(cmd, args)
-
 	if err != nil {
 		return err
 	}
@@ -128,9 +123,13 @@ func runCreateManagedJob(cmd *cobra.Command, args []string) (err error) {
 		return err
 	}
 
+	err = validateJobParameters(client)
+	if err != nil {
+		return err
+	}
+
 	// create the job
 	job, err := createJob(client)
-
 	if err != nil {
 		return err
 	}
@@ -139,7 +138,6 @@ func runCreateManagedJob(cmd *cobra.Command, args []string) (err error) {
 	if options.wait {
 		fmt.Fprintf(cmd.OutOrStdout(), "\nWaiting for %s to be finished ...", *job.JobId)
 		statusMessage, err := waitForCreateJob(client, job)
-
 		if err != nil {
 			return err
 		}
@@ -193,9 +191,7 @@ func initParams(cmd *cobra.Command, argv []string) (err error) {
 
 // createJob initializes the job creation in a specific cluster and returns the job info
 func createJob(client BackplaneApi.ClientInterface) (*BackplaneApi.Job, error) {
-
 	jobParams, err := utils.ParseParamsFlag(options.params)
-
 	if err != nil {
 		return nil, err
 	}
@@ -208,7 +204,6 @@ func createJob(client BackplaneApi.ClientInterface) (*BackplaneApi.Job, error) {
 
 	// call create end point
 	resp, err := client.CreateJob(context.TODO(), options.clusterID, createJob)
-
 	if err != nil {
 		return nil, err
 	}
@@ -224,7 +219,6 @@ func createJob(client BackplaneApi.ClientInterface) (*BackplaneApi.Job, error) {
 
 	// format create job response
 	createResp, err := BackplaneApi.ParseCreateJobResponse(resp)
-
 	if err != nil {
 		return nil, fmt.Errorf("unable to parse response body from backplane: \n Status Code: %d", resp.StatusCode)
 	}
@@ -240,7 +234,6 @@ func createJob(client BackplaneApi.ClientInterface) (*BackplaneApi.Job, error) {
 // waitForCreateJob wait until job status to be Succeeded
 // waitForCreateJob timeouts after 10 min
 func waitForCreateJob(client BackplaneApi.ClientInterface, job *BackplaneApi.Job) (statusMessage string, err error) {
-
 	pollErr := wait.PollUntilContextTimeout(context.Background(), 10*time.Second, time.Duration(600)*time.Second, true, func(context.Context) (bool, error) {
 		fmt.Printf(".")
 
@@ -268,7 +261,6 @@ func waitForCreateJob(client BackplaneApi.ClientInterface, job *BackplaneApi.Job
 
 // fetchJobLogs stream the log of the job to the console output when the job status is Running, Succeeded or Failed
 func fetchJobLogs(client BackplaneApi.ClientInterface, job *BackplaneApi.Job) error {
-
 	pollErr := wait.PollUntilContextTimeout(context.Background(), 5*time.Second, 1*time.Minute, true, func(context.Context) (bool, error) {
 		fmt.Printf(".")
 
@@ -294,7 +286,6 @@ func fetchJobLogs(client BackplaneApi.ClientInterface, job *BackplaneApi.Job) er
 		default:
 			return false, fmt.Errorf("job is not ready with logs")
 		}
-
 	})
 
 	if pollErr != nil {
@@ -322,16 +313,72 @@ func fetchJobLogs(client BackplaneApi.ClientInterface, job *BackplaneApi.Job) er
 
 func getJobStatus(client BackplaneApi.ClientInterface, job *BackplaneApi.Job) (BackplaneApi.JobStatusStatus, error) {
 	jobResp, err := client.GetRun(context.TODO(), options.clusterID, *job.JobId)
-
 	if err != nil {
 		return "", err
 	}
 
 	formatJobResp, err := BackplaneApi.ParseGetRunResponse(jobResp)
-
 	if err != nil {
 		return "", err
 	}
 
 	return *formatJobResp.JSON200.JobStatus.Status, nil
+}
+
+func validateJobParameters(client BackplaneApi.ClientInterface) error {
+	resp, err := client.GetScriptsByCluster(context.TODO(), options.clusterID, &BackplaneApi.GetScriptsByClusterParams{Scriptname: &options.canonicalName})
+	if err != nil {
+		return fmt.Errorf("failed to get script details: %w", err)
+	}
+
+	describeResp, err := BackplaneApi.ParseGetScriptsByClusterResponse(resp)
+	if err != nil {
+		return fmt.Errorf("failed to parse script details response: %w", err)
+	}
+
+	if describeResp.JSON200 == nil {
+		return fmt.Errorf("script %s not found", options.canonicalName)
+	}
+
+	scripts := *(*[]BackplaneApi.Script)(describeResp.JSON200)
+	if len(scripts) == 0 {
+		return fmt.Errorf("script %s not found", options.canonicalName)
+	}
+	script := scripts[0]
+
+	jobParams, err := utils.ParseParamsFlag(options.params)
+	if err != nil {
+		return fmt.Errorf("failed to parse parameters: %w", err)
+	}
+
+	// validate parametres
+	if script.Envs != nil {
+		scriptParams := *script.Envs
+		// Ensure there are no required parameters that are missing
+		for _, scriptParam := range scriptParams {
+			if !*scriptParam.Optional {
+				if _, ok := jobParams[*scriptParam.Key]; !ok {
+					return fmt.Errorf("missing required parameter: %s", *scriptParam.Key)
+				}
+			}
+		}
+
+		// Ensure there are no invalid/unknown parameters
+		for jobParam := range jobParams {
+			found := false
+			for _, scriptParam := range scriptParams {
+				if jobParam == *scriptParam.Key {
+					found = true
+					break
+				}
+			}
+			if !found {
+				return fmt.Errorf("invalid parameter: %s", jobParam)
+			}
+		}
+	} else if len(jobParams) > 0 {
+		return fmt.Errorf("script %s doesn't accept a parameter", options.canonicalName)
+	}
+
+	return nil
 }
