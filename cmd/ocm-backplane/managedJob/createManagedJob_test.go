@@ -25,7 +25,6 @@ import (
 )
 
 var _ = Describe("managedJob create command", func() {
-
 	var (
 		mockCtrl         *gomock.Controller
 		mockClient       *mocks.MockClientInterface
@@ -39,7 +38,9 @@ var _ = Describe("managedJob create command", func() {
 
 		fakeResp        *http.Response
 		fakeJobResp     *http.Response
+		fakeScriptResp  *http.Response
 		jobResponseBody string
+		scriptBody      string
 
 		sut    *cobra.Command
 		ocmEnv *cmv1.Environment
@@ -68,6 +69,24 @@ var _ = Describe("managedJob create command", func() {
 			StatusCode: http.StatusOK,
 		}
 		fakeResp.Header.Add("Content-Type", "json")
+
+		// fake script response
+		scriptBody = `
+[
+	{
+		"canonicalName": "SREP/some_script",
+		"description": "this some_script's description",
+		"envs": [],
+		"name": "some_script"
+	}
+]
+`
+		fakeScriptResp = &http.Response{
+			Body:       MakeIoReader(scriptBody),
+			Header:     map[string][]string{},
+			StatusCode: http.StatusOK,
+		}
+		fakeScriptResp.Header.Add("Content-Type", "json")
 
 		// fake job response
 		jobResponseBody = `
@@ -114,6 +133,7 @@ var _ = Describe("managedJob create command", func() {
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
 			mockClientUtil.EXPECT().MakeRawBackplaneAPIClient(gomock.Any()).Return(mockClient, nil)
+			mockClient.EXPECT().GetScriptsByCluster(gomock.Any(), trueClusterID, gomock.Any()).Return(fakeScriptResp, nil)
 			mockClient.EXPECT().CreateJob(gomock.Any(), trueClusterID, gomock.Any()).Return(fakeResp, nil)
 
 			sut.SetArgs([]string{"create", "SREP/something", "--cluster-id", testClusterID})
@@ -130,6 +150,7 @@ var _ = Describe("managedJob create command", func() {
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
 			mockClientUtil.EXPECT().MakeRawBackplaneAPIClient("https://newbackplane.url").Return(mockClient, nil)
+			mockClient.EXPECT().GetScriptsByCluster(gomock.Any(), trueClusterID, gomock.Any()).Return(fakeScriptResp, nil)
 			mockClient.EXPECT().CreateJob(gomock.Any(), trueClusterID, gomock.Any()).Return(fakeResp, nil)
 
 			sut.SetArgs([]string{"create", "SREP/something", "--cluster-id", testClusterID, "--url", "https://newbackplane.url"})
@@ -144,6 +165,7 @@ var _ = Describe("managedJob create command", func() {
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
 			mockClientUtil.EXPECT().MakeRawBackplaneAPIClient(gomock.Any()).Return(mockClient, nil)
+			mockClient.EXPECT().GetScriptsByCluster(gomock.Any(), trueClusterID, gomock.Any()).Return(fakeScriptResp, nil)
 			mockClient.EXPECT().CreateJob(gomock.Any(), trueClusterID, gomock.Any()).Return(nil, errors.New("err"))
 
 			sut.SetArgs([]string{"create", "SREP/something", "--cluster-id", testClusterID})
@@ -158,6 +180,7 @@ var _ = Describe("managedJob create command", func() {
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
 			mockClientUtil.EXPECT().MakeRawBackplaneAPIClient(gomock.Any()).Return(mockClient, nil)
+			mockClient.EXPECT().GetScriptsByCluster(gomock.Any(), trueClusterID, gomock.Any()).Return(fakeScriptResp, nil)
 			fakeResp.Body = MakeIoReader("Sad")
 			mockClient.EXPECT().CreateJob(gomock.Any(), trueClusterID, gomock.Any()).Return(fakeResp, errors.New("err"))
 
@@ -173,6 +196,7 @@ var _ = Describe("managedJob create command", func() {
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
 			mockClientUtil.EXPECT().MakeRawBackplaneAPIClient("https://newbackplane.url").Return(mockClient, nil)
+			mockClient.EXPECT().GetScriptsByCluster(gomock.Any(), trueClusterID, gomock.Any()).Return(fakeScriptResp, nil)
 			mockClient.EXPECT().CreateJob(gomock.Any(), trueClusterID, gomock.Any()).Return(fakeResp, nil)
 			mockClient.EXPECT().GetRun(gomock.Any(), trueClusterID, gomock.Eq("jid")).Return(fakeJobResp, nil)
 
@@ -201,6 +225,7 @@ var _ = Describe("managedJob create command", func() {
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
 			mockClientUtil.EXPECT().MakeRawBackplaneAPIClient("https://newbackplane.url").Return(mockClient, nil)
+			mockClient.EXPECT().GetScriptsByCluster(gomock.Any(), trueClusterID, gomock.Any()).Return(fakeScriptResp, nil)
 			mockClient.EXPECT().CreateJob(gomock.Any(), trueClusterID, gomock.Any()).Return(fakeResp, nil).AnyTimes()
 			mockClient.EXPECT().GetRun(gomock.Any(), trueClusterID, gomock.Eq("jid")).Return(fakeJobResp, nil).AnyTimes()
 
@@ -223,6 +248,7 @@ var _ = Describe("managedJob create command", func() {
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
 			mockClientUtil.EXPECT().MakeRawBackplaneAPIClient("https://newbackplane.url").Return(mockClient, nil)
+			mockClient.EXPECT().GetScriptsByCluster(gomock.Any(), trueClusterID, gomock.Any()).Return(fakeScriptResp, nil)
 			mockClient.EXPECT().CreateJob(gomock.Any(), trueClusterID, gomock.Any()).Return(fakeResp, nil).AnyTimes()
 			mockClient.EXPECT().GetRun(gomock.Any(), trueClusterID, gomock.Eq("jid")).Return(fakeJobResp, nil).AnyTimes()
 
@@ -244,6 +270,7 @@ var _ = Describe("managedJob create command", func() {
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
 			mockClientUtil.EXPECT().MakeRawBackplaneAPIClient("https://newbackplane.url").Return(mockClient, nil)
+			mockClient.EXPECT().GetScriptsByCluster(gomock.Any(), trueClusterID, gomock.Any()).Return(fakeScriptResp, nil)
 			mockClient.EXPECT().CreateJob(gomock.Any(), trueClusterID, gomock.Any()).Return(fakeResp, nil)
 			mockClient.EXPECT().GetRun(gomock.Any(), trueClusterID, gomock.Eq("jid")).Return(fakeJobResp, nil)
 			mockClient.EXPECT().GetJobLogs(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(fakeJobResp, nil)
@@ -272,6 +299,7 @@ var _ = Describe("managedJob create command", func() {
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
 			mockClientUtil.EXPECT().MakeRawBackplaneAPIClient("https://newbackplane.url").Return(mockClient, nil)
+			mockClient.EXPECT().GetScriptsByCluster(gomock.Any(), trueClusterID, gomock.Any()).Return(fakeScriptResp, nil)
 			mockClient.EXPECT().CreateJob(gomock.Any(), trueClusterID, gomock.Any()).Return(fakeResp, nil)
 			mockClient.EXPECT().GetRun(gomock.Any(), trueClusterID, gomock.Eq("jid")).Return(fakeJobResp, nil).AnyTimes()
 
@@ -280,6 +308,102 @@ var _ = Describe("managedJob create command", func() {
 			err := sut.Execute()
 
 			Expect(err).NotTo(BeNil())
+		})
+
+		It("should fail if a required script parameter is missing", func() {
+			scriptBody = `
+[
+	{
+		"canonicalName": "SREP/some_script",
+		"description": "this some_script's description",
+		"envs": [{"key": "REQUIRED_VAR", "description": "A required parameter", "optional": false}],
+		"name": "some_script"
+	}
+]
+`
+			fakeScriptResp = &http.Response{
+				Body:       MakeIoReader(scriptBody),
+				Header:     map[string][]string{},
+				StatusCode: http.StatusOK,
+			}
+			fakeScriptResp.Header.Add("Content-Type", "json")
+
+			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, testClusterID, nil)
+			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
+			mockClientUtil.EXPECT().MakeRawBackplaneAPIClient(gomock.Any()).Return(mockClient, nil)
+			mockClient.EXPECT().GetScriptsByCluster(gomock.Any(), trueClusterID, gomock.Any()).Return(fakeScriptResp, nil)
+
+			sut.SetArgs([]string{"create", "SREP/some_script", "--cluster-id", testClusterID})
+			err := sut.Execute()
+
+			Expect(err).ToNot(BeNil())
+			Expect(err.Error()).To(ContainSubstring("missing required parameter"))
+		})
+
+		It("should fail the parameter validation if an invalid parameter is provided", func() {
+			scriptBody = `
+[
+	{
+		"canonicalName": "SREP/some_script",
+		"description": "this some_script's description",
+		"envs": [{"key": "SOME_VAR", "description": "Some parameter", "optional": true}],
+		"name": "some_script"
+	}
+]
+`
+			fakeScriptResp = &http.Response{
+				Body:       MakeIoReader(scriptBody),
+				Header:     map[string][]string{},
+				StatusCode: http.StatusOK,
+			}
+			fakeScriptResp.Header.Add("Content-Type", "json")
+
+			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, testClusterID, nil)
+			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
+			mockClientUtil.EXPECT().MakeRawBackplaneAPIClient(gomock.Any()).Return(mockClient, nil)
+			mockClient.EXPECT().GetScriptsByCluster(gomock.Any(), trueClusterID, gomock.Any()).Return(fakeScriptResp, nil)
+
+			sut.SetArgs([]string{"create", "SREP/some_script", "--cluster-id", testClusterID, "-p", "INVALID_ENV=123"})
+			err := sut.Execute()
+
+			Expect(err).ToNot(BeNil())
+			Expect(err.Error()).To(ContainSubstring("invalid parameter"))
+		})
+
+		It("should pass parameter validation if all parameters entered are valid", func() {
+			scriptBody = `
+[
+	{
+		"canonicalName": "SREP/some_script",
+		"description": "this some_script's description",
+		"envs": [{"key": "VALID_PARAMETER", "description": "A valid parameter", "optional": true}],
+		"name": "some_script"
+	}
+]
+`
+			fakeScriptResp = &http.Response{
+				Body:       MakeIoReader(scriptBody),
+				Header:     map[string][]string{},
+				StatusCode: http.StatusOK,
+			}
+			fakeScriptResp.Header.Add("Content-Type", "json")
+
+			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, testClusterID, nil)
+			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
+			mockClientUtil.EXPECT().MakeRawBackplaneAPIClient(gomock.Any()).Return(mockClient, nil)
+			mockClient.EXPECT().GetScriptsByCluster(gomock.Any(), trueClusterID, gomock.Any()).Return(fakeScriptResp, nil)
+			mockClient.EXPECT().CreateJob(gomock.Any(), trueClusterID, gomock.Any()).Return(fakeResp, nil)
+
+			sut.SetArgs([]string{"create", "SREP/some_script", "--cluster-id", testClusterID, "-p", "VALID_PARAMETER=abc"})
+			err := sut.Execute()
+
+			Expect(err).To(BeNil())
 		})
 	})
 })
