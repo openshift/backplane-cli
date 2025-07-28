@@ -363,6 +363,8 @@ var _ = Describe("console command", func() {
 						Value: DefaultMonitoringPluginPort,
 					}))
 				}).Return(nil).Times(1)
+			// to make it compatible, here it should still mount the nginx config because some 4.17 version may still need nginx.
+			ce.EXPECT().PutFileToMount(gomock.Any(), gomock.Any()).AnyTimes()
 			err = o.runMonitorPlugin(ce)
 			Expect(err).To(BeNil())
 		})
