@@ -584,19 +584,18 @@ func (o *consoleOptions) runMonitorPlugin(ce container.ContainerEngine) error {
 
 	var envVars []container.EnvVar
 
-	// no need nginx but need an environment to specify port
-	if isRunningHigherOrEqualTo(versionForMonitoringPluginWithoutNginx) {
-		logger.Debugln("monitoring plugin does not require nginx, passing an environment variable to specify the port")
-		envVars = append(envVars, container.EnvVar{Key: "PORT", Value: o.monitorPluginPort})
-		return ce.RunMonitorPlugin(pluginContainerName, consoleContainerName, "", pluginArgs, envVars)
-	}
-
+	// set up nginx anyway because some 4.17 cluster still use nginx
 	// Setup nginx configurations for the plugin that needs Nginx
 	logger.Debugln("setting up nginx config for monitoring plugin")
 	config := fmt.Sprintf(info.MonitoringPluginNginxConfigTemplate, o.monitorPluginPort)
 	nginxFilename := fmt.Sprintf(info.MonitoringPluginNginxConfigFilename, clusterID)
 	if err := ce.PutFileToMount(nginxFilename, []byte(config)); err != nil {
 		return err
+	}
+
+	if isRunningHigherOrEqualTo(versionForMonitoringPluginWithoutNginx) {
+		logger.Debugln("monitoring plugin does not require nginx, passing an environment variable to specify the port")
+		envVars = append(envVars, container.EnvVar{Key: "PORT", Value: o.monitorPluginPort})
 	}
 
 	return ce.RunMonitorPlugin(pluginContainerName, consoleContainerName, nginxFilename, pluginArgs, envVars)
