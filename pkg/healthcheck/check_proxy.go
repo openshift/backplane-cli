@@ -61,6 +61,8 @@ func CheckProxyConnectivity(client HTTPClient) (string, error) {
 	return *proxyURL, nil
 }
 
+// GetProxyTestEndpoint retrieves the proxy test endpoint from the backplane configuration.
+// Returns an error if the configuration cannot be loaded or the endpoint is not configured.
 func GetProxyTestEndpoint() (string, error) {
 	bpConfig, err := GetConfigFunc()
 	if err != nil {

@@ -50,6 +50,8 @@ func CheckVPNConnectivity(netInterfaces NetworkInterface, client HTTPClient) err
 	return nil
 }
 
+// GetVPNCheckEndpoint retrieves the VPN check endpoint from the backplane configuration.
+// Returns an error if the configuration cannot be loaded or the endpoint is not configured.
 func GetVPNCheckEndpoint() (string, error) {
 	bpConfig, err := GetConfigFunc()
 	if err != nil {

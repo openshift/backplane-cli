@@ -7,6 +7,9 @@ import (
 	"github.com/golang-jwt/jwt/v4"
 )
 
+// GetStringFieldFromJWT extracts a string field from a JWT token without verification.
+// It parses the token and returns the specified field value as a string.
+// Returns an error if the token cannot be parsed, the field doesn't exist, or the field is not a string.
 func GetStringFieldFromJWT(token string, field string) (string, error) {
 	var jwtToken *jwt.Token
 	var err error

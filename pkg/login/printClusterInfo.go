@@ -34,6 +34,9 @@ func PrintClusterInfo(clusterID string) error {
 	return nil
 }
 
+// GetAccessProtectionStatus retrieves and displays the access protection status for a cluster.
+// It checks if the cluster has access protection enabled (not available for govcloud).
+// Returns the status as a string and prints it to stdout.
 func GetAccessProtectionStatus(clusterID string) string {
 	ocmConnection, err := ocm.DefaultOCMInterface.SetupOCMConnection()
 	if err != nil {
@@ -46,7 +49,7 @@ func GetAccessProtectionStatus(clusterID string) string {
 
 	accessProtectionStatus := "Disabled"
 
-	if !(viper.GetBool("govcloud")){
+	if !(viper.GetBool("govcloud")) {
 		enabled, err := ocm.DefaultOCMInterface.IsClusterAccessProtectionEnabled(ocmConnection, clusterID)
 		if err != nil {
 			fmt.Println("Error retrieving access protection status: ", err)
@@ -56,12 +59,15 @@ func GetAccessProtectionStatus(clusterID string) string {
 			accessProtectionStatus = "Enabled"
 		}
 	}
-	
+
 	fmt.Printf("%-25s %s\n", "Access Protection:", accessProtectionStatus)
 
 	return accessProtectionStatus
 }
 
+// GetLimitedSupportStatus retrieves and displays the limited support status for a cluster.
+// It checks the cluster's limited support reason count and displays the appropriate status.
+// Returns the count as a string and prints the status to stdout.
 func GetLimitedSupportStatus(clusterID string) string {
 	clusterInfo, err := ocm.DefaultOCMInterface.GetClusterInfoByID(clusterID)
 	if err != nil {
@@ -75,6 +81,8 @@ func GetLimitedSupportStatus(clusterID string) string {
 	return fmt.Sprintf("%d", clusterInfo.Status().LimitedSupportReasonCount())
 }
 
+// printClusterField prints a cluster field with consistent formatting.
+// It uses a fixed width for field names to ensure aligned output.
 func printClusterField(fieldName string, value interface{}) {
 	fmt.Printf("%-25s %v\n", fieldName, value)
 }

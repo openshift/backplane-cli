@@ -35,6 +35,8 @@ type PagerDuty struct {
 	client PagerDutyClient
 }
 
+// NewPagerDuty creates a new PagerDuty instance with the provided client.
+// This constructor allows for dependency injection and easier testing.
 func NewPagerDuty(client PagerDutyClient) *PagerDuty {
 	return &PagerDuty{
 		client: client,

@@ -85,6 +85,8 @@ func CheckHealth(url string) bool {
 	return resp.StatusCode == http.StatusOK
 }
 
+// ReadKubeconfigRaw reads and parses the raw kubeconfig from the default location.
+// Returns the parsed kubeconfig as an api.Config object.
 func ReadKubeconfigRaw() (api.Config, error) {
 	return genericclioptions.NewConfigFlags(true).ToRawKubeConfigLoader().RawConfig()
 }
@@ -104,6 +106,9 @@ func MatchBaseDomain(longHostname, baseDomain string) bool {
 	return reflect.DeepEqual(cmpSegs, baseSegs)
 }
 
+// TryParseBackplaneAPIError attempts to parse a Backplane API error from an HTTP response.
+// It reads the response body and unmarshals it into a BackplaneApi.Error struct.
+// Returns detailed error information if parsing fails.
 func TryParseBackplaneAPIError(rsp *http.Response) (*BackplaneApi.Error, error) {
 	if rsp == nil {
 		return nil, fmt.Errorf("parse err provided nil http response")
@@ -129,6 +134,8 @@ func TryParseBackplaneAPIError(rsp *http.Response) (*BackplaneApi.Error, error) 
 	}
 }
 
+// TryRenderErrorRaw parses and renders a Backplane API error as JSON output.
+// It attempts to parse the error from the response and display it in JSON format.
 func TryRenderErrorRaw(rsp *http.Response) error {
 	data, err := TryParseBackplaneAPIError(rsp)
 	if err != nil {
@@ -137,6 +144,8 @@ func TryRenderErrorRaw(rsp *http.Response) error {
 	return RenderJSONBytes(data)
 }
 
+// GetFormattedError parses a Backplane API error and returns it as a formatted error message.
+// It extracts the status code and message from the response and formats them for display.
 func GetFormattedError(rsp *http.Response) error {
 	data, err := TryParseBackplaneAPIError(rsp)
 	if err != nil {
@@ -149,6 +158,8 @@ func GetFormattedError(rsp *http.Response) error {
 	}
 }
 
+// TryPrintAPIError prints a Backplane API error in either raw JSON or formatted text.
+// When rawFlag is true, it prints the error as raw JSON; otherwise, it prints formatted text.
 func TryPrintAPIError(rsp *http.Response, rawFlag bool) error {
 	if rawFlag {
 		if err := TryRenderErrorRaw(rsp); err != nil {
@@ -161,6 +172,9 @@ func TryPrintAPIError(rsp *http.Response, rawFlag bool) error {
 	}
 }
 
+// ParseParamsFlag parses command-line parameter flags in the format "key=value".
+// It returns a map of key-value pairs extracted from the input slice.
+// Returns an error if any parameter is missing the '=' separator or has an empty key.
 func ParseParamsFlag(paramsFlag []string) (map[string]string, error) {
 	var result = map[string]string{}
 	for _, s := range paramsFlag {
@@ -180,6 +194,9 @@ func ParseParamsFlag(paramsFlag []string) (map[string]string, error) {
 	return result, nil
 }
 
+// CreateTempKubeConfig creates a temporary kubeconfig file from the provided configuration.
+// If kubeConfig is nil, it uses a default configuration.
+// The temporary file is written to the system's temp directory.
 func CreateTempKubeConfig(kubeConfig *api.Config) error {
 
 	f, err := os.CreateTemp("", defaultKubeConfigFileName)
@@ -219,6 +236,8 @@ func ModifyTempKubeConfigFileName(fileName string) error {
 	return nil
 }
 
+// RemoveTempKubeConfig removes the temporary kubeconfig file set in the KUBECONFIG environment variable.
+// It only removes the file if the KUBECONFIG environment variable is set.
 func RemoveTempKubeConfig() {
 	path, found := os.LookupEnv("KUBECONFIG")
 	if found {

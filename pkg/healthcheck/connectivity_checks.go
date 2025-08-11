@@ -43,6 +43,9 @@ var (
 	GetConfigFunc                             = config.GetBackplaneConfiguration
 )
 
+// RunHealthCheck returns a cobra command handler that performs connectivity health checks.
+// It can check VPN connectivity, proxy connectivity, or both based on the provided flags.
+// When neither flag is set, it performs comprehensive connectivity checks.
 func RunHealthCheck(checkVPN, checkProxy bool) func(cmd *cobra.Command, args []string) {
 	return func(cmd *cobra.Command, args []string) {
 		if NetInterfaces == nil || HTTPClients == nil {
@@ -86,6 +89,8 @@ func RunHealthCheck(checkVPN, checkProxy bool) func(cmd *cobra.Command, args []s
 	}
 }
 
+// checkAllConnections performs comprehensive connectivity checks including VPN, proxy, and Backplane API.
+// It sequentially checks each connection type and exits on the first failure.
 func checkAllConnections() {
 	fmt.Println("Checking VPN connectivity...")
 	err := CheckVPNConnectivity(NetInterfaces, HTTPClients)
@@ -115,6 +120,8 @@ func checkAllConnections() {
 	}
 }
 
+// testEndPointConnectivity tests if a given endpoint is reachable via HTTP GET request.
+// Returns an error if the request fails or returns a non-2xx status code.
 func testEndPointConnectivity(testURL string, client HTTPClient) error {
 	if client == nil {
 		client = &DefaultHTTPClientImpl{Client: &http.Client{}}
@@ -134,6 +141,8 @@ func testEndPointConnectivity(testURL string, client HTTPClient) error {
 	return nil
 }
 
+// CheckBackplaneAPIConnectivity tests connectivity to the Backplane API using the provided proxy.
+// It retrieves the Backplane configuration and tests the API endpoint accessibility.
 func CheckBackplaneAPIConnectivity(client HTTPClient, proxyURL string) error {
 	logger.Debug("Starting CheckBackplaneAPIConnectivity")
 	bpConfig, err := GetConfigFunc()
