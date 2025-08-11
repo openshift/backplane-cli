@@ -4,6 +4,7 @@ import (
 	"context"
 	"net"
 	"net/url"
+	"os"
 	"slices"
 	"strings"
 
@@ -274,7 +275,8 @@ func (cfg *QueryConfig) getIsolatedCredentials(ocmToken string) (aws.Credentials
 		)
 
 	}
-	initialClient, err := StsClient(cfg.BackplaneConfiguration.ProxyURL)
+	// Use AWS-specific proxy for initial STS client (pass nil to use BACKPLANE_AWS_PROXY)
+	initialClient, err := StsClient(nil)
 	if err != nil {
 		return aws.Credentials{}, fmt.Errorf("failed to create sts client: %w", err)
 	}
@@ -284,10 +286,34 @@ func (cfg *QueryConfig) getIsolatedCredentials(ocmToken string) (aws.Credentials
 		return aws.Credentials{}, fmt.Errorf("failed to assume role using JWT: %w", err)
 	}
 	// Verify Sts connection with the seed credentials
-	stsClient := sts.NewFromConfig(aws.Config{
-		Region:      "us-east-1",
-		Credentials: NewStaticCredentialsProvider(seedCredentials.AccessKeyID, seedCredentials.SecretAccessKey, seedCredentials.SessionToken),
-	})
+	// Use AWS-specific proxy for STS operations
+	var awsProxyURL *string
+	if awsProxy := os.Getenv("BACKPLANE_AWS_PROXY"); awsProxy != "" {
+		awsProxyURL = &awsProxy
+	}
+
+	var stsClientConfig aws.Config
+	if awsProxyURL != nil {
+		stsClientConfig = aws.Config{
+			Region:      "us-east-1",
+			Credentials: NewStaticCredentialsProvider(seedCredentials.AccessKeyID, seedCredentials.SecretAccessKey, seedCredentials.SessionToken),
+			HTTPClient: &http.Client{
+				Transport: &http.Transport{
+					Proxy: func(*http.Request) (*url.URL, error) {
+						return url.Parse(*awsProxyURL)
+					},
+				},
+			},
+		}
+		logger.Debugf("Using AWS proxy for GetCallerIdentity: %s", *awsProxyURL)
+	} else {
+		stsClientConfig = aws.Config{
+			Region:      "us-east-1",
+			Credentials: NewStaticCredentialsProvider(seedCredentials.AccessKeyID, seedCredentials.SecretAccessKey, seedCredentials.SessionToken),
+		}
+	}
+
+	stsClient := sts.NewFromConfig(stsClientConfig)
 	err = GetCallerIdentity(stsClient)
 	if err != nil {
 		return aws.Credentials{}, fmt.Errorf("unable to connect to AWS STS endpoint (GetCallerIdentity failed): %w", err)
@@ -360,10 +386,11 @@ func (cfg *QueryConfig) getIsolatedCredentials(ocmToken string) (aws.Credentials
 		Credentials: NewStaticCredentialsProvider(seedCredentials.AccessKeyID, seedCredentials.SecretAccessKey, seedCredentials.SessionToken),
 	})
 
+	// Use AWS-specific proxy for role sequence (pass nil to use BACKPLANE_AWS_PROXY internally)
 	targetCredentials, err := AssumeRoleSequence(
 		seedClient,
 		assumeRoleArnSessionSequence,
-		cfg.BackplaneConfiguration.ProxyURL,
+		nil, // Let AssumeRoleSequence use BACKPLANE_AWS_PROXY for AWS calls
 		awsutil.DefaultSTSClientProviderFunc,
 	)
 	if err != nil {
@@ -375,19 +402,26 @@ func (cfg *QueryConfig) getIsolatedCredentials(ocmToken string) (aws.Credentials
 // verifyTrustedIPAndGetPolicy verifies that the client IP is in the trusted IP range
 // and returns the inline policy for the trusted IPs
 func verifyTrustedIPAndGetPolicy(cfg *QueryConfig) (awsutil.PolicyDocument, error) {
-	var proxyURL *url.URL
-
-	if cfg.BackplaneConfiguration.ProxyURL != nil {
+	// Use AWS-specific proxy for egress IP check (AWS service call)
+	var egressProxyURL *url.URL
+	if awsProxy := os.Getenv("BACKPLANE_AWS_PROXY"); awsProxy != "" {
 		var err error
-		proxyURL, err = url.Parse(*cfg.BackplaneConfiguration.ProxyURL)
+		egressProxyURL, err = url.Parse(awsProxy)
 		if err != nil {
-			return awsutil.PolicyDocument{}, fmt.Errorf("failed to parse proxy URL: %w", err)
+			return awsutil.PolicyDocument{}, fmt.Errorf("failed to parse BACKPLANE_AWS_PROXY for checkEgressIP: %w", err)
 		}
+		logger.Debugf("Using AWS proxy for egress IP check: %s", awsProxy)
 	}
-	httpClient := &http.Client{
-		Transport: &http.Transport{
-			Proxy: http.ProxyURL(proxyURL),
-		},
+
+	var httpClient *http.Client
+	if egressProxyURL != nil {
+		httpClient = &http.Client{
+			Transport: &http.Transport{
+				Proxy: http.ProxyURL(egressProxyURL),
+			},
+		}
+	} else {
+		httpClient = &http.Client{}
 	}
 	clientIP, err := CheckEgressIP(httpClient, "https://checkip.amazonaws.com/")
 	if err != nil {
