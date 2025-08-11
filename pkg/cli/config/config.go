@@ -3,6 +3,7 @@ package config
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -222,6 +223,8 @@ func GetBackplaneConfiguration() (bpConfig BackplaneConfiguration, err error) {
 	return bpConfig, nil
 }
 
+var lookupHost = net.LookupHost
+
 var testProxy = func(ctx context.Context, testURL string, proxyURL url.URL) error {
 	// Try call the test URL via the proxy
 	client := &http.Client{
@@ -410,6 +413,15 @@ func (config *BackplaneConfiguration) testHTTPRequestToBackplaneAPI() (bool, err
 		if err != nil {
 			return false, err
 		}
+		scheme := proxyURL.Scheme
+		if scheme != "http" && scheme != "https" {
+			return false, fmt.Errorf("proxy URL scheme must be http or https, got: %s", scheme)
+		}
+		hostname := proxyURL.Hostname()
+		_, err = lookupHost(hostname)
+		if err != nil {
+			return false, fmt.Errorf("DNS lookup failed for proxy hostname '%s': %v (check network connectivity or VPN if required)", hostname, err)
+		}		
 		http.DefaultTransport = &http.Transport{Proxy: http.ProxyURL(proxyURL)}
 	}
 
