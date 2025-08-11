@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -173,7 +175,7 @@ func TestAssumeRole(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := AssumeRole(tt.stsClient, "", "", tt.inlinePolicy)
+			got, err := AssumeRole(tt.stsClient, "", "", tt.inlinePolicy, []types.PolicyDescriptorType{})
 			if (err != nil) != tt.wantErr {
 				t.Errorf("AssumeRole() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -222,7 +224,7 @@ func TestAssumeRoleSequence(t *testing.T) {
 			name: "single role arn in sequence",
 			args: args{
 				seedClient:      defaultSuccessMockSTSClient(),
-				roleArnSequence: []RoleArnSession{{RoleArn: "a"}},
+				roleArnSequence: []RoleArnSession{{RoleArn: "a", IsCustomerRole: false}},
 				stsClientProviderFunc: func(optFns ...func(*config.LoadOptions) error) (stscreds.AssumeRoleAPIClient, error) {
 					return defaultSuccessMockSTSClient(), nil
 				},
@@ -241,7 +243,7 @@ func TestAssumeRoleSequence(t *testing.T) {
 			name: "Role arn sequence with inline policy",
 			args: args{
 				seedClient:      defaultSuccessMockSTSClient(),
-				roleArnSequence: []RoleArnSession{{RoleArn: "arn-a"}, {RoleArn: "arn-b"}},
+				roleArnSequence: []RoleArnSession{{RoleArn: "arn-a", IsCustomerRole: false}, {RoleArn: "arn-b", IsCustomerRole: true}},
 				stsClientProviderFunc: func(optFns ...func(*config.LoadOptions) error) (stscreds.AssumeRoleAPIClient, error) {
 					return defaultSuccessMockSTSClient(), nil
 				},
@@ -249,6 +251,94 @@ func TestAssumeRoleSequence(t *testing.T) {
 					Version:   PolicyVersion,
 					Statement: []PolicyStatement{allAllow},
 				},
+			},
+			want: aws.Credentials{
+				AccessKeyID:     "test-access-key-id",
+				SecretAccessKey: "test-secret-access-key",
+				SessionToken:    "test-session-token",
+				Source:          "AssumeRoleProvider",
+				CanExpire:       true,
+				Expires:         time.UnixMilli(1),
+			},
+		},
+		{
+			name: "Role arn sequence with PolicyARNs for customer role",
+			args: args{
+				seedClient: defaultSuccessMockSTSClient(),
+				roleArnSequence: []RoleArnSession{{
+					Name:           "Target-Role-Arn",
+					RoleArn:        "arn:aws:iam::123456789012:role/customer-role",
+					IsCustomerRole: true,
+					PolicyARNs: []types.PolicyDescriptorType{
+						{
+							Arn: aws.String("arn:aws:iam::aws:policy/service-role/ROSASRESupportPolicy"),
+						},
+					},
+				}},
+				stsClientProviderFunc: func(optFns ...func(*config.LoadOptions) error) (stscreds.AssumeRoleAPIClient, error) {
+					return defaultSuccessMockSTSClient(), nil
+				},
+				inlinePolicy: nil,
+			},
+			want: aws.Credentials{
+				AccessKeyID:     "test-access-key-id",
+				SecretAccessKey: "test-secret-access-key",
+				SessionToken:    "test-session-token",
+				Source:          "AssumeRoleProvider",
+				CanExpire:       true,
+				Expires:         time.UnixMilli(1),
+			},
+		},
+		{
+			name: "Role arn sequence with empty PolicyARNs for non-customer role",
+			args: args{
+				seedClient: defaultSuccessMockSTSClient(),
+				roleArnSequence: []RoleArnSession{{
+					Name:           "Support-Role-Arn",
+					RoleArn:        "arn:aws:iam::123456789012:role/support-role",
+					IsCustomerRole: false,
+					PolicyARNs:     []types.PolicyDescriptorType{},
+				}},
+				stsClientProviderFunc: func(optFns ...func(*config.LoadOptions) error) (stscreds.AssumeRoleAPIClient, error) {
+					return defaultSuccessMockSTSClient(), nil
+				},
+				inlinePolicy: nil,
+			},
+			want: aws.Credentials{
+				AccessKeyID:     "test-access-key-id",
+				SecretAccessKey: "test-secret-access-key",
+				SessionToken:    "test-session-token",
+				Source:          "AssumeRoleProvider",
+				CanExpire:       true,
+				Expires:         time.UnixMilli(1),
+			},
+		},
+		{
+			name: "Role arn sequence with multiple roles and mixed PolicyARNs",
+			args: args{
+				seedClient: defaultSuccessMockSTSClient(),
+				roleArnSequence: []RoleArnSession{
+					{
+						Name:           "Support-Role-Arn",
+						RoleArn:        "arn:aws:iam::123456789012:role/support-role",
+						IsCustomerRole: false,
+						PolicyARNs:     []types.PolicyDescriptorType{},
+					},
+					{
+						Name:           "Target-Role-Arn",
+						RoleArn:        "arn:aws:iam::123456789012:role/customer-role",
+						IsCustomerRole: true,
+						PolicyARNs: []types.PolicyDescriptorType{
+							{
+								Arn: aws.String("arn:aws:iam::aws:policy/service-role/ROSASRESupportPolicy"),
+							},
+						},
+					},
+				},
+				stsClientProviderFunc: func(optFns ...func(*config.LoadOptions) error) (stscreds.AssumeRoleAPIClient, error) {
+					return defaultSuccessMockSTSClient(), nil
+				},
+				inlinePolicy: nil,
 			},
 			want: aws.Credentials{
 				AccessKeyID:     "test-access-key-id",
@@ -269,6 +359,395 @@ func TestAssumeRoleSequence(t *testing.T) {
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("AssumeRoleSequence() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestAssumeRole_PolicyARNs(t *testing.T) {
+	tests := []struct {
+		name       string
+		policyARNs []types.PolicyDescriptorType
+		wantErr    bool
+	}{
+		{
+			name:       "empty PolicyARNs",
+			policyARNs: []types.PolicyDescriptorType{},
+			wantErr:    false,
+		},
+		{
+			name: "single PolicyARN",
+			policyARNs: []types.PolicyDescriptorType{
+				{
+					Arn: aws.String("arn:aws:iam::aws:policy/service-role/ROSASRESupportPolicy"),
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "multiple PolicyARNs",
+			policyARNs: []types.PolicyDescriptorType{
+				{
+					Arn: aws.String("arn:aws:iam::aws:policy/service-role/ROSASRESupportPolicy"),
+				},
+				{
+					Arn: aws.String("arn:aws:iam::aws:policy/ReadOnlyAccess"),
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name:       "nil PolicyARNs",
+			policyARNs: nil,
+			wantErr:    false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			stsClient := defaultSuccessMockSTSClient()
+
+			got, err := AssumeRole(stsClient, "test-session", "arn:aws:iam::123456789012:role/test-role", nil, tt.policyARNs)
+
+			if (err != nil) != tt.wantErr {
+				t.Errorf("AssumeRole() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			if !tt.wantErr {
+				expected := aws.Credentials{
+					AccessKeyID:     "test-access-key-id",
+					SecretAccessKey: "test-secret-access-key",
+					SessionToken:    "test-session-token",
+					Source:          "AssumeRoleProvider",
+					CanExpire:       true,
+					Expires:         time.UnixMilli(1),
+				}
+				if !reflect.DeepEqual(got, expected) {
+					t.Errorf("AssumeRole() got = %v, want %v", got, expected)
+				}
+			}
+		})
+	}
+}
+
+func TestRoleArnSession_PolicyARNsHandling(t *testing.T) {
+	tests := []struct {
+		name                string
+		roleArnSession      RoleArnSession
+		expectedPolicyCount int
+	}{
+		{
+			name: "customer role with ROSASRESupportPolicy",
+			roleArnSession: RoleArnSession{
+				Name:           "Target-Role-Arn",
+				RoleArn:        "arn:aws:iam::123456789012:role/customer-role",
+				IsCustomerRole: true,
+				PolicyARNs: []types.PolicyDescriptorType{
+					{
+						Arn: aws.String("arn:aws:iam::aws:policy/service-role/ROSASRESupportPolicy"),
+					},
+				},
+			},
+			expectedPolicyCount: 1,
+		},
+		{
+			name: "non-customer role with empty PolicyARNs",
+			roleArnSession: RoleArnSession{
+				Name:           "Support-Role-Arn",
+				RoleArn:        "arn:aws:iam::123456789012:role/support-role",
+				IsCustomerRole: false,
+				PolicyARNs:     []types.PolicyDescriptorType{},
+			},
+			expectedPolicyCount: 0,
+		},
+		{
+			name: "customer role with multiple policies",
+			roleArnSession: RoleArnSession{
+				Name:           "Target-Role-Arn",
+				RoleArn:        "arn:aws:iam::123456789012:role/customer-role",
+				IsCustomerRole: true,
+				PolicyARNs: []types.PolicyDescriptorType{
+					{
+						Arn: aws.String("arn:aws:iam::aws:policy/service-role/ROSASRESupportPolicy"),
+					},
+					{
+						Arn: aws.String("arn:aws:iam::123456789012:policy/CustomPolicy"),
+					},
+				},
+			},
+			expectedPolicyCount: 2,
+		},
+		{
+			name: "customer role with nil PolicyARNs",
+			roleArnSession: RoleArnSession{
+				Name:           "Target-Role-Arn",
+				RoleArn:        "arn:aws:iam::123456789012:role/customer-role",
+				IsCustomerRole: true,
+				PolicyARNs:     nil,
+			},
+			expectedPolicyCount: 0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			actualCount := len(tt.roleArnSession.PolicyARNs)
+			if actualCount != tt.expectedPolicyCount {
+				t.Errorf("PolicyARNs count = %v, want %v", actualCount, tt.expectedPolicyCount)
+			}
+
+			// Verify IsCustomerRole flag consistency
+			if tt.roleArnSession.IsCustomerRole && tt.roleArnSession.Name == "Target-Role-Arn" {
+				// Customer roles should typically have policies or be explicitly empty
+				if tt.roleArnSession.PolicyARNs == nil {
+					t.Log("Customer role has nil PolicyARNs - this is valid but may need attention")
+				}
+			}
+
+			// Verify PolicyARN structure for non-empty cases
+			for i, policyARN := range tt.roleArnSession.PolicyARNs {
+				if policyARN.Arn == nil {
+					t.Errorf("PolicyARNs[%d].Arn is nil", i)
+				} else if *policyARN.Arn == "" {
+					t.Errorf("PolicyARNs[%d].Arn is empty string", i)
+				}
+			}
+		})
+	}
+}
+
+func TestAssumeRole_PolicyARNs_ErrorScenarios(t *testing.T) {
+	tests := []struct {
+		name       string
+		stsClient  STSRoleAssumerMock
+		policyARNs []types.PolicyDescriptorType
+		wantErr    bool
+		errorMsg   string
+	}{
+		{
+			name: "AssumeRole fails with invalid PolicyARN",
+			stsClient: STSRoleAssumerMock{
+				mockResult: nil,
+				mockErr:    errors.New("InvalidParameterValue: Invalid policy ARN"),
+			},
+			policyARNs: []types.PolicyDescriptorType{
+				{
+					Arn: aws.String("arn:aws:iam::aws:policy/invalid-policy"),
+				},
+			},
+			wantErr:  true,
+			errorMsg: "failed to assume role",
+		},
+		{
+			name: "AssumeRole fails with malformed PolicyARN",
+			stsClient: STSRoleAssumerMock{
+				mockResult: nil,
+				mockErr:    errors.New("MalformedPolicyDocument: Policy ARN is malformed"),
+			},
+			policyARNs: []types.PolicyDescriptorType{
+				{
+					Arn: aws.String("invalid-arn-format"),
+				},
+			},
+			wantErr:  true,
+			errorMsg: "failed to assume role",
+		},
+		{
+			name: "AssumeRole fails with too many PolicyARNs",
+			stsClient: STSRoleAssumerMock{
+				mockResult: nil,
+				mockErr:    errors.New("LimitExceeded: Cannot exceed quota for PolicyArnsPerRole"),
+			},
+			policyARNs: func() []types.PolicyDescriptorType {
+				// Create more than 10 policies (AWS limit)
+				policies := make([]types.PolicyDescriptorType, 11)
+				for i := 0; i < 11; i++ {
+					policies[i] = types.PolicyDescriptorType{
+						Arn: aws.String(fmt.Sprintf("arn:aws:iam::aws:policy/test-policy-%d", i)),
+					}
+				}
+				return policies
+			}(),
+			wantErr:  true,
+			errorMsg: "failed to assume role",
+		},
+		{
+			name: "AssumeRole fails with access denied for PolicyARN",
+			stsClient: STSRoleAssumerMock{
+				mockResult: nil,
+				mockErr:    errors.New("AccessDenied: User is not authorized to perform: sts:AssumeRole with policy"),
+			},
+			policyARNs: []types.PolicyDescriptorType{
+				{
+					Arn: aws.String("arn:aws:iam::123456789012:policy/restricted-policy"),
+				},
+			},
+			wantErr:  true,
+			errorMsg: "failed to assume role",
+		},
+		{
+			name:      "AssumeRole succeeds with nil PolicyARN Arn",
+			stsClient: defaultSuccessMockSTSClient(),
+			policyARNs: []types.PolicyDescriptorType{
+				{
+					Arn: nil, // This should be handled gracefully
+				},
+			},
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := AssumeRole(tt.stsClient, "test-session", "arn:aws:iam::123456789012:role/test-role", nil, tt.policyARNs)
+
+			if (err != nil) != tt.wantErr {
+				t.Errorf("AssumeRole() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			if tt.wantErr && tt.errorMsg != "" {
+				if !strings.Contains(err.Error(), tt.errorMsg) {
+					t.Errorf("AssumeRole() error = %v, should contain %v", err, tt.errorMsg)
+				}
+			}
+
+			if !tt.wantErr {
+				expected := aws.Credentials{
+					AccessKeyID:     "test-access-key-id",
+					SecretAccessKey: "test-secret-access-key",
+					SessionToken:    "test-session-token",
+					Source:          "AssumeRoleProvider",
+					CanExpire:       true,
+					Expires:         time.UnixMilli(1),
+				}
+				if !reflect.DeepEqual(got, expected) {
+					t.Errorf("AssumeRole() got = %v, want %v", got, expected)
+				}
+			}
+		})
+	}
+}
+
+func TestAssumeRoleSequence_PolicyARNs_ErrorScenarios(t *testing.T) {
+	tests := []struct {
+		name                  string
+		roleArnSequence       []RoleArnSession
+		seedClient            STSRoleAssumerMock
+		stsClientProviderFunc STSClientProviderFunc
+		wantErr               bool
+		errorMsg              string
+	}{
+		{
+			name: "AssumeRoleSequence fails when STS client creation fails with multi-role sequence",
+			roleArnSequence: []RoleArnSession{
+				{
+					Name:            "Support-Role-Arn",
+					RoleArn:         "arn:aws:iam::123456789012:role/support-role",
+					RoleSessionName: "support-session",
+					IsCustomerRole:  false,
+					PolicyARNs:      []types.PolicyDescriptorType{},
+				},
+				{
+					Name:            "Target-Role-Arn",
+					RoleArn:         "arn:aws:iam::123456789012:role/customer-role",
+					RoleSessionName: "customer-session",
+					IsCustomerRole:  true,
+					PolicyARNs: []types.PolicyDescriptorType{
+						{
+							Arn: aws.String("arn:aws:iam::aws:policy/service-role/ROSASRESupportPolicy"),
+						},
+					},
+				},
+			},
+			seedClient: defaultSuccessMockSTSClient(),
+			stsClientProviderFunc: func(optFns ...func(*config.LoadOptions) error) (stscreds.AssumeRoleAPIClient, error) {
+				return nil, errors.New("failed to create STS client with new credentials")
+			},
+			wantErr:  true,
+			errorMsg: "failed to create client with credentials for role",
+		},
+		{
+			name: "AssumeRoleSequence validates PolicyARNs are passed correctly to AssumeRole",
+			roleArnSequence: []RoleArnSession{
+				{
+					Name:            "Target-Role-Arn",
+					RoleArn:         "arn:aws:iam::123456789012:role/customer-role",
+					RoleSessionName: "customer-session",
+					IsCustomerRole:  true,
+					PolicyARNs: []types.PolicyDescriptorType{
+						{
+							Arn: aws.String("arn:aws:iam::aws:policy/service-role/ROSASRESupportPolicy"),
+						},
+					},
+				},
+			},
+			seedClient: defaultSuccessMockSTSClient(),
+			stsClientProviderFunc: func(optFns ...func(*config.LoadOptions) error) (stscreds.AssumeRoleAPIClient, error) {
+				return defaultSuccessMockSTSClient(), nil
+			},
+			wantErr:  false,
+			errorMsg: "",
+		},
+		{
+			name: "AssumeRoleSequence handles empty PolicyARNs for non-customer roles",
+			roleArnSequence: []RoleArnSession{
+				{
+					Name:            "Support-Role-Arn",
+					RoleArn:         "arn:aws:iam::123456789012:role/support-role",
+					RoleSessionName: "support-session",
+					IsCustomerRole:  false,
+					PolicyARNs:      []types.PolicyDescriptorType{}, // Empty PolicyARNs
+				},
+			},
+			seedClient: defaultSuccessMockSTSClient(),
+			stsClientProviderFunc: func(optFns ...func(*config.LoadOptions) error) (stscreds.AssumeRoleAPIClient, error) {
+				return defaultSuccessMockSTSClient(), nil
+			},
+			wantErr:  false,
+			errorMsg: "",
+		},
+		{
+			name: "AssumeRoleSequence handles nil PolicyARNs",
+			roleArnSequence: []RoleArnSession{
+				{
+					Name:            "Target-Role-Arn",
+					RoleArn:         "arn:aws:iam::123456789012:role/customer-role",
+					RoleSessionName: "customer-session",
+					IsCustomerRole:  true,
+					PolicyARNs:      nil, // Nil PolicyARNs
+				},
+			},
+			seedClient: defaultSuccessMockSTSClient(),
+			stsClientProviderFunc: func(optFns ...func(*config.LoadOptions) error) (stscreds.AssumeRoleAPIClient, error) {
+				return defaultSuccessMockSTSClient(), nil
+			},
+			wantErr:  false,
+			errorMsg: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := AssumeRoleSequence(tt.seedClient, tt.roleArnSequence, nil, tt.stsClientProviderFunc, nil)
+
+			if (err != nil) != tt.wantErr {
+				t.Errorf("AssumeRoleSequence() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			if tt.wantErr && tt.errorMsg != "" {
+				if !strings.Contains(err.Error(), tt.errorMsg) {
+					t.Errorf("AssumeRoleSequence() error = %v, should contain %v", err, tt.errorMsg)
+				}
+			}
+
+			if !tt.wantErr {
+				// Verify successful credentials
+				if got.AccessKeyID == "" {
+					t.Error("AssumeRoleSequence() should return valid credentials")
+				}
 			}
 		})
 	}

@@ -18,6 +18,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
+	"github.com/aws/aws-sdk-go-v2/service/sts/types"
 	ocmsdk "github.com/openshift-online/ocm-sdk-go"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	BackplaneApi "github.com/openshift/backplane-api/pkg/client"
@@ -211,6 +212,7 @@ func (cfg *QueryConfig) getCloudCredentialsFromBackplaneAPI(ocmToken string) (bp
 type assumeChainResponse struct {
 	AssumptionSequence      []namedRoleArn `json:"assumptionSequence"`
 	CustomerRoleSessionName string         `json:"customerRoleSessionName"`
+	SessionPolicyArn        string         `json:"sessionPolicyArn"` // SessionPolicyArn is the ARN of the session policy
 }
 
 type namedRoleArn struct {
@@ -319,6 +321,24 @@ func (cfg *QueryConfig) getIsolatedCredentials(ocmToken string) (aws.Credentials
 		} else {
 			roleArnSession.RoleSessionName = email
 		}
+		// Default to no policy ARNs
+		roleArnSession.PolicyARNs = []types.PolicyDescriptorType{}
+		if namedRoleArnEntry.Name == CustomerRoleArnName {
+			roleArnSession.IsCustomerRole = true
+			// Add the session policy ARN for selected roles
+			if roleChainResponse.SessionPolicyArn != "" {
+				logger.Debugf("Adding session policy ARN for role %s: %s", namedRoleArnEntry.Name, roleChainResponse.SessionPolicyArn)
+				roleArnSession.PolicyARNs = []types.PolicyDescriptorType{
+					{
+						Arn: aws.String(roleChainResponse.SessionPolicyArn),
+					},
+				}
+			}
+		} else {
+			roleArnSession.IsCustomerRole = false
+		}
+		roleArnSession.Name = namedRoleArnEntry.Name
+
 		assumeRoleArnSessionSequence = append(assumeRoleArnSessionSequence, roleArnSession)
 	}
 
@@ -471,7 +491,7 @@ func isIsolatedBackplaneAccess(cluster *cmv1.Cluster, ocmConnection *ocmsdk.Conn
 	if strings.HasSuffix(baseDomain, "devshiftusgov.com") || strings.HasSuffix(baseDomain, "openshiftusgov.com") {
 		return false, nil
 	}
-	
+
 	if cluster.Hypershift().Enabled() {
 		return true, nil
 	}
