@@ -6,6 +6,9 @@ import (
 	"path/filepath"
 )
 
+// NewEngine creates a new container engine instance based on the operating system and container engine type.
+// Supported combinations: Linux/Podman, macOS/Podman, Linux/Docker, macOS/Docker.
+// Returns an error for unsupported combinations.
 func NewEngine(osName, containerEngine string) (ContainerEngine, error) {
 	if osName == LINUX && containerEngine == PODMAN {
 		return &podmanLinux{fileMountDir: filepath.Join(os.TempDir(), "backplane")}, nil

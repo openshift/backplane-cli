@@ -59,8 +59,8 @@ func GetConfigDirectory() (string, error) {
 	return pullSecretConfigDirectory, nil
 }
 
-// podman/docker container stop
-// this action is OS independent
+// generalStopContainer stops a container using the specified container engine (podman/docker).
+// This function is OS independent and works with both podman and docker.
 func generalStopContainer(containerEngine string, containerName string) error {
 	engStopArgs := []string{
 		"container",
@@ -79,6 +79,8 @@ func generalStopContainer(containerEngine string, containerName string) error {
 	return nil
 }
 
+// generalContainerIsExist checks if a container with the given name exists.
+// It uses the container engine's ps command with filters to determine existence.
 func generalContainerIsExist(containerEngine string, containerName string) (bool, error) {
 	var out bytes.Buffer
 	filter := fmt.Sprintf("name=%s", containerName)

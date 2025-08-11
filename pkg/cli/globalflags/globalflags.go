@@ -12,6 +12,8 @@ type GlobalOptions struct {
 	Service      bool
 }
 
+// AddGlobalFlags adds common global flags to a cobra command.
+// These flags include BackplaneURL, ProxyURL, Manager, and Service options.
 func AddGlobalFlags(cmd *cobra.Command, opts *GlobalOptions) {
 	cmd.PersistentFlags().StringVar(
 		&opts.BackplaneURL,
