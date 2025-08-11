@@ -596,7 +596,6 @@ func (o *consoleOptions) runMonitorPlugin(ce container.ContainerEngine) error {
 	if isRunningHigherOrEqualTo(versionForMonitoringPluginWithoutNginx) {
 		logger.Debugln("monitoring plugin does not require nginx, passing an environment variable to specify the port")
 		envVars = append(envVars, container.EnvVar{Key: "PORT", Value: o.monitorPluginPort})
-		return ce.RunMonitorPlugin(pluginContainerName, consoleContainerName, nginxFilename, pluginArgs, envVars)
 	}
 
 	return ce.RunMonitorPlugin(pluginContainerName, consoleContainerName, nginxFilename, pluginArgs, envVars)
