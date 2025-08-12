@@ -46,6 +46,10 @@ var GetCallerIdentity = func(client *sts.Client) error {
 	return err
 }
 
+// CheckEgressIP checks the egress IP of the client
+// This is a wrapper around checkEgressIPImpl to allow for easy mocking
+var CheckEgressIP = checkEgressIPImpl
+
 // QueryConfig Wrapper for the configuration needed for cloud requests
 type QueryConfig struct {
 	config.BackplaneConfiguration
@@ -313,6 +317,11 @@ func (cfg *QueryConfig) getIsolatedCredentials(ocmToken string) (aws.Credentials
 		return aws.Credentials{}, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
 
+	inlinePolicy, err := verifyTrustedIPAndGetPolicy(cfg)
+	if err != nil {
+		return aws.Credentials{}, err
+	}
+
 	assumeRoleArnSessionSequence := make([]awsutil.RoleArnSession, 0, len(roleChainResponse.AssumptionSequence))
 	for _, namedRoleArnEntry := range roleChainResponse.AssumptionSequence {
 		roleArnSession := awsutil.RoleArnSession{RoleArn: namedRoleArnEntry.Arn}
@@ -325,6 +334,7 @@ func (cfg *QueryConfig) getIsolatedCredentials(ocmToken string) (aws.Credentials
 		roleArnSession.PolicyARNs = []types.PolicyDescriptorType{}
 		if namedRoleArnEntry.Name == CustomerRoleArnName {
 			roleArnSession.IsCustomerRole = true
+
 			// Add the session policy ARN for selected roles
 			if roleChainResponse.SessionPolicyArn != "" {
 				logger.Debugf("Adding session policy ARN for role %s: %s", namedRoleArnEntry.Name, roleChainResponse.SessionPolicyArn)
@@ -333,7 +343,10 @@ func (cfg *QueryConfig) getIsolatedCredentials(ocmToken string) (aws.Credentials
 						Arn: aws.String(roleChainResponse.SessionPolicyArn),
 					},
 				}
+			} else {
+				roleArnSession.Policy = &inlinePolicy
 			}
+
 		} else {
 			roleArnSession.IsCustomerRole = false
 		}
@@ -347,45 +360,11 @@ func (cfg *QueryConfig) getIsolatedCredentials(ocmToken string) (aws.Credentials
 		Credentials: NewStaticCredentialsProvider(seedCredentials.AccessKeyID, seedCredentials.SecretAccessKey, seedCredentials.SessionToken),
 	})
 
-	var proxyURL *url.URL
-
-	if cfg.BackplaneConfiguration.ProxyURL != nil {
-		proxyURL, err = url.Parse(*cfg.BackplaneConfiguration.ProxyURL)
-		if err != nil {
-			return aws.Credentials{}, fmt.Errorf("failed to parse proxy URL: %w", err)
-		}
-	}
-	httpClient := &http.Client{
-		Transport: &http.Transport{
-			Proxy: http.ProxyURL(proxyURL),
-		},
-	}
-	clientIP, err := checkEgressIP(httpClient, "https://checkip.amazonaws.com/")
-	if err != nil {
-		return aws.Credentials{}, fmt.Errorf("failed to determine client IP: %w", err)
-	}
-
-	trustedRange, err := getTrustedIPList(cfg.OcmConnection)
-	if err != nil {
-		return aws.Credentials{}, err
-	}
-
-	err = verifyIPTrusted(clientIP, trustedRange)
-	if err != nil {
-		return aws.Credentials{}, err
-	}
-
-	inlinePolicy, err := getTrustedIPInlinePolicy(trustedRange)
-	if err != nil {
-		return aws.Credentials{}, fmt.Errorf("failed to build inline policy: %w", err)
-	}
-
 	targetCredentials, err := AssumeRoleSequence(
 		seedClient,
 		assumeRoleArnSessionSequence,
 		cfg.BackplaneConfiguration.ProxyURL,
 		awsutil.DefaultSTSClientProviderFunc,
-		&inlinePolicy,
 	)
 	if err != nil {
 		return aws.Credentials{}, fmt.Errorf("failed to assume role sequence: %w", err)
@@ -393,7 +372,48 @@ func (cfg *QueryConfig) getIsolatedCredentials(ocmToken string) (aws.Credentials
 	return targetCredentials, nil
 }
 
-func checkEgressIP(client *http.Client, url string) (net.IP, error) {
+// verifyTrustedIPAndGetPolicy verifies that the client IP is in the trusted IP range
+// and returns the inline policy for the trusted IPs
+func verifyTrustedIPAndGetPolicy(cfg *QueryConfig) (awsutil.PolicyDocument, error) {
+	var proxyURL *url.URL
+
+	if cfg.BackplaneConfiguration.ProxyURL != nil {
+		var err error
+		proxyURL, err = url.Parse(*cfg.BackplaneConfiguration.ProxyURL)
+		if err != nil {
+			return awsutil.PolicyDocument{}, fmt.Errorf("failed to parse proxy URL: %w", err)
+		}
+	}
+	httpClient := &http.Client{
+		Transport: &http.Transport{
+			Proxy: http.ProxyURL(proxyURL),
+		},
+	}
+	clientIP, err := CheckEgressIP(httpClient, "https://checkip.amazonaws.com/")
+	if err != nil {
+		return awsutil.PolicyDocument{}, fmt.Errorf("failed to determine client IP: %w", err)
+	}
+
+	trustedRange, err := getTrustedIPList(cfg.OcmConnection)
+	if err != nil {
+		return awsutil.PolicyDocument{}, err
+	}
+
+	err = verifyIPTrusted(clientIP, trustedRange)
+	if err != nil {
+		return awsutil.PolicyDocument{}, err
+	}
+
+	inlinePolicy, err := getTrustedIPInlinePolicy(trustedRange)
+	if err != nil {
+		return awsutil.PolicyDocument{}, fmt.Errorf("failed to build inline policy: %w", err)
+	}
+
+	return inlinePolicy, nil
+}
+
+// checkEgressIPImpl checks the egress IP of the client
+func checkEgressIPImpl(client *http.Client, url string) (net.IP, error) {
 	resp, err := client.Get(url)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch IP: %w", err)
