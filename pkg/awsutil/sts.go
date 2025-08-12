@@ -132,6 +132,7 @@ type RoleArnSession struct {
 	RoleSessionName string
 	RoleArn         string
 	IsCustomerRole  bool
+	Policy          *PolicyDocument
 	PolicyARNs      []types.PolicyDescriptorType
 }
 
@@ -140,7 +141,6 @@ func AssumeRoleSequence(
 	roleArnSessionSequence []RoleArnSession,
 	proxyURL *string,
 	stsClientProviderFunc STSClientProviderFunc,
-	inlinePolicy *PolicyDocument,
 ) (aws.Credentials, error) {
 	if len(roleArnSessionSequence) == 0 {
 		return aws.Credentials{}, errors.New("role ARN sequence cannot be empty")
@@ -157,7 +157,7 @@ func AssumeRoleSequence(
 			roleArnSession.RoleSessionName,
 			roleArnSession.IsCustomerRole,
 		)
-		result, err := AssumeRole(nextClient, roleArnSession.RoleSessionName, roleArnSession.RoleArn, inlinePolicy, roleArnSession.PolicyARNs)
+		result, err := AssumeRole(nextClient, roleArnSession.RoleSessionName, roleArnSession.RoleArn, roleArnSession.Policy, roleArnSession.PolicyARNs)
 		retryCount := 0
 		for err != nil {
 			// IAM policy updates can take a few seconds to resolve, and the sts.Client in AWS' Go SDK doesn't refresh itself on retries.
@@ -170,7 +170,7 @@ func AssumeRoleSequence(
 					return aws.Credentials{}, fmt.Errorf("failed to create client with credentials for role %v: %w", roleArnSession.RoleArn, err)
 				}
 
-				result, err = AssumeRole(nextClient, roleArnSession.RoleSessionName, roleArnSession.RoleArn, inlinePolicy, roleArnSession.PolicyARNs)
+				result, err = AssumeRole(nextClient, roleArnSession.RoleSessionName, roleArnSession.RoleArn, roleArnSession.Policy, roleArnSession.PolicyARNs)
 				if err != nil {
 					logger.Debugf("failed to create client with credentials for role %s: name:%s %v", roleArnSession.RoleArn, roleArnSession.Name, err)
 				}

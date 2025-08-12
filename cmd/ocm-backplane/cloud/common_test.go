@@ -285,7 +285,7 @@ var _ = Describe("getIsolatedCredentials", func() {
 			defer server.Close()
 
 			client := &http.Client{}
-			ip, err := checkEgressIP(client, server.URL)
+			ip, err := CheckEgressIP(client, server.URL)
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(ip).To(Equal(net.ParseIP(mockIP)))
@@ -293,7 +293,7 @@ var _ = Describe("getIsolatedCredentials", func() {
 		It("should return an error when the HTTP GET fails", func() {
 			client = &http.Client{}
 			// Invalid URL to force error
-			ip, err := checkEgressIP(client, "http://invalid_url")
+			ip, err := CheckEgressIP(client, "http://invalid_url")
 			Expect(err).To(HaveOccurred())
 			Expect(ip).To(BeNil())
 		})
@@ -303,7 +303,7 @@ var _ = Describe("getIsolatedCredentials", func() {
 			}))
 			client = server.Client()
 
-			ip, err := checkEgressIP(client, server.URL)
+			ip, err := CheckEgressIP(client, server.URL)
 			Expect(err).To(MatchError(ContainSubstring("failed to parse IP")))
 			Expect(ip).To(BeNil())
 		})
@@ -357,6 +357,85 @@ var _ = Describe("getIsolatedCredentials", func() {
 			Expect(policy).To(ContainSubstring("209.10.10.10"))
 			Expect(policy).NotTo(ContainSubstring("200.20.20.20"))
 			Expect(err).To(BeNil())
+		})
+	})
+
+	Context("Execute verifyTrustedIPAndGetPolicy", func() {
+		It("should successfully verify IP and return policy when IP is in trusted range", func() {
+			// Mock the IP check to return a valid IP
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				fmt.Fprint(w, "209.10.10.10") // IP that matches our test trusted range
+			}))
+			defer server.Close()
+
+			// Override the checkEgressIP function to use our test server
+			originalCheckEgressIP := CheckEgressIP
+			CheckEgressIP = func(client *http.Client, url string) (net.IP, error) {
+				return originalCheckEgressIP(client, server.URL)
+			}
+			defer func() {
+				CheckEgressIP = originalCheckEgressIP
+			}()
+
+			// Set up expected trusted IP list
+			ip1 := cmv1.NewTrustedIp().ID("209.10.10.10").Enabled(true)
+			expectedIPList, err := cmv1.NewTrustedIpList().Items(ip1).Build()
+			Expect(err).To(BeNil())
+			mockOcmInterface.EXPECT().GetTrustedIPList(gomock.Any()).Return(expectedIPList, nil)
+
+			// Call the function
+			policy, err := verifyTrustedIPAndGetPolicy(&testQueryConfig)
+
+			// Verify success
+			Expect(err).To(BeNil())
+			Expect(policy.Version).To(Equal("2012-10-17"))
+			Expect(len(policy.Statement)).To(BeNumerically(">", 0))
+		})
+
+		It("should fail when client IP is not in trusted range", func() {
+			// Mock the IP check to return an untrusted IP
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				fmt.Fprint(w, "192.168.1.1") // IP that doesn't match our test trusted range
+			}))
+			defer server.Close()
+
+			// Override the checkEgressIP function to use our test server
+			originalCheckEgressIP := CheckEgressIP
+			CheckEgressIP = func(client *http.Client, url string) (net.IP, error) {
+				return originalCheckEgressIP(client, server.URL)
+			}
+			defer func() {
+				CheckEgressIP = originalCheckEgressIP
+			}()
+
+			// Set up expected trusted IP list (only has 209.x.x.x IPs)
+			ip1 := cmv1.NewTrustedIp().ID("209.10.10.10").Enabled(true)
+			expectedIPList, err := cmv1.NewTrustedIpList().Items(ip1).Build()
+			Expect(err).To(BeNil())
+			mockOcmInterface.EXPECT().GetTrustedIPList(gomock.Any()).Return(expectedIPList, nil)
+
+			// Call the function
+			_, err = verifyTrustedIPAndGetPolicy(&testQueryConfig)
+
+			// Verify failure
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("client IP 192.168.1.1 is not in the trusted IP range"))
+		})
+
+		It("should fail when proxy URL is invalid", func() {
+			// Set an invalid proxy URL
+			invalidProxyURL := "://invalid-url"
+			testQueryConfig.BackplaneConfiguration.ProxyURL = &invalidProxyURL
+
+			// Call the function
+			_, err := verifyTrustedIPAndGetPolicy(&testQueryConfig)
+
+			// Verify failure
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("failed to parse proxy URL"))
+
+			// Reset proxy URL
+			testQueryConfig.BackplaneConfiguration.ProxyURL = nil
 		})
 	})
 })
@@ -537,6 +616,19 @@ var _ = Describe("PolicyARNs Integration", func() {
 
 	// Helper function to simulate the getIsolatedCredentials logic
 	simulateGetIsolatedCredentialsLogic := func(roleChainResponse assumeChainResponse) []awsutil.RoleArnSession {
+		// Create a mock inline policy for testing
+		mockInlinePolicy := &awsutil.PolicyDocument{
+			Version: "2012-10-17",
+			Statement: []awsutil.PolicyStatement{
+				{
+					Sid:      "TestPolicy",
+					Effect:   "Allow",
+					Action:   []string{"s3:GetObject"},
+					Resource: aws.String("*"),
+				},
+			},
+		}
+
 		assumeRoleArnSessionSequence := make([]awsutil.RoleArnSession, 0, len(roleChainResponse.AssumptionSequence))
 		for _, namedRoleArnEntry := range roleChainResponse.AssumptionSequence {
 			roleArnSession := awsutil.RoleArnSession{RoleArn: namedRoleArnEntry.Arn}
@@ -550,6 +642,7 @@ var _ = Describe("PolicyARNs Integration", func() {
 			roleArnSession.PolicyARNs = []types.PolicyDescriptorType{}
 			if namedRoleArnEntry.Name == CustomerRoleArnName {
 				roleArnSession.IsCustomerRole = true
+
 				// Add the session policy ARN for selected roles
 				if roleChainResponse.SessionPolicyArn != "" {
 					roleArnSession.PolicyARNs = []types.PolicyDescriptorType{
@@ -557,7 +650,10 @@ var _ = Describe("PolicyARNs Integration", func() {
 							Arn: aws.String(roleChainResponse.SessionPolicyArn),
 						},
 					}
+				} else {
+					roleArnSession.Policy = mockInlinePolicy
 				}
+
 			} else {
 				roleArnSession.IsCustomerRole = false
 			}
@@ -591,6 +687,8 @@ var _ = Describe("PolicyARNs Integration", func() {
 			Expect(customerRole.Name).To(Equal(CustomerRoleArnName))
 			Expect(len(customerRole.PolicyARNs)).To(Equal(1))
 			Expect(*customerRole.PolicyARNs[0].Arn).To(Equal(testSessionPolicyArn))
+			// Verify that Policy is nil when SessionPolicyArn is used
+			Expect(customerRole.Policy).To(BeNil())
 		})
 
 		It("should not set PolicyARNs for non-customer roles", func() {
@@ -613,6 +711,8 @@ var _ = Describe("PolicyARNs Integration", func() {
 			Expect(supportRole.IsCustomerRole).To(BeFalse())
 			Expect(supportRole.Name).To(Equal("Support-Role-Arn"))
 			Expect(len(supportRole.PolicyARNs)).To(Equal(0))
+			// Verify that Policy is nil for non-customer roles
+			Expect(supportRole.Policy).To(BeNil())
 		})
 
 		// Generated by Cursor
@@ -636,6 +736,69 @@ var _ = Describe("PolicyARNs Integration", func() {
 			Expect(customerRole.IsCustomerRole).To(BeTrue())
 			Expect(customerRole.Name).To(Equal(CustomerRoleArnName))
 			Expect(len(customerRole.PolicyARNs)).To(Equal(0))
+			// Verify that Policy is set when SessionPolicyArn is empty
+			Expect(customerRole.Policy).ToNot(BeNil())
+		})
+	})
+
+	Context("when verifying roleArnSession.Policy field behavior", func() {
+		It("should set Policy only for customer roles without SessionPolicyArn", func() {
+			// Test customer role with SessionPolicyArn - Policy should be nil
+			roleChainResponseWithArn := assumeChainResponse{
+				AssumptionSequence: []namedRoleArn{
+					{
+						Name: CustomerRoleArnName,
+						Arn:  "arn:aws:iam::123456789012:role/customer-role",
+					},
+				},
+				CustomerRoleSessionName: "customer-session",
+				SessionPolicyArn:        testSessionPolicyArn,
+			}
+
+			assumeRoleArnSessionSequence := simulateGetIsolatedCredentialsLogic(roleChainResponseWithArn)
+			customerRoleWithArn := assumeRoleArnSessionSequence[0]
+
+			Expect(customerRoleWithArn.IsCustomerRole).To(BeTrue())
+			Expect(customerRoleWithArn.Policy).To(BeNil()) // Policy should be nil when SessionPolicyArn is used
+			Expect(len(customerRoleWithArn.PolicyARNs)).To(Equal(1))
+
+			// Test customer role without SessionPolicyArn - Policy should be set
+			roleChainResponseWithoutArn := assumeChainResponse{
+				AssumptionSequence: []namedRoleArn{
+					{
+						Name: CustomerRoleArnName,
+						Arn:  "arn:aws:iam::123456789012:role/customer-role",
+					},
+				},
+				CustomerRoleSessionName: "customer-session",
+				SessionPolicyArn:        "", // Empty SessionPolicyArn
+			}
+
+			assumeRoleArnSessionSequence = simulateGetIsolatedCredentialsLogic(roleChainResponseWithoutArn)
+			customerRoleWithoutArn := assumeRoleArnSessionSequence[0]
+
+			Expect(customerRoleWithoutArn.IsCustomerRole).To(BeTrue())
+			Expect(customerRoleWithoutArn.Policy).ToNot(BeNil()) // Policy should be set when SessionPolicyArn is empty
+			Expect(len(customerRoleWithoutArn.PolicyARNs)).To(Equal(0))
+
+			// Test non-customer role - Policy should always be nil
+			roleChainResponseNonCustomer := assumeChainResponse{
+				AssumptionSequence: []namedRoleArn{
+					{
+						Name: "Support-Role-Arn",
+						Arn:  "arn:aws:iam::123456789012:role/support-role",
+					},
+				},
+				CustomerRoleSessionName: "customer-session",
+				SessionPolicyArn:        "", // Empty SessionPolicyArn
+			}
+
+			assumeRoleArnSessionSequence = simulateGetIsolatedCredentialsLogic(roleChainResponseNonCustomer)
+			nonCustomerRole := assumeRoleArnSessionSequence[0]
+
+			Expect(nonCustomerRole.IsCustomerRole).To(BeFalse())
+			Expect(nonCustomerRole.Policy).To(BeNil()) // Policy should always be nil for non-customer roles
+			Expect(len(nonCustomerRole.PolicyARNs)).To(Equal(0))
 		})
 	})
 
