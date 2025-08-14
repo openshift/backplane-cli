@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 
@@ -422,20 +423,24 @@ var _ = Describe("getIsolatedCredentials", func() {
 			Expect(err.Error()).To(ContainSubstring("client IP 192.168.1.1 is not in the trusted IP range"))
 		})
 
-		It("should fail when proxy URL is invalid", func() {
-			// Set an invalid proxy URL
-			invalidProxyURL := "://invalid-url"
-			testQueryConfig.BackplaneConfiguration.ProxyURL = &invalidProxyURL
+		It("should fail when AWS proxy URL is invalid", func() {
+			// Set an invalid AWS proxy URL via environment variable
+			originalEnv := os.Getenv("BACKPLANE_AWS_PROXY")
+			os.Setenv("BACKPLANE_AWS_PROXY", "://invalid-url")
+			defer func() {
+				if originalEnv != "" {
+					os.Setenv("BACKPLANE_AWS_PROXY", originalEnv)
+				} else {
+					os.Unsetenv("BACKPLANE_AWS_PROXY")
+				}
+			}()
 
 			// Call the function
 			_, err := verifyTrustedIPAndGetPolicy(&testQueryConfig)
 
 			// Verify failure
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("failed to parse proxy URL"))
-
-			// Reset proxy URL
-			testQueryConfig.BackplaneConfiguration.ProxyURL = nil
+			Expect(err.Error()).To(ContainSubstring("failed to parse BACKPLANE_AWS_PROXY for checkEgressIP"))
 		})
 	})
 })
