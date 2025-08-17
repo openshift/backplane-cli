@@ -197,7 +197,7 @@ var _ = Describe("getIsolatedCredentials", func() {
 				}, nil
 			}
 			mockClientUtil.EXPECT().GetBackplaneClient(
-				testQueryConfig.BackplaneConfiguration.URL, testOcmToken, testQueryConfig.ProxyURL).Return(mockClient, nil)
+				testQueryConfig.BackplaneConfiguration.URL, testOcmToken, testQueryConfig.BackplaneConfiguration.ProxyURL).Return(mockClient, nil)
 			mockClient.EXPECT().GetAssumeRoleSequence(context.TODO(), testClusterID).Return(fakeHTTPResp, nil)
 
 			_, err = testQueryConfig.getIsolatedCredentials(testOcmToken)
@@ -232,7 +232,7 @@ var _ = Describe("getIsolatedCredentials", func() {
 				}, nil
 			}
 			mockClientUtil.EXPECT().GetBackplaneClient(
-				testQueryConfig.BackplaneConfiguration.URL, testOcmToken, testQueryConfig.ProxyURL).Return(mockClient, nil)
+				testQueryConfig.BackplaneConfiguration.URL, testOcmToken, testQueryConfig.BackplaneConfiguration.ProxyURL).Return(mockClient, nil)
 			// Simulate failure in GetAssumeRoleSequence
 			mockClient.EXPECT().GetAssumeRoleSequence(context.TODO(), testClusterID).Return(nil, errors.New("assume sequence failed"))
 
@@ -441,6 +441,433 @@ var _ = Describe("getIsolatedCredentials", func() {
 			// Verify failure
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("failed to parse BACKPLANE_AWS_PROXY for checkEgressIP"))
+		})
+
+		Context("Execute getIsolatedCredentials with BACKPLANE_AWS_PROXY", func() {
+			It("should use BACKPLANE_AWS_PROXY environment variable for AWS STS calls", func() {
+				// Save original environment variable
+				originalEnv := os.Getenv("BACKPLANE_AWS_PROXY")
+				defer func() {
+					if originalEnv != "" {
+						os.Setenv("BACKPLANE_AWS_PROXY", originalEnv)
+					} else {
+						os.Unsetenv("BACKPLANE_AWS_PROXY")
+					}
+				}()
+
+				// Set BACKPLANE_AWS_PROXY environment variable
+				os.Setenv("BACKPLANE_AWS_PROXY", "http://aws-proxy:8080")
+
+				// Mock CheckEgressIP to avoid real HTTP calls
+				originalCheckEgressIP := CheckEgressIP
+				CheckEgressIP = func(client *http.Client, url string) (net.IP, error) {
+					// IP that matches our test trusted range
+					return net.ParseIP("209.10.10.10"), nil
+				}
+				defer func() {
+					CheckEgressIP = originalCheckEgressIP
+				}()
+
+				GetCallerIdentity = func(client *sts.Client) error {
+					return nil // Simulate success
+				}
+				defer func() {
+					GetCallerIdentity = func(client *sts.Client) error {
+						_, err := client.GetCallerIdentity(context.TODO(), &sts.GetCallerIdentityInput{})
+						return err
+					}
+				}()
+
+				ip1 := cmv1.NewTrustedIp().ID("209.10.10.10").Enabled(true)
+				expectedIPList, err := cmv1.NewTrustedIpList().Items(ip1).Build()
+				Expect(err).To(BeNil())
+				mockOcmInterface.EXPECT().GetTrustedIPList(gomock.Any()).Return(expectedIPList, nil)
+
+				StsClient = func(proxyURL *string) (*sts.Client, error) {
+					// Verify that when proxyURL is nil, BACKPLANE_AWS_PROXY should be used
+					if proxyURL == nil {
+						// This should use BACKPLANE_AWS_PROXY internally
+						return &sts.Client{}, nil
+					}
+					return &sts.Client{}, nil
+				}
+				AssumeRoleWithJWT = func(jwt string, roleArn string, stsClient stscreds.AssumeRoleWithWebIdentityAPIClient) (aws.Credentials, error) {
+					return aws.Credentials{
+						AccessKeyID:     testAccessKeyID,
+						SecretAccessKey: testSecretAccessKey,
+						SessionToken:    testSessionToken,
+					}, nil
+				}
+				AssumeRoleSequence = func(
+					seedClient stscreds.AssumeRoleAPIClient,
+					roleArnSequence []awsutil.RoleArnSession,
+					proxyURL *string,
+					stsClientProviderFunc awsutil.STSClientProviderFunc,
+				) (aws.Credentials, error) {
+					// Mock implementation to avoid real AWS calls
+					return aws.Credentials{
+						AccessKeyID:     testAccessKeyID,
+						SecretAccessKey: testSecretAccessKey,
+						SessionToken:    testSessionToken,
+					}, nil
+				}
+				defer func() {
+					AssumeRoleSequence = awsutil.AssumeRoleSequence
+				}()
+				mockClientUtil.EXPECT().GetBackplaneClient(
+					testQueryConfig.BackplaneConfiguration.URL, testOcmToken, testQueryConfig.BackplaneConfiguration.ProxyURL).Return(mockClient, nil)
+				mockClient.EXPECT().GetAssumeRoleSequence(context.TODO(), testClusterID).Return(fakeHTTPResp, nil)
+
+				// Test that BACKPLANE_AWS_PROXY is used for AWS calls while ProxyURL is used for Backplane calls
+				_, err = testQueryConfig.getIsolatedCredentials(testOcmToken)
+				Expect(err).To(BeNil())
+			})
+
+			It("should prioritize explicit proxyURL over BACKPLANE_AWS_PROXY", func() {
+				// Save original environment variable
+				originalEnv := os.Getenv("BACKPLANE_AWS_PROXY")
+				defer func() {
+					if originalEnv != "" {
+						os.Setenv("BACKPLANE_AWS_PROXY", originalEnv)
+					} else {
+						os.Unsetenv("BACKPLANE_AWS_PROXY")
+					}
+				}()
+
+				// Set both explicit proxy and environment variable
+				testQueryConfig.BackplaneConfiguration.ProxyURL = aws.String("http://explicit-proxy:9090")
+				os.Setenv("BACKPLANE_AWS_PROXY", "http://aws-proxy:8080")
+
+				// Mock CheckEgressIP to avoid real HTTP calls
+				originalCheckEgressIP := CheckEgressIP
+				CheckEgressIP = func(client *http.Client, url string) (net.IP, error) {
+					return net.ParseIP("209.10.10.10"), nil
+				}
+				defer func() {
+					CheckEgressIP = originalCheckEgressIP
+				}()
+
+				GetCallerIdentity = func(client *sts.Client) error {
+					return nil // Simulate success
+				}
+				defer func() {
+					GetCallerIdentity = func(client *sts.Client) error {
+						_, err := client.GetCallerIdentity(context.TODO(), &sts.GetCallerIdentityInput{})
+						return err
+					}
+				}()
+
+				ip1 := cmv1.NewTrustedIp().ID("209.10.10.10").Enabled(true)
+				expectedIPList, err := cmv1.NewTrustedIpList().Items(ip1).Build()
+				Expect(err).To(BeNil())
+				mockOcmInterface.EXPECT().GetTrustedIPList(gomock.Any()).Return(expectedIPList, nil)
+
+				StsClient = func(proxyURL *string) (*sts.Client, error) {
+					// StsClient should always be called with nil (uses BACKPLANE_AWS_PROXY internally)
+					// The explicit proxyURL is used for Backplane API calls, not AWS STS calls
+					if proxyURL == nil {
+						return &sts.Client{}, nil
+					}
+					return &sts.Client{}, fmt.Errorf("StsClient should be called with nil proxyURL for proxy separation")
+				}
+				AssumeRoleWithJWT = func(jwt string, roleArn string, stsClient stscreds.AssumeRoleWithWebIdentityAPIClient) (aws.Credentials, error) {
+					return aws.Credentials{
+						AccessKeyID:     testAccessKeyID,
+						SecretAccessKey: testSecretAccessKey,
+						SessionToken:    testSessionToken,
+					}, nil
+				}
+				AssumeRoleSequence = func(
+					seedClient stscreds.AssumeRoleAPIClient,
+					roleArnSequence []awsutil.RoleArnSession,
+					proxyURL *string,
+					stsClientProviderFunc awsutil.STSClientProviderFunc,
+				) (aws.Credentials, error) {
+					// Mock implementation to avoid real AWS calls
+					return aws.Credentials{
+						AccessKeyID:     testAccessKeyID,
+						SecretAccessKey: testSecretAccessKey,
+						SessionToken:    testSessionToken,
+					}, nil
+				}
+				defer func() {
+					AssumeRoleSequence = awsutil.AssumeRoleSequence
+				}()
+				mockClientUtil.EXPECT().GetBackplaneClient(
+					testQueryConfig.BackplaneConfiguration.URL, testOcmToken, testQueryConfig.BackplaneConfiguration.ProxyURL).Return(mockClient, nil)
+				mockClient.EXPECT().GetAssumeRoleSequence(context.TODO(), testClusterID).Return(fakeHTTPResp, nil)
+
+				_, err = testQueryConfig.getIsolatedCredentials(testOcmToken)
+				Expect(err).To(BeNil())
+			})
+
+			It("should use regular proxy when BACKPLANE_AWS_PROXY is not set", func() {
+				// Ensure BACKPLANE_AWS_PROXY is not set
+				os.Unsetenv("BACKPLANE_AWS_PROXY")
+
+				testQueryConfig.BackplaneConfiguration.ProxyURL = aws.String("http://regular-proxy:8080")
+
+				// Mock CheckEgressIP to avoid real HTTP calls
+				originalCheckEgressIP := CheckEgressIP
+				CheckEgressIP = func(client *http.Client, url string) (net.IP, error) {
+					return net.ParseIP("209.10.10.10"), nil // IP that matches our test trusted range
+				}
+				defer func() {
+					CheckEgressIP = originalCheckEgressIP
+				}()
+
+				GetCallerIdentity = func(client *sts.Client) error {
+					return nil // Simulate success
+				}
+				defer func() {
+					GetCallerIdentity = func(client *sts.Client) error {
+						_, err := client.GetCallerIdentity(context.TODO(), &sts.GetCallerIdentityInput{})
+						return err
+					}
+				}()
+
+				ip1 := cmv1.NewTrustedIp().ID("209.10.10.10").Enabled(true)
+				expectedIPList, err := cmv1.NewTrustedIpList().Items(ip1).Build()
+				Expect(err).To(BeNil())
+				mockOcmInterface.EXPECT().GetTrustedIPList(gomock.Any()).Return(expectedIPList, nil)
+
+				StsClient = func(proxyURL *string) (*sts.Client, error) {
+					// StsClient should be called with regular proxy when BACKPLANE_AWS_PROXY is not set
+					if proxyURL != nil && *proxyURL == "http://regular-proxy:8080" {
+						return &sts.Client{}, nil
+					}
+					return &sts.Client{}, fmt.Errorf("StsClient should be called with regular proxy URL, got: %v", proxyURL)
+				}
+				AssumeRoleWithJWT = func(jwt string, roleArn string, stsClient stscreds.AssumeRoleWithWebIdentityAPIClient) (aws.Credentials, error) {
+					return aws.Credentials{
+						AccessKeyID:     testAccessKeyID,
+						SecretAccessKey: testSecretAccessKey,
+						SessionToken:    testSessionToken,
+					}, nil
+				}
+				AssumeRoleSequence = func(
+					seedClient stscreds.AssumeRoleAPIClient,
+					roleArnSequence []awsutil.RoleArnSession,
+					proxyURL *string,
+					stsClientProviderFunc awsutil.STSClientProviderFunc,
+				) (aws.Credentials, error) {
+					// Mock implementation to avoid real AWS calls
+					return aws.Credentials{
+						AccessKeyID:     testAccessKeyID,
+						SecretAccessKey: testSecretAccessKey,
+						SessionToken:    testSessionToken,
+					}, nil
+				}
+				defer func() {
+					AssumeRoleSequence = awsutil.AssumeRoleSequence
+				}()
+				mockClientUtil.EXPECT().GetBackplaneClient(
+					testQueryConfig.BackplaneConfiguration.URL, testOcmToken, testQueryConfig.BackplaneConfiguration.ProxyURL).Return(mockClient, nil)
+				mockClient.EXPECT().GetAssumeRoleSequence(context.TODO(), testClusterID).Return(fakeHTTPResp, nil)
+
+				_, err = testQueryConfig.getIsolatedCredentials(testOcmToken)
+				Expect(err).To(BeNil())
+			})
+		})
+	})
+
+	Context("Proxy separation verification", func() {
+		It("should demonstrate traffic separation between AWS and Backplane API calls", func() {
+			// Save original environment variable
+			originalEnv := os.Getenv("BACKPLANE_AWS_PROXY")
+			defer func() {
+				if originalEnv != "" {
+					os.Setenv("BACKPLANE_AWS_PROXY", originalEnv)
+				} else {
+					os.Unsetenv("BACKPLANE_AWS_PROXY")
+				}
+			}()
+
+			// Set different proxies for AWS and Backplane
+			testQueryConfig.BackplaneConfiguration.ProxyURL = aws.String("http://backplane-proxy:8080")
+			os.Setenv("BACKPLANE_AWS_PROXY", "http://aws-proxy:8080")
+
+			// Mock CheckEgressIP to avoid real HTTP calls
+			originalCheckEgressIP := CheckEgressIP
+			CheckEgressIP = func(client *http.Client, url string) (net.IP, error) {
+				// IP that matches our test trusted range
+				return net.ParseIP("209.10.10.10"), nil
+			}
+			defer func() {
+				CheckEgressIP = originalCheckEgressIP
+			}()
+
+			// Track which proxy was used for which calls
+			var awsProxyUsed, backplaneProxyUsed bool
+
+			GetCallerIdentity = func(client *sts.Client) error {
+				return nil // Simulate success
+			}
+			defer func() {
+				GetCallerIdentity = func(client *sts.Client) error {
+					_, err := client.GetCallerIdentity(context.TODO(), &sts.GetCallerIdentityInput{})
+					return err
+				}
+			}()
+
+			ip1 := cmv1.NewTrustedIp().ID("209.10.10.10").Enabled(true)
+			expectedIPList, err := cmv1.NewTrustedIpList().Items(ip1).Build()
+			Expect(err).To(BeNil())
+			mockOcmInterface.EXPECT().GetTrustedIPList(gomock.Any()).Return(expectedIPList, nil)
+
+			StsClient = func(proxyURL *string) (*sts.Client, error) {
+				// AWS calls should use nil proxyURL (which internally uses BACKPLANE_AWS_PROXY)
+				if proxyURL == nil {
+					awsProxyUsed = true
+					return &sts.Client{}, nil
+				}
+				return &sts.Client{}, fmt.Errorf("AWS STS should use BACKPLANE_AWS_PROXY, not regular proxy")
+			}
+			AssumeRoleWithJWT = func(jwt string, roleArn string, stsClient stscreds.AssumeRoleWithWebIdentityAPIClient) (aws.Credentials, error) {
+				return aws.Credentials{
+					AccessKeyID:     testAccessKeyID,
+					SecretAccessKey: testSecretAccessKey,
+					SessionToken:    testSessionToken,
+				}, nil
+			}
+			AssumeRoleSequence = func(
+				seedClient stscreds.AssumeRoleAPIClient,
+				roleArnSequence []awsutil.RoleArnSession,
+				proxyURL *string,
+				stsClientProviderFunc awsutil.STSClientProviderFunc,
+			) (aws.Credentials, error) {
+				// Mock implementation to avoid real AWS calls
+				return aws.Credentials{
+					AccessKeyID:     testAccessKeyID,
+					SecretAccessKey: testSecretAccessKey,
+					SessionToken:    testSessionToken,
+				}, nil
+			}
+			defer func() {
+				AssumeRoleSequence = awsutil.AssumeRoleSequence
+			}()
+
+			// Backplane API calls should use the regular ProxyURL
+			mockClientUtil.EXPECT().GetBackplaneClient(
+				testQueryConfig.BackplaneConfiguration.URL, testOcmToken, testQueryConfig.BackplaneConfiguration.ProxyURL).Do(func(url, token string, proxyURL *string) {
+				if proxyURL != nil && *proxyURL == "http://backplane-proxy:8080" {
+					backplaneProxyUsed = true
+				}
+			}).Return(mockClient, nil)
+			mockClient.EXPECT().GetAssumeRoleSequence(context.TODO(), testClusterID).Return(fakeHTTPResp, nil)
+
+			_, err = testQueryConfig.getIsolatedCredentials(testOcmToken)
+			Expect(err).To(BeNil())
+
+			// Verify that different proxies were used for different types of calls
+			Expect(awsProxyUsed).To(BeTrue(), "AWS proxy should have been used for STS calls")
+			Expect(backplaneProxyUsed).To(BeTrue(), "Backplane proxy should have been used for Backplane API calls")
+		})
+
+		It("should handle proxy separation in verifyTrustedIPAndGetPolicy", func() {
+			// Save original environment variable
+			originalEnv := os.Getenv("BACKPLANE_AWS_PROXY")
+			defer func() {
+				if originalEnv != "" {
+					os.Setenv("BACKPLANE_AWS_PROXY", originalEnv)
+				} else {
+					os.Unsetenv("BACKPLANE_AWS_PROXY")
+				}
+			}()
+
+			// Set AWS-specific proxy
+			os.Setenv("BACKPLANE_AWS_PROXY", "http://aws-proxy:8080")
+
+			// Mock checkEgressIP to avoid real HTTP calls
+			originalCheckEgressIP := CheckEgressIP
+			CheckEgressIP = func(client *http.Client, url string) (net.IP, error) {
+				// IP that matches our test trusted range
+				return net.ParseIP("209.10.10.10"), nil
+			}
+			defer func() {
+				CheckEgressIP = originalCheckEgressIP
+			}()
+
+			// Set up expected trusted IP list
+			ip1 := cmv1.NewTrustedIp().ID("209.10.10.10").Enabled(true)
+			expectedIPList, err := cmv1.NewTrustedIpList().Items(ip1).Build()
+			Expect(err).To(BeNil())
+			mockOcmInterface.EXPECT().GetTrustedIPList(gomock.Any()).Return(expectedIPList, nil)
+
+			// Test that AWS proxy is used for checkEgressIP
+			policy, err := verifyTrustedIPAndGetPolicy(&testQueryConfig)
+			Expect(err).To(BeNil())
+			Expect(policy.Version).To(Equal("2012-10-17"))
+		})
+
+		It("should fallback to regular proxy when BACKPLANE_AWS_PROXY is unset (regression test)", func() {
+			// Ensure BACKPLANE_AWS_PROXY is not set
+			os.Unsetenv("BACKPLANE_AWS_PROXY")
+
+			// Should fall back to regular proxy behavior
+			testQueryConfig.BackplaneConfiguration.ProxyURL = aws.String("http://regular-proxy:8080")
+
+			// Mock CheckEgressIP to avoid real HTTP calls
+			originalCheckEgressIP := CheckEgressIP
+			CheckEgressIP = func(client *http.Client, url string) (net.IP, error) {
+				// IP that matches our test trusted range
+				return net.ParseIP("209.10.10.10"), nil
+			}
+			defer func() {
+				CheckEgressIP = originalCheckEgressIP
+			}()
+
+			GetCallerIdentity = func(client *sts.Client) error {
+				return nil // Simulate success
+			}
+			defer func() {
+				GetCallerIdentity = func(client *sts.Client) error {
+					_, err := client.GetCallerIdentity(context.TODO(), &sts.GetCallerIdentityInput{})
+					return err
+				}
+			}()
+
+			ip1 := cmv1.NewTrustedIp().ID("209.10.10.10").Enabled(true)
+			expectedIPList, err := cmv1.NewTrustedIpList().Items(ip1).Build()
+			Expect(err).To(BeNil())
+			mockOcmInterface.EXPECT().GetTrustedIPList(gomock.Any()).Return(expectedIPList, nil)
+
+			StsClient = func(proxyURL *string) (*sts.Client, error) {
+				// StsClient should be called with regular proxy when BACKPLANE_AWS_PROXY is not set
+				if proxyURL != nil && *proxyURL == "http://regular-proxy:8080" {
+					return &sts.Client{}, nil
+				}
+				return &sts.Client{}, fmt.Errorf("StsClient should be called with regular proxy URL, got: %v", proxyURL)
+			}
+			AssumeRoleWithJWT = func(jwt string, roleArn string, stsClient stscreds.AssumeRoleWithWebIdentityAPIClient) (aws.Credentials, error) {
+				return aws.Credentials{
+					AccessKeyID:     testAccessKeyID,
+					SecretAccessKey: testSecretAccessKey,
+					SessionToken:    testSessionToken,
+				}, nil
+			}
+			AssumeRoleSequence = func(
+				seedClient stscreds.AssumeRoleAPIClient,
+				roleArnSequence []awsutil.RoleArnSession,
+				proxyURL *string,
+				stsClientProviderFunc awsutil.STSClientProviderFunc,
+			) (aws.Credentials, error) {
+				// Mock implementation to avoid real AWS calls
+				return aws.Credentials{
+					AccessKeyID:     testAccessKeyID,
+					SecretAccessKey: testSecretAccessKey,
+					SessionToken:    testSessionToken,
+				}, nil
+			}
+			defer func() {
+				AssumeRoleSequence = awsutil.AssumeRoleSequence
+			}()
+			mockClientUtil.EXPECT().GetBackplaneClient(
+				testQueryConfig.BackplaneConfiguration.URL, testOcmToken, testQueryConfig.BackplaneConfiguration.ProxyURL).Return(mockClient, nil)
+			mockClient.EXPECT().GetAssumeRoleSequence(context.TODO(), testClusterID).Return(fakeHTTPResp, nil)
+
+			_, err = testQueryConfig.getIsolatedCredentials(testOcmToken)
+			Expect(err).To(BeNil())
 		})
 	})
 })

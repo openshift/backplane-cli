@@ -275,8 +275,17 @@ func (cfg *QueryConfig) getIsolatedCredentials(ocmToken string) (aws.Credentials
 		)
 
 	}
-	// Use AWS-specific proxy for initial STS client (pass nil to use BACKPLANE_AWS_PROXY)
-	initialClient, err := StsClient(nil)
+	// Use AWS-specific proxy for initial STS client, fallback to regular proxy
+	// Priority: 1) BACKPLANE_AWS_PROXY env var; 2) regular proxy from local backplane config
+	var stsProxyURL *string
+	if awsProxy := os.Getenv("BACKPLANE_AWS_PROXY"); awsProxy != "" {
+		// StsClient will use BACKPLANE_AWS_PROXY internally
+		stsProxyURL = nil
+	} else {
+		// Fallback to the regular proxy defined in the local backplane config
+		stsProxyURL = cfg.BackplaneConfiguration.ProxyURL
+	}
+	initialClient, err := StsClient(stsProxyURL)
 	if err != nil {
 		return aws.Credentials{}, fmt.Errorf("failed to create sts client: %w", err)
 	}
@@ -386,11 +395,17 @@ func (cfg *QueryConfig) getIsolatedCredentials(ocmToken string) (aws.Credentials
 		Credentials: NewStaticCredentialsProvider(seedCredentials.AccessKeyID, seedCredentials.SecretAccessKey, seedCredentials.SessionToken),
 	})
 
-	// Use AWS-specific proxy for role sequence (pass nil to use BACKPLANE_AWS_PROXY internally)
+	// Use AWS-specific proxy for role sequence, fallback to regular proxy
+	// Priority: 1) BACKPLANE_AWS_PROXY env var, 2) regular proxy from config
+	var roleSequenceProxyURL *string
+	if awsProxy := os.Getenv("BACKPLANE_AWS_PROXY"); awsProxy == "" {
+		// Fallback to the regular proxy defined in the local backplane config
+		roleSequenceProxyURL = cfg.BackplaneConfiguration.ProxyURL
+	}
 	targetCredentials, err := AssumeRoleSequence(
 		seedClient,
 		assumeRoleArnSessionSequence,
-		nil, // Let AssumeRoleSequence use BACKPLANE_AWS_PROXY for AWS calls
+		roleSequenceProxyURL, // Will use BACKPLANE_AWS_PROXY internally if set, otherwise regular proxy
 		awsutil.DefaultSTSClientProviderFunc,
 	)
 	if err != nil {
@@ -402,7 +417,8 @@ func (cfg *QueryConfig) getIsolatedCredentials(ocmToken string) (aws.Credentials
 // verifyTrustedIPAndGetPolicy verifies that the client IP is in the trusted IP range
 // and returns the inline policy for the trusted IPs
 func verifyTrustedIPAndGetPolicy(cfg *QueryConfig) (awsutil.PolicyDocument, error) {
-	// Use AWS-specific proxy for egress IP check (AWS service call)
+	// Use AWS-specific proxy for egress IP check, fallback to regular proxy
+	// Priority: 1) BACKPLANE_AWS_PROXY env var, 2) regular proxy from config
 	var egressProxyURL *url.URL
 	if awsProxy := os.Getenv("BACKPLANE_AWS_PROXY"); awsProxy != "" {
 		var err error
@@ -411,6 +427,13 @@ func verifyTrustedIPAndGetPolicy(cfg *QueryConfig) (awsutil.PolicyDocument, erro
 			return awsutil.PolicyDocument{}, fmt.Errorf("failed to parse BACKPLANE_AWS_PROXY for checkEgressIP: %w", err)
 		}
 		logger.Debugf("Using AWS proxy for egress IP check: %s", awsProxy)
+	} else if cfg.BackplaneConfiguration.ProxyURL != nil {
+		var err error
+		egressProxyURL, err = url.Parse(*cfg.BackplaneConfiguration.ProxyURL)
+		if err != nil {
+			return awsutil.PolicyDocument{}, fmt.Errorf("failed to parse regular proxy for checkEgressIP: %w", err)
+		}
+		logger.Debugf("Using regular proxy for egress IP check: %s", *cfg.BackplaneConfiguration.ProxyURL)
 	}
 
 	var httpClient *http.Client

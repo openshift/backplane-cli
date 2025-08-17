@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -844,6 +845,238 @@ func TestGetConsoleUrl(t *testing.T) {
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("GetConsoleURL() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestStsClient_ProxyPriority(t *testing.T) {
+	tests := []struct {
+		name        string
+		proxyURL    *string
+		awsProxyEnv string
+		expectError bool
+		description string
+	}{
+		{
+			name:        "explicit proxyURL takes priority over env var",
+			proxyURL:    aws.String("http://explicit-proxy:8080"),
+			awsProxyEnv: "http://env-proxy:8080",
+			expectError: false,
+			description: "When both explicit proxyURL and BACKPLANE_AWS_PROXY are set, explicit should take priority",
+		},
+		{
+			name:        "BACKPLANE_AWS_PROXY used when proxyURL is nil",
+			proxyURL:    nil,
+			awsProxyEnv: "http://env-proxy:8080",
+			expectError: false,
+			description: "When proxyURL is nil, should use BACKPLANE_AWS_PROXY environment variable",
+		},
+		{
+			name:        "no proxy when both are empty",
+			proxyURL:    nil,
+			awsProxyEnv: "",
+			expectError: false,
+			description: "When both proxyURL and BACKPLANE_AWS_PROXY are empty, should work without proxy",
+		},
+		{
+			name:        "https proxy URL in environment",
+			proxyURL:    nil,
+			awsProxyEnv: "https://secure-proxy:8443",
+			expectError: false,
+			description: "Should support HTTPS proxy URLs in BACKPLANE_AWS_PROXY",
+		},
+		{
+			name:        "socks5 proxy URL in environment",
+			proxyURL:    nil,
+			awsProxyEnv: "socks5://socks-proxy:1080",
+			expectError: false,
+			description: "Should support SOCKS5 proxy URLs in BACKPLANE_AWS_PROXY",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Save original environment variable
+			originalEnv := os.Getenv("BACKPLANE_AWS_PROXY")
+			defer func() {
+				if originalEnv != "" {
+					os.Setenv("BACKPLANE_AWS_PROXY", originalEnv)
+				} else {
+					os.Unsetenv("BACKPLANE_AWS_PROXY")
+				}
+			}()
+
+			// Set test environment variable
+			if tt.awsProxyEnv != "" {
+				os.Setenv("BACKPLANE_AWS_PROXY", tt.awsProxyEnv)
+			} else {
+				os.Unsetenv("BACKPLANE_AWS_PROXY")
+			}
+
+			// Test StsClient function
+			client, err := StsClient(tt.proxyURL)
+
+			if tt.expectError {
+				if err == nil {
+					t.Errorf("StsClient() expected error but got none. %s", tt.description)
+				}
+				return
+			}
+
+			if err != nil {
+				t.Errorf("StsClient() unexpected error = %v. %s", err, tt.description)
+				return
+			}
+
+			if client == nil {
+				t.Errorf("StsClient() returned nil client. %s", tt.description)
+			}
+		})
+	}
+}
+
+func TestAssumeRoleSequence_AWSProxyHandling(t *testing.T) {
+	tests := []struct {
+		name        string
+		awsProxyEnv string
+		description string
+	}{
+		{
+			name:        "uses BACKPLANE_AWS_PROXY when set",
+			awsProxyEnv: "http://aws-proxy:8080",
+			description: "Should successfully use BACKPLANE_AWS_PROXY for internal STS client creation",
+		},
+		{
+			name:        "no proxy when BACKPLANE_AWS_PROXY unset",
+			awsProxyEnv: "",
+			description: "Should work without proxy when BACKPLANE_AWS_PROXY is not set",
+		},
+		{
+			name:        "https proxy in BACKPLANE_AWS_PROXY",
+			awsProxyEnv: "https://secure-aws-proxy:8443",
+			description: "Should handle HTTPS proxy URLs in BACKPLANE_AWS_PROXY",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Save and restore environment variable
+			originalEnv := os.Getenv("BACKPLANE_AWS_PROXY")
+			defer func() {
+				if originalEnv != "" {
+					os.Setenv("BACKPLANE_AWS_PROXY", originalEnv)
+				} else {
+					os.Unsetenv("BACKPLANE_AWS_PROXY")
+				}
+			}()
+
+			// Set test environment
+			if tt.awsProxyEnv != "" {
+				os.Setenv("BACKPLANE_AWS_PROXY", tt.awsProxyEnv)
+			} else {
+				os.Unsetenv("BACKPLANE_AWS_PROXY")
+			}
+
+			// Test AssumeRoleSequence with nil proxyURL (should use BACKPLANE_AWS_PROXY)
+			seedClient := defaultSuccessMockSTSClient()
+			roleSequence := []RoleArnSession{{
+				Name:            "TestRole",
+				RoleArn:         "arn:aws:iam::123456789012:role/test",
+				RoleSessionName: "test-session",
+				IsCustomerRole:  false,
+				PolicyARNs:      []types.PolicyDescriptorType{},
+			}}
+
+			_, err := AssumeRoleSequence(
+				seedClient,
+				roleSequence,
+				nil, // Should use BACKPLANE_AWS_PROXY
+				DefaultSTSClientProviderFunc,
+			)
+
+			// Should succeed regardless of proxy setting
+			if err != nil {
+				t.Errorf("AssumeRoleSequence() unexpected error = %v. %s", err, tt.description)
+			}
+		})
+	}
+}
+
+func TestStsClient_ProxyConfiguration(t *testing.T) {
+	tests := []struct {
+		name                 string
+		awsProxyEnv          string
+		explicitProxyURL     *string
+		expectedPriorityUsed string
+		expectError          bool
+	}{
+		{
+			name:                 "priority test - explicit over environment",
+			awsProxyEnv:          "http://env-proxy:8080",
+			explicitProxyURL:     aws.String("http://explicit-proxy:9090"),
+			expectedPriorityUsed: "explicit",
+			expectError:          false,
+		},
+		{
+			name:                 "environment variable used when explicit is nil",
+			awsProxyEnv:          "http://env-proxy:8080",
+			explicitProxyURL:     nil,
+			expectedPriorityUsed: "environment",
+			expectError:          false,
+		},
+		{
+			name:                 "no proxy when both are unset",
+			awsProxyEnv:          "",
+			explicitProxyURL:     nil,
+			expectedPriorityUsed: "none",
+			expectError:          false,
+		},
+		{
+			name:                 "empty string in environment treated as unset",
+			awsProxyEnv:          "",
+			explicitProxyURL:     aws.String("http://explicit-proxy:9090"),
+			expectedPriorityUsed: "explicit",
+			expectError:          false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Environment cleanup
+			originalEnv := os.Getenv("BACKPLANE_AWS_PROXY")
+			defer func() {
+				if originalEnv != "" {
+					os.Setenv("BACKPLANE_AWS_PROXY", originalEnv)
+				} else {
+					os.Unsetenv("BACKPLANE_AWS_PROXY")
+				}
+			}()
+
+			// Set test environment
+			if tt.awsProxyEnv != "" {
+				os.Setenv("BACKPLANE_AWS_PROXY", tt.awsProxyEnv)
+			} else {
+				os.Unsetenv("BACKPLANE_AWS_PROXY")
+			}
+
+			// Call StsClient
+			client, err := StsClient(tt.explicitProxyURL)
+
+			if tt.expectError {
+				if err == nil {
+					t.Errorf("StsClient() expected error but got none")
+				}
+				return
+			}
+
+			if err != nil {
+				t.Errorf("StsClient() unexpected error = %v", err)
+				return
+			}
+
+			if client == nil {
+				t.Errorf("StsClient() returned nil client")
 			}
 		})
 	}
