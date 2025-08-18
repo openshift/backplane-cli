@@ -431,7 +431,7 @@ var _ = Describe("getIsolatedCredentials", func() {
 
 			// Verify failure
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("failed to parse AWS proxy for checkEgressIP"))
+			Expect(err.Error()).To(ContainSubstring("failed to parse proxy for checkEgressIP"))
 		})
 
 		Context("Execute getIsolatedCredentials with AwsProxy", func() {

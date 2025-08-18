@@ -386,6 +386,15 @@ func (config *BackplaneConfiguration) GetBackplaneURL() (string, error) {
 	return url, nil
 }
 
+// GetAwsProxy returns the proxy URL to use for AWS operations
+// Priority: 1) AWS proxy from config, 2) regular proxy from config
+func (config *BackplaneConfiguration) GetAwsProxy() *string {
+	if config.AwsProxy != nil {
+		return config.AwsProxy
+	}
+	return config.ProxyURL
+}
+
 // getBackplaneEnv retrieves the value of the environment variable named by the key
 func getBackplaneEnv(key string) (string, bool) {
 	val, ok := os.LookupEnv(key)
