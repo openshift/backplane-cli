@@ -37,6 +37,7 @@ type AccessRequestsJiraConfiguration struct {
 type BackplaneConfiguration struct {
 	URL                         string                          `json:"url"`
 	ProxyURL                    *string                         `json:"proxy-url"`
+	AwsProxy                    *string                         `json:"aws-proxy"`
 	SessionDirectory            string                          `json:"session-dir"`
 	AssumeInitialArn            string                          `json:"assume-initial-arn"`
 	ProdEnvName                 string                          `json:"prod-env-name"`
@@ -137,6 +138,11 @@ func GetBackplaneConfiguration() (bpConfig BackplaneConfiguration, err error) {
 		if err != nil {
 			return bpConfig, err
 		}
+		// Check if user has explicitly defined AWS proxy
+		err = viper.BindEnv("aws-proxy", info.BackplaneAWSProxyEnvName)
+		if err != nil {
+			return bpConfig, err
+		}
 	} else {
 		logger.Debug("This is govcloud, no proxy to use")
 	}
@@ -165,9 +171,17 @@ func GetBackplaneConfiguration() (bpConfig BackplaneConfiguration, err error) {
 		bpConfig.ProxyURL = &proxyURL
 	}
 
+	// awsProxy is optional
+	awsProxyInConfigFile := viper.GetStringSlice("aws-proxy")
+	awsProxyURL := bpConfig.getFirstWorkingProxyURL(awsProxyInConfigFile)
+	if awsProxyURL != "" {
+		bpConfig.AwsProxy = &awsProxyURL
+	}
+
 	if (bpConfig.Govcloud) {
 		str := ""
 		bpConfig.ProxyURL = &str
+		bpConfig.AwsProxy = &str
 	}
 
 	bpConfig.SessionDirectory = viper.GetString("session-dir")
@@ -370,6 +384,15 @@ func (config *BackplaneConfiguration) GetBackplaneURL() (string, error) {
 	}
 	logger.Infof("Backplane URL retrieved via OCM environment: %s", url)
 	return url, nil
+}
+
+// GetAwsProxy returns the proxy URL to use for AWS operations
+// Priority: 1) AWS proxy from config, 2) regular proxy from config
+func (config *BackplaneConfiguration) GetAwsProxy() *string {
+	if config.AwsProxy != nil {
+		return config.AwsProxy
+	}
+	return config.ProxyURL
 }
 
 // getBackplaneEnv retrieves the value of the environment variable named by the key
