@@ -8,7 +8,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"os"
 	"time"
 
 	logger "github.com/sirupsen/logrus"
@@ -43,30 +42,20 @@ type AWSSigninTokenResponse struct {
 
 var httpGetFunc = http.Get
 
-// Returns a new stsclient with AWS-specific proxy configuration.
+// Returns a new stsclient, proxy is optional.
 func StsClient(proxyURL *string) (*sts.Client, error) {
 	cfg := aws.Config{
 		Region: "us-east-1", // We don't care about region here, but the API still wants to see one set
 	}
 
-	// Use AWS-specific proxy for all AWS STS calls
-	// Priority: 1) passed proxyURL, 2) BACKPLANE_AWS_PROXY env var
-	var awsProxyURL *string
 	if proxyURL != nil {
-		awsProxyURL = proxyURL
-	} else if awsProxy := os.Getenv("BACKPLANE_AWS_PROXY"); awsProxy != "" {
-		awsProxyURL = &awsProxy
-	}
-
-	if awsProxyURL != nil {
 		cfg.HTTPClient = &http.Client{
 			Transport: &http.Transport{
 				Proxy: func(*http.Request) (*url.URL, error) {
-					return url.Parse(*awsProxyURL)
+					return url.Parse(*proxyURL)
 				},
 			},
 		}
-		logger.Debugf("Using AWS proxy for STS client: %s", *awsProxyURL)
 	}
 
 	return sts.NewFromConfig(cfg), nil
@@ -204,23 +193,13 @@ func AssumeRoleSequence(
 }
 
 func createAssumeRoleSequenceClient(stsClientProviderFunc STSClientProviderFunc, creds aws.Credentials, proxyURL *string) (stscreds.AssumeRoleAPIClient, error) {
-	// Use AWS-specific proxy instead of passed proxyURL
-	// Priority: 1) BACKPLANE_AWS_PROXY env var, 2) passed proxyURL (for backward compatibility)
-	var awsProxyURL *string
-	if awsProxy := os.Getenv("BACKPLANE_AWS_PROXY"); awsProxy != "" {
-		awsProxyURL = &awsProxy
-	} else if proxyURL != nil {
-		awsProxyURL = proxyURL
-	}
-
-	if awsProxyURL != nil {
-		logger.Debugf("Using AWS proxy for assume role sequence client: %s", *awsProxyURL)
+	if proxyURL != nil {
 		return stsClientProviderFunc(
 			config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(creds.AccessKeyID, creds.SecretAccessKey, creds.SessionToken)),
 			config.WithHTTPClient(&http.Client{
 				Transport: &http.Transport{
 					Proxy: func(*http.Request) (*url.URL, error) {
-						return url.Parse(*awsProxyURL)
+						return url.Parse(*proxyURL)
 					},
 				},
 			}),
