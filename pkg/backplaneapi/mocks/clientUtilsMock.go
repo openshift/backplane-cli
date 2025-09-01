@@ -9,6 +9,7 @@ import (
 
 	gomock "github.com/golang/mock/gomock"
 	Openapi "github.com/openshift/backplane-api/pkg/client"
+	ocmsdk "github.com/openshift-online/ocm-sdk-go"
 )
 
 // MockClientUtils is a mock of ClientUtils interface.
@@ -107,6 +108,21 @@ func (m *MockClientUtils) MakeRawBackplaneAPIClientWithAccessToken(arg0, arg1 st
 func (mr *MockClientUtilsMockRecorder) MakeRawBackplaneAPIClientWithAccessToken(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MakeRawBackplaneAPIClientWithAccessToken", reflect.TypeOf((*MockClientUtils)(nil).MakeRawBackplaneAPIClientWithAccessToken), arg0, arg1)
+}
+
+// MakeRawBackplaneAPIClientWithAccessTokenWithConn mocks base method.
+func (m *MockClientUtils) MakeRawBackplaneAPIClientWithAccessTokenWithConn(arg0, arg1 string, arg2 *ocmsdk.Connection) (Openapi.ClientInterface, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "MakeRawBackplaneAPIClientWithAccessTokenWithConn", arg0, arg1)
+	ret0, _ := ret[0].(Openapi.ClientInterface)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// MakeRawBackplaneAPIClientWithAccessTokenWithConn indicates an expected call of MakeRawBackplaneAPIClientWithAccessTokenWithConn.
+func (mr *MockClientUtilsMockRecorder) MakeRawBackplaneAPIClientWithAccessTokenWithConn(arg0, arg1 interface{}, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MakeRawBackplaneAPIClientWithAccessTokenWithConn", reflect.TypeOf((*MockClientUtils)(nil).MakeRawBackplaneAPIClientWithAccessTokenWithConn), arg0, arg1)
 }
 
 // SetClientProxyURL mocks base method.
