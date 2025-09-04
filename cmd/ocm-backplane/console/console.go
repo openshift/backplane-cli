@@ -18,6 +18,7 @@ package console
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -30,6 +31,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver"
+	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	consolev1typedclient "github.com/openshift/client-go/console/clientset/versioned/typed/console/v1"
 	consolev1alpha1typedclient "github.com/openshift/client-go/console/clientset/versioned/typed/console/v1alpha1"
 	operatorv1typedclient "github.com/openshift/client-go/operator/clientset/versioned/typed/operator/v1"
@@ -489,16 +491,9 @@ func (o *consoleOptions) runConsoleContainer(ce container.ContainerEngine) error
 	if err != nil {
 		return err
 	}
-	p, ok := c.GetProduct()
-	if !ok {
-		return fmt.Errorf("could not get product information")
-	}
-
-	branding := "dedicated"
-	documentationURL := "https://docs.openshift.com/dedicated/4/"
-	if p.ID() == "rosa" {
-		branding = "ocp"
-		documentationURL = "https://docs.openshift.com/rosa/"
+	brandConfig, err := getBrandingConfig(c)
+	if err != nil {
+		logger.Warnf("%s - defaulting to OSD Brand", err.Error())
 	}
 
 	// Get the RESTconfig from the current kubeconfig context.
@@ -551,8 +546,8 @@ func (o *consoleOptions) runConsoleContainer(ce container.ContainerEngine) error
 		"/opt/bridge/bin/bridge",
 		"--public-dir=/opt/bridge/static",
 		"-base-address", fmt.Sprintf("http://127.0.0.1:%s", o.port),
-		"-branding", branding,
-		"-documentation-base-url", documentationURL,
+		"-branding", brandConfig.Product,
+		"-documentation-base-url", brandConfig.DocsURL,
 		"-user-settings-location", "localstorage",
 		"-user-auth", "disabled",
 		"-k8s-mode", "off-cluster",
@@ -919,4 +914,93 @@ func (e *execActionOnTermStruct) execActionOnTerminationFunction(action postTerm
 	fmt.Printf("System signal '%v' received, cleaning up containers and exiting...\n", sig)
 
 	return action()
+}
+
+type brandingConfig struct {
+	Product string
+	DocsURL string
+}
+
+// getBrandingConfig gets the branding config for the cluster.
+// We default to 'dedicated', and then if the product is ROSA we
+// further default to hypershift until proven otherwise.
+func getBrandingConfig(c *cmv1.Cluster) (brandingConfig, error) {
+	brandConfig := brandingConfig{
+		Product: "dedicated",
+		DocsURL: "https://docs.redhat.com/documentation/openshift_dedicated/4/",
+	}
+
+	product, ok := c.GetProduct()
+	if !ok {
+		return brandConfig, fmt.Errorf("could not get product information from cluster")
+	}
+
+	verString, ok := c.GetOpenshiftVersion()
+	if !ok {
+		return brandConfig, fmt.Errorf("could not get openshift version from cluster")
+	}
+
+	version, err := parseVersion(verString)
+	if err != nil {
+		return brandConfig, fmt.Errorf("could not parse openshift version %s", verString)
+	}
+
+	if product.ID() == "rosa" {
+		// "ROSA" brand for the console is only supported in 4.14+
+		// return the dedicated brand in this case
+		if version.X == 4 && version.Y < 14 {
+			return brandConfig, fmt.Errorf("version is less than 4.14, 'rosa' is not supported")
+		}
+
+		// default to hypershift docs
+		brandConfig.Product = "rosa"
+		brandConfig.DocsURL = "https://docs.redhat.com/documentation/red_hat_openshift_service_on_aws/4/"
+
+		hypershift, ok := c.GetHypershift()
+		if !ok {
+			return brandConfig, fmt.Errorf("could not determine hypershift or not")
+		}
+
+		if !hypershift.Enabled() {
+			brandConfig.DocsURL = "https://docs.redhat.com/en/documentation/red_hat_openshift_service_on_aws_classic_architecture/4/"
+		}
+	}
+
+	return brandConfig, nil
+}
+
+type version struct {
+	X     int
+	Y     int
+	Z     int
+	Patch string
+}
+
+// parseVersion takes an OpenShift version string and converts it to a struct
+func parseVersion(ver string) (version, error) {
+	v := strings.TrimPrefix(ver, "v")
+
+	verSlice := strings.SplitN(v, ".", 3)
+	if len(verSlice) != 3 {
+		return version{}, fmt.Errorf("invalid x.y.z version: %s", ver)
+	}
+	x, xerr := strconv.Atoi(verSlice[0])
+	y, yerr := strconv.Atoi(verSlice[1])
+
+	// split patch versions
+	patchSlice := strings.SplitN(verSlice[2], "-", 2)
+	z, zerr := strconv.Atoi(patchSlice[0])
+
+	err := errors.Join(xerr, yerr, zerr)
+	if err != nil {
+		return version{}, err
+	}
+
+	version := version{X: x, Y: y, Z: z}
+
+	if len(patchSlice) > 1 {
+		version.Patch = patchSlice[1]
+	}
+
+	return version, nil
 }

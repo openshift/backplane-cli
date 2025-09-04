@@ -487,6 +487,129 @@ var _ = Describe("console command", func() {
 			setPath(oldpath)
 		})
 	})
+	Context("tests the branding config", func() {
+		Context("tests the version parser", func() {
+			It("should successfully parse a valid version", func() {
+				version, err := parseVersion("4.19.0")
+				Expect(err).To(BeNil())
+				Expect(version.X).To(Equal(4))
+				Expect(version.Y).To(Equal(19))
+				Expect(version.Z).To(Equal(0))
+			})
+			It("should parse a valid patch version", func() {
+				version, err := parseVersion("4.19.0-rc-0.12")
+				Expect(err).To(BeNil())
+				Expect(version.X).To(Equal(4))
+				Expect(version.Y).To(Equal(19))
+				Expect(version.Z).To(Equal(0))
+				Expect(version.Patch).To(Equal("rc-0.12"))
+			})
+			It("should strip any 'v' prefix string", func() {
+				version, err := parseVersion("v4.19.0")
+				Expect(err).To(BeNil())
+				Expect(version.X).To(Equal(4))
+				Expect(version.Y).To(Equal(19))
+				Expect(version.Z).To(Equal(0))
+			})
+			Context("version string error handling", func() {
+				It("should error on an invalid version string", func() {
+					_, err := parseVersion("someinvalidstirng")
+					Expect(err).NotTo(BeNil())
+
+					_, err = parseVersion("4")
+					Expect(err).NotTo(BeNil())
+
+					_, err = parseVersion("4.19")
+					Expect(err).NotTo(BeNil())
+				})
+				It("should error on a x string", func() {
+					_, err := parseVersion("4a.19.0")
+					Expect(err).NotTo(BeNil())
+				})
+				It("should error on a y string", func() {
+					_, err := parseVersion("4.19m.0")
+					Expect(err).NotTo(BeNil())
+				})
+				It("should error on a z string", func() {
+					_, err := parseVersion("4.19.0z")
+					Expect(err).NotTo(BeNil())
+				})
+			})
+		})
+		Context("tests the branding switching logic", func() {
+			It("should get dedicated brand", func() {
+				c, _ := cmv1.NewCluster().
+					Product(cmv1.NewProduct().ID("dedicated")).
+					OpenshiftVersion("4.13.0").Build()
+				bc, err := getBrandingConfig(c)
+				Expect(err).To(BeNil())
+				Expect(bc.Product).To(Equal("dedicated"))
+				Expect(bc.DocsURL).To(ContainSubstring("openshift_dedicated"))
+			})
+			It("should get dedicated brand for >4.14 ROSA clusters", func() {
+				c, _ := cmv1.NewCluster().
+					Product(cmv1.NewProduct().ID("rosa")).
+					OpenshiftVersion("4.13.0").Build()
+				bc, err := getBrandingConfig(c)
+				Expect(err.Error()).To(ContainSubstring("version is less than"))
+				Expect(bc.Product).To(Equal("dedicated"))
+				Expect(bc.DocsURL).To(ContainSubstring("openshift_dedicated"))
+			})
+			It("should get rosa classic", func() {
+				c, _ := cmv1.NewCluster().
+					Product(cmv1.NewProduct().ID("rosa")).
+					Hypershift(cmv1.NewHypershift().Enabled(false)).
+					OpenshiftVersion("4.18.0").Build()
+				bc, err := getBrandingConfig(c)
+				Expect(err).To(BeNil())
+				Expect(bc.Product).To(Equal("rosa"))
+				Expect(bc.DocsURL).To(ContainSubstring("red_hat_openshift_service_on_aws"))
+				Expect(bc.DocsURL).To(ContainSubstring("classic_architecture"))
+			})
+			It("should get rosa hcp", func() {
+				c, _ := cmv1.NewCluster().
+					Product(cmv1.NewProduct().ID("rosa")).
+					Hypershift(cmv1.NewHypershift().Enabled(true)).
+					OpenshiftVersion("4.18.0").Build()
+				bc, err := getBrandingConfig(c)
+				Expect(err).To(BeNil())
+				Expect(bc.Product).To(Equal("rosa"))
+				Expect(bc.DocsURL).To(ContainSubstring("red_hat_openshift_service_on_aws"))
+				Expect(bc.DocsURL).NotTo(ContainSubstring("classic_architecture"))
+			})
+			It("should default to hcp docs when it cannot determine hypershift", func() {
+				c, _ := cmv1.NewCluster().
+					Product(cmv1.NewProduct().ID("rosa")).
+					OpenshiftVersion("4.18.0").Build()
+				bc, err := getBrandingConfig(c)
+				Expect(err).NotTo(BeNil())
+				Expect(bc.DocsURL).To(ContainSubstring("red_hat_openshift_service_on_aws"))
+				Expect(bc.DocsURL).NotTo(ContainSubstring("classic_architecture"))
+			})
+			It("should default to dedicated when it cannot get product", func() {
+				c, _ := cmv1.NewCluster().Build()
+				bc, err := getBrandingConfig(c)
+				Expect(err).NotTo(BeNil())
+				Expect(bc.Product).To(Equal("dedicated"))
+			})
+			It("should default to dedicated when it cannot get version", func() {
+				c, _ := cmv1.NewCluster().
+					Product(cmv1.NewProduct().ID("rosa")).
+					Build()
+				bc, err := getBrandingConfig(c)
+				Expect(err).NotTo(BeNil())
+				Expect(bc.Product).To(Equal("dedicated"))
+			})
+			It("should default to dedicated when it cannot parse version", func() {
+				c, _ := cmv1.NewCluster().
+					Product(cmv1.NewProduct().ID("rosa")).
+					OpenshiftVersion("someinvalidversion").Build()
+				bc, err := getBrandingConfig(c)
+				Expect(err).NotTo(BeNil())
+				Expect(bc.Product).To(Equal("dedicated"))
+			})
+		})
+	})
 })
 
 type execActionOnTermMockStruct struct{}
