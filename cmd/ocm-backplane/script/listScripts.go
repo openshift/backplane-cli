@@ -19,6 +19,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -33,7 +34,7 @@ func newListScriptCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:          "list",
 		Aliases:      []string{"ls", "get"},
-		Short:        "List available backplane scripts",
+		Short:        "List backplane scripts runnable by the current user",
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// ======== Parsing Flags ========
@@ -48,6 +49,11 @@ func newListScriptCmd() *cobra.Command {
 			}
 
 			rawFlag, err := cmd.Flags().GetBool("raw")
+			if err != nil {
+				return err
+			}
+
+			allFlag, err := cmd.Flags().GetBool("all")
 			if err != nil {
 				return err
 			}
@@ -83,8 +89,12 @@ func newListScriptCmd() *cobra.Command {
 			}
 
 			// ======== Call Endpoint ========
-			resp, err := client.GetScriptsByCluster(context.TODO(), clusterID, &bpclient.GetScriptsByClusterParams{})
-
+			var resp *http.Response
+			if allFlag {
+				resp, err = client.GetAllScriptsByCluster(context.TODO(), clusterID)
+			} else {
+				resp, err = client.GetScriptsByCluster(context.TODO(), clusterID, &bpclient.GetScriptsByClusterParams{})
+			}
 			if err != nil {
 				return err
 			}
@@ -95,20 +105,34 @@ func newListScriptCmd() *cobra.Command {
 
 			// ======== Render Table ========
 			listResp, err := bpclient.ParseGetScriptsByClusterResponse(resp)
-
 			if err != nil {
 				return fmt.Errorf("unable to parse response body from backplane: Status Code: %d", resp.StatusCode)
 			}
 
 			scriptList := *(*[]bpclient.Script)(listResp.JSON200)
+
 			if len(scriptList) == 0 {
 				return fmt.Errorf("no scripts found")
 			}
 
 			headings := []string{"NAME", "DESCRIPTION"}
+			if allFlag {
+				headings = append(headings, "ALLOWED GROUPS")
+			}
+
 			rows := make([][]string, 0)
 			for _, s := range scriptList {
-				rows = append(rows, []string{*s.CanonicalName, *s.Description})
+				row := []string{*s.CanonicalName, *s.Description}
+				if allFlag {
+					var groups string
+					if s.AllowedGroups != nil && len(*s.AllowedGroups) > 0 {
+						groups = strings.Join(*s.AllowedGroups, ", ")
+					} else {
+						groups = "N/A"
+					}
+					row = append(row, groups)
+				}
+				rows = append(rows, row)
 			}
 
 			utils.RenderTabbedTable(headings, rows)
@@ -116,5 +140,7 @@ func newListScriptCmd() *cobra.Command {
 			return nil
 		},
 	}
+
+	cmd.Flags().Bool("all", false, "Show all scripts with allowed groups")
 	return cmd
 }
