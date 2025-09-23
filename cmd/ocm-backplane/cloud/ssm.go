@@ -95,7 +95,6 @@ func fetchCloudCredentials() (*bpCredentials.AWSCredentialsResponse, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create OCM connection: %w", err)
 	}
-	defer ocmConnection.Close()
 
 	queryConfig := &QueryConfig{OcmConnection: ocmConnection, BackplaneConfiguration: backplaneConfig, Cluster: cluster}
 

@@ -101,7 +101,6 @@ func runCredentials(cmd *cobra.Command, argv []string) error {
 	if err != nil {
 		return fmt.Errorf("failed to create OCM connection: %w", err)
 	}
-	defer ocmConnection.Close()
 
 	// ======== Call Endpoint ==================================
 	logger.Debugln("Getting Cloud Credentials")

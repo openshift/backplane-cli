@@ -133,7 +133,6 @@ func runConsole(cmd *cobra.Command, argv []string) (err error) {
 	if err != nil {
 		return fmt.Errorf("failed to create OCM connection: %w", err)
 	}
-	defer ocmConnection.Close()
 
 	// Initialize query config
 
