@@ -242,6 +242,26 @@ func (mr *MockClientWithResponsesInterfaceMockRecorder) GetAllJobsWithResponse(c
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAllJobsWithResponse", reflect.TypeOf((*MockClientWithResponsesInterface)(nil).GetAllJobsWithResponse), varargs...)
 }
 
+// GetAllScriptsByClusterWithResponse mocks base method.
+func (m *MockClientWithResponsesInterface) GetAllScriptsByClusterWithResponse(ctx context.Context, clusterId string, reqEditors ...Openapi.RequestEditorFn) (*Openapi.GetAllScriptsByClusterResponse, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx, clusterId}
+	for _, a := range reqEditors {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "GetAllScriptsByClusterWithResponse", varargs...)
+	ret0, _ := ret[0].(*Openapi.GetAllScriptsByClusterResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetAllScriptsByClusterWithResponse indicates an expected call of GetAllScriptsByClusterWithResponse.
+func (mr *MockClientWithResponsesInterfaceMockRecorder) GetAllScriptsByClusterWithResponse(ctx, clusterId any, reqEditors ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx, clusterId}, reqEditors...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAllScriptsByClusterWithResponse", reflect.TypeOf((*MockClientWithResponsesInterface)(nil).GetAllScriptsByClusterWithResponse), varargs...)
+}
+
 // GetAssumeRoleSequenceWithResponse mocks base method.
 func (m *MockClientWithResponsesInterface) GetAssumeRoleSequenceWithResponse(ctx context.Context, clusterId string, reqEditors ...Openapi.RequestEditorFn) (*Openapi.GetAssumeRoleSequenceResponse, error) {
 	m.ctrl.T.Helper()
