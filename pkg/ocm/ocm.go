@@ -85,10 +85,10 @@ func (o *DefaultOCMInterfaceImpl) SetupOCMConnection() (*ocmsdk.Connection, erro
 	// cache the connection
 	o.connection = connection
 
-	ctx, _ := context.WithTimeout(context.Background(), o.Timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), o.Timeout)
 
 	// init a goroutine to close the connection when the context is done
-	go func(ctx context.Context, conn *ocmsdk.Connection) {
+	go func(ctx context.Context, cancel context.CancelFunc, conn *ocmsdk.Connection) {
 		fmt.Println("starting ocm connection timeout watcher", o.Timeout)
 		<-ctx.Done()
 		o.mu.Lock()
@@ -98,7 +98,10 @@ func (o *DefaultOCMInterfaceImpl) SetupOCMConnection() (*ocmsdk.Connection, erro
 			o.connection.Close()
 			o.connection = nil
 		}
-	}(ctx, connection)
+		// cancel the context to release resources
+		cancel()
+
+	}(ctx, cancel, connection)
 
 	return connection, nil
 }
