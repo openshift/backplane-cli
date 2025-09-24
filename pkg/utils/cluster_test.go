@@ -7,7 +7,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/golang/mock/gomock"
+	"go.uber.org/mock/gomock"
 	"k8s.io/client-go/tools/clientcmd"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"

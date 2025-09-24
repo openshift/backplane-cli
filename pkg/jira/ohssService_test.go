@@ -2,7 +2,7 @@ package jira
 
 import (
 	"github.com/andygrunwald/go-jira"
-	"github.com/golang/mock/gomock"
+	"go.uber.org/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	jiraMock "github.com/openshift/backplane-cli/pkg/jira/mocks"

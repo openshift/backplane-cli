@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"go.uber.org/mock/gomock"
 
 	bpclient "github.com/openshift/backplane-api/pkg/client"
 	"github.com/spf13/cobra"
@@ -23,7 +23,6 @@ import (
 )
 
 var _ = Describe("list script command", func() {
-
 	var (
 		mockCtrl         *gomock.Controller
 		mockClient       *mocks.MockClientInterface
@@ -33,7 +32,7 @@ var _ = Describe("list script command", func() {
 		testClusterID string
 		testToken     string
 		trueClusterID string
-		//testKubeCfg   api.Config
+		// testKubeCfg   api.Config
 		testJobID string
 		proxyURI  string
 		fakeResp  *http.Response
