@@ -45,63 +45,91 @@ type OCMInterface interface {
 }
 
 const (
-	ClustersPageSize      = 50
-	ocmNotLoggedInMessage = "Not logged in"
+	ClustersPageSize            = 50
+	ocmNotLoggedInMessage       = "Not logged in"
+	ocmConnectionTimeoutDefault = 30 * time.Second
 )
 
 type DefaultOCMInterfaceImpl struct {
-	Timeout    time.Duration // Timeout for the OCM connection can be set
-	mu         sync.Mutex
-	connection *ocmsdk.Connection
+	Timeout              time.Duration // Timeout for the OCM connection can be set
+	ocmConnectionMutex   sync.Mutex
+	ocmConnectionTimeout *ocmsdk.Connection
 }
 
 var DefaultOCMInterface OCMInterface = &DefaultOCMInterfaceImpl{}
+
+func (o *DefaultOCMInterfaceImpl) createConnection() (*ocmsdk.Connection, error) {
+
+	envURL := os.Getenv("OCM_URL")
+	if envURL != "" {
+		// Fetch the real ocm url from the alias and set it back to the ENV
+		ocmURL, err := ocmurls.ResolveGatewayURL(envURL, nil)
+		if err != nil {
+			return nil, err
+		}
+		os.Setenv("OCM_URL", ocmURL)
+		logger.Debugf("reset the OCM_URL to %s", ocmURL)
+	}
+
+	// Setup connection at the first try
+	connection, err := ocmocm.NewConnection().Build()
+	if err != nil {
+		if strings.Contains(err.Error(), ocmNotLoggedInMessage) {
+			return nil, fmt.Errorf("please ensure you are logged into OCM by using the command " +
+				"\"ocm login --url $ENV\"")
+		} else {
+			return nil, err
+		}
+	}
+	fmt.Println("OCM connection established")
+	// cache the connection
+	o.ocmConnectionTimeout = connection
+	return connection, nil
+}
+
+func (o *DefaultOCMInterfaceImpl) initiateCloseConnection(ctx context.Context, cancel context.CancelFunc, conn *ocmsdk.Connection) {
+	fmt.Println("starting ocm connection timeout watcher", o.Timeout)
+	<-ctx.Done()
+	o.ocmConnectionMutex.Lock()
+	defer o.ocmConnectionMutex.Unlock()
+	if o.ocmConnectionTimeout != nil {
+		logger.Debugln(fmt.Sprintf("closing ocm connection after %v", o.Timeout))
+		o.ocmConnectionTimeout.Close()
+		o.ocmConnectionTimeout = nil
+	}
+	// cancel the context to release resources
+	cancel()
+}
 
 // SetupOCMConnection setups the ocm connection, closes the connection after DefaultOCMInterface.timeout
 // No need to close the connection explicitly
 // Reuses existing connection if available, else creates a new one with a default timeout of 30s
 func (o *DefaultOCMInterfaceImpl) SetupOCMConnection() (*ocmsdk.Connection, error) {
-	o.mu.Lock()
-	defer o.mu.Unlock()
+	o.ocmConnectionMutex.Lock()
+	defer o.ocmConnectionMutex.Unlock()
 
-	if o.connection != nil {
+	if o.ocmConnectionTimeout != nil {
 		// reuse existing connection
 		logger.Debugln("Reusing existing OCM connection")
-		return o.connection, nil
+		return o.ocmConnectionTimeout, nil
 	}
 
 	// important to set a timeout to avoid leaking connections
 	// new connections are created if the previous one has been closed after the timeout
 	if o.Timeout == 0 {
-		o.Timeout = 30 * time.Second
+		o.Timeout = ocmConnectionTimeoutDefault
 	}
 
-	// create a new connection
-	connection, err := createConnection()
+	// create a new connection and cache it
+	connection, err := o.createConnection()
 	if err != nil {
 		return nil, err
 	}
 
-	// cache the connection
-	o.connection = connection
-
 	ctx, cancel := context.WithTimeout(context.Background(), o.Timeout)
 
 	// init a goroutine to close the connection when the context is done
-	go func(ctx context.Context, cancel context.CancelFunc, conn *ocmsdk.Connection) {
-		fmt.Println("starting ocm connection timeout watcher", o.Timeout)
-		<-ctx.Done()
-		o.mu.Lock()
-		defer o.mu.Unlock()
-		if o.connection != nil {
-			logger.Debugln(fmt.Sprintf("closing ocm connection after %v", o.Timeout))
-			o.connection.Close()
-			o.connection = nil
-		}
-		// cancel the context to release resources
-		cancel()
-
-	}(ctx, cancel, connection)
+	go o.initiateCloseConnection(ctx, cancel, connection)
 
 	return connection, nil
 }
@@ -559,31 +587,4 @@ func doSurvey(clusters []*cmv1.Cluster) (cluster *cmv1.Cluster, err error) {
 		return nil
 	})
 	return cluster, err
-}
-
-func createConnection() (*ocmsdk.Connection, error) {
-
-	envURL := os.Getenv("OCM_URL")
-	if envURL != "" {
-		// Fetch the real ocm url from the alias and set it back to the ENV
-		ocmURL, err := ocmurls.ResolveGatewayURL(envURL, nil)
-		if err != nil {
-			return nil, err
-		}
-		os.Setenv("OCM_URL", ocmURL)
-		logger.Debugf("reset the OCM_URL to %s", ocmURL)
-	}
-
-	// Setup connection at the first try
-	connection, err := ocmocm.NewConnection().Build()
-	if err != nil {
-		if strings.Contains(err.Error(), ocmNotLoggedInMessage) {
-			return nil, fmt.Errorf("please ensure you are logged into OCM by using the command " +
-				"\"ocm login --url $ENV\"")
-		} else {
-			return nil, err
-		}
-	}
-	fmt.Println("OCM connection established")
-	return connection, nil
 }
