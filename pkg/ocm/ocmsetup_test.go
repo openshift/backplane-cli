@@ -89,7 +89,10 @@ func (f *FakeOCMClient) SetupOCMConnection() (*FakeConnection, error) {
 
 // initiateCloseConnection simulates auto-close of connection after timeout
 func (f *FakeOCMClient) initiateCloseConnection(ctx context.Context, cancel context.CancelFunc, conn *FakeConnection) {
-	fmt.Println("Starting OCM connection timeout:", f.timeout, conn.id)
+	if conn != nil {
+		fmt.Println("Starting OCM connection timeout:", f.timeout, conn.id)
+	}
+
 	<-ctx.Done()
 	f.ocmMutex.Lock()
 	defer f.ocmMutex.Unlock()
