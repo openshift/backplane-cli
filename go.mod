@@ -27,6 +27,7 @@ require (
 	github.com/spf13/cobra v1.10.1
 	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.21.0
+	github.com/stretchr/testify v1.11.1
 	github.com/trivago/tgo v1.0.7
 	golang.org/x/term v0.34.0
 	gopkg.in/AlecAivazis/survey.v1 v1.8.8
@@ -46,6 +47,7 @@ require (
 	github.com/openshift-online/ocm-api-model/clientapi v0.0.432-0.20250828221234-d914d24fd262 // indirect
 	github.com/openshift-online/ocm-api-model/model v0.0.432-0.20250828221234-d914d24fd262 // indirect
 	github.com/openshift-online/ocm-common v0.0.29 // indirect
+	github.com/pmezard/go-difflib v1.0.0 // indirect
 	go.uber.org/automaxprocs v1.6.0 // indirect
 	go.uber.org/mock v0.5.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.2 // indirect
