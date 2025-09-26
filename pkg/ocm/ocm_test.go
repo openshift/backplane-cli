@@ -62,7 +62,7 @@ var _ = Describe("OCM Wrapper Test", func() {
 
 		BeforeEach(func() {
 			impl = &ocm.DefaultOCMInterfaceImpl{
-				Timeout: 500 * time.Millisecond,
+				Timeout: 100 * time.Millisecond,
 			}
 			currtime = time.Now()
 		})
@@ -70,7 +70,7 @@ var _ = Describe("OCM Wrapper Test", func() {
 		It("Should handle connection reuse, timeout, and deliberate closure safely", func() {
 
 			conn1, _ := impl.SetupOCMConnection()
-			time.Sleep(200 * time.Millisecond)
+			time.Sleep(50 * time.Millisecond)
 
 			// reuse
 			conn2, _ := impl.SetupOCMConnection()
@@ -80,7 +80,7 @@ var _ = Describe("OCM Wrapper Test", func() {
 			fmt.Println("conn1, conn2, conn3, conn4 all same status: ",
 				conn1 == conn2 && conn2 == conn3 && conn3 == conn4) // should be true
 
-			time.Sleep(600 * time.Millisecond)
+			time.Sleep(200 * time.Millisecond)
 			fmt.Println("Waited for:", time.Since(currtime))
 			// trigger a new one
 			conn, _ := impl.SetupOCMConnection()
@@ -94,7 +94,7 @@ var _ = Describe("OCM Wrapper Test", func() {
 
 			// Routine for closing connection still runs and closes the connection
 			// Validate behaviour after a deliberate closure, it shouldn't panic or throw error
-			time.Sleep(600 * time.Millisecond)
+			time.Sleep(200 * time.Millisecond)
 		})
 	})
 
