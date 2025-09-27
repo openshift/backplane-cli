@@ -101,7 +101,6 @@ func runCreateAccessRequest(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("failed to create OCM connection: %v", err)
 	}
-	defer ocmConnection.Close()
 
 	accessRequest, err := accessrequest.GetAccessRequest(ocmConnection, clusterID)
 
