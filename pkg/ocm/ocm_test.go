@@ -6,13 +6,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	ocmsdk "github.com/openshift-online/ocm-sdk-go"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/backplane-cli/pkg/ocm"
 	"github.com/openshift/backplane-cli/pkg/ocm/mocks"
+	"go.uber.org/mock/gomock"
 )
 
 var _ = Describe("OCM Wrapper Test", func() {
