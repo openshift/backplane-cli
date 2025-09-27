@@ -17,7 +17,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/aws/aws-sdk-go-v2/service/sts/types"
-	"github.com/golang/mock/gomock"
+	"go.uber.org/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	sdk "github.com/openshift-online/ocm-sdk-go"
@@ -325,21 +325,110 @@ var _ = Describe("getIsolatedCredentials", func() {
 			}
 		})
 
-		It("should return nil if IP included in trusted list", func() {
+		It("should return nil if IP exactly matches single host CIDR", func() {
 			ip = net.ParseIP("192.168.1.1")
 			err := verifyIPTrusted(ip, trustedIPs)
 			Expect(err).To(BeNil())
 		})
+
+		It("should return nil if IP is within large CIDR range", func() {
+			ip = net.ParseIP("10.1.2.3")
+			err := verifyIPTrusted(ip, trustedIPs)
+			Expect(err).To(BeNil())
+		})
+
+		It("should return nil if IP is at start of CIDR range", func() {
+			ip = net.ParseIP("10.0.0.0")
+			err := verifyIPTrusted(ip, trustedIPs)
+			Expect(err).To(BeNil())
+		})
+
+		It("should return nil if IP is at end of CIDR range", func() {
+			ip = net.ParseIP("10.255.255.255")
+			err := verifyIPTrusted(ip, trustedIPs)
+			Expect(err).To(BeNil())
+		})
+
 		It("should return error if IP not included in trusted list", func() {
 			ip = net.ParseIP("172.16.0.1")
 			err := verifyIPTrusted(ip, trustedIPs)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("client IP 172.16.0.1 is not in the trusted IP range"))
 		})
-		It("should return an error if give the wrong format", func() {
+
+		It("should return error for IP just outside CIDR range", func() {
+			ip = net.ParseIP("192.168.1.2") // Outside 192.168.1.1/32
+			err := verifyIPTrusted(ip, trustedIPs)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("client IP 192.168.1.2 is not in the trusted IP range"))
+		})
+
+		It("should return error for IP in different network class", func() {
+			ip = net.ParseIP("9.255.255.255") // Just outside 10.0.0.0/8
+			err := verifyIPTrusted(ip, trustedIPs)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("client IP 9.255.255.255 is not in the trusted IP range"))
+		})
+
+		It("should return an error if given invalid CIDR format", func() {
 			trustedIPs.SourceIp = []string{"invalid-cidr"}
 			ip = net.ParseIP("192.168.1.1")
 			err := verifyIPTrusted(ip, trustedIPs)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("failed to parse trusted IP CIDR invalid-cidr"))
+		})
+
+		It("should handle mixed CIDR ranges correctly", func() {
+			trustedIPs.SourceIp = []string{
+				"192.168.1.0/24",   // Subnet
+				"172.16.5.10/32",   // Single host
+				"10.0.0.0/16",      // Large range
+			}
+
+			// Test IPs within each range
+			testCases := []struct {
+				testIP    string
+				shouldPass bool
+				desc      string
+			}{
+				{"192.168.1.1", true, "IP in /24 subnet"},
+				{"192.168.1.254", true, "IP at end of /24 subnet"},
+				{"192.168.2.1", false, "IP outside /24 subnet"},
+				{"172.16.5.10", true, "Exact match for /32"},
+				{"172.16.5.11", false, "IP adjacent to /32"},
+				{"10.0.5.5", true, "IP in /16 range"},
+				{"10.1.0.0", false, "IP outside /16 range"},
+			}
+
+			for _, tc := range testCases {
+				ip = net.ParseIP(tc.testIP)
+				err := verifyIPTrusted(ip, trustedIPs)
+				if tc.shouldPass {
+					Expect(err).To(BeNil(), "Expected %s to pass: %s", tc.testIP, tc.desc)
+				} else {
+					Expect(err).To(HaveOccurred(), "Expected %s to fail: %s", tc.testIP, tc.desc)
+					Expect(err.Error()).To(ContainSubstring(fmt.Sprintf("client IP %s is not in the trusted IP range", tc.testIP)))
+				}
+			}
+		})
+
+		It("should handle IPv6 CIDR ranges", func() {
+			trustedIPs.SourceIp = []string{
+				"2001:db8::/32",
+				"::1/128", // IPv6 localhost
+			}
+
+			// Test IPv6 addresses
+			ip = net.ParseIP("2001:db8::1")
+			err := verifyIPTrusted(ip, trustedIPs)
+			Expect(err).To(BeNil())
+
+			ip = net.ParseIP("::1")
+			err = verifyIPTrusted(ip, trustedIPs)
+			Expect(err).To(BeNil())
+
+			ip = net.ParseIP("2001:db9::1") // Outside range
+			err = verifyIPTrusted(ip, trustedIPs)
 			Expect(err).To(HaveOccurred())
 		})
 	})

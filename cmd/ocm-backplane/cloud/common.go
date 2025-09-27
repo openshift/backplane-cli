@@ -470,11 +470,11 @@ func checkEgressIPImpl(client *http.Client, url string) (net.IP, error) {
 
 func verifyIPTrusted(ip net.IP, trustedIPs awsutil.IPAddress) error {
 	for _, trustedIP := range trustedIPs.SourceIp {
-		parsedIP, _, err := net.ParseCIDR(trustedIP)
+		_, network, err := net.ParseCIDR(trustedIP)
 		if err != nil {
-			return fmt.Errorf("failed to parse the given trusted IP: %w", err)
+			return fmt.Errorf("failed to parse trusted IP CIDR %s: %w", trustedIP, err)
 		}
-		if parsedIP.Equal(ip) {
+		if network.Contains(ip) {
 			return nil
 		}
 	}

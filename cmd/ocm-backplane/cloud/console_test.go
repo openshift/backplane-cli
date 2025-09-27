@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/golang/mock/gomock"
+	"go.uber.org/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
 	log "github.com/sirupsen/logrus"
 	"k8s.io/client-go/tools/clientcmd"

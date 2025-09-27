@@ -9,18 +9,17 @@ require (
 	github.com/PagerDuty/go-pagerduty v1.8.0
 	github.com/andygrunwald/go-jira v1.17.0
 	github.com/aws/aws-sdk-go-v2 v1.39.0
-	github.com/aws/aws-sdk-go-v2/config v1.31.6
+	github.com/aws/aws-sdk-go-v2/config v1.31.8
 	github.com/aws/aws-sdk-go-v2/credentials v1.18.12
 	github.com/aws/aws-sdk-go-v2/service/sts v1.38.4
 	github.com/golang-jwt/jwt/v4 v4.5.2
-	github.com/golang/mock v1.6.0
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/onsi/ginkgo/v2 v2.25.3
 	github.com/onsi/gomega v1.38.2
 	github.com/openshift-online/ocm-cli v1.0.8
 	github.com/openshift-online/ocm-sdk-go v0.1.477
-	github.com/openshift/backplane-api v0.0.0-20250514095514-2aa57551ec70
+	github.com/openshift/backplane-api v0.0.0-20250910081446-754f683c5de6
 	github.com/openshift/client-go v0.0.0-20221019143426-16aed247da5c
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
 	github.com/sirupsen/logrus v1.9.3
@@ -28,6 +27,7 @@ require (
 	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.21.0
 	github.com/trivago/tgo v1.0.7
+	go.uber.org/mock v0.5.0
 	golang.org/x/term v0.34.0
 	gopkg.in/AlecAivazis/survey.v1 v1.8.8
 	k8s.io/api v0.30.3
@@ -47,7 +47,6 @@ require (
 	github.com/openshift-online/ocm-api-model/model v0.0.432-0.20250828221234-d914d24fd262 // indirect
 	github.com/openshift-online/ocm-common v0.0.29 // indirect
 	go.uber.org/automaxprocs v1.6.0 // indirect
-	go.uber.org/mock v0.5.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.2 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/tools v0.36.0 // indirect

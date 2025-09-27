@@ -6,7 +6,7 @@ import (
 
 	"net/http/httptest"
 
-	"github.com/golang/mock/gomock"
+	"go.uber.org/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
