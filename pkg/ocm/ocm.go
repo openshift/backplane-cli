@@ -81,14 +81,14 @@ func (o *DefaultOCMInterfaceImpl) createConnection() (*ocmsdk.Connection, error)
 			return nil, err
 		}
 	}
-	fmt.Println("OCM connection established")
+	logger.Debugln("OCM connection established")
 	// cache the connection
 	o.ocmConnectionTimeout = connection
 	return connection, nil
 }
 
 func (o *DefaultOCMInterfaceImpl) initiateCloseConnection(ctx context.Context, cancel context.CancelFunc, conn *ocmsdk.Connection) {
-	fmt.Println("starting ocm connection timeout watcher", o.Timeout)
+	logger.Debugln("starting ocm connection timeout watcher", o.Timeout)
 	<-ctx.Done()
 	o.ocmConnectionMutex.Lock()
 	defer o.ocmConnectionMutex.Unlock()
