@@ -62,7 +62,7 @@ var _ = Describe("OCM Wrapper Test", func() {
 
 		BeforeEach(func() {
 			impl = &ocm.DefaultOCMInterfaceImpl{
-				Timeout: 100 * time.Millisecond,
+				OcmConnectionTimeout: 100 * time.Millisecond,
 			}
 			currtime = time.Now()
 		})

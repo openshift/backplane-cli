@@ -51,9 +51,9 @@ const (
 )
 
 type DefaultOCMInterfaceImpl struct {
-	Timeout              time.Duration // Timeout for the OCM connection can be set
+	OcmConnectionTimeout time.Duration // Timeout for the OCM connection can be set
 	ocmConnectionMutex   sync.Mutex
-	ocmConnectionTimeout *ocmsdk.Connection
+	ocmConnection        *ocmsdk.Connection
 }
 
 var DefaultOCMInterface OCMInterface = &DefaultOCMInterfaceImpl{}
@@ -83,19 +83,19 @@ func (o *DefaultOCMInterfaceImpl) createConnection() (*ocmsdk.Connection, error)
 	}
 	logger.Debugln("OCM connection established")
 	// cache the connection
-	o.ocmConnectionTimeout = connection
+	o.ocmConnection = connection
 	return connection, nil
 }
 
 func (o *DefaultOCMInterfaceImpl) initiateCloseConnection(ctx context.Context, cancel context.CancelFunc, conn *ocmsdk.Connection) {
-	logger.Debugln("starting ocm connection timeout watcher", o.Timeout)
+	logger.Debugln("starting ocm connection timeout watcher", o.OcmConnectionTimeout)
 	<-ctx.Done()
 	o.ocmConnectionMutex.Lock()
 	defer o.ocmConnectionMutex.Unlock()
-	if o.ocmConnectionTimeout != nil {
-		logger.Debugln(fmt.Sprintf("closing ocm connection after %v", o.Timeout))
-		o.ocmConnectionTimeout.Close()
-		o.ocmConnectionTimeout = nil
+	if o.ocmConnection != nil && conn == o.ocmConnection {
+		logger.Debugln(fmt.Sprintf("closing ocm connection after %v", o.OcmConnectionTimeout))
+		o.ocmConnection.Close()
+		o.ocmConnection = nil
 	}
 	// cancel the context to release resources
 	cancel()
@@ -108,16 +108,16 @@ func (o *DefaultOCMInterfaceImpl) SetupOCMConnection() (*ocmsdk.Connection, erro
 	o.ocmConnectionMutex.Lock()
 	defer o.ocmConnectionMutex.Unlock()
 
-	if o.ocmConnectionTimeout != nil {
+	if o.ocmConnection != nil {
 		// reuse existing connection
 		logger.Debugln("Reusing existing OCM connection")
-		return o.ocmConnectionTimeout, nil
+		return o.ocmConnection, nil
 	}
 
 	// important to set a timeout to avoid leaking connections
 	// new connections are created if the previous one has been closed after the timeout
-	if o.Timeout == 0 {
-		o.Timeout = ocmConnectionTimeoutDefault
+	if o.OcmConnectionTimeout == 0 {
+		o.OcmConnectionTimeout = ocmConnectionTimeoutDefault
 	}
 
 	// create a new connection and cache it
@@ -126,7 +126,7 @@ func (o *DefaultOCMInterfaceImpl) SetupOCMConnection() (*ocmsdk.Connection, erro
 		return nil, err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), o.Timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), o.OcmConnectionTimeout)
 
 	// init a goroutine to close the connection when the context is done
 	go o.initiateCloseConnection(ctx, cancel, connection)
