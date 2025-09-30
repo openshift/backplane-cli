@@ -1,11 +1,14 @@
 package ocm
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
 	"os"
 	"strings"
+	"sync"
+	"time"
 
 	ocmocm "github.com/openshift-online/ocm-cli/pkg/ocm"
 	ocmurls "github.com/openshift-online/ocm-cli/pkg/urls"
@@ -42,18 +45,21 @@ type OCMInterface interface {
 }
 
 const (
-	ClustersPageSize      = 50
-	ocmNotLoggedInMessage = "Not logged in"
+	ClustersPageSize            = 50
+	ocmNotLoggedInMessage       = "Not logged in"
+	ocmConnectionTimeoutDefault = 30 * time.Second
 )
 
 type DefaultOCMInterfaceImpl struct {
-	//	connection *ocmsdk.Connection
+	OcmConnectionTimeout time.Duration // Timeout for the OCM connection can be set
+	ocmConnectionMutex   sync.Mutex
+	ocmConnection        *ocmsdk.Connection
 }
 
 var DefaultOCMInterface OCMInterface = &DefaultOCMInterfaceImpl{}
 
-// SetupOCMConnection setups the ocm connection for all the other ocm requests
-func (o *DefaultOCMInterfaceImpl) SetupOCMConnection() (*ocmsdk.Connection, error) {
+func (o *DefaultOCMInterfaceImpl) createConnection() (*ocmsdk.Connection, error) {
+
 	envURL := os.Getenv("OCM_URL")
 	if envURL != "" {
 		// Fetch the real ocm url from the alias and set it back to the ENV
@@ -75,6 +81,55 @@ func (o *DefaultOCMInterfaceImpl) SetupOCMConnection() (*ocmsdk.Connection, erro
 			return nil, err
 		}
 	}
+	logger.Debugln("OCM connection established")
+	// cache the connection
+	o.ocmConnection = connection
+	return connection, nil
+}
+
+func (o *DefaultOCMInterfaceImpl) initiateCloseConnection(ctx context.Context, cancel context.CancelFunc, conn *ocmsdk.Connection) {
+	logger.Debugln("starting ocm connection timeout watcher", o.OcmConnectionTimeout)
+	<-ctx.Done()
+	o.ocmConnectionMutex.Lock()
+	defer o.ocmConnectionMutex.Unlock()
+	if o.ocmConnection != nil && conn == o.ocmConnection {
+		logger.Debugln(fmt.Sprintf("closing ocm connection after %v", o.OcmConnectionTimeout))
+		o.ocmConnection.Close()
+		o.ocmConnection = nil
+	}
+	// cancel the context to release resources
+	cancel()
+}
+
+// SetupOCMConnection setups the ocm connection, closes the connection after DefaultOCMInterface.timeout
+// No need to close the connection explicitly
+// Reuses existing connection if available, else creates a new one with a default timeout of 30s
+func (o *DefaultOCMInterfaceImpl) SetupOCMConnection() (*ocmsdk.Connection, error) {
+	o.ocmConnectionMutex.Lock()
+	defer o.ocmConnectionMutex.Unlock()
+
+	if o.ocmConnection != nil {
+		// reuse existing connection
+		logger.Debugln("Reusing existing OCM connection")
+		return o.ocmConnection, nil
+	}
+
+	// important to set a timeout to avoid leaking connections
+	// new connections are created if the previous one has been closed after the timeout
+	if o.OcmConnectionTimeout == 0 {
+		o.OcmConnectionTimeout = ocmConnectionTimeoutDefault
+	}
+
+	// create a new connection and cache it
+	connection, err := o.createConnection()
+	if err != nil {
+		return nil, err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), o.OcmConnectionTimeout)
+
+	// init a goroutine to close the connection when the context is done
+	go o.initiateCloseConnection(ctx, cancel, connection)
 
 	return connection, nil
 }
@@ -85,12 +140,10 @@ func (o *DefaultOCMInterfaceImpl) IsClusterHibernating(clusterID string) (bool, 
 	if err != nil {
 		return false, fmt.Errorf("failed to create OCM connection: %v", err)
 	}
-	defer connection.Close()
 	res, err := connection.ClustersMgmt().V1().Clusters().Cluster(clusterID).Get().Send()
 	if err != nil {
 		return false, fmt.Errorf("unable get get cluster status: %v", err)
 	}
-
 	cluster := res.Body()
 	return cluster.Status().State() == cmv1.ClusterStateHibernating, nil
 }
@@ -102,7 +155,6 @@ func (o *DefaultOCMInterfaceImpl) GetTargetCluster(clusterKey string) (clusterID
 	if err != nil {
 		return "", "", fmt.Errorf("failed to create OCM connection: %v", err)
 	}
-	defer connection.Close()
 	// Get the client for the resource that manages the collection of clusters:
 	clusterCollection := connection.ClustersMgmt().V1().Clusters()
 	clusters, err := getClusters(clusterCollection, clusterKey)
@@ -134,7 +186,6 @@ func (o *DefaultOCMInterfaceImpl) GetManagingCluster(targetClusterID string) (cl
 	if err != nil {
 		return "", "", false, fmt.Errorf("failed to create OCM connection: %v", err)
 	}
-	defer connection.Close()
 
 	isHostedControlPlane = false
 	var managingCluster string
@@ -198,7 +249,6 @@ func (o *DefaultOCMInterfaceImpl) GetServiceCluster(targetClusterID string) (clu
 	if err != nil {
 		return "", "", fmt.Errorf("failed to create OCM connection: %v", err)
 	}
-	defer connection.Close()
 
 	var svcClusterID, svcClusterName, mgmtCluster string
 	// If given cluster is hypershift hosted cluster
@@ -252,7 +302,6 @@ func (o *DefaultOCMInterfaceImpl) GetOCMAccessToken() (*string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create OCM connection: %v", err)
 	}
-	defer connection.Close()
 
 	return o.GetOCMAccessTokenWithConn(connection)
 }
@@ -281,7 +330,7 @@ func (o *DefaultOCMInterfaceImpl) GetPullSecret() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to create OCM connection: %v", err)
 	}
-	defer connection.Close()
+
 	response, err := connection.Post().Path("/api/accounts_mgmt/v1/access_token").Send()
 	if err != nil {
 		return "", fmt.Errorf("failed to get pull secret from ocm: %v", err)
@@ -301,7 +350,6 @@ func (o *DefaultOCMInterfaceImpl) GetClusterInfoByID(clusterID string) (*cmv1.Cl
 	if err != nil {
 		return nil, fmt.Errorf("failed to create OCM connection: %v", err)
 	}
-	defer connection.Close()
 
 	return o.GetClusterInfoByIDWithConn(connection, clusterID)
 }
@@ -327,7 +375,6 @@ func (o *DefaultOCMInterfaceImpl) IsProduction() (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("failed to create OCM connection: %v", err)
 	}
-	defer connection.Close()
 
 	return connection.URL() == "https://api.openshift.com", nil
 }
@@ -347,7 +394,6 @@ func (o *DefaultOCMInterfaceImpl) GetOCMEnvironment() (*cmv1.Environment, error)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create OCM connection: %v", err)
 	}
-	defer connection.Close()
 
 	responseEnv, err := connection.ClustersMgmt().V1().Environment().Get().Send()
 	if err != nil {

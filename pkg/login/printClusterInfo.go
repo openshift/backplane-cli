@@ -43,9 +43,6 @@ func GetAccessProtectionStatus(clusterID string) string {
 		logger.Error("Error setting up OCM connection: ", err)
 		return "Error setting up OCM connection: " + err.Error()
 	}
-	if ocmConnection != nil {
-		defer ocmConnection.Close()
-	}
 
 	accessProtectionStatus := "Disabled"
 
