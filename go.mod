@@ -18,7 +18,7 @@ require (
 	github.com/onsi/ginkgo/v2 v2.26.0
 	github.com/onsi/gomega v1.38.2
 	github.com/openshift-online/ocm-cli v1.0.8
-	github.com/openshift-online/ocm-sdk-go v0.1.477
+	github.com/openshift-online/ocm-sdk-go v0.1.478
 	github.com/openshift/backplane-api v0.0.0-20250910081446-754f683c5de6
 	github.com/openshift/client-go v0.0.0-20221019143426-16aed247da5c
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
@@ -43,8 +43,8 @@ require (
 	github.com/go-task/slim-sprig/v3 v3.0.0 // indirect
 	github.com/go-viper/mapstructure/v2 v2.4.0 // indirect
 	github.com/google/pprof v0.0.0-20250403155104-27863c87afa6 // indirect
-	github.com/openshift-online/ocm-api-model/clientapi v0.0.432-0.20250828221234-d914d24fd262 // indirect
-	github.com/openshift-online/ocm-api-model/model v0.0.432-0.20250828221234-d914d24fd262 // indirect
+	github.com/openshift-online/ocm-api-model/clientapi v0.0.433 // indirect
+	github.com/openshift-online/ocm-api-model/model v0.0.433 // indirect
 	github.com/openshift-online/ocm-common v0.0.29 // indirect
 	go.uber.org/automaxprocs v1.6.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.2 // indirect
