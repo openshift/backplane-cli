@@ -487,9 +487,12 @@ func GetRestConfig(bp config.BackplaneConfiguration, clusterID string) (*rest.Co
 	return BuildRestConfig(bpAPIClusterURL, accessToken, proxyURL)
 }
 
-// GetRestConfig returns a client-go *rest.Config which can be used to programmatically interact with the
-// Kubernetes API of a provided clusterID
+// GetRestConfigWithConn returns a client-go *rest.Config which can be used to programmatically interact with the
+// Kubernetes API of a provided clusterID, using a provided OCM connection.
 func GetRestConfigWithConn(bp config.BackplaneConfiguration, ocmConnection *ocmsdk.Connection, clusterID string) (*rest.Config, error) {
+	if ocmConnection == nil {
+		return nil, fmt.Errorf("nil OCM connection provided to GetRestConfigWithConn()")
+	}
 	cluster, err := ocm.DefaultOCMInterface.GetClusterInfoByIDWithConn(ocmConnection, clusterID)
 	if err != nil {
 		return nil, err
@@ -500,7 +503,7 @@ func GetRestConfigWithConn(bp config.BackplaneConfiguration, ocmConnection *ocms
 		return nil, err
 	}
 
-	bpAPIClusterURL, err := doLogin(bp.URL, clusterID, *accessToken)
+	bpAPIClusterURL, err := doLoginWithConn(bp.URL, clusterID, *accessToken, ocmConnection)
 	if err != nil {
 		return nil, fmt.Errorf("failed to backplane login to cluster %s: %v", cluster.Name(), err)
 	}
@@ -533,11 +536,40 @@ func GetRestConfigAsUser(bp config.BackplaneConfiguration, clusterID, username s
 	return cfg, nil
 }
 
+// GetRestConfigAsUserWithConn returns a client-go *rest.Config like GetRestConfig, but supports configuring an
+// impersonation username. Commonly, this is "backplane-cluster-admin"
+// best practice would be to add at least one elevationReason in order to justity the impersonation
+// Uses provided OCM connection for attributes
+func GetRestConfigAsUserWithConn(bp config.BackplaneConfiguration, ocmConn *ocmsdk.Connection, clusterID, username string, elevationReasons ...string) (*rest.Config, error) {
+	cfg, err := GetRestConfigWithConn(bp, ocmConn, clusterID)
+	if err != nil {
+		return nil, err
+	}
+
+	cfg.Impersonate = rest.ImpersonationConfig{
+		UserName: username,
+	}
+
+	if len(elevationReasons) > 0 {
+		cfg.Impersonate.Extra = map[string][]string{"reason": elevationReasons}
+	}
+
+	return cfg, nil
+}
+
 // doLogin returns the proxy url for the target cluster.
 func doLogin(api, clusterID, accessToken string) (string, error) {
+	return doLoginWithConn(api, clusterID, accessToken, nil)
+}
 
-	client, err := backplaneapi.DefaultClientUtils.MakeRawBackplaneAPIClientWithAccessToken(api, accessToken)
-
+func doLoginWithConn(api, clusterID, accessToken string, ocmConn *ocmsdk.Connection) (string, error) {
+	var client BackplaneApi.ClientInterface
+	var err error = nil
+	if ocmConn != nil {
+		client, err = backplaneapi.DefaultClientUtils.MakeRawBackplaneAPIClientWithAccessTokenWithConn(api, accessToken, ocmConn)
+	} else {
+		client, err = backplaneapi.DefaultClientUtils.MakeRawBackplaneAPIClientWithAccessToken(api, accessToken)
+	}
 	if err != nil {
 		return "", fmt.Errorf("unable to create backplane api client")
 	}
