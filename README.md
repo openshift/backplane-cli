@@ -483,3 +483,69 @@ FROM golang:1.21  # Update version to match release PR
 Example Implementation: PR [#636](https://github.com/openshift/backplane-cli/pull/636): OSD-28717 Fix build failures
 Update the dockerfile of backplane-cli with the latest go version and check if build passes.
 Check for any issues while updating the dockerfile and start a thread in #sd-ims-backplane channel to mitigate this issue.
+
+## Backplane MCP
+
+The Backplane CLI includes a Model Context Protocol (MCP) server that allows AI assistants to interact with backplane resources and retrieve information about your backplane CLI installation and configuration.
+
+### Overview
+
+The MCP server provides AI assistants with access to backplane functionality through standardized tools. Currently supported tools:
+
+- **`backplane_info`**: Get comprehensive information about the backplane CLI installation, configuration, and environment
+
+### Running the MCP Server
+
+The backplane MCP server supports two transport methods:
+
+#### Stdio Transport (Default)
+For direct integration with AI assistants:
+```bash
+ocm-backplane mcp
+```
+
+#### HTTP Transport
+For web-based access and testing:
+```bash
+# Run on default port 8080
+ocm-backplane mcp --http
+
+# Run on custom port
+ocm-backplane mcp --http --port 3000
+```
+
+### Integration with AI Assistants
+
+#### Gemini CLI Configuration
+
+To use the backplane MCP server with Gemini CLI, create or update your Gemini configuration file:
+
+
+```yaml
+# Gemini CLI Configuration
+tools:
+  mcp:
+    servers:
+      backplane:
+        command: ["ocm-backplane", "mcp"]
+        description: "OpenShift Backplane CLI integration"
+```
+
+
+#### Claude Desktop Configuration
+
+To integrate with Claude Desktop, add the backplane MCP server to your Claude Desktop configuration:
+
+**macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+**Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+
+```json
+{
+  "mcpServers": {
+    "backplane": {
+      "command": ["ocm-backplane", "mcp"],
+      "args": [],
+    }
+  }
+}
+```

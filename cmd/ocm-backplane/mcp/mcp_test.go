@@ -7,7 +7,6 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 
 	mcpCmd "github.com/openshift/backplane-cli/cmd/ocm-backplane/mcp"
 )
@@ -88,21 +87,21 @@ var _ = Describe("MCP Command", func() {
 	})
 
 	Context("Command validation", func() {
-		It("Should not require any flags", func() {
+		It("Should have optional flags for HTTP transport", func() {
 			cmd := mcpCmd.MCPCmd
 
-			// Verify no required flags are set
-			cmd.Flags().VisitAll(func(flag *pflag.Flag) {
-				// Check if the flag is marked as required (this is simpler than annotation checking)
-				// Since MCP command should have no flags, this should be empty anyway
-			})
+			// Verify the command has the expected flags
+			httpFlag := cmd.Flags().Lookup("http")
+			Expect(httpFlag).ToNot(BeNil())
+			Expect(httpFlag.Value.String()).To(Equal("false")) // default value
 
-			// Verify that the command has no flags defined
-			flagCount := 0
-			cmd.Flags().VisitAll(func(flag *pflag.Flag) {
-				flagCount++
-			})
-			Expect(flagCount).To(Equal(0))
+			portFlag := cmd.Flags().Lookup("port")
+			Expect(portFlag).ToNot(BeNil())
+			Expect(portFlag.Value.String()).To(Equal("8080")) // default value
+
+			// Verify no flags are required (both flags should be optional)
+			Expect(httpFlag.DefValue).To(Equal("false"))
+			Expect(portFlag.DefValue).To(Equal("8080"))
 		})
 
 		It("Should be runnable without prerequisites", func() {
@@ -110,6 +109,29 @@ var _ = Describe("MCP Command", func() {
 
 			// Verify the command can be prepared for execution
 			cmd.SetArgs([]string{})
+			err := cmd.ValidateArgs([]string{})
+			Expect(err).To(BeNil())
+		})
+
+		It("Should accept HTTP flag and port flag", func() {
+			cmd := mcpCmd.MCPCmd
+
+			// Test with HTTP flag
+			cmd.SetArgs([]string{"--http"})
+			err := cmd.ValidateArgs([]string{})
+			Expect(err).To(BeNil())
+
+			// Test with both HTTP and port flags
+			cmd.SetArgs([]string{"--http", "--port", "9090"})
+			err = cmd.ValidateArgs([]string{})
+			Expect(err).To(BeNil())
+		})
+
+		It("Should handle port flag independently", func() {
+			cmd := mcpCmd.MCPCmd
+
+			// Test port flag without HTTP (should still be valid)
+			cmd.SetArgs([]string{"--port", "3000"})
 			err := cmd.ValidateArgs([]string{})
 			Expect(err).To(BeNil())
 		})
