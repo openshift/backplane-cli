@@ -74,7 +74,7 @@ var _ = Describe("MCP Tool Integration", func() {
 			}
 
 			// Test the MCP tool directly as it would be called by an MCP client
-			input := mcptools.BackplaneLoginArgs{ClusterId: "integration-test-cluster"}
+			input := mcptools.BackplaneLoginArgs{ClusterID: "integration-test-cluster"}
 			result, output, err := mcptools.BackplaneLogin(context.Background(), &mcp.CallToolRequest{}, input)
 
 			// Verify MCP integration works correctly
@@ -100,7 +100,7 @@ var _ = Describe("MCP Tool Integration", func() {
 			}
 
 			// Test with cluster ID that might come from MCP client
-			input := mcptools.BackplaneLoginArgs{ClusterId: "mcp-client-cluster-456"}
+			input := mcptools.BackplaneLoginArgs{ClusterID: "mcp-client-cluster-456"}
 			result, _, err := mcptools.BackplaneLogin(context.Background(), &mcp.CallToolRequest{}, input)
 
 			Expect(err).To(BeNil())
@@ -128,7 +128,7 @@ var _ = Describe("MCP Tool Integration", func() {
 					return nil
 				}
 
-				input := mcptools.BackplaneLoginArgs{ClusterId: tc.clusterID}
+				input := mcptools.BackplaneLoginArgs{ClusterID: tc.clusterID}
 				result, _, err := mcptools.BackplaneLogin(context.Background(), &mcp.CallToolRequest{}, input)
 
 				Expect(err).To(BeNil(), "Test case: "+tc.clusterID)
@@ -145,7 +145,7 @@ var _ = Describe("MCP Tool Integration", func() {
 				return fmt.Errorf("cluster '%s' not found in your accessible clusters", args[0])
 			}
 
-			input := mcptools.BackplaneLoginArgs{ClusterId: "nonexistent-cluster"}
+			input := mcptools.BackplaneLoginArgs{ClusterID: "nonexistent-cluster"}
 			result, _, err := mcptools.BackplaneLogin(context.Background(), &mcp.CallToolRequest{}, input)
 
 			// Should handle error gracefully for MCP clients
@@ -294,7 +294,7 @@ var _ = Describe("MCP Tool Integration", func() {
 				return nil
 			}
 
-			input := mcptools.BackplaneLoginArgs{ClusterId: "perf-test-cluster"}
+			input := mcptools.BackplaneLoginArgs{ClusterID: "perf-test-cluster"}
 
 			// Multiple calls should all succeed
 			for i := 0; i < 5; i++ {
@@ -343,7 +343,7 @@ var _ = Describe("MCP Tool Integration", func() {
 			viper.Set("govcloud", false)
 
 			// Alternate between login and info calls
-			loginInput := mcptools.BackplaneLoginArgs{ClusterId: "consistency-cluster"}
+			loginInput := mcptools.BackplaneLoginArgs{ClusterID: "consistency-cluster"}
 			infoInput := mcptools.BackplaneInfoInput{}
 
 			for i := 0; i < 2; i++ {
@@ -369,7 +369,7 @@ var _ = Describe("MCP Tool Integration", func() {
 				return nil
 			}
 
-			loginInput := mcptools.BackplaneLoginArgs{ClusterId: "protocol-test"}
+			loginInput := mcptools.BackplaneLoginArgs{ClusterID: "protocol-test"}
 			loginResult, loginOutput, err := mcptools.BackplaneLogin(context.Background(), &mcp.CallToolRequest{}, loginInput)
 
 			Expect(err).To(BeNil())

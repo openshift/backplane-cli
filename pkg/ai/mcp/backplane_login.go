@@ -10,11 +10,11 @@ import (
 )
 
 type BackplaneLoginArgs struct {
-	ClusterId string `json:"clusterId" jsonschema:"description:the cluster ID for backplane login"`
+	ClusterID string `json:"clusterId" jsonschema:"description:the cluster ID for backplane login"`
 }
 
 func BackplaneLogin(ctx context.Context, request *mcp.CallToolRequest, input BackplaneLoginArgs) (*mcp.CallToolResult, struct{}, error) {
-	clusterID := strings.TrimSpace(input.ClusterId)
+	clusterID := strings.TrimSpace(input.ClusterID)
 	if clusterID == "" {
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{

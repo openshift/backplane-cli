@@ -50,6 +50,12 @@ func runMCP(cmd *cobra.Command, argv []string) error {
 		Description: "Login to cluster via backplane",
 	}, mcptools.BackplaneLogin)
 
+	// Add the console tool
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "console",
+		Description: "Access cluster console via backplane CLI, optionally opening in browser",
+	}, mcptools.BackplaneConsole)
+
 	// Choose transport method based on flags
 	if useHTTP {
 		// Run the server over HTTP using StreamableHTTPHandler

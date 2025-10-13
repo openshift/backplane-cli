@@ -30,7 +30,7 @@ var _ = Describe("BackplaneLogin", func() {
 
 	Context("Input validation", func() {
 		It("Should reject empty cluster ID", func() {
-			input := mcptools.BackplaneLoginArgs{ClusterId: ""}
+			input := mcptools.BackplaneLoginArgs{ClusterID: ""}
 
 			result, _, err := mcptools.BackplaneLogin(context.Background(), &mcp.CallToolRequest{}, input)
 
@@ -43,7 +43,7 @@ var _ = Describe("BackplaneLogin", func() {
 		})
 
 		It("Should reject whitespace-only cluster ID", func() {
-			input := mcptools.BackplaneLoginArgs{ClusterId: "   \t\n  "}
+			input := mcptools.BackplaneLoginArgs{ClusterID: "   \t\n  "}
 
 			result, _, err := mcptools.BackplaneLogin(context.Background(), &mcp.CallToolRequest{}, input)
 
@@ -64,7 +64,7 @@ var _ = Describe("BackplaneLogin", func() {
 				return nil
 			}
 
-			input := mcptools.BackplaneLoginArgs{ClusterId: "  cluster-123  "}
+			input := mcptools.BackplaneLoginArgs{ClusterID: "  cluster-123  "}
 
 			result, _, err := mcptools.BackplaneLogin(context.Background(), &mcp.CallToolRequest{}, input)
 
@@ -85,7 +85,7 @@ var _ = Describe("BackplaneLogin", func() {
 				return nil
 			}
 
-			input := mcptools.BackplaneLoginArgs{ClusterId: "test-cluster-456"}
+			input := mcptools.BackplaneLoginArgs{ClusterID: "test-cluster-456"}
 
 			result, _, err := mcptools.BackplaneLogin(context.Background(), &mcp.CallToolRequest{}, input)
 
@@ -107,7 +107,7 @@ var _ = Describe("BackplaneLogin", func() {
 				return nil
 			}
 
-			input := mcptools.BackplaneLoginArgs{ClusterId: specialClusterID}
+			input := mcptools.BackplaneLoginArgs{ClusterID: specialClusterID}
 
 			result, _, err := mcptools.BackplaneLogin(context.Background(), &mcp.CallToolRequest{}, input)
 
@@ -127,7 +127,7 @@ var _ = Describe("BackplaneLogin", func() {
 				return errors.New("cluster not found")
 			}
 
-			input := mcptools.BackplaneLoginArgs{ClusterId: "non-existent-cluster"}
+			input := mcptools.BackplaneLoginArgs{ClusterID: "non-existent-cluster"}
 
 			result, _, err := mcptools.BackplaneLogin(context.Background(), &mcp.CallToolRequest{}, input)
 
@@ -147,7 +147,7 @@ var _ = Describe("BackplaneLogin", func() {
 				return errors.New("authentication failed: invalid token")
 			}
 
-			input := mcptools.BackplaneLoginArgs{ClusterId: "auth-test-cluster"}
+			input := mcptools.BackplaneLoginArgs{ClusterID: "auth-test-cluster"}
 
 			result, _, err := mcptools.BackplaneLogin(context.Background(), &mcp.CallToolRequest{}, input)
 
@@ -165,7 +165,7 @@ var _ = Describe("BackplaneLogin", func() {
 				return errors.New("network error: connection timeout")
 			}
 
-			input := mcptools.BackplaneLoginArgs{ClusterId: "network-test-cluster"}
+			input := mcptools.BackplaneLoginArgs{ClusterID: "network-test-cluster"}
 
 			result, _, err := mcptools.BackplaneLogin(context.Background(), &mcp.CallToolRequest{}, input)
 
@@ -185,7 +185,7 @@ var _ = Describe("BackplaneLogin", func() {
 				return nil
 			}
 
-			input := mcptools.BackplaneLoginArgs{ClusterId: "format-test-cluster"}
+			input := mcptools.BackplaneLoginArgs{ClusterID: "format-test-cluster"}
 
 			result, output, err := mcptools.BackplaneLogin(context.Background(), &mcp.CallToolRequest{}, input)
 
@@ -209,7 +209,7 @@ var _ = Describe("BackplaneLogin", func() {
 				return errors.New("test error")
 			}
 
-			input := mcptools.BackplaneLoginArgs{ClusterId: "error-format-test"}
+			input := mcptools.BackplaneLoginArgs{ClusterID: "error-format-test"}
 
 			result, output, err := mcptools.BackplaneLogin(context.Background(), &mcp.CallToolRequest{}, input)
 
@@ -240,7 +240,7 @@ var _ = Describe("BackplaneLogin", func() {
 				return nil
 			}
 
-			input := mcptools.BackplaneLoginArgs{ClusterId: "context-test-cluster"}
+			input := mcptools.BackplaneLoginArgs{ClusterID: "context-test-cluster"}
 
 			// Function should still complete since context isn't directly used in current implementation
 			result, _, err := mcptools.BackplaneLogin(ctx, &mcp.CallToolRequest{}, input)
