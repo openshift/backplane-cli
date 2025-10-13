@@ -492,7 +492,8 @@ The Backplane CLI includes a Model Context Protocol (MCP) server that allows AI 
 
 The MCP server provides AI assistants with access to backplane functionality through standardized tools. Currently supported tools:
 
-- **`backplane_info`**: Get comprehensive information about the backplane CLI installation, configuration, and environment
+- **`info`**: Get comprehensive information about the backplane CLI installation, configuration, and environment  
+- **`login`**: Login to a backplane cluster
 
 ### Running the MCP Server
 

@@ -36,13 +36,19 @@ func runMCP(cmd *cobra.Command, argv []string) error {
 	port, _ := cmd.Flags().GetInt("port")
 
 	// Create a server with a single tool.
-	server := mcp.NewServer(&mcp.Implementation{Name: "backplane-mcp", Version: "v1.0.0"}, nil)
+	server := mcp.NewServer(&mcp.Implementation{Name: "backplane", Version: "v1.0.0"}, nil)
 
-	// Add the backplane-info tool
+	// Add the info tool
 	mcp.AddTool(server, &mcp.Tool{
-		Name:        "backplane_info",
+		Name:        "info",
 		Description: "Get information about the current backplane CLI installation, configuration",
 	}, mcptools.GetBackplaneInfo)
+
+	// Add the login tool
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "login",
+		Description: "Login to cluster via backplane",
+	}, mcptools.BackplaneLogin)
 
 	// Choose transport method based on flags
 	if useHTTP {
