@@ -56,6 +56,12 @@ func runMCP(cmd *cobra.Command, argv []string) error {
 		Description: "Access cluster console via backplane CLI, optionally opening in browser",
 	}, mcptools.BackplaneConsole)
 
+	// Add the cluster resource tool
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "cluster-resource",
+		Description: "Execute read-only Kubernetes resource operations (get, describe, logs, top, explain) on cluster resources",
+	}, mcptools.BackplaneClusterResource)
+
 	// Choose transport method based on flags
 	if useHTTP {
 		// Run the server over HTTP using StreamableHTTPHandler

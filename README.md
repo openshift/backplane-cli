@@ -494,6 +494,8 @@ The MCP server provides AI assistants with access to backplane functionality thr
 
 - **`info`**: Get comprehensive information about the backplane CLI installation, configuration, and environment  
 - **`login`**: Login to a backplane cluster
+- **`console`**: Access cluster console via backplane CLI, optionally opening in browser
+- **`cluster-resource`**: Execute read-only Kubernetes resource operations (get, describe, logs, top, explain)
 
 ### Running the MCP Server
 
@@ -550,3 +552,82 @@ To integrate with Claude Desktop, add the backplane MCP server to your Claude De
   }
 }
 ```
+
+### Available Tools
+
+#### `info`
+
+Retrieves comprehensive information about your backplane CLI installation.
+
+**What it provides:**
+- CLI version information
+- Configuration details (URLs, proxy settings, session directory)
+- Environment information (home directory, current directory, shell)
+- Display and GovCloud settings
+
+#### `login`
+
+Login to a backplane cluster.
+
+**Parameters:**
+- `clusterId` (required): The cluster ID to login to
+
+**Example usage:**
+```
+AI: I'll login to cluster abc123 for you.
+[Uses login tool with clusterId: "abc123"]
+Successfully logged in to cluster 'abc123'
+```
+
+#### `console`
+
+Access the OpenShift web console for a cluster.
+
+**Parameters:**
+- `clusterId` (required): The cluster ID to access console for
+- `openInBrowser` (optional): Whether to automatically open console in browser
+
+**Example usage:**
+```
+AI: I'll access the console for cluster abc123.
+[Uses console tool]
+Successfully accessed cluster console for 'abc123'
+🌐 Console opened in default browser
+```
+
+#### `cluster-resource`
+
+Execute read-only Kubernetes resource operations on cluster resources.
+
+**Parameters:**
+- `action` (required): Operation to perform (`get`, `describe`, `logs`, `top`, `explain`)
+- `resourceType` (optional): Kubernetes resource type (pod, service, deployment, etc.)
+- `resourceName` (optional): Specific resource name
+- `namespace` (optional): Kubernetes namespace (use 'all' for all namespaces)
+- `outputFormat` (optional): Output format (yaml, json, wide, name)
+- `labelSelector` (optional): Label selector filter (e.g., 'app=myapp')
+- `fieldSelector` (optional): Field selector filter (e.g., 'status.phase=Running')
+- `allNamespaces` (optional): Search across all namespaces
+- `follow`, `previous`, `tail`, `container` (optional): Logging-specific options
+
+**Example usage:**
+```
+You: "Show me all pods in the kube-system namespace"
+AI: I'll get the pods from kube-system.
+[Uses cluster-resource tool: action=get, resourceType=pod, namespace=kube-system]
+
+You: "Get logs for pod xyz-123"
+AI: I'll retrieve the logs for that pod.
+[Uses cluster-resource tool: action=logs, resourceType=pod, resourceName=xyz-123]
+
+You: "Describe the deployment myapp"
+AI: I'll describe the myapp deployment.
+[Uses cluster-resource tool: action=describe, resourceType=deployment, resourceName=myapp]
+```
+
+### Security Considerations
+
+- All MCP tools provide read-only access to cluster information
+- The cluster-resource tool only supports safe, read-only operations (get, describe, logs, top, explain)
+- Write operations (create, update, delete, patch, apply) are not supported for security
+- The server runs with the same permissions as your backplane CLI session

@@ -362,8 +362,67 @@ var _ = Describe("MCP Tool Integration", func() {
 		})
 	})
 
+	Context("MCP Cluster Resource Tool Integration", func() {
+		It("Should validate cluster resource tool input correctly", func() {
+			// Test valid action
+			validInput := mcptools.BackplaneClusterResourceArgs{
+				Action:       "get",
+				ResourceType: "pods",
+				Namespace:    "default",
+			}
+
+			result, _, err := mcptools.BackplaneClusterResource(context.Background(), &mcp.CallToolRequest{}, validInput)
+
+			// Should pass validation (may fail on oc execution in test environment)
+			Expect(err).To(BeNil())
+			Expect(result).ToNot(BeNil())
+
+			textContent := result.Content[0].(*mcp.TextContent)
+			Expect(textContent.Text).ToNot(ContainSubstring("is not allowed"))
+		})
+
+		It("Should reject invalid actions for cluster resource tool", func() {
+			// Test invalid action
+			invalidInput := mcptools.BackplaneClusterResourceArgs{
+				Action: "delete", // Not allowed
+			}
+
+			result, _, err := mcptools.BackplaneClusterResource(context.Background(), &mcp.CallToolRequest{}, invalidInput)
+
+			// Should fail validation
+			Expect(err).ToNot(BeNil())
+			Expect(err.Error()).To(ContainSubstring("unsupported action"))
+			Expect(result).ToNot(BeNil())
+
+			textContent := result.Content[0].(*mcp.TextContent)
+			Expect(textContent.Text).To(ContainSubstring("is not allowed"))
+			Expect(textContent.Text).To(ContainSubstring("Only read actions are supported"))
+		})
+
+		It("Should handle complex cluster resource parameters", func() {
+			// Test with comprehensive parameters
+			complexInput := mcptools.BackplaneClusterResourceArgs{
+				Action:        "get",
+				ResourceType:  "pods",
+				Namespace:     "kube-system",
+				LabelSelector: "app=important",
+				OutputFormat:  "yaml",
+				ShowLabels:    true,
+			}
+
+			result, _, err := mcptools.BackplaneClusterResource(context.Background(), &mcp.CallToolRequest{}, complexInput)
+
+			// Should pass validation
+			Expect(err).To(BeNil())
+			Expect(result).ToNot(BeNil())
+
+			textContent := result.Content[0].(*mcp.TextContent)
+			Expect(textContent.Text).ToNot(ContainSubstring("is not allowed"))
+		})
+	})
+
 	Context("MCP Protocol Compliance", func() {
-		It("Should return proper MCP response format for both tools", func() {
+		It("Should return proper MCP response format for all tools", func() {
 			// Test login tool
 			login.LoginCmd.RunE = func(cmd *cobra.Command, args []string) error {
 				return nil
@@ -392,6 +451,17 @@ var _ = Describe("MCP Tool Integration", func() {
 			Expect(infoOutput).To(BeNil()) // Info returns nil
 			Expect(infoResult.Content).To(HaveLen(1))
 			_, ok = infoResult.Content[0].(*mcp.TextContent)
+			Expect(ok).To(BeTrue())
+
+			// Test cluster resource tool (validation only)
+			resourceInput := mcptools.BackplaneClusterResourceArgs{Action: "get", ResourceType: "pods"}
+			resourceResult, resourceOutput, err := mcptools.BackplaneClusterResource(context.Background(), &mcp.CallToolRequest{}, resourceInput)
+
+			Expect(err).To(BeNil()) // Should pass validation
+			Expect(resourceResult).ToNot(BeNil())
+			Expect(resourceOutput).To(Equal(struct{}{})) // Returns empty struct
+			Expect(resourceResult.Content).To(HaveLen(1))
+			_, ok = resourceResult.Content[0].(*mcp.TextContent)
 			Expect(ok).To(BeTrue())
 		})
 	})
