@@ -496,6 +496,7 @@ The MCP server provides AI assistants with access to backplane functionality thr
 - **`login`**: Login to a backplane cluster
 - **`console`**: Access cluster console via backplane CLI, optionally opening in browser
 - **`cluster-resource`**: Execute read-only Kubernetes resource operations (get, describe, logs, top, explain)
+- **`cloud-console`**: Get cloud provider console access with temporary credentials
 
 ### Running the MCP Server
 
@@ -625,9 +626,34 @@ AI: I'll describe the myapp deployment.
 [Uses cluster-resource tool: action=describe, resourceType=deployment, resourceName=myapp]
 ```
 
+#### `cloud-console`
+
+Get cloud provider console access for a cluster with temporary credentials.
+
+**Parameters:**
+- `clusterId` (required): The cluster ID to get cloud console access for
+- `openInBrowser` (optional): Whether to automatically open the cloud console URL in browser  
+- `output` (optional): Output format (`text` or `json`, defaults to `json`)
+- `url` (optional): Override backplane API URL
+
+**Example usage:**
+```
+You: "Get cloud console access for cluster xyz789"
+
+AI: I'll get cloud console access for cluster xyz789.
+
+[Uses cloud-console tool with clusterId: "xyz789"]
+
+Successfully retrieved cloud console access for cluster 'xyz789'
+🌐 Cloud console opened in default browser
+📋 Output format: json
+```
+
 ### Security Considerations
 
 - All MCP tools provide read-only access to cluster information
 - The cluster-resource tool only supports safe, read-only operations (get, describe, logs, top, explain)
+- The cloud-console tool provides temporary cloud provider access for debugging and troubleshooting
 - Write operations (create, update, delete, patch, apply) are not supported for security
 - The server runs with the same permissions as your backplane CLI session
+- Cloud console access uses temporary credentials and follows the same security model as the CLI

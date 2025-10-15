@@ -35,7 +35,7 @@ func runMCP(cmd *cobra.Command, argv []string) error {
 	useHTTP, _ := cmd.Flags().GetBool("http")
 	port, _ := cmd.Flags().GetInt("port")
 
-	// Create a server with a single tool.
+	// Create a server with backplane tools.
 	server := mcp.NewServer(&mcp.Implementation{Name: "backplane", Version: "v1.0.0"}, nil)
 
 	// Add the info tool
@@ -61,6 +61,12 @@ func runMCP(cmd *cobra.Command, argv []string) error {
 		Name:        "cluster-resource",
 		Description: "Execute read-only Kubernetes resource operations (get, describe, logs, top, explain) on cluster resources",
 	}, mcptools.BackplaneClusterResource)
+
+	// Add the cloud console tool
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "cloud-console",
+		Description: "Get cloud provider console access for a cluster with temporary credentials",
+	}, mcptools.BackplaneCloudConsole)
 
 	// Choose transport method based on flags
 	if useHTTP {
