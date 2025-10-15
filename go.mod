@@ -14,6 +14,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sts v1.38.6
 	github.com/golang-jwt/jwt/v4 v4.5.2
 	github.com/mitchellh/go-homedir v1.1.0
+	github.com/modelcontextprotocol/go-sdk v1.0.0
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/onsi/ginkgo/v2 v2.26.0
 	github.com/onsi/gomega v1.38.2
@@ -42,10 +43,12 @@ require (
 	github.com/Masterminds/semver/v3 v3.4.0 // indirect
 	github.com/go-task/slim-sprig/v3 v3.0.0 // indirect
 	github.com/go-viper/mapstructure/v2 v2.4.0 // indirect
+	github.com/google/jsonschema-go v0.3.0 // indirect
 	github.com/google/pprof v0.0.0-20250403155104-27863c87afa6 // indirect
 	github.com/openshift-online/ocm-api-model/clientapi v0.0.433 // indirect
 	github.com/openshift-online/ocm-api-model/model v0.0.433 // indirect
 	github.com/openshift-online/ocm-common v0.0.29 // indirect
+	github.com/yosida95/uritemplate/v3 v3.0.2 // indirect
 	go.uber.org/automaxprocs v1.6.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.2 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
