@@ -509,7 +509,7 @@ ocm-backplane mcp
 ```
 
 #### HTTP Transport
-For web-based access and testing:
+For web-based access with MCP clients that support HTTP SSE (Server-Sent Events) streaming:
 ```bash
 # Run on default port 8080
 ocm-backplane mcp --http
@@ -517,6 +517,22 @@ ocm-backplane mcp --http
 # Run on custom port
 ocm-backplane mcp --http --port 3000
 ```
+
+**Important Notes about HTTP Mode:**
+- The HTTP transport uses **Server-Sent Events (SSE)** streaming protocol, not standard REST API
+- It is designed for **programmatic MCP client integration**, not direct curl/HTTP requests
+- To use HTTP mode, your MCP client must support the SSE-based transport mechanism
+- For AI assistant integration (Claude Code, Gemini CLI), use **stdio transport** (default mode without `--http` flag)
+- Direct HTTP POST requests with curl will not work as the server expects SSE streaming protocol
+
+**When to use HTTP transport:**
+- Integrating with web-based MCP clients that support SSE
+- Building custom applications that implement MCP SSE client protocol
+- Testing with MCP client libraries that support HTTP transport
+
+**When NOT to use HTTP transport:**
+- Direct command-line testing with curl (use stdio transport instead)
+- Integration with AI assistants like Claude Desktop or Gemini CLI (they use stdio transport)
 
 ### Integration with AI Assistants
 

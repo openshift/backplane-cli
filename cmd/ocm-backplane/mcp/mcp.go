@@ -70,11 +70,29 @@ func runMCP(cmd *cobra.Command, argv []string) error {
 
 	// Choose transport method based on flags
 	if useHTTP {
-		// Run the server over HTTP using StreamableHTTPHandler
+		// HTTP Transport Mode
+		// This mode runs the MCP server over HTTP using Server-Sent Events (SSE) streaming.
+		//
+		// IMPORTANT: This is NOT a standard REST API endpoint!
+		// - The server uses SSE (Server-Sent Events) for bi-directional communication
+		// - Direct HTTP POST requests with curl will NOT work
+		// - This is designed for MCP clients that support HTTP SSE transport
+		//
+		// Use cases for HTTP transport:
+		// 1. Web-based MCP clients that implement SSE protocol
+		// 2. Custom applications using MCP client libraries with HTTP support
+		// 3. Programmatic integration requiring HTTP-based MCP access
+		//
+		// For AI assistant integration (Claude Desktop, Gemini CLI), use stdio transport instead.
+		// For testing, use the default stdio mode without the --http flag.
+
 		addr := fmt.Sprintf(":%d", port)
 		fmt.Printf("Starting MCP server on HTTP at http://localhost%s\n", addr)
+		fmt.Printf("Note: This uses SSE streaming protocol, not standard REST API.\n")
+		fmt.Printf("Direct curl requests will not work. Use MCP clients that support HTTP transport.\n")
 
 		// Create HTTP handler that returns our server
+		// The StreamableHTTPHandler manages SSE connections and message routing
 		handler := mcp.NewStreamableHTTPHandler(func(r *http.Request) *mcp.Server {
 			return server
 		}, nil)
@@ -92,7 +110,14 @@ func runMCP(cmd *cobra.Command, argv []string) error {
 			return fmt.Errorf("HTTP server error: %w", err)
 		}
 	} else {
-		// Run the server over stdin/stdout, until the client disconnects.
+		// Stdio Transport Mode (Default)
+		// This is the standard mode for AI assistant integration.
+		// The server communicates via stdin/stdout using JSON-RPC protocol.
+		// This is the recommended mode for:
+		// - Claude Desktop integration
+		// - Gemini CLI integration
+		// - Local command-line testing
+		// - Any MCP client that supports stdio transport
 		if err := server.Run(context.Background(), &mcp.StdioTransport{}); err != nil {
 			return err
 		}
