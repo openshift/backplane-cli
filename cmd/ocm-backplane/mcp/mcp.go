@@ -53,7 +53,7 @@ func runMCP(cmd *cobra.Command, argv []string) error {
 	// Add the console tool
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "console",
-		Description: "Access cluster console via backplane CLI, optionally opening in browser",
+		Description: "Start OpenShift web console for a cluster. Automatically opens in browser. Console runs in background.",
 	}, mcptools.BackplaneConsole)
 
 	// Add the cluster resource tool
@@ -65,7 +65,7 @@ func runMCP(cmd *cobra.Command, argv []string) error {
 	// Add the cloud console tool
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "cloud-console",
-		Description: "Get cloud provider console access for a cluster with temporary credentials",
+		Description: "Get cloud provider console access for a cluster. Automatically opens in browser with temporary credentials. Runs in background.",
 	}, mcptools.BackplaneCloudConsole)
 
 	// Choose transport method based on flags

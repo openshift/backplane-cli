@@ -4,24 +4,24 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/console"
 )
 
 type BackplaneConsoleArgs struct {
-	ClusterID     string `json:"clusterId" jsonschema:"description:the cluster ID for backplane console"`
-	OpenInBrowser bool   `json:"openInBrowser,omitempty" jsonschema:"description:whether to automatically open the console URL in browser"`
+	ClusterID string `json:"clusterId" jsonschema:"description:the cluster ID for backplane console"`
 }
 
-func BackplaneConsole(ctx context.Context, request *mcp.CallToolRequest, input BackplaneConsoleArgs) (*mcp.CallToolResult, struct{}, error) {
+func BackplaneConsole(ctx context.Context, request *mcp.CallToolRequest, input BackplaneConsoleArgs) (*mcp.CallToolResult, any, error) {
 	clusterID := strings.TrimSpace(input.ClusterID)
 	if clusterID == "" {
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{
 				&mcp.TextContent{Text: "Error: Cluster ID is required for backplane console access"},
 			},
-		}, struct{}{}, fmt.Errorf("cluster ID cannot be empty")
+		}, nil, fmt.Errorf("cluster ID cannot be empty")
 	}
 
 	// Create console command and configure it
@@ -31,42 +31,51 @@ func BackplaneConsole(ctx context.Context, request *mcp.CallToolRequest, input B
 	args := []string{clusterID}
 	consoleCmd.SetArgs(args)
 
-	// Configure flags if needed
-	if input.OpenInBrowser {
-		err := consoleCmd.Flags().Set("browser", "true")
-		if err != nil {
-			return &mcp.CallToolResult{
-				Content: []mcp.Content{
-					&mcp.TextContent{Text: fmt.Sprintf("Error setting browser flag: %v", err)},
-				},
-			}, struct{}{}, nil
-		}
+	// Always open in browser when using MCP
+	err := consoleCmd.Flags().Set("browser", "true")
+	if err != nil {
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{
+				&mcp.TextContent{Text: fmt.Sprintf("Error setting browser flag: %v", err)},
+			},
+		}, nil, nil
 	}
 
-	// Call the console command's RunE function directly
-	err := consoleCmd.RunE(consoleCmd, args)
+	// Run the console command in a background goroutine to avoid blocking
+	// The console command blocks indefinitely waiting for Ctrl+C
+	errChan := make(chan error, 1)
+	go func() {
+		errChan <- consoleCmd.RunE(consoleCmd, args)
+	}()
 
-	if err != nil {
-		errorMessage := fmt.Sprintf("Failed to access console for cluster '%s'. Error: %v", clusterID, err)
-
+	// Wait briefly to see if there's an immediate error (e.g., login required, invalid cluster)
+	select {
+	case err := <-errChan:
+		// Command failed quickly - likely a configuration/validation error
+		errorMessage := fmt.Sprintf("Failed to start console for cluster '%s'. Error: %v", clusterID, err)
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{
 				&mcp.TextContent{Text: errorMessage},
 			},
-		}, struct{}{}, nil // Return nil error since we're handling it gracefully
+		}, nil, nil
+	case <-time.After(5 * time.Second):
+		// No immediate error - console is starting up successfully
+		// The goroutine continues running in the background
 	}
 
 	// Build success message
 	var successMessage strings.Builder
-	successMessage.WriteString(fmt.Sprintf("Successfully accessed cluster console for '%s'", clusterID))
-
-	if input.OpenInBrowser {
-		successMessage.WriteString("\n🌐 Console opened in default browser")
-	}
+	successMessage.WriteString(fmt.Sprintf("✅ Console is starting for cluster '%s'\n\n", clusterID))
+	successMessage.WriteString("🌐 Console will open in your default browser when ready\n\n")
+	successMessage.WriteString("⚠️  IMPORTANT:\n")
+	successMessage.WriteString("- The console is running in the background\n")
+	successMessage.WriteString("- To stop it, manually stop the containers:\n")
+	successMessage.WriteString(fmt.Sprintf("  podman stop console-%s monitoring-plugin-%s\n", clusterID, clusterID))
+	successMessage.WriteString(fmt.Sprintf("  OR: docker stop console-%s monitoring-plugin-%s", clusterID, clusterID))
 
 	return &mcp.CallToolResult{
 		Content: []mcp.Content{
 			&mcp.TextContent{Text: successMessage.String()},
 		},
-	}, struct{}{}, nil
+	}, nil, nil
 }

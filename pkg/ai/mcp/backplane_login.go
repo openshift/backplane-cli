@@ -13,14 +13,14 @@ type BackplaneLoginArgs struct {
 	ClusterID string `json:"clusterId" jsonschema:"description:the cluster ID for backplane login"`
 }
 
-func BackplaneLogin(ctx context.Context, request *mcp.CallToolRequest, input BackplaneLoginArgs) (*mcp.CallToolResult, struct{}, error) {
+func BackplaneLogin(ctx context.Context, request *mcp.CallToolRequest, input BackplaneLoginArgs) (*mcp.CallToolResult, any, error) {
 	clusterID := strings.TrimSpace(input.ClusterID)
 	if clusterID == "" {
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{
 				&mcp.TextContent{Text: "Error: Cluster ID is required for backplane login"},
 			},
-		}, struct{}{}, fmt.Errorf("cluster ID cannot be empty")
+		}, nil, fmt.Errorf("cluster ID cannot be empty")
 	}
 
 	// Call the runLogin function directly instead of using exec
@@ -33,7 +33,7 @@ func BackplaneLogin(ctx context.Context, request *mcp.CallToolRequest, input Bac
 			Content: []mcp.Content{
 				&mcp.TextContent{Text: errorMessage},
 			},
-		}, struct{}{}, nil // Return nil error since we're handling it gracefully
+		}, nil, nil // Return nil error since we're handling it gracefully
 	}
 
 	// Success case
@@ -43,5 +43,5 @@ func BackplaneLogin(ctx context.Context, request *mcp.CallToolRequest, input Bac
 		Content: []mcp.Content{
 			&mcp.TextContent{Text: successMessage},
 		},
-	}, struct{}{}, nil
+	}, nil, nil
 }

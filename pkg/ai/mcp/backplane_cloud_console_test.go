@@ -41,7 +41,7 @@ var _ = Describe("BackplaneCloudConsole", func() {
 		})
 
 		It("Should trim whitespace from valid cluster ID", func() {
-			input := mcptools.BackplaneCloudConsoleArgs{ClusterID: "  cluster-123  ", OpenInBrowser: false}
+			input := mcptools.BackplaneCloudConsoleArgs{ClusterID: "  cluster-123  "}
 
 			// Note: This test will try to actually access cloud console command
 			// We expect it to fail with authentication/configuration errors, but the cluster ID should be trimmed
@@ -60,136 +60,77 @@ var _ = Describe("BackplaneCloudConsole", func() {
 	Context("Argument structure validation", func() {
 		It("Should accept valid BackplaneCloudConsoleArgs structure", func() {
 			input := mcptools.BackplaneCloudConsoleArgs{
-				ClusterID:     "test-cluster",
-				OpenInBrowser: true,
-				Output:        "json",
-				URL:           "https://custom.backplane.example.com",
+				ClusterID: "test-cluster",
 			}
 
 			// Verify struct fields are accessible
 			Expect(input.ClusterID).To(Equal("test-cluster"))
-			Expect(input.OpenInBrowser).To(BeTrue())
-			Expect(input.Output).To(Equal("json"))
-			Expect(input.URL).To(Equal("https://custom.backplane.example.com"))
-		})
-
-		It("Should handle default values correctly", func() {
-			input := mcptools.BackplaneCloudConsoleArgs{ClusterID: "default-test"}
-
-			// Verify default values
-			Expect(input.ClusterID).To(Equal("default-test"))
-			Expect(input.OpenInBrowser).To(BeFalse()) // Default false
-			Expect(input.Output).To(Equal(""))        // Default empty
-			Expect(input.URL).To(Equal(""))           // Default empty
 		})
 
 		It("Should validate JSON schema tags are present", func() {
 			// Test that the struct works with JSON marshaling/unmarshaling
 			// This ensures MCP can generate proper schemas
 			input := mcptools.BackplaneCloudConsoleArgs{
-				ClusterID:     "schema-test",
-				OpenInBrowser: true,
-				Output:        "text",
-				URL:           "https://test.example.com",
+				ClusterID: "schema-test",
 			}
 
 			Expect(input.ClusterID).To(Equal("schema-test"))
-			Expect(input.OpenInBrowser).To(BeTrue())
-			Expect(input.Output).To(Equal("text"))
-			Expect(input.URL).To(Equal("https://test.example.com"))
 
 			// The struct should have proper JSON tags for MCP integration
 			// We can't easily test the tags at runtime, but this test documents the requirement
 		})
 	})
 
-	Context("Output format handling", func() {
-		It("Should handle different output formats", func() {
-			outputFormats := []string{"text", "json", "yaml"}
+	Context("Cluster ID handling", func() {
+		It("Should handle different cluster ID formats", func() {
+			clusterIDs := []string{
+				"cluster-1",
+				"cluster-with-dashes",
+				"cluster_with_underscores",
+			}
 
-			for _, format := range outputFormats {
+			for _, clusterID := range clusterIDs {
 				input := mcptools.BackplaneCloudConsoleArgs{
-					ClusterID: "format-test-" + format,
-					Output:    format,
+					ClusterID: clusterID,
 				}
 
-				Expect(input.Output).To(Equal(format), "Test case: "+format)
-
-				// Verify struct field access works
-				Expect(input.ClusterID).To(ContainSubstring("format-test"))
+				// Verify the cluster ID is set correctly
+				Expect(input.ClusterID).To(Equal(clusterID))
 			}
 		})
 
-		It("Should handle empty output format (default to json)", func() {
-			input := mcptools.BackplaneCloudConsoleArgs{
-				ClusterID: "default-output-test",
-				Output:    "", // Empty should default to json
+		It("Should handle different cluster IDs", func() {
+			testCases := []string{
+				"test-cluster-1",
+				"test-cluster-2",
+				"test-cluster-3",
 			}
 
-			// Test that empty output is handled
-			Expect(input.Output).To(Equal(""))
-
-			// The function should handle empty output by defaulting to json
-			// This is tested in the implementation, not easily testable in unit tests
-			// without executing the actual command
-		})
-	})
-
-	Context("URL and browser parameter handling", func() {
-		It("Should handle custom URL parameter", func() {
-			customURLs := []string{
-				"https://api.stage.backplane.openshift.com",
-				"https://api.prod.backplane.openshift.com",
-				"https://custom.backplane.example.com:8080",
-				"http://localhost:3000", // For testing
-			}
-
-			for _, url := range customURLs {
+			for _, clusterID := range testCases {
 				input := mcptools.BackplaneCloudConsoleArgs{
-					ClusterID: "url-test",
-					URL:       url,
-				}
-
-				Expect(input.URL).To(Equal(url), "Test case: "+url)
-				Expect(input.ClusterID).To(Equal("url-test"))
-			}
-		})
-
-		It("Should handle browser flag combinations", func() {
-			testCases := []struct {
-				clusterID   string
-				openBrowser bool
-			}{
-				{"browser-false", false},
-				{"browser-true", true},
-				{"browser-default", false}, // default value
-			}
-
-			for _, tc := range testCases {
-				input := mcptools.BackplaneCloudConsoleArgs{
-					ClusterID:     tc.clusterID,
-					OpenInBrowser: tc.openBrowser,
+					ClusterID: clusterID,
 				}
 
 				// Verify struct configuration
-				Expect(input.ClusterID).To(Equal(tc.clusterID))
-				Expect(input.OpenInBrowser).To(Equal(tc.openBrowser))
+				Expect(input.ClusterID).To(Equal(clusterID))
 			}
 		})
 
-		It("Should handle comprehensive parameter combinations", func() {
-			input := mcptools.BackplaneCloudConsoleArgs{
-				ClusterID:     "comprehensive-test-cluster",
-				OpenInBrowser: true,
-				Output:        "json",
-				URL:           "https://comprehensive.test.com",
+		It("Should handle different cluster IDs", func() {
+			clusterIDs := []string{
+				"comprehensive-test-cluster",
+				"another-test-cluster",
+				"yet-another-cluster",
 			}
 
-			// All parameters should be accessible
-			Expect(input.ClusterID).To(Equal("comprehensive-test-cluster"))
-			Expect(input.OpenInBrowser).To(BeTrue())
-			Expect(input.Output).To(Equal("json"))
-			Expect(input.URL).To(Equal("https://comprehensive.test.com"))
+			for _, clusterID := range clusterIDs {
+				input := mcptools.BackplaneCloudConsoleArgs{
+					ClusterID: clusterID,
+				}
+
+				// All parameters should be accessible
+				Expect(input.ClusterID).To(Equal(clusterID))
+			}
 		})
 	})
 
@@ -204,8 +145,8 @@ var _ = Describe("BackplaneCloudConsole", func() {
 			Expect(result).ToNot(BeNil())
 			Expect(result.Content).To(HaveLen(1))
 
-			// Verify output structure (should be empty struct)
-			Expect(output).To(Equal(struct{}{}))
+			// Verify output structure (should be nil)
+			Expect(output).To(BeNil())
 
 			// Verify content type
 			textContent, ok := result.Content[0].(*mcp.TextContent)
@@ -226,10 +167,9 @@ var _ = Describe("BackplaneCloudConsole", func() {
 			Expect(textContent.Text).To(ContainSubstring(testClusterID))
 		})
 
-		It("Should indicate browser behavior in response when requested", func() {
+		It("Should indicate browser behavior in response", func() {
 			input := mcptools.BackplaneCloudConsoleArgs{
-				ClusterID:     "browser-response-test",
-				OpenInBrowser: true,
+				ClusterID: "browser-response-test",
 			}
 
 			result, _, err := mcptools.BackplaneCloudConsole(context.Background(), &mcp.CallToolRequest{}, input)
@@ -246,29 +186,27 @@ var _ = Describe("BackplaneCloudConsole", func() {
 			Expect(containsBrowserRef).To(BeTrue())
 		})
 
-		It("Should validate output format parameter handling", func() {
-			formats := []string{"json", "text", "yaml"}
+		It("Should validate cluster ID parameter handling", func() {
+			clusterIDs := []string{"cluster-test-1", "cluster-test-2", "cluster-test-3"}
 
-			for _, format := range formats {
+			for _, clusterID := range clusterIDs {
 				input := mcptools.BackplaneCloudConsoleArgs{
-					ClusterID: "output-format-test",
-					Output:    format,
+					ClusterID: clusterID,
 				}
 
 				// Test struct field access
-				Expect(input.Output).To(Equal(format), "Test case: "+format)
-				Expect(input.ClusterID).To(Equal("output-format-test"))
+				Expect(input.ClusterID).To(Equal(clusterID), "Test case: "+clusterID)
 
 				result, _, err := mcptools.BackplaneCloudConsole(context.Background(), &mcp.CallToolRequest{}, input)
 
 				// Should handle gracefully (may fail due to cluster not existing)
-				Expect(err).To(BeNil(), "Test case: "+format)
-				Expect(result).ToNot(BeNil(), "Test case: "+format)
+				Expect(err).To(BeNil(), "Test case: "+clusterID)
+				Expect(result).ToNot(BeNil(), "Test case: "+clusterID)
 
 				textContent := result.Content[0].(*mcp.TextContent)
-				Expect(textContent.Text).ToNot(BeEmpty(), "Test case: "+format)
+				Expect(textContent.Text).ToNot(BeEmpty(), "Test case: "+clusterID)
 				// Response should mention the cluster ID regardless of success/failure
-				Expect(textContent.Text).To(ContainSubstring("output-format-test"), "Test case: "+format)
+				Expect(textContent.Text).To(ContainSubstring(clusterID), "Test case: "+clusterID)
 			}
 		})
 	})
@@ -300,23 +238,20 @@ var _ = Describe("BackplaneCloudConsole", func() {
 			}
 		})
 
-		It("Should handle various URL formats", func() {
-			urlFormats := []string{
-				"https://api.backplane.example.com",
-				"http://localhost:8080",
-				"https://custom.domain.com:9443/api/v1",
-				"https://stage.backplane.openshift.com",
+		It("Should handle different cluster IDs for testing", func() {
+			clusterIDs := []string{
+				"cluster-test-1",
+				"cluster-test-2",
+				"cluster-test-3",
 			}
 
-			for _, url := range urlFormats {
+			for _, clusterID := range clusterIDs {
 				input := mcptools.BackplaneCloudConsoleArgs{
-					ClusterID: "url-test",
-					URL:       url,
+					ClusterID: clusterID,
 				}
 
 				// Test struct field access
-				Expect(input.URL).To(Equal(url), "Test case: "+url)
-				Expect(input.ClusterID).To(Equal("url-test"))
+				Expect(input.ClusterID).To(Equal(clusterID))
 			}
 		})
 
@@ -340,16 +275,13 @@ var _ = Describe("BackplaneCloudConsole", func() {
 	})
 
 	Context("Parameter combinations", func() {
-		It("Should handle minimal parameters (cluster ID only)", func() {
+		It("Should handle cluster ID parameter", func() {
 			input := mcptools.BackplaneCloudConsoleArgs{
 				ClusterID: "minimal-test",
 			}
 
-			// Verify defaults
+			// Verify cluster ID
 			Expect(input.ClusterID).To(Equal("minimal-test"))
-			Expect(input.OpenInBrowser).To(BeFalse()) // default
-			Expect(input.Output).To(Equal(""))        // default
-			Expect(input.URL).To(Equal(""))           // default
 
 			// Should pass basic validation
 			trimmedID := strings.TrimSpace(input.ClusterID)
@@ -370,39 +302,10 @@ var _ = Describe("BackplaneCloudConsole", func() {
 
 			for _, tc := range testCases {
 				input := mcptools.BackplaneCloudConsoleArgs{
-					ClusterID:     "combo-test",
-					Output:        tc.output,
-					OpenInBrowser: tc.browser,
+					ClusterID: "combo-test-" + tc.description,
 				}
 
-				Expect(input.Output).To(Equal(tc.output), tc.description)
-				Expect(input.OpenInBrowser).To(Equal(tc.browser), tc.description)
-			}
-		})
-
-		It("Should handle URL override with various combinations", func() {
-			testCases := []struct {
-				url     string
-				browser bool
-				output  string
-			}{
-				{"https://custom.com", true, "json"},
-				{"http://localhost:8080", false, "text"},
-				{"https://test.example.com", true, "yaml"},
-				{"", false, ""}, // No URL override
-			}
-
-			for i, tc := range testCases {
-				input := mcptools.BackplaneCloudConsoleArgs{
-					ClusterID:     "url-combo-test",
-					URL:           tc.url,
-					OpenInBrowser: tc.browser,
-					Output:        tc.output,
-				}
-
-				Expect(input.URL).To(Equal(tc.url), "Test case %d", i)
-				Expect(input.OpenInBrowser).To(Equal(tc.browser), "Test case %d", i)
-				Expect(input.Output).To(Equal(tc.output), "Test case %d", i)
+				Expect(input.ClusterID).To(ContainSubstring("combo-test"), tc.description)
 			}
 		})
 	})
@@ -418,8 +321,8 @@ var _ = Describe("BackplaneCloudConsole", func() {
 			Expect(result).ToNot(BeNil())
 			Expect(result.Content).To(HaveLen(1))
 
-			// Verify output structure (should be empty struct)
-			Expect(output).To(Equal(struct{}{}))
+			// Verify output structure (should be nil)
+			Expect(output).To(BeNil())
 
 			// Verify content type
 			textContent, ok := result.Content[0].(*mcp.TextContent)
@@ -430,31 +333,22 @@ var _ = Describe("BackplaneCloudConsole", func() {
 		It("Should have proper JSON schema structure for MCP integration", func() {
 			// Test the input argument structure for MCP compatibility
 			input := mcptools.BackplaneCloudConsoleArgs{
-				ClusterID:     "schema-validation-test",
-				OpenInBrowser: true,
-				Output:        "json",
-				URL:           "https://schema.test.com",
+				ClusterID: "schema-validation-test",
 			}
 
 			// Verify all fields are accessible and properly typed
 			Expect(input.ClusterID).To(BeAssignableToTypeOf(""))
-			Expect(input.OpenInBrowser).To(BeAssignableToTypeOf(true))
-			Expect(input.Output).To(BeAssignableToTypeOf(""))
-			Expect(input.URL).To(BeAssignableToTypeOf(""))
 
 			// The struct should work with MCP's JSON schema generation
 			Expect(input.ClusterID).To(Equal("schema-validation-test"))
-			Expect(input.OpenInBrowser).To(BeTrue())
-			Expect(input.Output).To(Equal("json"))
-			Expect(input.URL).To(Equal("https://schema.test.com"))
 		})
 	})
 
 	Context("Integration behavior", func() {
 		It("Should create cloud console command instance for each call", func() {
 			// Test that each call handles different parameters independently
-			input1 := mcptools.BackplaneCloudConsoleArgs{ClusterID: "call-1", Output: "text"}
-			input2 := mcptools.BackplaneCloudConsoleArgs{ClusterID: "call-2", Output: "json", OpenInBrowser: true}
+			input1 := mcptools.BackplaneCloudConsoleArgs{ClusterID: "call-1"}
+			input2 := mcptools.BackplaneCloudConsoleArgs{ClusterID: "call-2"}
 
 			// First call
 			result1, _, err1 := mcptools.BackplaneCloudConsole(context.Background(), &mcp.CallToolRequest{}, input1)
@@ -527,10 +421,7 @@ var _ = Describe("BackplaneCloudConsole", func() {
 
 			for _, scenario := range scenarios {
 				input := mcptools.BackplaneCloudConsoleArgs{
-					ClusterID:     scenario.clusterID,
-					OpenInBrowser: scenario.browser,
-					Output:        scenario.output,
-					URL:           scenario.url,
+					ClusterID: scenario.clusterID,
 				}
 
 				result, _, err := mcptools.BackplaneCloudConsole(context.Background(), &mcp.CallToolRequest{}, input)
