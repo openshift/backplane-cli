@@ -14,14 +14,14 @@ type BackplaneConsoleArgs struct {
 	OpenInBrowser bool   `json:"openInBrowser,omitempty" jsonschema:"description:whether to automatically open the console URL in browser"`
 }
 
-func BackplaneConsole(ctx context.Context, request *mcp.CallToolRequest, input BackplaneConsoleArgs) (*mcp.CallToolResult, struct{}, error) {
+func BackplaneConsole(ctx context.Context, request *mcp.CallToolRequest, input BackplaneConsoleArgs) (*mcp.CallToolResult, any, error) {
 	clusterID := strings.TrimSpace(input.ClusterID)
 	if clusterID == "" {
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{
 				&mcp.TextContent{Text: "Error: Cluster ID is required for backplane console access"},
 			},
-		}, struct{}{}, fmt.Errorf("cluster ID cannot be empty")
+		}, nil, fmt.Errorf("cluster ID cannot be empty")
 	}
 
 	// Create console command and configure it
@@ -39,7 +39,7 @@ func BackplaneConsole(ctx context.Context, request *mcp.CallToolRequest, input B
 				Content: []mcp.Content{
 					&mcp.TextContent{Text: fmt.Sprintf("Error setting browser flag: %v", err)},
 				},
-			}, struct{}{}, nil
+			}, nil, nil
 		}
 	}
 
@@ -53,7 +53,7 @@ func BackplaneConsole(ctx context.Context, request *mcp.CallToolRequest, input B
 			Content: []mcp.Content{
 				&mcp.TextContent{Text: errorMessage},
 			},
-		}, struct{}{}, nil // Return nil error since we're handling it gracefully
+		}, nil, nil // Return nil error since we're handling it gracefully
 	}
 
 	// Build success message
@@ -68,5 +68,5 @@ func BackplaneConsole(ctx context.Context, request *mcp.CallToolRequest, input B
 		Content: []mcp.Content{
 			&mcp.TextContent{Text: successMessage.String()},
 		},
-	}, struct{}{}, nil
+	}, nil, nil
 }

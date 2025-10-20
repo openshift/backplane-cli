@@ -194,8 +194,8 @@ var _ = Describe("BackplaneLogin", func() {
 			Expect(result).ToNot(BeNil())
 			Expect(result.Content).To(HaveLen(1))
 
-			// Verify output structure (should be empty struct)
-			Expect(output).To(Equal(struct{}{}))
+			// Verify output structure (should be nil)
+			Expect(output).To(BeNil())
 
 			// Verify content type
 			textContent, ok := result.Content[0].(*mcp.TextContent)
@@ -218,8 +218,8 @@ var _ = Describe("BackplaneLogin", func() {
 			Expect(result).ToNot(BeNil())
 			Expect(result.Content).To(HaveLen(1))
 
-			// Verify output structure (should be empty struct)
-			Expect(output).To(Equal(struct{}{}))
+			// Verify output structure (should be nil)
+			Expect(output).To(BeNil())
 
 			// Verify content type
 			textContent, ok := result.Content[0].(*mcp.TextContent)

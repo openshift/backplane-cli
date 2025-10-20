@@ -80,7 +80,7 @@ var _ = Describe("MCP Tool Integration", func() {
 			// Verify MCP integration works correctly
 			Expect(err).To(BeNil())
 			Expect(result).ToNot(BeNil())
-			Expect(output).To(Equal(struct{}{}))
+			Expect(output).To(BeNil())
 
 			// Verify response follows MCP protocol
 			Expect(result.Content).To(HaveLen(1))
@@ -433,7 +433,7 @@ var _ = Describe("MCP Tool Integration", func() {
 
 			Expect(err).To(BeNil())
 			Expect(loginResult).ToNot(BeNil())
-			Expect(loginOutput).To(Equal(struct{}{})) // Login returns empty struct
+			Expect(loginOutput).To(BeNil()) // Login returns nil
 			Expect(loginResult.Content).To(HaveLen(1))
 			_, ok := loginResult.Content[0].(*mcp.TextContent)
 			Expect(ok).To(BeTrue())
@@ -459,7 +459,7 @@ var _ = Describe("MCP Tool Integration", func() {
 
 			Expect(err).To(BeNil()) // Should pass validation
 			Expect(resourceResult).ToNot(BeNil())
-			Expect(resourceOutput).To(Equal(struct{}{})) // Returns empty struct
+			Expect(resourceOutput).To(BeNil()) // Returns nil
 			Expect(resourceResult.Content).To(HaveLen(1))
 			_, ok = resourceResult.Content[0].(*mcp.TextContent)
 			Expect(ok).To(BeTrue())

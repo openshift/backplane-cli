@@ -28,14 +28,14 @@ type BackplaneClusterResourceArgs struct {
 	Raw           string `json:"raw,omitempty" jsonschema:"description:raw oc read arguments to pass directly"`
 }
 
-func BackplaneClusterResource(ctx context.Context, request *mcp.CallToolRequest, input BackplaneClusterResourceArgs) (*mcp.CallToolResult, struct{}, error) {
+func BackplaneClusterResource(ctx context.Context, request *mcp.CallToolRequest, input BackplaneClusterResourceArgs) (*mcp.CallToolResult, any, error) {
 	action := strings.TrimSpace(input.Action)
 	if action == "" {
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{
 				&mcp.TextContent{Text: "Error: Action is required for cluster resource operations"},
 			},
-		}, struct{}{}, fmt.Errorf("action cannot be empty")
+		}, nil, fmt.Errorf("action cannot be empty")
 	}
 
 	// Validate that only read actions are allowed
@@ -53,7 +53,7 @@ func BackplaneClusterResource(ctx context.Context, request *mcp.CallToolRequest,
 			Content: []mcp.Content{
 				&mcp.TextContent{Text: fmt.Sprintf("Error: Action '%s' is not allowed. Only read actions are supported: %s", action, strings.Join(allowedActions, ", "))},
 			},
-		}, struct{}{}, fmt.Errorf("unsupported action: %s", action)
+		}, nil, fmt.Errorf("unsupported action: %s", action)
 	}
 
 	// Build oc command arguments
@@ -96,7 +96,7 @@ func BackplaneClusterResource(ctx context.Context, request *mcp.CallToolRequest,
 			Content: []mcp.Content{
 				&mcp.TextContent{Text: errorMessage},
 			},
-		}, struct{}{}, nil // Return nil error since we're handling it gracefully
+		}, nil, nil // Return nil error since we're handling it gracefully
 	}
 
 	// Build success message based on action
@@ -180,7 +180,7 @@ func BackplaneClusterResource(ctx context.Context, request *mcp.CallToolRequest,
 		Content: []mcp.Content{
 			&mcp.TextContent{Text: successMessage.String()},
 		},
-	}, struct{}{}, nil
+	}, nil, nil
 }
 
 func buildOcCommand(input BackplaneClusterResourceArgs) []string {

@@ -16,14 +16,14 @@ type BackplaneCloudConsoleArgs struct {
 	URL           string `json:"url,omitempty" jsonschema:"description:override backplane API URL (otherwise use env)"`
 }
 
-func BackplaneCloudConsole(ctx context.Context, request *mcp.CallToolRequest, input BackplaneCloudConsoleArgs) (*mcp.CallToolResult, struct{}, error) {
+func BackplaneCloudConsole(ctx context.Context, request *mcp.CallToolRequest, input BackplaneCloudConsoleArgs) (*mcp.CallToolResult, any, error) {
 	clusterID := strings.TrimSpace(input.ClusterID)
 	if clusterID == "" {
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{
 				&mcp.TextContent{Text: "Error: Cluster ID is required for backplane cloud console"},
 			},
-		}, struct{}{}, fmt.Errorf("cluster ID cannot be empty")
+		}, nil, fmt.Errorf("cluster ID cannot be empty")
 	}
 
 	// Create cloud console command and configure it
@@ -41,7 +41,7 @@ func BackplaneCloudConsole(ctx context.Context, request *mcp.CallToolRequest, in
 				Content: []mcp.Content{
 					&mcp.TextContent{Text: fmt.Sprintf("Error setting browser flag: %v", err)},
 				},
-			}, struct{}{}, nil
+			}, nil, nil
 		}
 	}
 
@@ -56,7 +56,7 @@ func BackplaneCloudConsole(ctx context.Context, request *mcp.CallToolRequest, in
 			Content: []mcp.Content{
 				&mcp.TextContent{Text: fmt.Sprintf("Error setting output flag: %v", err)},
 			},
-		}, struct{}{}, nil
+		}, nil, nil
 	}
 
 	// Set URL if provided
@@ -67,7 +67,7 @@ func BackplaneCloudConsole(ctx context.Context, request *mcp.CallToolRequest, in
 				Content: []mcp.Content{
 					&mcp.TextContent{Text: fmt.Sprintf("Error setting URL flag: %v", err)},
 				},
-			}, struct{}{}, nil
+			}, nil, nil
 		}
 	}
 
@@ -81,7 +81,7 @@ func BackplaneCloudConsole(ctx context.Context, request *mcp.CallToolRequest, in
 			Content: []mcp.Content{
 				&mcp.TextContent{Text: errorMessage},
 			},
-		}, struct{}{}, nil
+		}, nil, nil
 	}
 
 	// Build success message
@@ -100,5 +100,5 @@ func BackplaneCloudConsole(ctx context.Context, request *mcp.CallToolRequest, in
 		Content: []mcp.Content{
 			&mcp.TextContent{Text: successMessage.String()},
 		},
-	}, struct{}{}, nil
+	}, nil, nil
 }
