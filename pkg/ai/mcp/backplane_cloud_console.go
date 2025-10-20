@@ -4,16 +4,14 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/cloud"
 )
 
 type BackplaneCloudConsoleArgs struct {
-	ClusterID     string `json:"clusterId" jsonschema:"description:the cluster ID for backplane cloud console"`
-	OpenInBrowser bool   `json:"openInBrowser,omitempty" jsonschema:"description:whether to open the cloud console URL in a browser"`
-	Output        string `json:"output,omitempty" jsonschema:"description:output format, e.g. 'text' or 'json'"`
-	URL           string `json:"url,omitempty" jsonschema:"description:override backplane API URL (otherwise use env)"`
+	ClusterID string `json:"clusterId" jsonschema:"description:the cluster ID for backplane cloud console"`
 }
 
 func BackplaneCloudConsole(ctx context.Context, request *mcp.CallToolRequest, input BackplaneCloudConsoleArgs) (*mcp.CallToolResult, any, error) {
@@ -33,24 +31,18 @@ func BackplaneCloudConsole(ctx context.Context, request *mcp.CallToolRequest, in
 	args := []string{clusterID}
 	consoleCmd.SetArgs(args)
 
-	// Configure flags
-	if input.OpenInBrowser {
-		err := consoleCmd.Flags().Set("browser", "true")
-		if err != nil {
-			return &mcp.CallToolResult{
-				Content: []mcp.Content{
-					&mcp.TextContent{Text: fmt.Sprintf("Error setting browser flag: %v", err)},
-				},
-			}, nil, nil
-		}
+	// Always open in browser when using MCP
+	err := consoleCmd.Flags().Set("browser", "true")
+	if err != nil {
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{
+				&mcp.TextContent{Text: fmt.Sprintf("Error setting browser flag: %v", err)},
+			},
+		}, nil, nil
 	}
 
-	// Set output format (default to json for parsing)
-	output := input.Output
-	if output == "" {
-		output = "json"
-	}
-	err := consoleCmd.Flags().Set("output", output)
+	// Set output format to json for better parsing
+	err = consoleCmd.Flags().Set("output", "json")
 	if err != nil {
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{
@@ -59,42 +51,32 @@ func BackplaneCloudConsole(ctx context.Context, request *mcp.CallToolRequest, in
 		}, nil, nil
 	}
 
-	// Set URL if provided
-	if input.URL != "" {
-		err := consoleCmd.Flags().Set("url", input.URL)
-		if err != nil {
-			return &mcp.CallToolResult{
-				Content: []mcp.Content{
-					&mcp.TextContent{Text: fmt.Sprintf("Error setting URL flag: %v", err)},
-				},
-			}, nil, nil
-		}
-	}
+	// Run the cloud console command in a background goroutine to avoid blocking
+	errChan := make(chan error, 1)
+	go func() {
+		errChan <- consoleCmd.RunE(consoleCmd, args)
+	}()
 
-	// Call the cloud console command's RunE function directly
-	err = consoleCmd.RunE(consoleCmd, args)
-
-	if err != nil {
+	// Wait briefly to see if there's an immediate error (e.g., login required, invalid cluster)
+	select {
+	case err := <-errChan:
+		// Command failed quickly - likely a configuration/validation error
 		errorMessage := fmt.Sprintf("Failed to get cloud console for cluster '%s'. Error: %v", clusterID, err)
-
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{
 				&mcp.TextContent{Text: errorMessage},
 			},
 		}, nil, nil
+	case <-time.After(3 * time.Second):
+		// No immediate error - cloud console is starting up successfully
+		// The goroutine continues running in the background
 	}
 
 	// Build success message
 	var successMessage strings.Builder
-	successMessage.WriteString(fmt.Sprintf("Successfully retrieved cloud console access for cluster '%s'", clusterID))
-
-	if input.OpenInBrowser {
-		successMessage.WriteString("\n🌐 Cloud console opened in default browser")
-	}
-
-	if output != "text" {
-		successMessage.WriteString(fmt.Sprintf("\n📋 Output format: %s", output))
-	}
+	successMessage.WriteString(fmt.Sprintf("✅ Cloud console access retrieved for cluster '%s'\n\n", clusterID))
+	successMessage.WriteString("🌐 Cloud console will open in your default browser when ready\n")
+	successMessage.WriteString("\n⚠️  Note: The cloud console command is running in the background")
 
 	return &mcp.CallToolResult{
 		Content: []mcp.Content{

@@ -44,32 +44,21 @@ var _ = Describe("BackplaneConsole", func() {
 	Context("Argument structure validation", func() {
 		It("Should accept valid BackplaneConsoleArgs structure", func() {
 			input := mcptools.BackplaneConsoleArgs{
-				ClusterID:     "test-cluster",
-				OpenInBrowser: true,
+				ClusterID: "test-cluster",
 			}
 
 			// Verify struct fields are accessible
 			Expect(input.ClusterID).To(Equal("test-cluster"))
-			Expect(input.OpenInBrowser).To(BeTrue())
-		})
-
-		It("Should handle default OpenInBrowser value", func() {
-			input := mcptools.BackplaneConsoleArgs{ClusterID: "default-test"}
-
-			// OpenInBrowser should default to false
-			Expect(input.OpenInBrowser).To(BeFalse())
 		})
 
 		It("Should validate JSON schema tags are present", func() {
 			// Test that the struct works with JSON marshaling/unmarshaling
 			// This ensures MCP can generate proper schemas
 			input := mcptools.BackplaneConsoleArgs{
-				ClusterID:     "schema-test",
-				OpenInBrowser: true,
+				ClusterID: "schema-test",
 			}
 
 			Expect(input.ClusterID).To(Equal("schema-test"))
-			Expect(input.OpenInBrowser).To(BeTrue())
 
 			// The struct should have proper JSON tags for MCP integration
 			// We can't easily test the tags at runtime, but this test documents the requirement
@@ -102,25 +91,20 @@ var _ = Describe("BackplaneConsole", func() {
 			}
 		})
 
-		It("Should handle browser flag combinations", func() {
-			testCases := []struct {
-				clusterID   string
-				openBrowser bool
-			}{
-				{"browser-false", false},
-				{"browser-true", true},
-				{"no-browser-specified", false}, // default
+		It("Should handle different cluster IDs", func() {
+			testCases := []string{
+				"cluster-1",
+				"cluster-2",
+				"cluster-3",
 			}
 
-			for _, tc := range testCases {
+			for _, clusterID := range testCases {
 				input := mcptools.BackplaneConsoleArgs{
-					ClusterID:     tc.clusterID,
-					OpenInBrowser: tc.openBrowser,
+					ClusterID: clusterID,
 				}
 
 				// Verify struct configuration
-				Expect(input.ClusterID).To(Equal(tc.clusterID))
-				Expect(input.OpenInBrowser).To(Equal(tc.openBrowser))
+				Expect(input.ClusterID).To(Equal(clusterID))
 			}
 		})
 
@@ -167,17 +151,14 @@ var _ = Describe("BackplaneConsole", func() {
 		It("Should have proper JSON schema structure for MCP integration", func() {
 			// Test the input argument structure for MCP compatibility
 			input := mcptools.BackplaneConsoleArgs{
-				ClusterID:     "schema-validation-test",
-				OpenInBrowser: true,
+				ClusterID: "schema-validation-test",
 			}
 
 			// Verify all fields are accessible and properly typed
 			Expect(input.ClusterID).To(BeAssignableToTypeOf(""))
-			Expect(input.OpenInBrowser).To(BeAssignableToTypeOf(true))
 
 			// The struct should work with MCP's JSON schema generation
 			Expect(input.ClusterID).To(Equal("schema-validation-test"))
-			Expect(input.OpenInBrowser).To(BeTrue())
 		})
 	})
 
