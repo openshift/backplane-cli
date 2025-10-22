@@ -42,20 +42,28 @@ $ git fetch upstream
 $ git log $(git describe --tags --abbrev=0 upstream/main)..upstream/main --pretty=format:"%h %s" |
 gawk '
 {
-  # Extract the commit message without the hash and ticket prefix
-  # Pattern: hash + space + [ticket] + space + type + ":"
-  # Example: "a1b2c3d [PROJ-123] feat: some message"
+  hash = $1
+  msg = substr($0, index($0, $2))
 
-  # Remove the hash and space
-  msg = substr($0, index($0,$2))
-
-  # Regex to extract type: after "] " followed by letters, colon
-  if (match(msg, /\] *([a-z]+):/, m)) {
-    type = m[1]
-    groups[type] = groups[type] "\n- " $0
-  } else {
-    groups["others"] = groups["others"] "\n- " $0
+  # Skip merge commits (no real code changes)
+  if (msg ~ /^Merge pull request/) {
+    next
   }
+
+  # Remove [TICKET] brackets → TICKET
+  gsub(/\[([A-Za-z0-9_-]+)\]/, "\\1", msg)
+
+  # Detect type (feat, fix, chore, etc.)
+  if (match(msg, /(^|\s)([a-z]+)(\([^)]*\))?:/, m)) {
+    type = m[2]
+  } else if (msg ~ /^Bump / || msg ~ / bump /) {
+    # Bot-style dependency bumps → Chore
+    type = "chore"
+  } else {
+    type = "others"
+  }
+
+  groups[type] = groups[type] "\n- " hash " " msg
 }
 END {
   order = "feat fix chore docs test others"
