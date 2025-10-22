@@ -14,6 +14,7 @@ const (
 	BackplaneAWSProxyEnvName   = "BACKPLANE_AWS_PROXY"
 	BackplaneConfigPathEnvName = "BACKPLANE_CONFIG"
 	BackplaneKubeconfigEnvName = "KUBECONFIG"
+	BackplaneJiraAPITokenEnvName = "JIRA_API_TOKEN" //nolint:gosec
 
 	// Configuration
 	BackplaneConfigDefaultFilePath = ".config/backplane"

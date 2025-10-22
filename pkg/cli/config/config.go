@@ -208,7 +208,11 @@ func GetBackplaneConfiguration() (bpConfig BackplaneConfiguration, err error) {
 	bpConfig.JiraBaseURL = viper.GetString(jiraBaseURLKey)
 
 	// JIRA token is optional
-	bpConfig.JiraToken = viper.GetString(JiraTokenViperKey)
+	// JIRA_API_TOKEN env var takes precedence, fallback to config file
+	bpConfig.JiraToken = os.Getenv(info.BackplaneJiraAPITokenEnvName)
+	if bpConfig.JiraToken == "" {
+		bpConfig.JiraToken = viper.GetString(JiraTokenViperKey)
+	}
 
 	// JIRA config for access requests is optional as there is a default value
 	err = viper.UnmarshalKey(JiraConfigForAccessRequestsKey, &bpConfig.JiraConfigForAccessRequests)
