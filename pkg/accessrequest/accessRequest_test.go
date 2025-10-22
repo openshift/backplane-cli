@@ -43,13 +43,13 @@ func (matcher IssueMatcher) String() string {
 func writeConfig(jsonData []byte) {
 	tempDir := os.TempDir()
 	bpConfigPath := filepath.Join(tempDir, "mock.json")
-	tempFile, err := os.Create(bpConfigPath)
+	tempFile, err := os.Create(bpConfigPath) //nolint:gosec
 	Expect(err).To(BeNil())
 
 	_, err = tempFile.Write(jsonData)
 	Expect(err).To(BeNil())
 
-	os.Setenv("BACKPLANE_CONFIG", bpConfigPath)
+	_ = os.Setenv("BACKPLANE_CONFIG", bpConfigPath)
 }
 
 var _ = Describe(testDesc, func() {

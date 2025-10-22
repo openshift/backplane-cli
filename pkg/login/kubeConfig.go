@@ -66,7 +66,7 @@ func CreateClusterKubeConfig(clusterID string, kubeConfig api.Config) (string, e
 	// Create cluster folder
 	path := filepath.Join(basePath, clusterID)
 	if _, err = os.Stat(path); errors.Is(err, os.ErrNotExist) {
-		err := os.MkdirAll(path, os.ModePerm)
+		err := os.MkdirAll(path, os.ModePerm) //nolint:gosec
 		if err != nil {
 			return "", err
 		}
@@ -74,12 +74,12 @@ func CreateClusterKubeConfig(clusterID string, kubeConfig api.Config) (string, e
 
 	// Write kube config
 	filename := filepath.Join(path, "config")
-	f, err := os.Create(filename)
+	f, err := os.Create(filename) //nolint:gosec
 	if err != nil {
 		return "", err
 	}
 	defer func() {
-		f.Close()
+		_ = f.Close()
 	}()
 
 	err = clientcmd.WriteToFile(kubeConfig, f.Name())
@@ -108,7 +108,7 @@ func RemoveClusterKubeConfig(clusterID string) error {
 
 	_, err = os.Stat(path)
 	if !errors.Is(err, os.ErrNotExist) {
-		os.RemoveAll(path)
+		_ = os.RemoveAll(path)
 	}
 	return nil
 }

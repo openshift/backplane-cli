@@ -79,12 +79,12 @@ var _ = Describe("list script command", func() {
 		}
 		fakeResp.Header.Add("Content-Type", "json")
 
-		os.Setenv(info.BackplaneURLEnvName, proxyURI)
+		_ = os.Setenv(info.BackplaneURLEnvName, proxyURI)
 		ocmEnv, _ = cmv1.NewEnvironment().BackplaneURL("https://dummy.api").Build()
 	})
 
 	AfterEach(func() {
-		os.Setenv(info.BackplaneURLEnvName, "")
+		_ = os.Setenv(info.BackplaneURLEnvName, "")
 		utils.RemoveTempKubeConfig()
 		mockCtrl.Finish()
 	})

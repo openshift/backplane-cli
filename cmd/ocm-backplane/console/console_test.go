@@ -52,7 +52,7 @@ var _ = Describe("console command", func() {
 		mockEngine = ceMock.NewMockContainerEngine(mockCtrl)
 		ocm.DefaultOCMInterface = mockOcmInterface
 
-		os.Setenv("CONTAINER_ENGINE", PODMAN)
+		_ = os.Setenv("CONTAINER_ENGINE", PODMAN)
 
 		pullSecret = "testpullsecret"
 		clusterID = "cluster123"
@@ -95,7 +95,7 @@ var _ = Describe("console command", func() {
 	})
 
 	AfterEach(func() {
-		os.Setenv("HTTPS_PROXY", "")
+		_ = os.Setenv("HTTPS_PROXY", "")
 		mockCtrl.Finish()
 		utils.RemoveTempKubeConfig()
 	})
@@ -136,27 +136,27 @@ var _ = Describe("console command", func() {
 	Context("when console command executes", func() {
 		It("should read the openbrowser variable from environment variables and it is true", func() {
 			setupConfig()
-			os.Setenv(EnvBrowserDefault, "true")
+			_ = os.Setenv(EnvBrowserDefault, "true")
 			o := newConsoleOptions()
 			err := o.determineOpenBrowser()
-			os.Setenv(EnvBrowserDefault, "")
+			_ = os.Setenv(EnvBrowserDefault, "")
 			Expect(err).To(BeNil())
 			Expect(o.openBrowser).To(BeTrue())
 		})
 
 		It("should read the openbrowser variable from environment variables and it is false", func() {
 			setupConfig()
-			os.Setenv(EnvBrowserDefault, "false")
+			_ = os.Setenv(EnvBrowserDefault, "false")
 			o := newConsoleOptions()
 			err := o.determineOpenBrowser()
-			os.Setenv(EnvBrowserDefault, "")
+			_ = os.Setenv(EnvBrowserDefault, "")
 			Expect(err).To(BeNil())
 			Expect(o.openBrowser).To(BeFalse())
 		})
 
 		It("should read the openbrowser variable from environment variables and we it is undefined", func() {
 			setupConfig()
-			os.Setenv(EnvBrowserDefault, "")
+			_ = os.Setenv(EnvBrowserDefault, "")
 			o := newConsoleOptions()
 			err := o.determineOpenBrowser()
 			Expect(err).To(MatchError(ContainSubstring("unable to parse boolean value from environment variable")))
@@ -453,7 +453,7 @@ var _ = Describe("console command", func() {
 				OpenshiftVersion("4.13.0").Build()
 
 			// Set Browser opening to false
-			os.Setenv("BACKPLANE_DEFAULT_OPEN_BROWSER", "FALSE")
+			_ = os.Setenv("BACKPLANE_DEFAULT_OPEN_BROWSER", "FALSE")
 			setupConfig()
 
 			// Set some mock varibles,
@@ -483,7 +483,7 @@ var _ = Describe("console command", func() {
 			o.runContainers(ce, errs)
 
 			Expect(errs).To(BeEmpty())
-			os.Setenv("BACKPLANE_DEFAULT_OPEN_BROWSER", "")
+			_ = os.Setenv("BACKPLANE_DEFAULT_OPEN_BROWSER", "")
 			setPath(oldpath)
 		})
 	})
@@ -631,7 +631,7 @@ func createPathDocker() string {
 func createPath(binary string) string {
 	oldpath := os.Getenv("PATH")
 	setPath(oldpath + ":/tmp/tmp_bin")
-	err := os.MkdirAll("/tmp/tmp_bin", 0777)
+	err := os.MkdirAll("/tmp/tmp_bin", 0777) //nolint:gosec
 	if err != nil {
 		fmt.Printf("Failed to create the directory: %v\n", err)
 	}
@@ -642,7 +642,7 @@ func createPath(binary string) string {
 	if err := os.Rename(dFile.Name(), "/tmp/tmp_bin/"+binary); err != nil {
 		fmt.Printf("Failed to rename the file: %v\n", err)
 	}
-	if err := os.Chmod("/tmp/tmp_bin/"+binary, 0777); err != nil {
+	if err := os.Chmod("/tmp/tmp_bin/"+binary, 0777); err != nil { //nolint:gosec
 		fmt.Printf("Failed to chmod the file: %v\n", err)
 	}
 	return oldpath

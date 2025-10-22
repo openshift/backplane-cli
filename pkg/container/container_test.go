@@ -33,7 +33,7 @@ var _ = Describe("console container implementation", func() {
 		mockOcmInterface = ocmMock.NewMockOCMInterface(mockCtrl)
 		ocm.DefaultOCMInterface = mockOcmInterface
 
-		os.Setenv("CONTAINER_ENGINE", PODMAN)
+		_ = os.Setenv("CONTAINER_ENGINE", PODMAN)
 
 		capturedCommands = nil
 		createCommand = func(prog string, args ...string) *exec.Cmd {
@@ -58,7 +58,7 @@ var _ = Describe("console container implementation", func() {
 	})
 
 	AfterEach(func() {
-		os.Setenv("HTTPS_PROXY", "")
+		_ = os.Setenv("HTTPS_PROXY", "")
 		mockCtrl.Finish()
 		utils.RemoveTempKubeConfig()
 	})

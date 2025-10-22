@@ -185,7 +185,7 @@ func dockerPutFileToMount(filename string, content []byte) error {
 	}
 
 	// change permission as a work around to gosec
-	if err = os.Chmod(dstFileName, 0644); err != nil {
+	if err = os.Chmod(dstFileName, 0644); err != nil { //nolint:gosec
 		logger.Debugf("change permission to 0644 for %s", dstFileName)
 		return err
 	}

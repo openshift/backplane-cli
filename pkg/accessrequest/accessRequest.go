@@ -65,10 +65,10 @@ func PrintAccessRequest(clusterID string, accessRequest *acctrspv1.AccessRequest
 	fmt.Printf("Active access request for cluster '%s':\n", clusterID)
 	fmt.Printf("  Status                     : %s\n", accessRequestStatusState)
 
-	switch {
-	case accessRequestStatusState == acctrspv1.AccessRequestStateApproved:
+	switch accessRequestStatusState {
+	case acctrspv1.AccessRequestStateApproved:
 		fmt.Printf("  Approval expires at        : %s\n", accessRequestStatus.ExpiresAt())
-	case accessRequestStatusState == acctrspv1.AccessRequestStatePending:
+	case acctrspv1.AccessRequestStatePending:
 		fmt.Printf("  Expires at                 : %s\n", accessRequest.DeadlineAt())
 		fmt.Printf("  Requested approval duration: %s\n", accessRequest.Duration())
 	}

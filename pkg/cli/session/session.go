@@ -175,7 +175,7 @@ func (e *BackplaneSession) Start() error {
 
 	if shell != "" {
 		fmt.Print("Switching to Backplane session " + e.Options.Alias + "\n")
-		cmd := exec.Command(shell)
+		cmd := exec.Command(shell) //nolint:gosec
 
 		path := filepath.Clean(e.Path + "/.ocenv")
 		file, err := os.Open(path)
@@ -222,7 +222,7 @@ func (e *BackplaneSession) Delete() error {
 // ensureEnvDir create session dirs if it's not exist
 func (e *BackplaneSession) ensureEnvDir() error {
 	if _, err := os.Stat(e.Path); errors.Is(err, os.ErrNotExist) {
-		err := os.MkdirAll(e.Path, os.ModePerm)
+		err := os.MkdirAll(e.Path, 0750)
 		if err != nil {
 			return err
 		}
@@ -253,7 +253,7 @@ PATH=` + e.Path + `/bin:` + os.Getenv("PATH") + `
 		log.Fatal(err)
 	}
 	defer func(dirEnvFile *os.File) {
-		dirEnvFile.Close()
+		_ = dirEnvFile.Close()
 	}(dirEnvFile)
 
 	zshEnvFile, err := e.ensureFile(e.Path + "/.zshenv")
@@ -294,7 +294,7 @@ func (e *BackplaneSession) createHistoryFile() error {
 // createBins create bins inside the session folder bin dir
 func (e *BackplaneSession) createBins() error {
 	if _, err := os.Stat(e.binPath()); errors.Is(err, os.ErrNotExist) {
-		err := os.Mkdir(e.binPath(), os.ModePerm)
+		err := os.Mkdir(e.binPath(), 0750)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -334,7 +334,7 @@ func (e *BackplaneSession) createBin(cmd string, content string) error {
 	if err != nil {
 		return fmt.Errorf("error writing to file %s: %v", path, err)
 	}
-	err = os.Chmod(path, 0700)
+	err = os.Chmod(path, 0700) //nolint:gosec
 	if err != nil {
 		return fmt.Errorf("can't update permissions on file %s: %v", path, err)
 	}

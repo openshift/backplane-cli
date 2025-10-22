@@ -89,7 +89,7 @@ var _ = Describe("OCM Wrapper Test", func() {
 
 			// closed deliberately
 			if conn != nil {
-				conn.Close() // if someone closes the connection by mistake
+				_ = conn.Close() // if someone closes the connection by mistake
 			}
 
 			// Routine for closing connection still runs and closes the connection

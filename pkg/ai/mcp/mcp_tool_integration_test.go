@@ -40,10 +40,10 @@ var _ = Describe("MCP Tool Integration", func() {
 		info.DefaultInfoService = mockInfoService
 
 		// Clear environment and viper for clean tests
-		os.Unsetenv("BACKPLANE_URL")
-		os.Unsetenv("HTTPS_PROXY")
-		os.Unsetenv("BACKPLANE_AWS_PROXY")
-		os.Unsetenv("BACKPLANE_CONFIG")
+		_ = os.Unsetenv("BACKPLANE_URL")
+		_ = os.Unsetenv("HTTPS_PROXY")
+		_ = os.Unsetenv("BACKPLANE_AWS_PROXY")
+		_ = os.Unsetenv("BACKPLANE_CONFIG")
 		viper.Reset()
 	})
 
@@ -56,11 +56,11 @@ var _ = Describe("MCP Tool Integration", func() {
 		info.DefaultInfoService = originalInfoService
 
 		// Clean up environment
-		os.Unsetenv("BACKPLANE_URL")
-		os.Unsetenv("HTTPS_PROXY")
-		os.Unsetenv("BACKPLANE_AWS_PROXY")
-		os.Unsetenv("BACKPLANE_CONFIG")
-		os.Unsetenv("SHELL")
+		_ = os.Unsetenv("BACKPLANE_URL")
+		_ = os.Unsetenv("HTTPS_PROXY")
+		_ = os.Unsetenv("BACKPLANE_AWS_PROXY")
+		_ = os.Unsetenv("BACKPLANE_CONFIG")
+		_ = os.Unsetenv("SHELL")
 		viper.Reset()
 	})
 
@@ -164,8 +164,8 @@ var _ = Describe("MCP Tool Integration", func() {
 			mockInfoService.EXPECT().GetVersion().Return("1.5.0").Times(1)
 
 			// Set up environment for configuration
-			os.Setenv("BACKPLANE_URL", "https://api.backplane.example.com")
-			os.Setenv("HTTPS_PROXY", "https://proxy.example.com:8080")
+			_ = os.Setenv("BACKPLANE_URL", "https://api.backplane.example.com")
+			_ = os.Setenv("HTTPS_PROXY", "https://proxy.example.com:8080")
 			viper.Set("govcloud", false)
 			viper.Set("display-cluster-info", true)
 
@@ -197,7 +197,7 @@ var _ = Describe("MCP Tool Integration", func() {
 			mockInfoService.EXPECT().GetVersion().Return("2.0.0").Times(1)
 
 			// Set up minimal environment
-			os.Setenv("BACKPLANE_URL", "https://test.backplane.example.com")
+			_ = os.Setenv("BACKPLANE_URL", "https://test.backplane.example.com")
 			viper.Set("govcloud", false)
 
 			input := mcptools.BackplaneInfoInput{}
@@ -217,7 +217,7 @@ var _ = Describe("MCP Tool Integration", func() {
 
 			// Mock version service for actual call
 			mockInfoService.EXPECT().GetVersion().Return("schema-test").Times(1)
-			os.Setenv("BACKPLANE_URL", "https://api.backplane.example.com")
+			_ = os.Setenv("BACKPLANE_URL", "https://api.backplane.example.com")
 			viper.Set("govcloud", false)
 
 			// The BackplaneInfoInput struct should work with MCP even though it's empty
@@ -255,9 +255,9 @@ var _ = Describe("MCP Tool Integration", func() {
 			mockInfoService.EXPECT().GetVersion().Return("3.1.0").Times(1)
 
 			// Set up comprehensive configuration
-			os.Setenv("BACKPLANE_URL", "https://prod.backplane.example.com")
-			os.Setenv("HTTPS_PROXY", "https://corporate-proxy.example.com:8080")
-			os.Setenv("SHELL", "/bin/zsh")
+			_ = os.Setenv("BACKPLANE_URL", "https://prod.backplane.example.com")
+			_ = os.Setenv("HTTPS_PROXY", "https://corporate-proxy.example.com:8080")
+			_ = os.Setenv("SHELL", "/bin/zsh")
 			viper.Set("session-dir", "custom-backplane-sessions")
 			viper.Set("display-cluster-info", true)
 			viper.Set("govcloud", false)
@@ -311,7 +311,7 @@ var _ = Describe("MCP Tool Integration", func() {
 			mockInfoService.EXPECT().GetVersion().Return("perf-test").Times(3)
 
 			// Set up minimal environment
-			os.Setenv("BACKPLANE_URL", "https://api.backplane.example.com")
+			_ = os.Setenv("BACKPLANE_URL", "https://api.backplane.example.com")
 			viper.Set("govcloud", false)
 
 			input := mcptools.BackplaneInfoInput{}
@@ -339,7 +339,7 @@ var _ = Describe("MCP Tool Integration", func() {
 
 			// Mock info service
 			mockInfoService.EXPECT().GetVersion().Return("consistency-test").Times(2)
-			os.Setenv("BACKPLANE_URL", "https://api.backplane.example.com")
+			_ = os.Setenv("BACKPLANE_URL", "https://api.backplane.example.com")
 			viper.Set("govcloud", false)
 
 			// Alternate between login and info calls
@@ -440,7 +440,7 @@ var _ = Describe("MCP Tool Integration", func() {
 
 			// Test info tool
 			mockInfoService.EXPECT().GetVersion().Return("protocol-test").Times(1)
-			os.Setenv("BACKPLANE_URL", "https://api.backplane.example.com")
+			_ = os.Setenv("BACKPLANE_URL", "https://api.backplane.example.com")
 			viper.Set("govcloud", false)
 
 			infoInput := mcptools.BackplaneInfoInput{}

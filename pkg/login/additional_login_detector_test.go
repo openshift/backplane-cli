@@ -101,7 +101,7 @@ var _ = Describe("AdditionalLoginDetector", func() {
 			// Create a temp dir and defer the cleanup of it
 			dir, err := os.MkdirTemp("", "testBearerToken")
 			Expect(err).NotTo(HaveOccurred())
-			defer os.RemoveAll(dir) // clean up
+			defer func() { _ = os.RemoveAll(dir) }() // clean up
 
 			// create the bearer token file in the tmp dir
 			file := filepath.Join(dir, "bearerTokenfile")

@@ -69,7 +69,7 @@ func BackplaneClusterResource(ctx context.Context, request *mcp.CallToolRequest,
 	}
 
 	// Execute the oc command
-	cmd := exec.CommandContext(ctx, "oc", args...)
+	cmd := exec.CommandContext(ctx, "oc", args...) //nolint:gosec
 
 	// Capture both stdout and stderr
 	output, err := cmd.CombinedOutput()

@@ -113,7 +113,7 @@ func (cfg *QueryConfig) GetCloudConsole() (*ConsoleResponse, error) {
 func (cfg *QueryConfig) getCloudConsoleFromPublicAPI(ocmToken string) (*ConsoleResponse, error) {
 	logger.Debugln("Getting Cloud Console")
 
-	client, err := backplaneapi.DefaultClientUtils.GetBackplaneClient(cfg.BackplaneConfiguration.URL, ocmToken, cfg.BackplaneConfiguration.ProxyURL)
+	client, err := backplaneapi.DefaultClientUtils.GetBackplaneClient(cfg.URL, ocmToken, cfg.ProxyURL)
 	if err != nil {
 		return nil, err
 	}
@@ -173,7 +173,7 @@ func (cfg *QueryConfig) GetCloudCredentials() (bpCredentials.Response, error) {
 }
 
 func (cfg *QueryConfig) getCloudCredentialsFromBackplaneAPI(ocmToken string) (bpCredentials.Response, error) {
-	client, err := backplaneapi.DefaultClientUtils.GetBackplaneClient(cfg.BackplaneConfiguration.URL, ocmToken, cfg.BackplaneConfiguration.ProxyURL)
+	client, err := backplaneapi.DefaultClientUtils.GetBackplaneClient(cfg.URL, ocmToken, cfg.ProxyURL)
 	if err != nil {
 		return nil, err
 	}
@@ -243,15 +243,15 @@ func (cfg *QueryConfig) getIsolatedCredentials(ocmToken string) (aws.Credentials
 		return aws.Credentials{}, fmt.Errorf("unable to extract email from given token: %w", err)
 	}
 
-	if cfg.BackplaneConfiguration.AssumeInitialArn == "" {
+	if cfg.AssumeInitialArn == "" {
 		// If not provided as an override, attempt to automatically set this based on OCM url
 		switch cfg.OcmConnection.URL() {
 		case productionOCMUrl:
-			cfg.BackplaneConfiguration.AssumeInitialArn = productionAssumeInitialArn
+			cfg.AssumeInitialArn = productionAssumeInitialArn
 		case stagingOCMUrl:
-			cfg.BackplaneConfiguration.AssumeInitialArn = stagingAssumeInitialArn
+			cfg.AssumeInitialArn = stagingAssumeInitialArn
 		case integrationOCMUrl:
-			cfg.BackplaneConfiguration.AssumeInitialArn = integrationAssumeInitialArn
+			cfg.AssumeInitialArn = integrationAssumeInitialArn
 		default:
 			logger.Infof("failed to automatically set assume-initial-arn based on OCM url: %s", cfg.OcmConnection.URL())
 			return aws.Credentials{}, errors.New("backplane config is missing required `assume-initial-arn` property")
@@ -263,11 +263,11 @@ func (cfg *QueryConfig) getIsolatedCredentials(ocmToken string) (aws.Credentials
 			stagingAssumeInitialArn,
 			integrationAssumeInitialArn,
 		},
-		cfg.BackplaneConfiguration.AssumeInitialArn,
+		cfg.AssumeInitialArn,
 	) {
-		logger.Warnf("assume-initial-arn in backplane config is not set to a valid payer ARN, using: %s", cfg.BackplaneConfiguration.AssumeInitialArn)
+		logger.Warnf("assume-initial-arn in backplane config is not set to a valid payer ARN, using: %s", cfg.AssumeInitialArn)
 		return aws.Credentials{}, fmt.Errorf("invalid assume-initial-arn: %s, must be one of: prod: %s, stage: %s, int: %s",
-			cfg.BackplaneConfiguration.AssumeInitialArn,
+			cfg.AssumeInitialArn,
 			productionAssumeInitialArn,
 			stagingAssumeInitialArn,
 			integrationAssumeInitialArn,
@@ -276,19 +276,19 @@ func (cfg *QueryConfig) getIsolatedCredentials(ocmToken string) (aws.Credentials
 	}
 	// Use AWS-specific proxy for initial STS client, fallback to regular proxy
 	// Priority: 1) AWS proxy from config; 2) regular proxy from local backplane config
-	stsProxyURL := cfg.BackplaneConfiguration.GetAwsProxy()
+	stsProxyURL := cfg.GetAwsProxy()
 	initialClient, err := StsClient(stsProxyURL)
 	if err != nil {
 		return aws.Credentials{}, fmt.Errorf("failed to create sts client: %w", err)
 	}
 
-	seedCredentials, err := AssumeRoleWithJWT(ocmToken, cfg.BackplaneConfiguration.AssumeInitialArn, initialClient)
+	seedCredentials, err := AssumeRoleWithJWT(ocmToken, cfg.AssumeInitialArn, initialClient)
 	if err != nil {
 		return aws.Credentials{}, fmt.Errorf("failed to assume role using JWT: %w", err)
 	}
 	// Verify Sts connection with the seed credentials
 	// Use AWS-specific proxy for STS operations
-	awsProxyURL := cfg.BackplaneConfiguration.GetAwsProxy()
+	awsProxyURL := cfg.GetAwsProxy()
 
 	var stsClientConfig aws.Config
 	if awsProxyURL != nil {
@@ -317,7 +317,7 @@ func (cfg *QueryConfig) getIsolatedCredentials(ocmToken string) (aws.Credentials
 		return aws.Credentials{}, fmt.Errorf("unable to connect to AWS STS endpoint (GetCallerIdentity failed): %w", err)
 	}
 
-	backplaneClient, err := backplaneapi.DefaultClientUtils.GetBackplaneClient(cfg.BackplaneConfiguration.URL, ocmToken, cfg.BackplaneConfiguration.ProxyURL)
+	backplaneClient, err := backplaneapi.DefaultClientUtils.GetBackplaneClient(cfg.URL, ocmToken, cfg.ProxyURL)
 	if err != nil {
 		return aws.Credentials{}, fmt.Errorf("failed to create backplane client with access token: %w", err)
 	}
@@ -386,7 +386,7 @@ func (cfg *QueryConfig) getIsolatedCredentials(ocmToken string) (aws.Credentials
 
 	// Use AWS-specific proxy for role sequence, fallback to regular proxy
 	// Priority: 1) AWS proxy from config, 2) regular proxy from config
-	roleSequenceProxyURL := cfg.BackplaneConfiguration.GetAwsProxy()
+	roleSequenceProxyURL := cfg.GetAwsProxy()
 	targetCredentials, err := AssumeRoleSequence(
 		seedClient,
 		assumeRoleArnSessionSequence,
@@ -405,7 +405,7 @@ func verifyTrustedIPAndGetPolicy(cfg *QueryConfig) (awsutil.PolicyDocument, erro
 	// Use AWS-specific proxy for egress IP check, fallback to regular proxy
 	// Priority: 1) AWS proxy from config, 2) regular proxy from config
 	var egressProxyURL *url.URL
-	if proxyURLString := cfg.BackplaneConfiguration.GetAwsProxy(); proxyURLString != nil {
+	if proxyURLString := cfg.GetAwsProxy(); proxyURLString != nil {
 		var err error
 		egressProxyURL, err = url.Parse(*proxyURLString)
 		if err != nil {
@@ -453,7 +453,7 @@ func checkEgressIPImpl(client *http.Client, url string) (net.IP, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch IP: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {

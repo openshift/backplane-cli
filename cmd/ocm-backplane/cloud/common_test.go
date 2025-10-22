@@ -104,7 +104,7 @@ var _ = Describe("getIsolatedCredentials", func() {
 			Expect(err).To(Equal(fmt.Errorf("must provide non-empty cluster ID")))
 		})
 		It("should fail if wrong assume initial ARN is provided", func() {
-			testQueryConfig.BackplaneConfiguration.AssumeInitialArn = "arn:aws:iam::10000000:role/TEST_USER"
+			testQueryConfig.AssumeInitialArn = "arn:aws:iam::10000000:role/TEST_USER"
 			_, err := testQueryConfig.getIsolatedCredentials(testOcmToken)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("invalid assume-initial-arn: arn:aws:iam::10000000:role/TEST_USER, must be one of:"))
@@ -299,7 +299,7 @@ var _ = Describe("getIsolatedCredentials", func() {
 		})
 		It("should return an error when response body is not a valid IP", func() {
 			server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				fmt.Fprint(w, "not-an-ip")
+				_, _ = fmt.Fprint(w, "not-an-ip")
 			}))
 			client = server.Client()
 
@@ -453,7 +453,7 @@ var _ = Describe("getIsolatedCredentials", func() {
 		It("should successfully verify IP and return policy when IP is in trusted range", func() {
 			// Mock the IP check to return a valid IP
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				fmt.Fprint(w, "209.10.10.10") // IP that matches our test trusted range
+				_, _ = fmt.Fprint(w, "209.10.10.10") // IP that matches our test trusted range
 			}))
 			defer server.Close()
 
@@ -484,7 +484,7 @@ var _ = Describe("getIsolatedCredentials", func() {
 		It("should fail when client IP is not in trusted range", func() {
 			// Mock the IP check to return an untrusted IP
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				fmt.Fprint(w, "192.168.1.1") // IP that doesn't match our test trusted range
+				_, _ = fmt.Fprint(w, "192.168.1.1") // IP that doesn't match our test trusted range
 			}))
 			defer server.Close()
 
@@ -513,7 +513,7 @@ var _ = Describe("getIsolatedCredentials", func() {
 
 		It("should fail when AWS proxy URL is invalid", func() {
 			// Set an invalid AWS proxy URL in configuration
-			testQueryConfig.BackplaneConfiguration.AwsProxy = aws.String("://invalid-url")
+			testQueryConfig.AwsProxy = aws.String("://invalid-url")
 
 			// Call the function
 			_, err := verifyTrustedIPAndGetPolicy(&testQueryConfig)
@@ -526,7 +526,7 @@ var _ = Describe("getIsolatedCredentials", func() {
 		Context("Execute getIsolatedCredentials with AwsProxy", func() {
 			It("should use AwsProxy configuration for AWS STS calls", func() {
 				// Set AWS proxy in configuration
-				testQueryConfig.BackplaneConfiguration.AwsProxy = aws.String("http://aws-proxy:8080")
+				testQueryConfig.AwsProxy = aws.String("http://aws-proxy:8080")
 
 				// Mock CheckEgressIP to avoid real HTTP calls
 				originalCheckEgressIP := CheckEgressIP
@@ -595,8 +595,8 @@ var _ = Describe("getIsolatedCredentials", func() {
 
 			It("should use AWS proxy when both ProxyURL and AwsProxy are configured", func() {
 				// Set both explicit proxy and AWS proxy in configuration
-				testQueryConfig.BackplaneConfiguration.ProxyURL = aws.String("http://regular-proxy:9090")
-				testQueryConfig.BackplaneConfiguration.AwsProxy = aws.String("http://aws-proxy:8080")
+				testQueryConfig.ProxyURL = aws.String("http://regular-proxy:9090")
+				testQueryConfig.AwsProxy = aws.String("http://aws-proxy:8080")
 
 				// Mock CheckEgressIP to avoid real HTTP calls
 				originalCheckEgressIP := CheckEgressIP
@@ -662,8 +662,8 @@ var _ = Describe("getIsolatedCredentials", func() {
 
 			It("should use regular proxy when AwsProxy is not configured", func() {
 				// Ensure AwsProxy is not set (should be nil by default)
-				testQueryConfig.BackplaneConfiguration.AwsProxy = nil
-				testQueryConfig.BackplaneConfiguration.ProxyURL = aws.String("http://regular-proxy:8080")
+				testQueryConfig.AwsProxy = nil
+				testQueryConfig.ProxyURL = aws.String("http://regular-proxy:8080")
 
 				// Mock CheckEgressIP to avoid real HTTP calls
 				originalCheckEgressIP := CheckEgressIP
@@ -732,8 +732,8 @@ var _ = Describe("getIsolatedCredentials", func() {
 	Context("Proxy separation verification", func() {
 		It("should demonstrate traffic separation between AWS and Backplane API calls", func() {
 			// Set different proxies for AWS and Backplane
-			testQueryConfig.BackplaneConfiguration.ProxyURL = aws.String("http://backplane-proxy:8080")
-			testQueryConfig.BackplaneConfiguration.AwsProxy = aws.String("http://aws-proxy:8080")
+			testQueryConfig.ProxyURL = aws.String("http://backplane-proxy:8080")
+			testQueryConfig.AwsProxy = aws.String("http://aws-proxy:8080")
 
 			// Mock CheckEgressIP to avoid real HTTP calls
 			originalCheckEgressIP := CheckEgressIP
@@ -814,7 +814,7 @@ var _ = Describe("getIsolatedCredentials", func() {
 
 		It("should handle proxy separation in verifyTrustedIPAndGetPolicy", func() {
 			// Set AWS-specific proxy in configuration
-			testQueryConfig.BackplaneConfiguration.AwsProxy = aws.String("http://aws-proxy:8080")
+			testQueryConfig.AwsProxy = aws.String("http://aws-proxy:8080")
 
 			// Mock checkEgressIP to avoid real HTTP calls
 			originalCheckEgressIP := CheckEgressIP
@@ -840,10 +840,10 @@ var _ = Describe("getIsolatedCredentials", func() {
 
 		It("should fallback to regular proxy when AwsProxy is not configured (regression test)", func() {
 			// Ensure AwsProxy is not set (should be nil by default)
-			testQueryConfig.BackplaneConfiguration.AwsProxy = nil
+			testQueryConfig.AwsProxy = nil
 
 			// Should fall back to regular proxy behavior
-			testQueryConfig.BackplaneConfiguration.ProxyURL = aws.String("http://regular-proxy:8080")
+			testQueryConfig.ProxyURL = aws.String("http://regular-proxy:8080")
 
 			// Mock CheckEgressIP to avoid real HTTP calls
 			originalCheckEgressIP := CheckEgressIP

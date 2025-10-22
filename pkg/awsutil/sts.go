@@ -244,7 +244,7 @@ func GetSigninToken(awsCredentials aws.Credentials, region string) (*AWSSigninTo
 	if res.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("failed to get signin token from %v, status code %d", baseFederationURL, res.StatusCode)
 	}
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 
 	body, err := io.ReadAll(res.Body)
 	if err != nil {

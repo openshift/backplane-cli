@@ -172,9 +172,9 @@ func TestValidateConfig(t *testing.T) {
 
 			// Set up environment variable
 			if tt.envProxy != "" {
-				os.Setenv(info.BackplaneProxyEnvName, tt.envProxy)
+				_ = os.Setenv(info.BackplaneProxyEnvName, tt.envProxy)
 			} else {
-				os.Unsetenv(info.BackplaneProxyEnvName)
+				_ = os.Unsetenv(info.BackplaneProxyEnvName)
 			}
 
 			// Validate config

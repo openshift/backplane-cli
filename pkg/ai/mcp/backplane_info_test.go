@@ -31,10 +31,10 @@ var _ = Describe("BackplaneInfo", func() {
 		info.DefaultInfoService = mockInfoService
 
 		// Clear all environment variables that might affect configuration
-		os.Unsetenv("BACKPLANE_URL")
-		os.Unsetenv("HTTPS_PROXY")
-		os.Unsetenv("BACKPLANE_AWS_PROXY")
-		os.Unsetenv("BACKPLANE_CONFIG")
+		_ = os.Unsetenv("BACKPLANE_URL")
+		_ = os.Unsetenv("HTTPS_PROXY")
+		_ = os.Unsetenv("BACKPLANE_AWS_PROXY")
+		_ = os.Unsetenv("BACKPLANE_CONFIG")
 
 		// Clear viper settings to ensure clean state
 		viper.Reset()
@@ -47,11 +47,11 @@ var _ = Describe("BackplaneInfo", func() {
 		info.DefaultInfoService = originalInfoService
 
 		// Clean up environment variables
-		os.Unsetenv("BACKPLANE_URL")
-		os.Unsetenv("HTTPS_PROXY")
-		os.Unsetenv("BACKPLANE_AWS_PROXY")
-		os.Unsetenv("BACKPLANE_CONFIG")
-		os.Unsetenv("SHELL")
+		_ = os.Unsetenv("BACKPLANE_URL")
+		_ = os.Unsetenv("HTTPS_PROXY")
+		_ = os.Unsetenv("BACKPLANE_AWS_PROXY")
+		_ = os.Unsetenv("BACKPLANE_CONFIG")
+		_ = os.Unsetenv("SHELL")
 
 		// Clear viper settings
 		viper.Reset()
@@ -63,9 +63,9 @@ var _ = Describe("BackplaneInfo", func() {
 			mockInfoService.EXPECT().GetVersion().Return("1.2.3").Times(1)
 
 			// Set up environment for configuration
-			os.Setenv("BACKPLANE_URL", "https://api.backplane.example.com")
-			os.Setenv("HTTPS_PROXY", "https://proxy.example.com:8080")
-			os.Setenv("BACKPLANE_AWS_PROXY", "https://aws-proxy.example.com:8080")
+			_ = os.Setenv("BACKPLANE_URL", "https://api.backplane.example.com")
+			_ = os.Setenv("HTTPS_PROXY", "https://proxy.example.com:8080")
+			_ = os.Setenv("BACKPLANE_AWS_PROXY", "https://aws-proxy.example.com:8080")
 
 			// Set up viper configuration
 			viper.Set("session-dir", "custom-session")
@@ -99,9 +99,9 @@ var _ = Describe("BackplaneInfo", func() {
 			mockInfoService.EXPECT().GetVersion().Return("2.0.0").Times(1)
 
 			// Set up minimal environment for configuration
-			os.Setenv("BACKPLANE_URL", "https://api.backplane.example.com")
+			_ = os.Setenv("BACKPLANE_URL", "https://api.backplane.example.com")
 			// Explicitly set empty proxy to override system defaults
-			os.Setenv("HTTPS_PROXY", "")
+			_ = os.Setenv("HTTPS_PROXY", "")
 
 			// Set up viper configuration
 			viper.Set("govcloud", false)
@@ -127,7 +127,7 @@ var _ = Describe("BackplaneInfo", func() {
 			mockInfoService.EXPECT().GetVersion().Return("unknown").Times(1)
 
 			// Set up minimal environment
-			os.Setenv("BACKPLANE_URL", "https://api.backplane.example.com")
+			_ = os.Setenv("BACKPLANE_URL", "https://api.backplane.example.com")
 			viper.Set("govcloud", false)
 
 			// Execute the function
@@ -148,8 +148,8 @@ var _ = Describe("BackplaneInfo", func() {
 			mockInfoService.EXPECT().GetVersion().Return("3.0.0").Times(1)
 
 			// Set up minimal environment
-			os.Setenv("BACKPLANE_URL", "https://api.backplane.example.com")
-			os.Setenv("SHELL", "/bin/zsh")
+			_ = os.Setenv("BACKPLANE_URL", "https://api.backplane.example.com")
+			_ = os.Setenv("SHELL", "/bin/zsh")
 			viper.Set("govcloud", false)
 
 			// Execute the function
@@ -173,7 +173,7 @@ var _ = Describe("BackplaneInfo", func() {
 			mockInfoService.EXPECT().GetVersion().Return("1.1.0").Times(1)
 
 			// Set up environment
-			os.Setenv("BACKPLANE_URL", "https://api.backplane.example.com")
+			_ = os.Setenv("BACKPLANE_URL", "https://api.backplane.example.com")
 			viper.Set("govcloud", false)
 			// Don't set session-dir, should use default
 
@@ -197,7 +197,7 @@ var _ = Describe("BackplaneInfo", func() {
 			mockInfoService.EXPECT().GetVersion().Return("1.0.0").Times(1)
 
 			// Set up minimal environment
-			os.Setenv("BACKPLANE_URL", "https://api.backplane.example.com")
+			_ = os.Setenv("BACKPLANE_URL", "https://api.backplane.example.com")
 			viper.Set("govcloud", false)
 
 			// Execute with empty input

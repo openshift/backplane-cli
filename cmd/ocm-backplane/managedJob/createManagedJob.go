@@ -136,22 +136,22 @@ func runCreateManagedJob(cmd *cobra.Command, args []string) (err error) {
 
 	// wait for job to be finished
 	if options.wait {
-		fmt.Fprintf(cmd.OutOrStdout(), "\nWaiting for %s to be finished ...", *job.JobId)
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "\nWaiting for %s to be finished ...", *job.JobId)
 		statusMessage, err := waitForCreateJob(client, job)
 		if err != nil {
 			return err
 		}
-		fmt.Fprintf(cmd.OutOrStdout(), "\n%s\n.", statusMessage)
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "\n%s\n.", statusMessage)
 	}
 
 	// stream logs if flag set
 	if options.logs {
-		fmt.Fprintf(cmd.OutOrStdout(), "fetching logs for job %s", *job.JobId)
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "fetching logs for job %s", *job.JobId)
 		err := fetchJobLogs(client, job)
 		if err != nil {
 			return err
 		}
-		fmt.Fprintf(cmd.OutOrStdout(), "")
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "")
 	}
 
 	return nil

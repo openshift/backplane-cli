@@ -84,13 +84,10 @@ make lint-in-container
 The project uses golangci-lint with the following enabled linters:
 - errcheck
 - gosec
-- gosimple
 - govet
 - ineffassign
 - staticcheck
-- typecheck
 - unused
-- stylecheck
 
 ## Development Workflow
 

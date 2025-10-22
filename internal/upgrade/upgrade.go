@@ -96,10 +96,9 @@ func (c *Cmd) UpgradePlugin(ctx context.Context, currentVersion string) error {
 
 	if err := c.cfg.Writer.Write(binPath, latestBin); err != nil {
 		return fmt.Errorf("writing new binary: %w", err)
-	} else {
-		successMessage := fmt.Sprintf("Backplane CLI has been upgraded to %s", latestVersion.TagName)
-		fmt.Fprintln(c.cfg.Out, successMessage)
 	}
+	successMessage := fmt.Sprintf("Backplane CLI has been upgraded to %s", latestVersion.TagName)
+	_, _ = fmt.Fprintln(c.cfg.Out, successMessage)
 
 	return nil
 }
@@ -159,7 +158,7 @@ func confirmUpgrade(latest Release, c *Cmd) bool {
 	message := fmt.Sprintf(
 		"A newer version %q is available.\nWould you like to upgrade? (y/N)", latest.TagName,
 	)
-	fmt.Fprintln(c.cfg.Out, message)
+	_, _ = fmt.Fprintln(c.cfg.Out, message)
 
 	input, _ := c.cfg.Reader.ReadString('\n')
 

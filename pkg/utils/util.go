@@ -65,7 +65,7 @@ func GetFreePort() (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	defer l.Close()
+	defer func() { _ = l.Close() }()
 	return l.Addr().(*net.TCPAddr).Port, nil
 }
 
@@ -219,7 +219,7 @@ func CreateTempKubeConfig(kubeConfig *api.Config) error {
 	}
 
 	// set kube config env with temp kube config file
-	os.Setenv("KUBECONFIG", f.Name())
+	_ = os.Setenv("KUBECONFIG", f.Name())
 	return nil
 
 }
@@ -241,7 +241,7 @@ func ModifyTempKubeConfigFileName(fileName string) error {
 func RemoveTempKubeConfig() {
 	path, found := os.LookupEnv("KUBECONFIG")
 	if found {
-		os.Remove(path)
+		_ = os.Remove(path)
 	}
 }
 
@@ -299,7 +299,7 @@ func AskQuestionFromPrompt(question string) string {
 	if CheckValidPrompt() {
 		// Create a new scanner to read from stdin
 		scanner := bufio.NewScanner(os.Stdin)
-		os.Stderr.WriteString(question)
+		_, _ = os.Stderr.WriteString(question)
 		// Read the entire line (until the user presses Enter)
 		if scanner.Scan() {
 			return scanner.Text()

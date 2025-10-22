@@ -192,9 +192,9 @@ var _ = Describe("SSM command", func() {
 		AfterEach(func() {
 			ExecCommand = originalExecCommand
 			ssmArgs.node = ""
-			os.Unsetenv("AWS_ACCESS_KEY_ID")
-			os.Unsetenv("AWS_SECRET_ACCESS_KEY")
-			os.Unsetenv("AWS_SESSION_TOKEN")
+			_ = os.Unsetenv("AWS_ACCESS_KEY_ID")
+			_ = os.Unsetenv("AWS_SECRET_ACCESS_KEY")
+			_ = os.Unsetenv("AWS_SESSION_TOKEN")
 		})
 
 		Context("startSSMsession", func() {
