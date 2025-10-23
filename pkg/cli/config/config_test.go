@@ -53,6 +53,53 @@ func TestGetBackplaneConfig(t *testing.T) {
 		}
 	})
 
+	t.Run("it reads JIRA token from JIRA_API_TOKEN environment variable when config file is empty", func(t *testing.T) {
+		viper.Reset()
+		svr := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			_, _ = w.Write([]byte("dummy data"))
+		}))
+
+		expectedToken := "test-jira-token-12345"
+		userDefinedProxy := "example-proxy"
+		t.Setenv("BACKPLANE_URL", svr.URL)
+		t.Setenv("HTTPS_PROXY", userDefinedProxy)
+		t.Setenv("JIRA_API_TOKEN", expectedToken)
+
+		config, err := GetBackplaneConfiguration()
+		if err != nil {
+			t.Error(err)
+		}
+
+		if config.JiraToken != expectedToken {
+			t.Errorf("expected JiraToken to be %s, got %s", expectedToken, config.JiraToken)
+		}
+	})
+
+	t.Run("JIRA_API_TOKEN environment variable takes precedence over config file JIRA token", func(t *testing.T) {
+		viper.Reset()
+		svr := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			_, _ = w.Write([]byte("dummy data"))
+		}))
+
+		configToken := "config-file-token"    //nolint:gosec
+		envToken := "env-var-token-wins" //nolint:gosec
+
+		t.Setenv("BACKPLANE_URL", svr.URL)
+		t.Setenv("JIRA_API_TOKEN", envToken)
+
+		// Simulate config file value
+		viper.Set(JiraTokenViperKey, configToken)
+
+		config, err := GetBackplaneConfiguration()
+		if err != nil {
+			t.Error(err)
+		}
+
+		if config.JiraToken != envToken {
+			t.Errorf("expected environment variable token to take precedence: expected %s, got %s", envToken, config.JiraToken)
+		}
+	})
+
 }
 
 func TestGetBackplaneConnection(t *testing.T) {

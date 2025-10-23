@@ -51,6 +51,10 @@ The configuration file of backplane-cli is expected to be located at `$HOME/.con
 
 **Security Note:** This configuration file may store sensitive information such as PagerDuty API keys or JIRA tokens. It is recommended to ensure its permissions are restrictive (e.g., `chmod 600 $HOME/.config/backplane/config.json`) to protect this data.
 
+**JIRA Token Configuration:** The JIRA token can be configured in two ways:
+1. Via the `JIRA_API_TOKEN` environment variable (takes precedence)
+2. In the config file using `ocm backplane config set jira-token <token>` (used as fallback if environment variable is not set)
+
 ## Setup bash/zsh prompt
 
 To setup the PS1(prompt) for bash/zsh, please follow [these instructions](https://github.com/openshift/backplane-cli/blob/main/docs/PS1-setup.md).
