@@ -67,7 +67,7 @@ func (o *DefaultOCMInterfaceImpl) createConnection() (*ocmsdk.Connection, error)
 		if err != nil {
 			return nil, err
 		}
-		os.Setenv("OCM_URL", ocmURL)
+		_ = os.Setenv("OCM_URL", ocmURL)
 		logger.Debugf("reset the OCM_URL to %s", ocmURL)
 	}
 
@@ -94,7 +94,7 @@ func (o *DefaultOCMInterfaceImpl) initiateCloseConnection(ctx context.Context, c
 	defer o.ocmConnectionMutex.Unlock()
 	if o.ocmConnection != nil && conn == o.ocmConnection {
 		logger.Debugln(fmt.Sprintf("closing ocm connection after %v", o.OcmConnectionTimeout))
-		o.ocmConnection.Close()
+		_ = o.ocmConnection.Close()
 		o.ocmConnection = nil
 	}
 	// cancel the context to release resources

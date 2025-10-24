@@ -244,7 +244,7 @@ func createTestScriptFromFiles(sourceDir string, dryRun bool, jobParams map[stri
 	metaFile := sourceDir + "metadata.yaml"
 
 	// Read the yaml file from cwd
-	yamlFile, err := os.ReadFile(metaFile)
+	yamlFile, err := os.ReadFile(metaFile) //nolint:gosec
 	if err != nil {
 		logger.Errorf("Error reading metadata yaml: %v, ensure either you are in a script directory or you have specified the correct source dir", err)
 		return nil, err
@@ -288,7 +288,7 @@ func createTestScriptFromFiles(sourceDir string, dryRun bool, jobParams map[stri
 
 	scriptFile := sourceDir + scriptMeta.File
 
-	fileBody, err := os.ReadFile(scriptFile)
+	fileBody, err := os.ReadFile(scriptFile) //nolint:gosec
 
 	fileBodyStr := string(fileBody)
 
@@ -367,7 +367,7 @@ func inlineLibrarySourceFiles(script string, scriptPath string) (string, error) 
 
 	managedScriptsDir := strings.TrimSpace(out.String())
 
-	fileBody, err := os.ReadFile(managedScriptsDir + "/scripts/" + libraryPath)
+	fileBody, err := os.ReadFile(managedScriptsDir + "/scripts/" + libraryPath) //nolint:gosec
 	if err != nil {
 		return "", err
 	}

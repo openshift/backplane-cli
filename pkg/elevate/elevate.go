@@ -58,10 +58,10 @@ func RunElevate(argv []string) error {
 	defer func() {
 		if oldKubeconfigDefined {
 			logger.Debugln("Will set KUBECONFIG variable to original", oldKubeconfigPath)
-			os.Setenv("KUBECONFIG", oldKubeconfigPath)
+			_ = os.Setenv("KUBECONFIG", oldKubeconfigPath)
 		} else {
 			logger.Debugln("Will unset KUBECONFIG variable")
-			os.Unsetenv("KUBECONFIG")
+			_ = os.Unsetenv("KUBECONFIG")
 		}
 	}()
 

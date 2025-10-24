@@ -153,7 +153,7 @@ func (ce *podmanLinux) RunMonitorPlugin(containerName string, consoleContainerNa
 // filename should be name only, not a path
 func (ce *podmanLinux) PutFileToMount(filename string, content []byte) error {
 	// ensure the directory exists
-	err := os.MkdirAll(ce.fileMountDir, os.ModePerm)
+	err := os.MkdirAll(ce.fileMountDir, os.ModePerm) //nolint:gosec
 	if err != nil {
 		return err
 	}
@@ -174,7 +174,7 @@ func (ce *podmanLinux) PutFileToMount(filename string, content []byte) error {
 	}
 
 	// change permission as a work around to gosec
-	if err = os.Chmod(dstFileName, 0640); err != nil {
+	if err = os.Chmod(dstFileName, 0640); err != nil { //nolint:gosec
 		logger.Debugf("change permission to 0640 for %s", dstFileName)
 		return err
 	}

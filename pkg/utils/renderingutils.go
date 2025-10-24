@@ -21,16 +21,16 @@ func RenderTabbedTable(headers []string, data [][]string) {
 	writer := tabwriter.NewWriter(os.Stdout, 0, 0, columnPadding, ' ', tabwriter.TabIndent)
 
 	// print the headers
-	fmt.Fprintf(writer, "%s", strings.Join(headers, "\t"))
-	fmt.Fprintln(writer)
+	_, _ = fmt.Fprintf(writer, "%s", strings.Join(headers, "\t"))
+	_, _ = fmt.Fprintln(writer)
 
 	// print the rows
 	for _, row := range data {
-		fmt.Fprintf(writer, "%s", strings.Join(truncateColumns(row, maxColumnWidth), "\t"))
-		fmt.Fprintln(writer)
+		_, _ = fmt.Fprintf(writer, "%s", strings.Join(truncateColumns(row, maxColumnWidth), "\t"))
+		_, _ = fmt.Fprintln(writer)
 	}
 
-	writer.Flush()
+	_ = writer.Flush()
 }
 
 // calculateOptimalWidthsForColumns calculates optimal column width for table rendering.

@@ -116,7 +116,7 @@ var _ = Describe("Backplane Monitoring Unit test", func() {
 		err := utils.CreateTempKubeConfig(&testKubeCfg)
 		Expect(err).To(BeNil())
 
-		os.Setenv(info.BackplaneURLEnvName, backplaneAPIUri)
+		_ = os.Setenv(info.BackplaneURLEnvName, backplaneAPIUri)
 		ocmEnv, _ = cmv1.NewEnvironment().BackplaneURL("https://dummy.api").Build()
 	})
 

@@ -116,13 +116,13 @@ var _ = Describe("Logout command", func() {
 			CurrentContext: "default/myopenshiftcluster/example.openshift",
 		}
 
-		os.Setenv(info.BackplaneURLEnvName, backplaneAPIURI)
+		_ = os.Setenv(info.BackplaneURLEnvName, backplaneAPIURI)
 		ocmEnv, _ = cmv1.NewEnvironment().BackplaneURL("https://dummy.api").Build()
 	})
 
 	AfterEach(func() {
 		utils.RemoveTempKubeConfig()
-		os.Setenv(info.BackplaneURLEnvName, "")
+		_ = os.Setenv(info.BackplaneURLEnvName, "")
 		mockCtrl.Finish()
 	})
 

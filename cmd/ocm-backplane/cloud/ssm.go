@@ -182,9 +182,9 @@ func startSSMsession(cmd *cobra.Command, execCommand []string) error {
 	}
 
 	// Set AWS credentials in environment variables
-	os.Setenv("AWS_ACCESS_KEY_ID", creds.AccessKeyID)
-	os.Setenv("AWS_SECRET_ACCESS_KEY", creds.SecretAccessKey)
-	os.Setenv("AWS_SESSION_TOKEN", creds.SessionToken)
+	_ = os.Setenv("AWS_ACCESS_KEY_ID", creds.AccessKeyID)
+	_ = os.Setenv("AWS_SECRET_ACCESS_KEY", creds.SecretAccessKey)
+	_ = os.Setenv("AWS_SESSION_TOKEN", creds.SessionToken)
 
 	// Load AWS SDK configuration with the custom HTTP client
 	cfg, err := awsConfig.LoadDefaultConfig(

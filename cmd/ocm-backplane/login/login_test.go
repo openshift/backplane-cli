@@ -119,9 +119,9 @@ var _ = Describe("Login command", func() {
 		globalOpts.Service = false
 		globalOpts.BackplaneURL = ""
 		globalOpts.ProxyURL = ""
-		os.Setenv("HTTPS_PROXY", "")
-		os.Unsetenv("BACKPLANE_CONFIG")
-		os.Remove(bpConfigPath)
+		_ = os.Setenv("HTTPS_PROXY", "")
+		_ = os.Unsetenv("BACKPLANE_CONFIG")
+		_ = os.Remove(bpConfigPath)
 		mockCtrl.Finish()
 		utils.RemoveTempKubeConfig()
 	})
@@ -191,7 +191,7 @@ var _ = Describe("Login command", func() {
 			err := utils.CreateTempKubeConfig(nil)
 			Expect(err).To(BeNil())
 			globalOpts.ProxyURL = "https://squid.myproxy.com"
-			os.Setenv("HTTPS_PROXY", "https://squid.myproxy.com")
+			_ = os.Setenv("HTTPS_PROXY", "https://squid.myproxy.com")
 			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
 			mockClientUtil.EXPECT().SetClientProxyURL(globalOpts.ProxyURL).Return(nil)
 			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, testClusterID, nil)
@@ -496,7 +496,7 @@ var _ = Describe("Login command", func() {
 			// Create a temporary JSON configuration file in the temp directory for testing purposes.
 			tempDir := os.TempDir()
 			bpConfigPath = filepath.Join(tempDir, "mock.json")
-			tempFile, err := os.Create(bpConfigPath)
+			tempFile, err := os.Create(bpConfigPath) //nolint:gosec
 			Expect(err).To(BeNil())
 
 			testData := config.BackplaneConfiguration{
@@ -513,7 +513,7 @@ var _ = Describe("Login command", func() {
 			_, err = tempFile.Write(jsonData)
 			Expect(err).To(BeNil())
 
-			os.Setenv("BACKPLANE_CONFIG", bpConfigPath)
+			_ = os.Setenv("BACKPLANE_CONFIG", bpConfigPath)
 
 			err = runLogin(nil, nil)
 
@@ -532,7 +532,7 @@ var _ = Describe("Login command", func() {
 			// Create a temporary JSON configuration file in the temp directory for testing purposes.
 			tempDir := os.TempDir()
 			bpConfigPath = filepath.Join(tempDir, "mock.json")
-			tempFile, err := os.Create(bpConfigPath)
+			tempFile, err := os.Create(bpConfigPath) //nolint:gosec
 			Expect(err).To(BeNil())
 
 			testData := config.BackplaneConfiguration{
@@ -549,7 +549,7 @@ var _ = Describe("Login command", func() {
 			_, err = tempFile.Write(jsonData)
 			Expect(err).To(BeNil())
 
-			os.Setenv("BACKPLANE_CONFIG", bpConfigPath)
+			_ = os.Setenv("BACKPLANE_CONFIG", bpConfigPath)
 
 			err = runLogin(nil, nil)
 
@@ -568,7 +568,7 @@ var _ = Describe("Login command", func() {
 			// Create a temporary JSON configuration file in the temp directory for testing purposes.
 			tempDir := os.TempDir()
 			bpConfigPath = filepath.Join(tempDir, "mock.json")
-			tempFile, err := os.Create(bpConfigPath)
+			tempFile, err := os.Create(bpConfigPath) //nolint:gosec
 			Expect(err).To(BeNil())
 
 			testData := config.BackplaneConfiguration{
@@ -583,7 +583,7 @@ var _ = Describe("Login command", func() {
 			_, err = tempFile.Write(jsonData)
 			Expect(err).To(BeNil())
 
-			os.Setenv("BACKPLANE_CONFIG", bpConfigPath)
+			_ = os.Setenv("BACKPLANE_CONFIG", bpConfigPath)
 
 			err = runLogin(nil, nil)
 

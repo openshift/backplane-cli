@@ -118,12 +118,12 @@ var _ = Describe("testJob create command", func() {
 			StatusCode: http.StatusOK,
 		}
 		fakeResp.Header.Add("Content-Type", "json")
-		os.Setenv(info.BackplaneURLEnvName, proxyURI)
+		_ = os.Setenv(info.BackplaneURLEnvName, proxyURI)
 		ocmEnv, _ = cmv1.NewEnvironment().BackplaneURL("https://dummy.api").Build()
 	})
 
 	AfterEach(func() {
-		os.Setenv(info.BackplaneURLEnvName, "")
+		_ = os.Setenv(info.BackplaneURLEnvName, "")
 		_ = os.RemoveAll(tempDir)
 		// Clear kube config file
 		utils.RemoveTempKubeConfig()
@@ -187,7 +187,7 @@ var _ = Describe("testJob create command", func() {
 			sourceDir, _ = os.MkdirTemp("", "manualScriptDir")
 			_ = os.WriteFile(path.Join(sourceDir, "metadata.yaml"), []byte(MetadataYaml), 0600)
 			_ = os.WriteFile(path.Join(sourceDir, "script.sh"), []byte("echo hello"), 0600)
-			defer os.RemoveAll(sourceDir)
+			defer func() { _ = os.RemoveAll(sourceDir) }()
 
 			_ = os.Chdir(workingDir)
 
@@ -224,7 +224,7 @@ var _ = Describe("testJob create command", func() {
 		})
 
 		It("Should able use the current logged in cluster if non specified and retrieve from config file", func() {
-			os.Setenv(info.BackplaneURLEnvName, "https://api-backplane.apps.something.com")
+			_ = os.Setenv(info.BackplaneURLEnvName, "https://api-backplane.apps.something.com")
 			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
 			mockOcmInterface.EXPECT().IsProduction().Return(false, nil)
 			err := utils.CreateTempKubeConfig(nil)
@@ -339,10 +339,10 @@ echo_touch "Hello"
 }
 `, tempDir)
 
-			GetGitRepoPath = exec.Command("echo", tempDir)
+			GetGitRepoPath = exec.Command("echo", tempDir) //nolint:gosec
 			// tmp/createJobTest3397561583
 			_ = os.WriteFile(path.Join(tempDir, "script.sh"), []byte(script), 0600)
-			_ = os.Mkdir(path.Join(tempDir, "scripts"), 0755)
+			_ = os.Mkdir(path.Join(tempDir, "scripts"), 0755) //nolint:gosec
 			_ = os.WriteFile(path.Join(tempDir, "scripts", "lib.sh"), []byte(lib), 0600)
 			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
 			mockOcmInterface.EXPECT().IsProduction().Return(false, nil)

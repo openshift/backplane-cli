@@ -107,7 +107,7 @@ func (c *Client) get(ctx context.Context, url string) ([]byte, error) {
 		return nil, fmt.Errorf("running request for %q: %w", url, err)
 	}
 
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 
 	if res.StatusCode != http.StatusOK {
 		return nil, ErrRequestFailed

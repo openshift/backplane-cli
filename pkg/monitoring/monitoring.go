@@ -154,7 +154,7 @@ func (c Client) RunMonitoring(monitoringType string) error {
 		log.Fatalln(err)
 	}
 
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode >= 400 {
 		responseBody, _ := io.ReadAll(resp.Body)

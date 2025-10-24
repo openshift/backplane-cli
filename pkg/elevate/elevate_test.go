@@ -84,7 +84,7 @@ func TestHelperProcessSuccess(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
 	}
-	fmt.Fprintf(os.Stdout, "")
+	_, _ = fmt.Fprintf(os.Stdout, "")
 	os.Exit(0)
 }
 
@@ -118,7 +118,7 @@ func TestRunElevate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	// We utilize the fact that elevate honors KUBECONFIG in order to not clobber the users real ~/.kube/config
 	kubeconfigPath := tmpDir + "config"

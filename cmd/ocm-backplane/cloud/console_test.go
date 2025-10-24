@@ -78,11 +78,11 @@ var _ = Describe("Cloud console command", func() {
 
 		// Disabled log output
 		log.SetOutput(io.Discard)
-		os.Setenv(info.BackplaneURLEnvName, proxyURI)
+		_ = os.Setenv(info.BackplaneURLEnvName, proxyURI)
 	})
 
 	AfterEach(func() {
-		os.Setenv(info.BackplaneURLEnvName, "")
+		_ = os.Setenv(info.BackplaneURLEnvName, "")
 		mockCtrl.Finish()
 	})
 })

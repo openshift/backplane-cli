@@ -1,19 +1,30 @@
+version: "2"
 run:
-  # Our CI expects a vendor directory, hence we have to use -mod=readonly here as well.
   modules-download-mode: readonly
-  deadline: 30m
-  timeout: 5m
-
-# default linters are enabled `golangci-lint help linters`
 linters:
-  disable-all: true
+  default: none
   enable:
-  - errcheck
-  - gosec
-  - gosimple
-  - govet
-  - ineffassign
-  - staticcheck
-  - typecheck
-  - unused
-  - stylecheck
+    - errcheck
+    - gosec
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

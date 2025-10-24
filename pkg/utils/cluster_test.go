@@ -213,7 +213,7 @@ func TestGetBackplaneClusterFromClusterKey(t *testing.T) {
 	t.Run("it returns a cluster struct from a valid cluster key", func(_ *testing.T) {
 		ocmEnv, _ := cmv1.NewEnvironment().BackplaneURL("https://dummy.api").Build()
 		mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
-		os.Setenv(info.BackplaneURLEnvName, "https://backplane-url.cluster-key.redhat.com")
+		_ = os.Setenv(info.BackplaneURLEnvName, "https://backplane-url.cluster-key.redhat.com")
 		mockOcmInterface.EXPECT().GetTargetCluster("cluster-key").Return("1234", "cluster-key", nil)
 
 		cluster, err := utils.DefaultClusterUtils.GetBackplaneClusterFromClusterKey("cluster-key")
