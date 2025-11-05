@@ -31,7 +31,6 @@ type AccessRequestsJiraConfiguration struct {
 	ProjectToTransitionsNames map[string]JiraTransitionsNamesForAccessRequests `json:"project-to-transitions-names"`
 }
 
-
 // BackplaneConfiguration represents the configuration for backplane-cli.
 // Note: Please update the validateConfig function if there are any required keys added.
 type BackplaneConfiguration struct {
@@ -178,7 +177,7 @@ func GetBackplaneConfiguration() (bpConfig BackplaneConfiguration, err error) {
 		bpConfig.AwsProxy = &awsProxyURL
 	}
 
-	if (bpConfig.Govcloud) {
+	if bpConfig.Govcloud {
 		str := ""
 		bpConfig.ProxyURL = &str
 		bpConfig.AwsProxy = &str
@@ -377,7 +376,6 @@ func GetConfigDirectory() (string, error) {
 
 // GetBackplaneURL returns API URL
 func (config *BackplaneConfiguration) GetBackplaneURL() (string, error) {
-
 	ocmEnv, err := ocm.DefaultOCMInterface.GetOCMEnvironment()
 	if err != nil {
 		return "", err
@@ -386,7 +384,7 @@ func (config *BackplaneConfiguration) GetBackplaneURL() (string, error) {
 	if !ok {
 		return "", fmt.Errorf("the requested API endpoint is not available for the OCM environment: %v", ocmEnv.Name())
 	}
-	logger.Infof("Backplane URL retrieved via OCM environment: %s", url)
+	logger.Debugf("Backplane URL retrieved via OCM environment: %s", url)
 	return url, nil
 }
 
