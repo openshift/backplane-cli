@@ -61,7 +61,7 @@ RUN curl -sSLo /usr/bin/jq https://github.com/stedolan/jq/releases/download/jq-1
 # Download the checksum
 RUN curl -sSLf ${OC_URL}/sha256sum.txt -o sha256sum.txt
 # Download the amd64 binary tarball
-RUN curl -sSLf -O ${OC_URL}/$(awk -v asset="openshift-client-linux" '$0~asset {print $2}' sha256sum.txt | grep -v arm64 | grep -v ppc64 | grep -v amd64 | grep -v s390x)
+RUN FILENAME=$(awk '/openshift-client-linux.*tar\.gz/ && /amd64/ {print $2; exit}' sha256sum.txt) && curl -sSLf -O ${OC_URL}/${FILENAME}
 # Check the tarball and checksum match
 RUN sha256sum --check --ignore-missing sha256sum.txt
 RUN tar --extract --gunzip --no-same-owner --directory /out oc --file *.tar.gz
