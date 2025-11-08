@@ -62,18 +62,22 @@ func (s *DefaultClientUtilsImpl) MakeRawBackplaneAPIClientWithAccessToken(base, 
 // makeRawBackplaneAPIClientWithAccessTokenCustomProxy creates a BackplaneApi.ClientInterface with a custom proxy url
 // proxyURL is optional, the default behavior is no proxy.
 func makeRawBackplaneAPIClientWithAccessTokenCustomProxy(server string, accessToken string, proxyURL string) (BackplaneApi.ClientInterface, error) {
-	co := makeClientOptions(accessToken)
+	clientOpts := makeClientOptions(accessToken)
 
 	if proxyURL != "" {
-		proxy, err := url.Parse(proxyURL)
+		httpClient, err := httpDoerWithProxy(proxyURL)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to create http client: %w", err)
 		}
-		http.DefaultTransport = &http.Transport{Proxy: http.ProxyURL(proxy)}
 		logger.Debugf("Using backplane Proxy URL: %s\n", proxyURL)
+
+		return BackplaneApi.NewClient(
+			server,
+			clientOpts, BackplaneApi.WithHTTPClient(httpClient),
+		)
 	}
 
-	return BackplaneApi.NewClient(server, co)
+	return BackplaneApi.NewClient(server, clientOpts)
 }
 
 func (s *DefaultClientUtilsImpl) MakeRawBackplaneAPIClient(base string) (BackplaneApi.ClientInterface, error) {
@@ -135,4 +139,15 @@ func (s *DefaultClientUtilsImpl) SetClientProxyURL(proxyURL string) error {
 	}
 	s.clientProxyURL = proxyURL
 	return nil
+}
+
+func httpDoerWithProxy(proxyURL string) (*http.Client, error) {
+	proxy, err := url.Parse(proxyURL)
+	if err != nil {
+		return nil, err
+	}
+
+	return &http.Client{
+		Transport: &http.Transport{Proxy: http.ProxyURL(proxy)},
+	}, nil
 }
