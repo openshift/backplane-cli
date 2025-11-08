@@ -17,7 +17,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/aws/aws-sdk-go-v2/service/sts/types"
-	"go.uber.org/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	sdk "github.com/openshift-online/ocm-sdk-go"
@@ -28,6 +27,7 @@ import (
 	"github.com/openshift/backplane-cli/pkg/client/mocks"
 	"github.com/openshift/backplane-cli/pkg/ocm"
 	ocmMock "github.com/openshift/backplane-cli/pkg/ocm/mocks"
+	"go.uber.org/mock/gomock"
 )
 
 //nolint:gosec
@@ -239,6 +239,53 @@ var _ = Describe("getIsolatedCredentials", func() {
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("failed to fetch arn sequence:"))
 		})
+		It("should include response body in error when API returns non-200 status", func() {
+			GetCallerIdentity = func(client *sts.Client) error {
+				return nil
+			}
+			defer func() {
+				GetCallerIdentity = func(client *sts.Client) error {
+					_, err := client.GetCallerIdentity(context.TODO(), &sts.GetCallerIdentityInput{})
+					return err
+				}
+			}()
+			ip1 := cmv1.NewTrustedIp().ID("209.10.10.10").Enabled(true)
+			expectedIPList, err := cmv1.NewTrustedIpList().Items(ip1).Build()
+			Expect(err).To(BeNil())
+			mockOcmInterface.EXPECT().GetTrustedIPList(gomock.Any()).Return(expectedIPList, nil).AnyTimes()
+
+			StsClient = func(proxyURL *string) (*sts.Client, error) {
+				return &sts.Client{}, nil
+			}
+			AssumeRoleWithJWT = func(jwt string, roleArn string, stsClient stscreds.AssumeRoleWithWebIdentityAPIClient) (aws.Credentials, error) {
+				return aws.Credentials{
+					AccessKeyID:     testAccessKeyID,
+					SecretAccessKey: testSecretAccessKey,
+					SessionToken:    testSessionToken,
+				}, nil
+			}
+			NewStaticCredentialsProvider = func(key, secret, session string) credentials.StaticCredentialsProvider {
+				return credentials.StaticCredentialsProvider{}
+			}
+			mockClientUtil.EXPECT().GetBackplaneClient(
+				testQueryConfig.BackplaneConfiguration.URL, testOcmToken, testQueryConfig.BackplaneConfiguration.ProxyURL).Return(mockClient, nil)
+			// Create an HTTP response with error status and body
+			errorResponseBody := `{"statusCode":500,"message":"Internal server error: unable to process request"}`
+			errorHTTPResp := &http.Response{
+				Body:       MakeIoReader(errorResponseBody),
+				Header:     map[string][]string{},
+				StatusCode: http.StatusInternalServerError,
+				Status:     "500 Internal Server Error",
+			}
+			mockClient.EXPECT().GetAssumeRoleSequence(context.TODO(), testClusterID).Return(errorHTTPResp, nil)
+
+			_, err = testQueryConfig.getIsolatedCredentials(testOcmToken)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("failed to fetch arn sequence:"))
+			// Verify the response body is included in the error message
+			Expect(err.Error()).To(ContainSubstring("response body:"))
+			Expect(err.Error()).To(ContainSubstring("Internal server error"))
+		})
 		It("should fail if error creating backplane api client", func() {
 			GetCallerIdentity = func(client *sts.Client) error {
 				return nil // Simulate success; use errors.New("fail") to simulate failure
@@ -380,16 +427,16 @@ var _ = Describe("getIsolatedCredentials", func() {
 
 		It("should handle mixed CIDR ranges correctly", func() {
 			trustedIPs.SourceIp = []string{
-				"192.168.1.0/24",   // Subnet
-				"172.16.5.10/32",   // Single host
-				"10.0.0.0/16",      // Large range
+				"192.168.1.0/24", // Subnet
+				"172.16.5.10/32", // Single host
+				"10.0.0.0/16",    // Large range
 			}
 
 			// Test IPs within each range
 			testCases := []struct {
-				testIP    string
+				testIP     string
 				shouldPass bool
-				desc      string
+				desc       string
 			}{
 				{"192.168.1.1", true, "IP in /24 subnet"},
 				{"192.168.1.254", true, "IP at end of /24 subnet"},
