@@ -396,7 +396,6 @@ func (o *DefaultOCMInterfaceImpl) GetOCMEnvironment() (*cmv1.Environment, error)
 		return nil, fmt.Errorf("failed to create OCM connection: %v", err)
 	}
 
-	defer connection.Close()
 	return o.GetOCMEnvironmentWithConn(connection)
 }
 
