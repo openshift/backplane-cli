@@ -53,14 +53,22 @@ gawk '
   # Remove [TICKET] brackets → TICKET
   gsub(/\[([A-Za-z0-9_-]+)\]/, "\\1", msg)
 
-  # Detect type (feat, fix, chore, etc.)
-  if (match(msg, /(^|\s)([a-z]+)(\([^)]*\))?:/, m)) {
-    type = m[2]
-  } else if (msg ~ /^Bump / || msg ~ / bump /) {
-    # Bot-style dependency bumps → Chore
+  # Default category
+  type = "others"
+
+  # Detect bump commits first (dependency updates)
+  if (msg ~ /[Bb]ump /) {
     type = "chore"
-  } else {
-    type = "others"
+  }
+  # Otherwise, detect type prefix (feat:, fix:, etc.)
+  else if (match(msg, /(^|\s)([a-z]+)(\([^)]*\))?:/, m)) {
+    detected = m[2]
+    # Allow only known categories
+    if (detected ~ /^(feat|fix|chore|docs|test)$/) {
+      type = detected
+    } else {
+      type = "others"
+    }
   }
 
   groups[type] = groups[type] "\n- " hash " " msg
