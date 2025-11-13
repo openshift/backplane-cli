@@ -98,28 +98,51 @@ func (pd *PagerDuty) formatAlert(alert *pdApi.IncidentAlert) (formatAlert Alert,
 	formatAlert.Status = alert.Status
 	formatAlert.WebURL = alert.HTMLURL
 
+	// Check if alert.Body and alert.Body["details"] exist
+	if alert.Body == nil {
+		return formatAlert, fmt.Errorf("unable to parse alert: alert body is missing")
+	}
+
+	details, ok := alert.Body["details"]
+	if !ok || details == nil {
+		return formatAlert, fmt.Errorf("unable to parse alert: alert details are missing")
+	}
+
+	detailsMap, ok := details.(map[string]interface{})
+	if !ok {
+		return formatAlert, fmt.Errorf("unable to parse alert: alert details have unexpected format")
+	}
+
 	// Check if the alert is of type 'Missing cluster'
-	isCHGM := alert.Body["details"].(map[string]interface{})["notes"]
+	isCHGM := detailsMap["notes"]
 
 	if isCHGM != nil {
-		notes := strings.Split(fmt.Sprint(alert.Body["details"].(map[string]interface{})["notes"]), "\n")
+		notes := strings.Split(fmt.Sprint(detailsMap["notes"]), "\n")
 		fmt.Print(notes)
 		formatAlert.ClusterID = strings.Replace(notes[0], "cluster_id: ", "", 1)
-		formatAlert.ClusterName = strings.Split(fmt.Sprint(alert.Body["details"].(map[string]interface{})["name"]), ".")[0]
+
+		nameValue, ok := detailsMap["name"]
+		if ok && nameValue != nil {
+			formatAlert.ClusterName = strings.Split(fmt.Sprint(nameValue), ".")[0]
+		}
 
 	} else {
-		formatAlert.ClusterID = fmt.Sprint(alert.Body["details"].(map[string]interface{})["cluster_id"])
-		formatAlert.ClusterName, err = pd.GetClusterName(alert.Service.ID)
-
-		// If the service mapped to the current incident is not available (404)
-		if err != nil {
-			formatAlert.ClusterName = "N/A"
+		clusterIDValue, ok := detailsMap["cluster_id"]
+		if ok && clusterIDValue != nil {
+			formatAlert.ClusterID = fmt.Sprint(clusterIDValue)
 		}
+
+		formatAlert.ClusterName, _ = pd.GetClusterName(alert.Service.ID)
 	}
 
 	// If there's no cluster ID related to the given alert
 	if formatAlert.ClusterID == "" {
 		formatAlert.ClusterID = "N/A"
+	}
+
+	// If there's no cluster name related to the given alert
+	if formatAlert.ClusterName == "" {
+		formatAlert.ClusterName = "N/A"
 	}
 
 	return formatAlert, nil
