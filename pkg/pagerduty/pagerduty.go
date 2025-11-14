@@ -8,6 +8,7 @@ import (
 	"time"
 
 	pdApi "github.com/PagerDuty/go-pagerduty"
+	logger "github.com/sirupsen/logrus"
 )
 
 // Alert struct represents the data contained in an alert.
@@ -132,7 +133,10 @@ func (pd *PagerDuty) formatAlert(alert *pdApi.IncidentAlert) (formatAlert Alert,
 			formatAlert.ClusterID = fmt.Sprint(clusterIDValue)
 		}
 
-		formatAlert.ClusterName, _ = pd.GetClusterName(alert.Service.ID)
+		formatAlert.ClusterName, err = pd.GetClusterName(alert.Service.ID)
+		if err != nil {
+			logger.Warnf("Failed to get cluster name for service %s: %v", alert.Service.ID, err)
+		}
 	}
 
 	// If there's no cluster ID related to the given alert
