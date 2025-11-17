@@ -226,6 +226,121 @@ var _ = Describe("Pagerduty", func() {
 			Expect(info.ClusterID).To(ContainSubstring(testClusterID))
 
 		})
+
+		It("Should return error when alert body is nil", func() {
+			// Create an alert with nil body 
+			alertWithNilBody := pdApi.IncidentAlert{
+				Incident: pdApi.APIReference{
+					ID: testIncidentID,
+				},
+				Service: pdApi.APIObject{
+					ID: testServiceID,
+				},
+				APIObject: pdApi.APIObject{
+					Summary: testAlertName,
+				},
+				Body:   nil,
+				Status: StatusTriggered,
+			}
+
+			alertResponse := &pdApi.ListAlertsResponse{
+				Alerts: []pdApi.IncidentAlert{alertWithNilBody},
+			}
+
+			mockPdClient.EXPECT().ListIncidentAlerts(testIncidentID).Return(alertResponse, nil).Times(1)
+
+			_, err := pagerDuty.GetIncidentAlerts(testIncidentID)
+			Expect(err).NotTo(BeNil())
+			Expect(err.Error()).To(ContainSubstring("unable to parse alert: alert body is missing"))
+		})
+
+		It("Should return error when alert details are nil", func() {
+			// Create an alert with nil details
+			alertWithNilDetails := pdApi.IncidentAlert{
+				Incident: pdApi.APIReference{
+					ID: testIncidentID,
+				},
+				Service: pdApi.APIObject{
+					ID: testServiceID,
+				},
+				APIObject: pdApi.APIObject{
+					Summary: testAlertName,
+				},
+				Body: map[string]interface{}{
+					"details": nil,
+				},
+				Status: StatusTriggered,
+			}
+
+			alertResponse := &pdApi.ListAlertsResponse{
+				Alerts: []pdApi.IncidentAlert{alertWithNilDetails},
+			}
+
+			mockPdClient.EXPECT().ListIncidentAlerts(testIncidentID).Return(alertResponse, nil).Times(1)
+
+			_, err := pagerDuty.GetIncidentAlerts(testIncidentID)
+			Expect(err).NotTo(BeNil())
+			Expect(err.Error()).To(ContainSubstring("unable to parse alert: alert details are missing"))
+		})
+
+		It("Should return error when alert details are missing", func() {
+			// Create an alert without details key
+			alertWithMissingDetails := pdApi.IncidentAlert{
+				Incident: pdApi.APIReference{
+					ID: testIncidentID,
+				},
+				Service: pdApi.APIObject{
+					ID: testServiceID,
+				},
+				APIObject: pdApi.APIObject{
+					Summary: testAlertName,
+				},
+				Body: map[string]interface{}{
+					// "details" key is missing
+					"other_field": "value",
+				},
+				Status: StatusTriggered,
+			}
+
+			alertResponse := &pdApi.ListAlertsResponse{
+				Alerts: []pdApi.IncidentAlert{alertWithMissingDetails},
+			}
+
+			mockPdClient.EXPECT().ListIncidentAlerts(testIncidentID).Return(alertResponse, nil).Times(1)
+
+			_, err := pagerDuty.GetIncidentAlerts(testIncidentID)
+			Expect(err).NotTo(BeNil())
+			Expect(err.Error()).To(ContainSubstring("unable to parse alert: alert details are missing"))
+		})
+
+		It("Should return error when alert details have unexpected format", func() {
+			// Create an alert with details as string instead of map
+			alertWithWrongFormat := pdApi.IncidentAlert{
+				Incident: pdApi.APIReference{
+					ID: testIncidentID,
+				},
+				Service: pdApi.APIObject{
+					ID: testServiceID,
+				},
+				APIObject: pdApi.APIObject{
+					Summary: testAlertName,
+				},
+				Body: map[string]interface{}{
+					"details": "this is a string, not a map",
+				},
+				Status: StatusTriggered,
+			}
+
+			alertResponse := &pdApi.ListAlertsResponse{
+				Alerts: []pdApi.IncidentAlert{alertWithWrongFormat},
+			}
+
+			mockPdClient.EXPECT().ListIncidentAlerts(testIncidentID).Return(alertResponse, nil).Times(1)
+
+			_, err := pagerDuty.GetIncidentAlerts(testIncidentID)
+			Expect(err).NotTo(BeNil())
+			Expect(err.Error()).To(ContainSubstring("unable to parse alert: alert details have unexpected format"))
+		})
 	})
 })
 
