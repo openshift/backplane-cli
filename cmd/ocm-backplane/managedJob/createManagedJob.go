@@ -317,9 +317,13 @@ func getJobStatus(client BackplaneApi.ClientInterface, job *BackplaneApi.Job) (B
 		return "", err
 	}
 
+	if jobResp.StatusCode != http.StatusOK {
+		return "", utils.TryPrintAPIError(jobResp, options.raw)
+	}
+
 	formatJobResp, err := BackplaneApi.ParseGetRunResponse(jobResp)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("unable to parse response body from backplane: \n Status Code: %d: %w", jobResp.StatusCode, err)
 	}
 
 	return *formatJobResp.JSON200.JobStatus.Status, nil
