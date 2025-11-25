@@ -99,7 +99,7 @@ func (cfg *QueryConfig) GetCloudConsole() (*ConsoleResponse, error) {
 			return nil, fmt.Errorf("failed to get signin token: %w", err)
 		}
 
-		signinFederationURL, err := awsutil.GetConsoleURL(resp.SigninToken, cfg.Cluster.Region().ID())
+		signinFederationURL, err := awsutil.GetConsoleURL(resp.SigninToken, cfg.Cluster.Region().ID(), cfg.SessionDurationMinutes)
 		if err != nil {
 			return nil, fmt.Errorf("failed to generate console url: %w", err)
 		}
