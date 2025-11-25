@@ -1,0 +1,89 @@
+name: Dependabot Auto-Merge
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: write
+  pull-requests: write
+  checks: read
+
+jobs:
+  auto-merge:
+    runs-on: ubuntu-latest
+    # Only run for Dependabot PRs
+    if: github.actor == 'dependabot[bot]'
+    steps:
+      - name: Fetch Dependabot Metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@v2
+        with:
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
+
+      - name: Check PR Labels
+        id: check-labels
+        run: |
+          # Check if PR has the required labels for auto-merge
+          if [[ "${{ contains(github.event.pull_request.labels.*.name, 'area/dependency') }}" == "true" ]] && \
+             [[ "${{ contains(github.event.pull_request.labels.*.name, 'ok-to-test') }}" == "true" ]]; then
+            echo "has-required-labels=true" >> $GITHUB_OUTPUT
+          else
+            echo "has-required-labels=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Enable Auto-Merge for Safe Updates
+        if: |
+          steps.check-labels.outputs.has-required-labels == 'true' && (
+            steps.metadata.outputs.update-type == 'version-update:semver-patch' ||
+            steps.metadata.outputs.update-type == 'version-update:semver-minor' ||
+            steps.metadata.outputs.update-type == 'version-update:semver-digest'
+          )
+        run: |
+          echo "Enabling auto-merge for ${{ steps.metadata.outputs.update-type }} update"
+          echo "Dependency: ${{ steps.metadata.outputs.dependency-names }}"
+          echo "Previous version: ${{ steps.metadata.outputs.previous-version }}"
+          echo "New version: ${{ steps.metadata.outputs.new-version }}"
+          
+          # Enable auto-merge with merge commit strategy
+          gh pr merge --auto --merge "${{ github.event.pull_request.number }}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Comment on Major Version Updates
+        if: |
+          steps.check-labels.outputs.has-required-labels == 'true' &&
+          steps.metadata.outputs.update-type == 'version-update:semver-major'
+        run: |
+          gh pr comment "${{ github.event.pull_request.number }}" --body \
+            "🚨 **Major Version Update Detected** 🚨
+            
+            This PR contains a major version update that requires manual review:
+            - **Dependency:** ${{ steps.metadata.outputs.dependency-names }}
+            - **Previous version:** ${{ steps.metadata.outputs.previous-version }}
+            - **New version:** ${{ steps.metadata.outputs.new-version }}
+            
+            Please review the changelog and breaking changes before merging.
+            
+            Auto-merge has been **disabled** for this PR."
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Log Auto-Merge Decision
+        run: |
+          echo "Auto-merge decision for PR #${{ github.event.pull_request.number }}:"
+          echo "- Update type: ${{ steps.metadata.outputs.update-type }}"
+          echo "- Has required labels: ${{ steps.check-labels.outputs.has-required-labels }}"
+          echo "- Dependency: ${{ steps.metadata.outputs.dependency-names }}"
+          
+          if [[ "${{ steps.metadata.outputs.update-type }}" == "version-update:semver-patch" ]] || \
+             [[ "${{ steps.metadata.outputs.update-type }}" == "version-update:semver-minor" ]] || \
+             [[ "${{ steps.metadata.outputs.update-type }}" == "version-update:semver-digest" ]]; then
+            if [[ "${{ steps.check-labels.outputs.has-required-labels }}" == "true" ]]; then
+              echo "✅ Auto-merge ENABLED"
+            else
+              echo "❌ Auto-merge DISABLED: Missing required labels"
+            fi
+          else
+            echo "❌ Auto-merge DISABLED: Major version update or unknown update type"
+          fi
