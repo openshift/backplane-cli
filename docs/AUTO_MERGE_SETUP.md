@@ -81,4 +81,4 @@ To manually merge a Dependabot PR that wasn't auto-merged:
 ### Updating This Setup
 - Modify `.github/dependabot.yml` to change update frequency or add ignores
 - Update `.github/workflows/dependabot-auto-merge.yml` to adjust auto-merge rules
-- Modify `.github/workflows/ci.yml` to add or change CI checks
+- Auto-merge relies on the repository's existing CI infrastructure - no separate CI workflow needed

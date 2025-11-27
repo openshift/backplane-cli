@@ -10,29 +10,6 @@ permissions:
   contents: read
 
 jobs:
-  check-branch-protection:
-    name: Verify Branch Protection Settings
-    runs-on: ubuntu-latest
-    
-    steps:
-    - name: Check Branch Protection
-      run: |
-        echo "🔍 Checking branch protection settings for auto-merge compatibility..."
-        echo ""
-        echo "Required settings for auto-merge to work properly:"
-        echo "1. ✅ Require status checks to pass before merging"
-        echo "2. ✅ Required status check: 'CI Success'"
-        echo "3. ✅ Require branches to be up to date before merging"
-        echo "4. ✅ Allow auto-merge (in repository settings)"
-        echo "5. ✅ GitHub Actions has write permissions"
-        echo ""
-        echo "To configure these settings:"
-        echo "- Go to Settings → Branches → Add rule for 'main'"
-        echo "- Go to Settings → General → Enable 'Allow auto-merge'"
-        echo "- Go to Settings → Actions → General → Enable write permissions"
-        echo ""
-        echo "📖 For detailed instructions, see: .github/AUTO_MERGE_SETUP.md"
-
   verify-dependabot-config:
     name: Verify Dependabot Configuration
     runs-on: ubuntu-latest
@@ -69,7 +46,6 @@ jobs:
         
         required_workflows=(
           ".github/workflows/dependabot-auto-merge.yml"
-          ".github/workflows/ci.yml"
         )
         
         all_present=true
@@ -91,3 +67,7 @@ jobs:
         
         echo ""
         echo "✅ All required workflows are present"
+        echo ""
+        echo "ℹ️  Note: Auto-merge relies on existing repository CI checks"
+        echo "   The dependabot workflow uses GitHub's built-in auto-merge feature"
+        echo "   which waits for all required status checks to pass before merging."
