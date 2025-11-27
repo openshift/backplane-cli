@@ -18,9 +18,10 @@ import (
 )
 
 var consoleArgs struct {
-	browser      bool
-	backplaneURL string
-	output       string
+	browser                bool
+	backplaneURL           string
+	output                 string
+	sessionDurationMinutes int
 }
 
 type ConsoleResponse struct {
@@ -36,6 +37,10 @@ func (r *ConsoleResponse) String() string {
 
 // EnvBrowserDefault environment variable that indicates if open by browser is set as default
 const EnvBrowserDefault = "BACKPLANE_DEFAULT_OPEN_BROWSER"
+
+// MAX_SESSION_TIMEOUT_DURATION maximum session duration in minutes
+// This is limited by AWS STS maximum duration for assumed roles of 60 minutes
+const MAX_SESSION_TIMEOUT_DURATION = 60 // in minutes
 
 // ConsoleCmd represents the cloud credentials command
 var ConsoleCmd = &cobra.Command{
@@ -73,6 +78,12 @@ func init() {
 		"o",
 		"text",
 		"Format the output of the console response.",
+	)
+	flags.IntVar(
+		&consoleArgs.sessionDurationMinutes,
+		"session-duration-minutes",
+		0,
+		"Duration in minutes for the cloud console session to remain active (cannot exceed underlying STS credential expiration 60m, default 15m).",
 	)
 }
 
@@ -124,6 +135,17 @@ func runConsole(cmd *cobra.Command, argv []string) (err error) {
 	// ============Get Backplane URl ==========================
 	if consoleArgs.backplaneURL != "" { // Overwrite if parameter is set
 		backplaneConfiguration.URL = consoleArgs.backplaneURL
+	}
+
+	// Only evaluate if the session duration is greater than the default of 15 minutes
+	// The default does not need to be configured anywhere
+	if consoleArgs.sessionDurationMinutes > 15 {
+		if consoleArgs.sessionDurationMinutes > MAX_SESSION_TIMEOUT_DURATION {
+			logger.Warnf("Session duration cannot exceed %d minutes, setting to maximum of %d minutes", MAX_SESSION_TIMEOUT_DURATION, MAX_SESSION_TIMEOUT_DURATION)
+			backplaneConfiguration.SessionDurationMinutes = MAX_SESSION_TIMEOUT_DURATION
+		} else {
+			backplaneConfiguration.SessionDurationMinutes = consoleArgs.sessionDurationMinutes
+		}
 	}
 
 	logger.Infof("Using backplane URL: %s\n", backplaneConfiguration.URL)

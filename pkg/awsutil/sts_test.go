@@ -837,7 +837,7 @@ func TestGetConsoleUrl(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := GetConsoleURL(tt.signinToken, "us-east-1")
+			got, err := GetConsoleURL(tt.signinToken, "us-east-1", 0)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GetConsoleURL() error = %v, wantErr %v", err, tt.wantErr)
 				return

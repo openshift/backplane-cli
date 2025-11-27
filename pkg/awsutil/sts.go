@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"time"
 
 	logger "github.com/sirupsen/logrus"
@@ -82,6 +83,9 @@ func AssumeRoleWithJWT(jwt string, roleArn string, stsClient stscreds.AssumeRole
 		IdentityTokenValue(jwt),
 		func(options *stscreds.WebIdentityRoleOptions) {
 			options.RoleSessionName = email
+			// Explicitly request a 60 minute session duration
+			// it is the default, but being explicit here for clarity
+			options.Duration = 60 * time.Minute
 		},
 	))
 
@@ -102,6 +106,9 @@ func AssumeRole(
 ) (aws.Credentials, error) {
 	assumeRoleProvider := stscreds.NewAssumeRoleProvider(stsClient, roleArn, func(options *stscreds.AssumeRoleOptions) {
 		options.RoleSessionName = roleSessionName
+		// Explicitly request a 60 minute session duration
+		// it is the default, but being explicit here for clarity
+		options.Duration = 60 * time.Minute
 		if inlinePolicy != nil {
 			options.Policy = aws.String(inlinePolicy.String())
 		}
@@ -259,12 +266,20 @@ func GetSigninToken(awsCredentials aws.Credentials, region string) (*AWSSigninTo
 	return &resp, nil
 }
 
-func GetConsoleURL(signinToken string, region string) (*url.URL, error) {
+func GetConsoleURL(signinToken string, region string, sessionDurationMinutes int) (*url.URL, error) {
 	signinParams := url.Values{}
 	signinParams.Add("Action", "login")
 	signinParams.Add("Destination", fmt.Sprintf(AwsConsoleURLTemplate, region))
 	signinParams.Add("Issuer", DefaultIssuer)
 	signinParams.Add("SigninToken", signinToken)
+	// Only include parameter if session duration is greater than AWS default of 15 minutes
+	// Explicitly set console session duration to requested time.
+	// This controls how long the federated console session remains active
+	// independent of the underlying STS credential expiration (cannot exceed 60 minutes)
+	if sessionDurationMinutes > 15 && sessionDurationMinutes <= 60 {
+		logger.Infof("sesstion_duration: %d minutes", sessionDurationMinutes)
+		signinParams.Add("SessionDuration", strconv.Itoa(sessionDurationMinutes*60))
+	}
 
 	signInFederationURL, err := url.Parse(fmt.Sprintf(AwsFederatedSigninEndpointTemplate, region))
 	if err != nil {

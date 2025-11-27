@@ -50,6 +50,7 @@ type BackplaneConfiguration struct {
 	DisplayClusterInfo          bool                            `json:"display-cluster-info"`
 	DisableKubePS1Warning       bool                            `json:"disable-kube-ps1-warning"`
 	Govcloud                    bool                            `json:"govcloud"`
+	SessionDurationMinutes      int                             `json:"session-duration-minutes"`
 }
 
 const (
