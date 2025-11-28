@@ -7,6 +7,8 @@ updates:
       - "ok-to-test"
     schedule:
       interval: "weekly"
+    # Enable auto-merge for patch and minor updates
+    open-pull-requests-limit: 10
     ignore:
       - dependency-name: "app-sre/boilerplate"
         # don't upgrade boilerplate via these means
@@ -19,3 +21,17 @@ updates:
       - "ok-to-test"
     schedule:
       interval: "weekly"
+    # Enable auto-merge for patch and minor updates
+    open-pull-requests-limit: 10
+    # Group related updates together to reduce PR volume
+    groups:
+      aws-sdk:
+        patterns:
+          - "github.com/aws/aws-sdk-go-v2*"
+      kubernetes:
+        patterns:
+          - "k8s.io/*"
+          - "sigs.k8s.io/*"
+      openshift:
+        patterns:
+          - "github.com/openshift/*"
