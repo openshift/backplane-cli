@@ -49,10 +49,10 @@ OUTPUT_DIR :=_output
 CROSS_BUILD_BINDIR :=$(OUTPUT_DIR)/bin
 
 build: clean
-	GOTOOLCHAIN=go1.24.6+auto go build -o ocm-backplane ./cmd/ocm-backplane || exit 1
+	env -u GOTOOLCHAIN GOTOOLCHAIN=go1.24.6+auto go build -o ocm-backplane ./cmd/ocm-backplane || exit 1
 
 build-static: clean
-	GOTOOLCHAIN=go1.24.6+auto go build -a -installsuffix cgo -ldflags '-extldflags "-static"' -o ocm-backplane ./cmd/ocm-backplane || exit 1
+	env -u GOTOOLCHAIN GOTOOLCHAIN=go1.24.6+auto go build -a -installsuffix cgo -ldflags '-extldflags "-static"' -o ocm-backplane ./cmd/ocm-backplane || exit 1
 
 install:
 	GOTOOLCHAIN=go1.24.6+auto go install ./cmd/ocm-backplane
@@ -82,7 +82,7 @@ release-with-note: ensure-goreleaser
 	goreleaser release --rm-dist --release-notes="$(NOTE)"
 
 test:
-	GOTOOLCHAIN=go1.24.6+auto go test -v $(TESTOPTS) ./...
+	env -u GOTOOLCHAIN GOTOOLCHAIN=go1.24.6+auto go test -v $(TESTOPTS) ./...
 
 .PHONY: coverage
 coverage:
