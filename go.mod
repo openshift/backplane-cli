@@ -1,6 +1,6 @@
 module github.com/openshift/backplane-cli
 
-go 1.24.6
+go 1.24.4 // TODO: Upgrade to 1.24.6 once CI environment supports it
 
 require (
 	github.com/Masterminds/semver v1.5.0
