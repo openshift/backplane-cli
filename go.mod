@@ -1,8 +1,6 @@
 module github.com/openshift/backplane-cli
 
-go 1.24.0
-
-toolchain go1.24.1
+go 1.24.6
 
 require (
 	github.com/Masterminds/semver v1.5.0
