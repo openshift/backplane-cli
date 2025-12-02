@@ -15,6 +15,9 @@ jobs:
     # Only run for Dependabot PRs
     if: github.actor == 'dependabot[bot]'
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
       - name: Fetch Dependabot Metadata
         id: metadata
         uses: dependabot/fetch-metadata@v2
