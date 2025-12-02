@@ -1,6 +1,6 @@
 module github.com/openshift/backplane-cli
 
-go 1.24.4
+go 1.24.6
 
 require (
 	github.com/Masterminds/semver v1.5.0
@@ -16,7 +16,7 @@ require (
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/onsi/ginkgo/v2 v2.27.2
 	github.com/onsi/gomega v1.38.2
-	github.com/openshift-online/ocm-cli v1.0.8
+	github.com/openshift-online/ocm-cli v1.0.10
 	github.com/openshift-online/ocm-sdk-go v0.1.482
 	github.com/openshift/backplane-api v0.0.0-20251026011953-7861d08b3674
 	github.com/openshift/client-go v0.0.0-20221019143426-16aed247da5c
