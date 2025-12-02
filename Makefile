@@ -49,13 +49,13 @@ OUTPUT_DIR :=_output
 CROSS_BUILD_BINDIR :=$(OUTPUT_DIR)/bin
 
 build: clean
-	env -u GOTOOLCHAIN GOTOOLCHAIN=go1.24.6+auto go build -o ocm-backplane ./cmd/ocm-backplane || exit 1
+	env -u GOTOOLCHAIN GOTOOLCHAIN=go1.24.4+auto go build -o ocm-backplane ./cmd/ocm-backplane || exit 1
 
 build-static: clean
-	env -u GOTOOLCHAIN GOTOOLCHAIN=go1.24.6+auto go build -a -installsuffix cgo -ldflags '-extldflags "-static"' -o ocm-backplane ./cmd/ocm-backplane || exit 1
+	env -u GOTOOLCHAIN GOTOOLCHAIN=go1.24.4+auto go build -a -installsuffix cgo -ldflags '-extldflags "-static"' -o ocm-backplane ./cmd/ocm-backplane || exit 1
 
 install:
-	GOTOOLCHAIN=go1.24.6+auto go install ./cmd/ocm-backplane
+	GOTOOLCHAIN=go1.24.4+auto go install ./cmd/ocm-backplane
 
 clean:
 	rm -f ocm-backplane
@@ -82,18 +82,18 @@ release-with-note: ensure-goreleaser
 	goreleaser release --rm-dist --release-notes="$(NOTE)"
 
 test:
-	env -u GOTOOLCHAIN GOTOOLCHAIN=go1.24.6+auto go test -v $(TESTOPTS) ./...
+	env -u GOTOOLCHAIN GOTOOLCHAIN=go1.24.4+auto go test -v $(TESTOPTS) ./...
 
 .PHONY: coverage
 coverage:
 	hack/codecov.sh
 
 cross-build-darwin-amd64:
-	+@GOOS=darwin GOARCH=amd64 GOTOOLCHAIN=go1.24.6+auto go build $(GO_BUILD_FLAGS_DARWIN) -o $(CROSS_BUILD_BINDIR)/ocm-backplane_darwin_amd64 ./cmd/ocm-backplane
+	+@GOOS=darwin GOARCH=amd64 GOTOOLCHAIN=go1.24.4+auto go build $(GO_BUILD_FLAGS_DARWIN) -o $(CROSS_BUILD_BINDIR)/ocm-backplane_darwin_amd64 ./cmd/ocm-backplane
 .PHONY: cross-build-darwin-amd64
 
 cross-build-linux-amd64:
-	+@GOOS=linux GOARCH=amd64 GOTOOLCHAIN=go1.24.6+auto go build $(GO_BUILD_FLAGS_LINUX_CROSS) -o $(CROSS_BUILD_BINDIR)/ocm-backplane_linux_amd64 ./cmd/ocm-backplane
+	+@GOOS=linux GOARCH=amd64 GOTOOLCHAIN=go1.24.4+auto go build $(GO_BUILD_FLAGS_LINUX_CROSS) -o $(CROSS_BUILD_BINDIR)/ocm-backplane_linux_amd64 ./cmd/ocm-backplane
 .PHONY: cross-build-linux-amd64
 
 cross-build: cross-build-darwin-amd64 cross-build-linux-amd64
@@ -106,7 +106,7 @@ clean-cross-build:
 
 .PHONY: generate
 generate:
-	GOTOOLCHAIN=go1.24.6+auto go generate ./...
+	GOTOOLCHAIN=go1.24.4+auto go generate ./...
 
 .PHONY: mock-gen
 mock-gen:
