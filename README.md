@@ -482,7 +482,7 @@ Wait for the release repository PR to be merged by the CI bot.
 Update the Go version in the Backplane CLI Dockerfile and verify CI builds:
 
 ```
-FROM golang:1.21  # Update version to match release PR
+FROM golang:1.24.4  # Update version to match release PR
 ```
 Example Implementation: PR [#636](https://github.com/openshift/backplane-cli/pull/636): OSD-28717 Fix build failures
 Update the dockerfile of backplane-cli with the latest go version and check if build passes.
