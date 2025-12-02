@@ -518,6 +518,7 @@ func getTrustedIPList(connection *ocmsdk.Connection) (awsutil.IPAddress, error) 
 
 			// Proxy IPs
 			if strings.HasPrefix(ip.ID(), "209.") ||
+				strings.HasPrefix(ip.ID(), "182.") ||
 				strings.HasPrefix(ip.ID(), "66.") ||
 				strings.HasPrefix(ip.ID(), "91.") {
 				sourceIPList = append(sourceIPList, fmt.Sprintf("%s/32", ip.ID()))

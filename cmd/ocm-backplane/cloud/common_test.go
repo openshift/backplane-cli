@@ -494,6 +494,45 @@ var _ = Describe("getIsolatedCredentials", func() {
 			Expect(policy).NotTo(ContainSubstring("200.20.20.20"))
 			Expect(err).To(BeNil())
 		})
+
+		It("should include 182.x proxy IPs in the inline policy", func() {
+			ip1 := cmv1.NewTrustedIp().ID("182.50.100.200").Enabled(true)
+			ip2 := cmv1.NewTrustedIp().ID("182.100.50.25").Enabled(true)
+			ip3 := cmv1.NewTrustedIp().ID("200.20.20.20").Enabled(true) // Non-proxy IP
+			expectedIPList, err := cmv1.NewTrustedIpList().Items(ip1, ip2, ip3).Build()
+			Expect(err).To(BeNil())
+			mockOcmInterface.EXPECT().GetTrustedIPList(gomock.Any()).Return(expectedIPList, nil)
+			IPList, _ := getTrustedIPList(testQueryConfig.OcmConnection)
+			policy, _ := getTrustedIPInlinePolicy(IPList)
+			// Check 182.x proxy IPs are included
+			Expect(policy).To(ContainSubstring("182.50.100.200"))
+			Expect(policy).To(ContainSubstring("182.100.50.25"))
+			// Check non-proxy IP is not included
+			Expect(policy).NotTo(ContainSubstring("200.20.20.20"))
+			Expect(err).To(BeNil())
+		})
+
+		It("should include all proxy IP prefixes in the inline policy", func() {
+			// Test all proxy IP prefixes: 209., 182., 66., 91.
+			ip1 := cmv1.NewTrustedIp().ID("209.10.10.10").Enabled(true)
+			ip2 := cmv1.NewTrustedIp().ID("182.50.100.200").Enabled(true)
+			ip3 := cmv1.NewTrustedIp().ID("66.20.30.40").Enabled(true)
+			ip4 := cmv1.NewTrustedIp().ID("91.100.200.50").Enabled(true)
+			ip5 := cmv1.NewTrustedIp().ID("192.168.1.1").Enabled(true) // Non-proxy IP
+			expectedIPList, err := cmv1.NewTrustedIpList().Items(ip1, ip2, ip3, ip4, ip5).Build()
+			Expect(err).To(BeNil())
+			mockOcmInterface.EXPECT().GetTrustedIPList(gomock.Any()).Return(expectedIPList, nil)
+			IPList, _ := getTrustedIPList(testQueryConfig.OcmConnection)
+			policy, _ := getTrustedIPInlinePolicy(IPList)
+			// Verify all proxy IPs are included
+			Expect(policy).To(ContainSubstring("209.10.10.10"))
+			Expect(policy).To(ContainSubstring("182.50.100.200"))
+			Expect(policy).To(ContainSubstring("66.20.30.40"))
+			Expect(policy).To(ContainSubstring("91.100.200.50"))
+			// Verify non-proxy IP is not included
+			Expect(policy).NotTo(ContainSubstring("192.168.1.1"))
+			Expect(err).To(BeNil())
+		})
 	})
 
 	Context("Execute verifyTrustedIPAndGetPolicy", func() {
