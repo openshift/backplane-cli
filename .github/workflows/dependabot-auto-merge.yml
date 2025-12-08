@@ -8,6 +8,8 @@ permissions:
   contents: write
   pull-requests: write
   checks: read
+  metadata: read
+  actions: read
 
 jobs:
   auto-merge:
