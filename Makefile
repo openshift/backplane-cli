@@ -50,13 +50,12 @@ OUTPUT_DIR :=_output
 CROSS_BUILD_BINDIR :=$(OUTPUT_DIR)/bin
 
 build: clean
-	go build -o ocm-backplane ./cmd/ocm-backplane || exit 1
+	env -u GOTOOLCHAIN GOTOOLCHAIN=go1.24.11+auto go build -o ocm-backplane ./cmd/ocm-backplane || exit 1
 
 build-static: clean
 	go build -a -installsuffix cgo -ldflags '-extldflags "-static"' -o ocm-backplane ./cmd/ocm-backplane || exit 1
 
 install:
-	@echo $(GOTOOLCHAIN)
 	go install ./cmd/ocm-backplane
 
 clean:
