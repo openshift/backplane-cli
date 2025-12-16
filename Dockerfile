@@ -10,7 +10,7 @@ RUN yum --assumeyes install \
     && yum clean all;
 
 ### Build backplane-cli
-FROM brew.registry.redhat.io/rh-osbs/openshift-golang-builder:rhel_9_golang_1.24 as bp-cli-builder
+FROM brew.registry.redhat.io/rh-osbs/openshift-golang-builder:rhel_10_golang_1.25 as bp-cli-builder
 
 
 # Configure the env
@@ -19,7 +19,7 @@ FROM brew.registry.redhat.io/rh-osbs/openshift-golang-builder:rhel_9_golang_1.24
 #Environment variables
 ENV GOOS=linux GO111MODULE=on GOPROXY=https://proxy.golang.org 
 ENV GOBIN=/gobin GOPATH=/usr/src/go CGO_ENABLED=0
-ENV GOTOOLCHAIN=go1.24.11+auto
+ENV GOTOOLCHAIN=go1.25.5+auto
 RUN go env -w GOTOOLCHAIN=$GOTOOLCHAIN
 
 # Directory for the binary
@@ -35,7 +35,7 @@ RUN cp ./ocm-backplane /out
 RUN chmod -R +x /out
 
 ### Build dependencies
-FROM brew.registry.redhat.io/rh-osbs/openshift-golang-builder:rhel_9_golang_1.24 as dep-builder
+FROM brew.registry.redhat.io/rh-osbs/openshift-golang-builder:rhel_10_golang_1.25 as dep-builder
 
 ARG GITHUB_URL="https://api.github.com"
 ARG GITHUB_TOKEN=""

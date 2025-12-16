@@ -12,7 +12,7 @@ GO_BUILD_FLAGS_LINUX_CROSS :=-tags 'include_gcs include_oss containers_image_ope
 GOLANGCI_LINT_VERSION=v2.5.0
 GORELEASER_VERSION=v1.14.1
 GOVULNCHECK_VERSION=v1.0.1
-export GOTOOLCHAIN=go1.24.11+auto
+export GOTOOLCHAIN=go1.25.5+auto
 
 TESTOPTS ?=
 
@@ -50,7 +50,7 @@ OUTPUT_DIR :=_output
 CROSS_BUILD_BINDIR :=$(OUTPUT_DIR)/bin
 
 build: clean
-	env -u GOTOOLCHAIN GOTOOLCHAIN=go1.24.11+auto go build -o ocm-backplane ./cmd/ocm-backplane || exit 1
+	go build -o ocm-backplane ./cmd/ocm-backplane || exit 1
 
 build-static: clean
 	go build -a -installsuffix cgo -ldflags '-extldflags "-static"' -o ocm-backplane ./cmd/ocm-backplane || exit 1
@@ -83,18 +83,18 @@ release-with-note: ensure-goreleaser
 	goreleaser release --rm-dist --release-notes="$(NOTE)"
 
 test:
-	env -u GOTOOLCHAIN GOTOOLCHAIN=go1.24.4+auto go test -v $(TESTOPTS) ./...
+	go test -v $(TESTOPTS) ./...
 
 .PHONY: coverage
 coverage:
 	hack/codecov.sh
 
 cross-build-darwin-amd64:
-	+@GOOS=darwin GOARCH=amd64 GOTOOLCHAIN=go1.24.4+auto go build $(GO_BUILD_FLAGS_DARWIN) -o $(CROSS_BUILD_BINDIR)/ocm-backplane_darwin_amd64 ./cmd/ocm-backplane
+	+@GOOS=darwin GOARCH=amd64 go build $(GO_BUILD_FLAGS_DARWIN) -o $(CROSS_BUILD_BINDIR)/ocm-backplane_darwin_amd64 ./cmd/ocm-backplane
 .PHONY: cross-build-darwin-amd64
 
 cross-build-linux-amd64:
-	+@GOOS=linux GOARCH=amd64 GOTOOLCHAIN=go1.24.4+auto go build $(GO_BUILD_FLAGS_LINUX_CROSS) -o $(CROSS_BUILD_BINDIR)/ocm-backplane_linux_amd64 ./cmd/ocm-backplane
+	+@GOOS=linux GOARCH=amd64 go build $(GO_BUILD_FLAGS_LINUX_CROSS) -o $(CROSS_BUILD_BINDIR)/ocm-backplane_linux_amd64 ./cmd/ocm-backplane
 .PHONY: cross-build-linux-amd64
 
 cross-build: cross-build-darwin-amd64 cross-build-linux-amd64
@@ -107,7 +107,7 @@ clean-cross-build:
 
 .PHONY: generate
 generate:
-	GOTOOLCHAIN=go1.24.4+auto go generate ./...
+	go generate ./...
 
 .PHONY: mock-gen
 mock-gen:
