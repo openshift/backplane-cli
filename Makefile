@@ -12,6 +12,7 @@ GO_BUILD_FLAGS_LINUX_CROSS :=-tags 'include_gcs include_oss containers_image_ope
 GOLANGCI_LINT_VERSION=v2.5.0
 GORELEASER_VERSION=v1.14.1
 GOVULNCHECK_VERSION=v1.0.1
+export GOTOOLCHAIN=go1.24.11+auto
 
 TESTOPTS ?=
 
@@ -49,13 +50,14 @@ OUTPUT_DIR :=_output
 CROSS_BUILD_BINDIR :=$(OUTPUT_DIR)/bin
 
 build: clean
-	env -u GOTOOLCHAIN GOTOOLCHAIN=go1.24.4+auto go build -o ocm-backplane ./cmd/ocm-backplane || exit 1
+	go build -o ocm-backplane ./cmd/ocm-backplane || exit 1
 
 build-static: clean
-	env -u GOTOOLCHAIN GOTOOLCHAIN=go1.24.4+auto go build -a -installsuffix cgo -ldflags '-extldflags "-static"' -o ocm-backplane ./cmd/ocm-backplane || exit 1
+	go build -a -installsuffix cgo -ldflags '-extldflags "-static"' -o ocm-backplane ./cmd/ocm-backplane || exit 1
 
 install:
-	GOTOOLCHAIN=go1.24.4+auto go install ./cmd/ocm-backplane
+	@echo $(GOTOOLCHAIN)
+	go install ./cmd/ocm-backplane
 
 clean:
 	rm -f ocm-backplane

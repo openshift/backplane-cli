@@ -15,12 +15,12 @@ FROM brew.registry.redhat.io/rh-osbs/openshift-golang-builder:rhel_9_golang_1.24
 
 # Configure the env
 
-RUN go env -w GOTOOLCHAIN=go1.24.4+auto
 
 #Environment variables
 ENV GOOS=linux GO111MODULE=on GOPROXY=https://proxy.golang.org 
 ENV GOBIN=/gobin GOPATH=/usr/src/go CGO_ENABLED=0
-ENV GOTOOLCHAIN=go1.24.4+auto
+ENV GOTOOLCHAIN=go1.24.11+auto
+RUN go env -w GOTOOLCHAIN=$GOTOOLCHAIN
 
 # Directory for the binary
 RUN mkdir /out
@@ -36,9 +36,6 @@ RUN chmod -R +x /out
 
 ### Build dependencies
 FROM brew.registry.redhat.io/rh-osbs/openshift-golang-builder:rhel_9_golang_1.24 as dep-builder
-
-# Ensure we can use Go 1.24.4
-ENV GOTOOLCHAIN=go1.24.4+auto
 
 ARG GITHUB_URL="https://api.github.com"
 ARG GITHUB_TOKEN=""
