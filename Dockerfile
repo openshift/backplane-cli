@@ -10,17 +10,17 @@ RUN yum --assumeyes install \
     && yum clean all;
 
 ### Build backplane-cli
-FROM brew.registry.redhat.io/rh-osbs/openshift-golang-builder:rhel_9_golang_1.24 as bp-cli-builder
+FROM brew.registry.redhat.io/rh-osbs/openshift-golang-builder:rhel_9_golang_1.25 as bp-cli-builder
 
 
 # Configure the env
 
-RUN go env -w GOTOOLCHAIN=go1.24.4+auto
+RUN go env -w GOTOOLCHAIN=go1.25.3+auto
 
 #Environment variables
 ENV GOOS=linux GO111MODULE=on GOPROXY=https://proxy.golang.org 
 ENV GOBIN=/gobin GOPATH=/usr/src/go CGO_ENABLED=0
-ENV GOTOOLCHAIN=go1.24.4+auto
+ENV GOTOOLCHAIN=go1.25.3+auto
 
 # Directory for the binary
 RUN mkdir /out
@@ -35,16 +35,16 @@ RUN cp ./ocm-backplane /out
 RUN chmod -R +x /out
 
 ### Build dependencies
-FROM brew.registry.redhat.io/rh-osbs/openshift-golang-builder:rhel_9_golang_1.24 as dep-builder
+FROM brew.registry.redhat.io/rh-osbs/openshift-golang-builder:rhel_9_golang_1.25 as dep-builder
 
-# Ensure we can use Go 1.24.4
-ENV GOTOOLCHAIN=go1.24.4+auto
+# Ensure we can use Go version as we want
+ENV GOTOOLCHAIN=go1.25.3+auto
 
 ARG GITHUB_URL="https://api.github.com"
 ARG GITHUB_TOKEN=""
 
 # Replace version with a version number to pin a specific version (eg: "4.7.8")
-ARG OC_VERSION="stable-4.16"
+ARG OC_VERSION="stable-4.20"
 ENV OC_URL="https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/${OC_VERSION}"
 
 # Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.4.0")
