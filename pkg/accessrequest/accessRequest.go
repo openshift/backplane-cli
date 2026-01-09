@@ -16,6 +16,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const jiraTokenHelpMessage = "Ensure you have access to the issue and your JIRA token is valid.\nSet token using either:\n  - Command: ocm-backplane config set %s <token value>\n  - Environment variable: export JIRA_API_TOKEN=<token value>"
+
 func getJiraBaseURL() string {
 	bpConfig, err := config.GetBackplaneConfiguration()
 	if err != nil {
@@ -117,7 +119,7 @@ func verifyAndPossiblyRetrieveIssue(bpConfig *config.BackplaneConfiguration, isP
 
 	issue, _, err := jiraClient.DefaultIssueService.Get(issueID, nil)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to verify JIRA issue '%s': %w\n"+jiraTokenHelpMessage, issueID, err, config.JiraTokenViperKey)
 	}
 
 	return issue, nil
@@ -148,7 +150,7 @@ func createNotificationIssue(bpConfig *config.BackplaneConfiguration, isProd boo
 
 	issue, _, err := jiraClient.DefaultIssueService.Create(issue)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create JIRA notification issue: %w\n"+jiraTokenHelpMessage, err, config.JiraTokenViperKey)
 	}
 
 	return issue, nil
