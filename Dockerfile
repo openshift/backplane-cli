@@ -1,26 +1,25 @@
 # This is for CI test and should build on x86_64 environment
 
-FROM registry.access.redhat.com/ubi9:9.7 as base
+FROM quay.io/hummingbird/go:1.25.5-builder as base
 
 ### Pre-install dependencies
 # These packages will end up in the final image
 # Installed here to save build time
-RUN yum --assumeyes install \
+RUN dnf --assumeyes install \
     jq \
     && yum clean all;
 
 ### Build backplane-cli
-FROM brew.registry.redhat.io/rh-osbs/openshift-golang-builder:rhel_9_golang_1.25 as bp-cli-builder
-
+FROM quay.io/hummingbird/go:1.25.5-builder as bp-cli-builder
 
 # Configure the env
 
-RUN go env -w GOTOOLCHAIN=go1.25.3+auto
+RUN go env -w GOTOOLCHAIN=go1.25.5+auto
 
 #Environment variables
 ENV GOOS=linux GO111MODULE=on GOPROXY=https://proxy.golang.org 
 ENV GOBIN=/gobin GOPATH=/usr/src/go CGO_ENABLED=0
-ENV GOTOOLCHAIN=go1.25.3+auto
+ENV GOTOOLCHAIN=go1.25.5+auto
 
 # Directory for the binary
 RUN mkdir /out
@@ -35,10 +34,10 @@ RUN cp ./ocm-backplane /out
 RUN chmod -R +x /out
 
 ### Build dependencies
-FROM brew.registry.redhat.io/rh-osbs/openshift-golang-builder:rhel_9_golang_1.25 as dep-builder
+FROM quay.io/hummingbird/go:1.25.5-builder as dep-builder
 
 # Ensure we can use Go version as we want
-ENV GOTOOLCHAIN=go1.25.3+auto
+ENV GOTOOLCHAIN=go1.25.5+auto
 
 ARG GITHUB_URL="https://api.github.com"
 ARG GITHUB_TOKEN=""
@@ -58,8 +57,8 @@ RUN mkdir /out
 RUN mkdir /oc
 WORKDIR /oc
 
-# Download jq packages 
-RUN curl -sSLo /usr/bin/jq https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64 && chmod +x /usr/bin/jq
+# Install helper tools
+RUN dnf --assumeyes install gawk jq tar which gzip
 
 # Download the checksum
 RUN curl -sSLf ${OC_URL}/sha256sum.txt -o sha256sum.txt
