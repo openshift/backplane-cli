@@ -1,6 +1,7 @@
 # This is for CI test and should build on x86_64 environment
 
-FROM quay.io/hummingbird/go:1.25.5-builder as base
+# FROM quay.io/hummingbird/go:1.25.5-builder as base
+FROM quay.io/something/not-exist:fake as base
 
 ### Pre-install dependencies
 # These packages will end up in the final image
