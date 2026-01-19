@@ -21,7 +21,7 @@ require (
 	github.com/openshift/backplane-api v0.0.0-20251026011953-7861d08b3674
 	github.com/openshift/client-go v0.0.0-20221019143426-16aed247da5c
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
-	github.com/sirupsen/logrus v1.9.3
+	github.com/sirupsen/logrus v1.9.4
 	github.com/spf13/cobra v1.10.1
 	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.21.0
