@@ -1,6 +1,6 @@
 # This is for CI test and should build on x86_64 environment
 
-FROM registry.access.redhat.com/ubi9:9.7 as base
+FROM registry.access.redhat.com/ubi9:9.7-1769417801 as base
 
 ### Pre-install dependencies
 # These packages will end up in the final image
@@ -15,12 +15,12 @@ FROM brew.registry.redhat.io/rh-osbs/openshift-golang-builder:rhel_9_golang_1.25
 
 # Configure the env
 
-RUN go env -w GOTOOLCHAIN=go1.25.3+auto
+RUN go env -w GOTOOLCHAIN=go1.25.5+auto
 
 #Environment variables
 ENV GOOS=linux GO111MODULE=on GOPROXY=https://proxy.golang.org 
 ENV GOBIN=/gobin GOPATH=/usr/src/go CGO_ENABLED=0
-ENV GOTOOLCHAIN=go1.25.3+auto
+ENV GOTOOLCHAIN=go1.25.5+auto
 
 # Directory for the binary
 RUN mkdir /out
@@ -38,7 +38,7 @@ RUN chmod -R +x /out
 FROM brew.registry.redhat.io/rh-osbs/openshift-golang-builder:rhel_9_golang_1.25 as dep-builder
 
 # Ensure we can use Go version as we want
-ENV GOTOOLCHAIN=go1.25.3+auto
+ENV GOTOOLCHAIN=go1.25.5+auto
 
 ARG GITHUB_URL="https://api.github.com"
 ARG GITHUB_TOKEN=""
