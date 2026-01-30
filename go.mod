@@ -17,7 +17,7 @@ require (
 	github.com/onsi/ginkgo/v2 v2.28.0
 	github.com/onsi/gomega v1.39.1
 	github.com/openshift-online/ocm-cli v1.0.10
-	github.com/openshift-online/ocm-sdk-go v0.1.487
+	github.com/openshift-online/ocm-sdk-go v0.1.493
 	github.com/openshift/backplane-api v0.0.0-20251026011953-7861d08b3674
 	github.com/openshift/client-go v0.0.0-20221019143426-16aed247da5c
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
@@ -47,8 +47,8 @@ require (
 	github.com/oapi-codegen/runtime v1.1.2 // indirect
 	github.com/oasdiff/yaml v0.0.0-20250309154309-f31be36b4037 // indirect
 	github.com/oasdiff/yaml3 v0.0.0-20250309153720-d2182401db90 // indirect
-	github.com/openshift-online/ocm-api-model/clientapi v0.0.441 // indirect
-	github.com/openshift-online/ocm-api-model/model v0.0.441 // indirect
+	github.com/openshift-online/ocm-api-model/clientapi v0.0.448 // indirect
+	github.com/openshift-online/ocm-api-model/model v0.0.448 // indirect
 	github.com/openshift-online/ocm-common v0.0.29 // indirect
 	github.com/yosida95/uritemplate/v3 v3.0.2 // indirect
 	go.yaml.in/yaml/v2 v2.4.2 // indirect
