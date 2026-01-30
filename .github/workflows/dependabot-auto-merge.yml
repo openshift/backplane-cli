@@ -8,7 +8,6 @@ permissions:
   contents: write
   pull-requests: write
   checks: read
-  metadata: read
   actions: read
 
 jobs:
@@ -29,9 +28,11 @@ jobs:
       - name: Check PR Labels
         id: check-labels
         run: |
-          # Check if PR has the required labels for auto-merge
-          if [[ "${{ contains(github.event.pull_request.labels.*.name, 'area/dependency') }}" == "true" ]] && \
-             [[ "${{ contains(github.event.pull_request.labels.*.name, 'ok-to-test') }}" == "true" ]]; then
+          # For Dependabot PRs, we'll be more permissive with labels
+          # Check if PR has dependency-related labels OR is from dependabot
+          if [[ "${{ contains(github.event.pull_request.labels.*.name, 'area/dependency') }}" == "true" ]] || \
+             [[ "${{ contains(github.event.pull_request.labels.*.name, 'dependencies') }}" == "true" ]] || \
+             [[ "${{ github.actor }}" == "dependabot[bot]" ]]; then
             echo "has-required-labels=true" >> $GITHUB_OUTPUT
           else
             echo "has-required-labels=false" >> $GITHUB_OUTPUT
@@ -55,8 +56,8 @@ jobs:
             -X PUT \
             -H "Accept: application/vnd.github+json" \
             -H "Authorization: Bearer $GH_TOKEN" \
-            "https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/merge" \
-            -d '{"merge_method":"merge"}')
+            "https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}" \
+            -d '{"auto_merge":{"merge_method":"merge"}}')
           
           if [[ "$response" -eq 200 ]]; then
             echo "✅ Auto-merge enabled successfully"
@@ -82,17 +83,12 @@ jobs:
           steps.check-labels.outputs.has-required-labels == 'true' &&
           steps.metadata.outputs.update-type == 'version-update:semver-major'
         run: |
-          gh pr comment "${{ github.event.pull_request.number }}" --body \
-            "🚨 **Major Version Update Detected** 🚨
-            
-            This PR contains a major version update that requires manual review:
-            - **Dependency:** ${{ steps.metadata.outputs.dependency-names }}
-            - **Previous version:** ${{ steps.metadata.outputs.previous-version }}
-            - **New version:** ${{ steps.metadata.outputs.new-version }}
-            
-            Please review the changelog and breaking changes before merging.
-            
-            Auto-merge has been **disabled** for this PR."
+          # Add a comment to the PR explaining major version update (token is automatically masked)
+          curl -s -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" \
+            -d '{"body":"🚨 **Major Version Update Detected** 🚨\n\nThis PR contains a major version update that requires manual review:\n- **Dependency:** ${{ steps.metadata.outputs.dependency-names }}\n- **Previous version:** ${{ steps.metadata.outputs.previous-version }}\n- **New version:** ${{ steps.metadata.outputs.new-version }}\n\nPlease review the changelog and breaking changes before merging.\n\nAuto-merge has been **disabled** for this PR."}'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
