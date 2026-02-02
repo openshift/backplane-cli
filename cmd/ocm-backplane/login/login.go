@@ -51,6 +51,7 @@ var (
 		clusterInfo      bool
 		remediation      string
 		govcloud         bool
+		readonly         bool
 	}
 
 	// loginType derive the login type based on flags and args
@@ -132,6 +133,12 @@ func init() {
 		&args.clusterInfo,
 		"cluster-info",
 		false, "Print basic cluster information after login",
+	)
+	flags.BoolVar(
+		&args.readonly,
+		"readonly",
+		false,
+		"Login with read-only access to the cluster",
 	)
 }
 
@@ -336,9 +343,10 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 	logger.WithFields(logger.Fields{
 		"bpURL":     bpURL,
 		"clusterID": clusterID,
+		"readonly":  args.readonly,
 	}).Debugln("Query backplane-api for proxy url of our target cluster")
 	// Query backplane-api for proxy url
-	bpAPIClusterURL, err := doLogin(bpURL, clusterID, *accessToken)
+	bpAPIClusterURL, err := doLoginWithConn(bpURL, clusterID, *accessToken, nil, args.readonly)
 	if err != nil {
 		// Declare helperMsg
 		helperMsg := "\n\033[1mNOTE: To troubleshoot the connectivity issues, please run `ocm-backplane health-check`\033[0m\n\n"
@@ -474,7 +482,7 @@ func GetRestConfig(bp config.BackplaneConfiguration, clusterID string) (*rest.Co
 		return nil, err
 	}
 
-	bpAPIClusterURL, err := doLogin(bp.URL, clusterID, *accessToken)
+	bpAPIClusterURL, err := doLoginWithConn(bp.URL, clusterID, *accessToken, nil, false)
 	if err != nil {
 		return nil, fmt.Errorf("failed to backplane login to cluster %s: %v", cluster.Name(), err)
 	}
@@ -503,7 +511,7 @@ func GetRestConfigWithConn(bp config.BackplaneConfiguration, ocmConnection *ocms
 		return nil, err
 	}
 
-	bpAPIClusterURL, err := doLoginWithConn(bp.URL, clusterID, *accessToken, ocmConnection)
+	bpAPIClusterURL, err := doLoginWithConn(bp.URL, clusterID, *accessToken, ocmConnection, false)
 	if err != nil {
 		return nil, fmt.Errorf("failed to backplane login to cluster %s: %v", cluster.Name(), err)
 	}
@@ -557,12 +565,8 @@ func GetRestConfigAsUserWithConn(bp config.BackplaneConfiguration, ocmConn *ocms
 	return cfg, nil
 }
 
-// doLogin returns the proxy url for the target cluster.
-func doLogin(api, clusterID, accessToken string) (string, error) {
-	return doLoginWithConn(api, clusterID, accessToken, nil)
-}
-
-func doLoginWithConn(api, clusterID, accessToken string, ocmConn *ocmsdk.Connection) (string, error) {
+// doLoginWithConn returns the proxy url for the target cluster.
+func doLoginWithConn(api, clusterID, accessToken string, ocmConn *ocmsdk.Connection, readonly bool) (string, error) {
 	var client BackplaneApi.ClientInterface
 	var err error = nil
 	if ocmConn != nil {
@@ -574,7 +578,18 @@ func doLoginWithConn(api, clusterID, accessToken string, ocmConn *ocmsdk.Connect
 		return "", fmt.Errorf("unable to create backplane api client")
 	}
 
-	resp, err := client.LoginCluster(context.TODO(), clusterID)
+	// Create request editor to add readonly query parameter if needed
+	var reqEditors []BackplaneApi.RequestEditorFn
+	if readonly {
+		reqEditors = append(reqEditors, func(ctx context.Context, req *http.Request) error {
+			q := req.URL.Query()
+			q.Add("readonly", "true")
+			req.URL.RawQuery = q.Encode()
+			return nil
+		})
+	}
+
+	resp, err := client.LoginCluster(context.TODO(), clusterID, reqEditors...)
 	// Print the whole response if we can't parse it. Eg. 5xx error from http server.
 	if err != nil {
 		// trying to determine the error
