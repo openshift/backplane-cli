@@ -3,6 +3,8 @@ package remediation
 import (
 	"fmt"
 
+	BackplaneApi "github.com/openshift/backplane-api/pkg/client"
+
 	"github.com/openshift/backplane-cli/pkg/backplaneapi"
 	"github.com/openshift/backplane-cli/pkg/cli/config"
 	"github.com/openshift/backplane-cli/pkg/cli/globalflags"
@@ -137,7 +139,7 @@ func runCreateRemediation(args []string, clusterKey string, urlFlag string) erro
 		logger.Debugln("backplane configuration file also contains a proxy url, using that one instead")
 		logger.Debugf("New backplane Proxy URL: %s\n", proxyURL)
 	}
-	proxyURI, remediationInstanceID, err := remediation.DoCreateRemediation(bpURL, clusterID, *accessToken, remediationName)
+	proxyURI, remediationInstanceID, err := remediation.DoCreateRemediation(bpURL, clusterID, *accessToken, &BackplaneApi.CreateRemediationParams{RemediationName: remediationName})
 	// ======== Render Results ========
 	if err != nil {
 		return err
