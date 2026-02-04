@@ -12,9 +12,9 @@ package mocks
 import (
 	reflect "reflect"
 
+	v1 "github.com/openshift-online/ocm-api-model/clientapi/accesstransparency/v1"
+	v10 "github.com/openshift-online/ocm-api-model/clientapi/clustersmgmt/v1"
 	sdk "github.com/openshift-online/ocm-sdk-go"
-	v1 "github.com/openshift-online/ocm-sdk-go/accesstransparency/v1"
-	v10 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -180,18 +180,18 @@ func (mr *MockOCMInterfaceMockRecorder) GetOCMEnvironment() *gomock.Call {
 }
 
 // GetOCMEnvironmentWithConn mocks base method.
-func (m *MockOCMInterface) GetOCMEnvironmentWithConn(arg0 *sdk.Connection) (*v10.Environment, error) {
+func (m *MockOCMInterface) GetOCMEnvironmentWithConn(connection *sdk.Connection) (*v10.Environment, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetOCMEnvironmentWithConn")
+	ret := m.ctrl.Call(m, "GetOCMEnvironmentWithConn", connection)
 	ret0, _ := ret[0].(*v10.Environment)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetOCMEnvironmentWithConn indicates an expected call of GetOCMEnvironmentWithConn.
-func (mr *MockOCMInterfaceMockRecorder) GetOCMEnvironmentWithConn(arg0 *sdk.Connection) *gomock.Call {
+func (mr *MockOCMInterfaceMockRecorder) GetOCMEnvironmentWithConn(connection any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOCMEnvironmentWithConn", reflect.TypeOf((*MockOCMInterface)(nil).GetOCMEnvironment))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOCMEnvironmentWithConn", reflect.TypeOf((*MockOCMInterface)(nil).GetOCMEnvironmentWithConn), connection)
 }
 
 // GetPullSecret mocks base method.

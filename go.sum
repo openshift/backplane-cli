@@ -405,6 +405,8 @@ github.com/openshift/api v0.0.0-20221018124113-7edcfe3c76cb h1:QsBjYe5UfHIZi/3SM
 github.com/openshift/api v0.0.0-20221018124113-7edcfe3c76cb/go.mod h1:JRz+ZvTqu9u7t6suhhPTacbFl5K65Y6rJbNM7HjWA3g=
 github.com/openshift/backplane-api v0.0.0-20251026011953-7861d08b3674 h1:2MgXsvaOZzh2oQpyZMvWd2U6xHzpzBC5LaI9sX1rGQ8=
 github.com/openshift/backplane-api v0.0.0-20251026011953-7861d08b3674/go.mod h1:0+HQ/Ujo/hRKpBFePq2Zitrk6sc5viJNrDtbBTx1uh0=
+github.com/openshift/backplane-api v0.0.0-20251117160932-490f3091533f h1:7VGTnBRgyKpyXOitwNVtR05HsPNZARqow8rU5Qo2bGY=
+github.com/openshift/backplane-api v0.0.0-20251117160932-490f3091533f/go.mod h1:0+HQ/Ujo/hRKpBFePq2Zitrk6sc5viJNrDtbBTx1uh0=
 github.com/openshift/client-go v0.0.0-20221019143426-16aed247da5c h1:CV76yFOTXmq9VciBR3Bve5ZWzSxdft7gaMVB3kS0rwg=
 github.com/openshift/client-go v0.0.0-20221019143426-16aed247da5c/go.mod h1:lFMO8mLHXWFzSdYvGNo8ivF9SfF6zInA8ZGw4phRnUE=
 github.com/pelletier/go-toml/v2 v2.2.4 h1:mye9XuhQ6gvn5h28+VilKrrPoQVanw5PMw/TB0t5Ec4=

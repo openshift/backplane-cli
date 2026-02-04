@@ -44,7 +44,7 @@ func (m *MockClientInterface) EXPECT() *MockClientInterfaceMockRecorder {
 }
 
 // CreateJob mocks base method.
-func (m *MockClientInterface) CreateJob(ctx context.Context, clusterId string, body Openapi.CreateJobJSONRequestBody, reqEditors ...Openapi.RequestEditorFn) (*http.Response, error) {
+func (m *MockClientInterface) CreateJob(ctx context.Context, clusterId string, body Openapi.CreateJob, reqEditors ...Openapi.RequestEditorFn) (*http.Response, error) {
 	m.ctrl.T.Helper()
 	varargs := []any{ctx, clusterId, body}
 	for _, a := range reqEditors {
@@ -103,8 +103,48 @@ func (mr *MockClientInterfaceMockRecorder) CreateRemediation(ctx, clusterId, par
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateRemediation", reflect.TypeOf((*MockClientInterface)(nil).CreateRemediation), varargs...)
 }
 
+// CreateReport mocks base method.
+func (m *MockClientInterface) CreateReport(ctx context.Context, clusterId string, body Openapi.CreateReport, reqEditors ...Openapi.RequestEditorFn) (*http.Response, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx, clusterId, body}
+	for _, a := range reqEditors {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "CreateReport", varargs...)
+	ret0, _ := ret[0].(*http.Response)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreateReport indicates an expected call of CreateReport.
+func (mr *MockClientInterfaceMockRecorder) CreateReport(ctx, clusterId, body any, reqEditors ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx, clusterId, body}, reqEditors...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateReport", reflect.TypeOf((*MockClientInterface)(nil).CreateReport), varargs...)
+}
+
+// CreateReportWithBody mocks base method.
+func (m *MockClientInterface) CreateReportWithBody(ctx context.Context, clusterId, contentType string, body io.Reader, reqEditors ...Openapi.RequestEditorFn) (*http.Response, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx, clusterId, contentType, body}
+	for _, a := range reqEditors {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "CreateReportWithBody", varargs...)
+	ret0, _ := ret[0].(*http.Response)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreateReportWithBody indicates an expected call of CreateReportWithBody.
+func (mr *MockClientInterfaceMockRecorder) CreateReportWithBody(ctx, clusterId, contentType, body any, reqEditors ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx, clusterId, contentType, body}, reqEditors...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateReportWithBody", reflect.TypeOf((*MockClientInterface)(nil).CreateReportWithBody), varargs...)
+}
+
 // CreateTestScriptRun mocks base method.
-func (m *MockClientInterface) CreateTestScriptRun(ctx context.Context, clusterId string, body Openapi.CreateTestScriptRunJSONRequestBody, reqEditors ...Openapi.RequestEditorFn) (*http.Response, error) {
+func (m *MockClientInterface) CreateTestScriptRun(ctx context.Context, clusterId string, body Openapi.CreateTestJob, reqEditors ...Openapi.RequestEditorFn) (*http.Response, error) {
 	m.ctrl.T.Helper()
 	varargs := []any{ctx, clusterId, body}
 	for _, a := range reqEditors {
@@ -381,6 +421,46 @@ func (mr *MockClientInterfaceMockRecorder) GetJobLogs(ctx, clusterId, jobId, par
 	mr.mock.ctrl.T.Helper()
 	varargs := append([]any{ctx, clusterId, jobId, params}, reqEditors...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetJobLogs", reflect.TypeOf((*MockClientInterface)(nil).GetJobLogs), varargs...)
+}
+
+// GetReportById mocks base method.
+func (m *MockClientInterface) GetReportById(ctx context.Context, clusterId, reportId string, reqEditors ...Openapi.RequestEditorFn) (*http.Response, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx, clusterId, reportId}
+	for _, a := range reqEditors {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "GetReportById", varargs...)
+	ret0, _ := ret[0].(*http.Response)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetReportById indicates an expected call of GetReportById.
+func (mr *MockClientInterfaceMockRecorder) GetReportById(ctx, clusterId, reportId any, reqEditors ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx, clusterId, reportId}, reqEditors...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetReportById", reflect.TypeOf((*MockClientInterface)(nil).GetReportById), varargs...)
+}
+
+// GetReportsByCluster mocks base method.
+func (m *MockClientInterface) GetReportsByCluster(ctx context.Context, clusterId string, params *Openapi.GetReportsByClusterParams, reqEditors ...Openapi.RequestEditorFn) (*http.Response, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx, clusterId, params}
+	for _, a := range reqEditors {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "GetReportsByCluster", varargs...)
+	ret0, _ := ret[0].(*http.Response)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetReportsByCluster indicates an expected call of GetReportsByCluster.
+func (mr *MockClientInterfaceMockRecorder) GetReportsByCluster(ctx, clusterId, params any, reqEditors ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx, clusterId, params}, reqEditors...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetReportsByCluster", reflect.TypeOf((*MockClientInterface)(nil).GetReportsByCluster), varargs...)
 }
 
 // GetRun mocks base method.

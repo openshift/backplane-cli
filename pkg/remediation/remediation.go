@@ -18,13 +18,13 @@ import (
 // DoCreateRemediation creates a remediation instance for a cluster using the Backplane API.
 // It sends a request to create a remediation and returns the proxy URI and remediation instance ID.
 // The function takes API endpoint, cluster ID, access token, and remediation name as parameters.
-func DoCreateRemediation(api string, clusterID string, accessToken string, remediationName string) (proxyURI string, remediationInstanceID string, err error) {
+func DoCreateRemediation(api string, clusterID string, accessToken string, createRemediationParams *BackplaneApi.CreateRemediationParams) (proxyURI string, remediationInstanceID string, err error) {
 	client, err := backplaneapi.DefaultClientUtils.MakeRawBackplaneAPIClientWithAccessToken(api, accessToken)
 	if err != nil {
 		return "", "", fmt.Errorf("unable to create backplane api client")
 	}
 
-	resp, err := client.CreateRemediation(context.TODO(), clusterID, &BackplaneApi.CreateRemediationParams{RemediationName: remediationName})
+	resp, err := client.CreateRemediation(context.TODO(), clusterID, createRemediationParams)
 	if err != nil {
 		return "", "", err
 	}
@@ -44,13 +44,13 @@ func DoCreateRemediation(api string, clusterID string, accessToken string, remed
 // CreateRemediationWithConn creates a remediation instance and returns a configured Kubernetes client.
 // This function can be used to programmatically interact with the Backplane API.
 // It creates a rest.Config that can be used with Kubernetes client libraries.
-func CreateRemediationWithConn(bp config.BackplaneConfiguration, ocmConnection *ocmsdk.Connection, clusterID string, remediationName string) (config *rest.Config, remediationInstanceID string, err error) {
+func CreateRemediationWithConn(bp config.BackplaneConfiguration, ocmConnection *ocmsdk.Connection, clusterID string, createRemediationParams *BackplaneApi.CreateRemediationParams) (config *rest.Config, remediationInstanceID string, err error) {
 	accessToken, err := ocm.DefaultOCMInterface.GetOCMAccessTokenWithConn(ocmConnection)
 	if err != nil {
 		return nil, "", err
 	}
 
-	bpAPIClusterURL, remediationInstanceID, err := DoCreateRemediation(bp.URL, clusterID, *accessToken, remediationName)
+	bpAPIClusterURL, remediationInstanceID, err := DoCreateRemediation(bp.URL, clusterID, *accessToken, createRemediationParams)
 	if err != nil {
 		return nil, "", err
 	}
