@@ -402,6 +402,26 @@ func (mr *MockClientWithResponsesInterfaceMockRecorder) GetCloudCredentialsWithR
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCloudCredentialsWithResponse", reflect.TypeOf((*MockClientWithResponsesInterface)(nil).GetCloudCredentialsWithResponse), varargs...)
 }
 
+// GetConfigWithResponse mocks base method.
+func (m *MockClientWithResponsesInterface) GetConfigWithResponse(ctx context.Context, reqEditors ...Openapi.RequestEditorFn) (*Openapi.GetConfigResponse, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx}
+	for _, a := range reqEditors {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "GetConfigWithResponse", varargs...)
+	ret0, _ := ret[0].(*Openapi.GetConfigResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetConfigWithResponse indicates an expected call of GetConfigWithResponse.
+func (mr *MockClientWithResponsesInterfaceMockRecorder) GetConfigWithResponse(ctx any, reqEditors ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx}, reqEditors...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetConfigWithResponse", reflect.TypeOf((*MockClientWithResponsesInterface)(nil).GetConfigWithResponse), varargs...)
+}
+
 // GetJobLogsWithResponse mocks base method.
 func (m *MockClientWithResponsesInterface) GetJobLogsWithResponse(ctx context.Context, clusterId, jobId string, params *Openapi.GetJobLogsParams, reqEditors ...Openapi.RequestEditorFn) (*Openapi.GetJobLogsResponse, error) {
 	m.ctrl.T.Helper()

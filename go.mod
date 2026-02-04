@@ -19,13 +19,14 @@ require (
 	github.com/openshift-online/ocm-api-model/clientapi v0.0.449
 	github.com/openshift-online/ocm-cli v1.0.10
 	github.com/openshift-online/ocm-sdk-go v0.1.494
-	github.com/openshift/backplane-api v0.0.0-20251117160932-490f3091533f
+	github.com/openshift/backplane-api v0.0.0-20260205054653-459856398d59
 	github.com/openshift/client-go v0.0.0-20221019143426-16aed247da5c
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
 	github.com/sirupsen/logrus v1.9.4
 	github.com/spf13/cobra v1.10.1
 	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.21.0
+	github.com/stretchr/testify v1.11.1
 	github.com/trivago/tgo v1.0.7
 	go.uber.org/mock v0.6.0
 	golang.org/x/term v0.40.0
@@ -50,6 +51,7 @@ require (
 	github.com/oasdiff/yaml3 v0.0.0-20250309153720-d2182401db90 // indirect
 	github.com/openshift-online/ocm-api-model/model v0.0.449 // indirect
 	github.com/openshift-online/ocm-common v0.0.29 // indirect
+	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/segmentio/asm v1.1.3 // indirect
 	github.com/segmentio/encoding v0.5.3 // indirect
 	github.com/yosida95/uritemplate/v3 v3.0.2 // indirect

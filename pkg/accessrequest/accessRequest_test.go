@@ -210,6 +210,15 @@ var _ = Describe(testDesc, func() {
 
 					Context("issue project is known from the config", func() {
 						It("should succeed even if the JIRA token is not defined in the config as the issue existence cannot be disproved", func() {
+							// Unset JIRA_API_TOKEN environment variable to ensure no token is picked up
+							originalToken := os.Getenv("JIRA_API_TOKEN")
+							os.Unsetenv("JIRA_API_TOKEN")
+							DeferCleanup(func() {
+								if originalToken != "" {
+									os.Setenv("JIRA_API_TOKEN", originalToken)
+								}
+							})
+
 							mockOcmInterface.EXPECT().CreateClusterAccessRequest(nil, clusterID, reason, issueID, durationStr).Return(accessRequest, nil).Times(1)
 
 							returnedAccessRequest, err := CreateAccessRequest(nil, clusterID, reason, issueID, duration)

@@ -232,3 +232,124 @@ func TestValidateConfig(t *testing.T) {
 		})
 	}
 }
+
+// TestNoAutomaticConfigFetch verifies that GetBackplaneConfiguration
+// does NOT automatically fetch config from the API when values are missing
+func TestNoAutomaticConfigFetch(t *testing.T) {
+	t.Run("uses default values when config file is missing", func(t *testing.T) {
+		viper.Reset()
+
+		svr := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// This should NOT be called - if it is, the test will fail
+			t.Error("HTTP request was made - automatic config fetch detected!")
+			w.WriteHeader(http.StatusInternalServerError)
+		}))
+		defer svr.Close()
+
+		userDefinedProxy := "example-proxy"
+		t.Setenv("BACKPLANE_URL", svr.URL)
+		t.Setenv("HTTPS_PROXY", userDefinedProxy)
+
+		config, err := GetBackplaneConfiguration()
+		if err != nil {
+			t.Error(err)
+		}
+
+		// Should use default values, not fetch from API
+		if config.JiraBaseURL != JiraBaseURLDefaultValue {
+			t.Errorf("expected default JiraBaseURL %s, got %s", JiraBaseURLDefaultValue, config.JiraBaseURL)
+		}
+		if config.ProdEnvName != "production" {
+			t.Errorf("expected default ProdEnvName 'production', got %s", config.ProdEnvName)
+		}
+	})
+
+	t.Run("uses config file values without fetching from API", func(t *testing.T) {
+		viper.Reset()
+
+		// Create a temp config file with specific values
+		tmpDir := t.TempDir()
+		configPath := tmpDir + "/config.json"
+		configContent := `{
+			"jira-base-url": "https://custom-jira.example.com",
+			"assume-initial-arn": "arn:aws:iam::999999999:role/Custom-Role",
+			"prod-env-name": "custom-prod"
+		}`
+		err := os.WriteFile(configPath, []byte(configContent), 0600)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		t.Setenv("BACKPLANE_CONFIG", configPath)
+
+		svr := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// This should NOT be called
+			t.Error("HTTP request was made - automatic config fetch detected!")
+			w.WriteHeader(http.StatusInternalServerError)
+		}))
+		defer svr.Close()
+
+		userDefinedProxy := "example-proxy"
+		t.Setenv("BACKPLANE_URL", svr.URL)
+		t.Setenv("HTTPS_PROXY", userDefinedProxy)
+
+		config, err := GetBackplaneConfiguration()
+		if err != nil {
+			t.Error(err)
+		}
+
+		// Should use values from config file
+		if config.JiraBaseURL != "https://custom-jira.example.com" {
+			t.Errorf("expected JiraBaseURL from config file, got %s", config.JiraBaseURL)
+		}
+		if config.AssumeInitialArn != "arn:aws:iam::999999999:role/Custom-Role" {
+			t.Errorf("expected AssumeInitialArn from config file, got %s", config.AssumeInitialArn)
+		}
+		if config.ProdEnvName != "custom-prod" {
+			t.Errorf("expected ProdEnvName from config file, got %s", config.ProdEnvName)
+		}
+	})
+
+	t.Run("partial config file uses defaults for missing values without API fetch", func(t *testing.T) {
+		viper.Reset()
+
+		// Create a config file with only some values
+		tmpDir := t.TempDir()
+		configPath := tmpDir + "/config.json"
+		configContent := `{
+			"jira-base-url": "https://partial-jira.example.com"
+		}`
+		err := os.WriteFile(configPath, []byte(configContent), 0600)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		t.Setenv("BACKPLANE_CONFIG", configPath)
+
+		svr := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// This should NOT be called
+			t.Error("HTTP request was made - automatic config fetch detected!")
+			w.WriteHeader(http.StatusInternalServerError)
+		}))
+		defer svr.Close()
+
+		userDefinedProxy := "example-proxy"
+		t.Setenv("BACKPLANE_URL", svr.URL)
+		t.Setenv("HTTPS_PROXY", userDefinedProxy)
+
+		config, err := GetBackplaneConfiguration()
+		if err != nil {
+			t.Error(err)
+		}
+
+		// Should use value from config file
+		if config.JiraBaseURL != "https://partial-jira.example.com" {
+			t.Errorf("expected JiraBaseURL from config file, got %s", config.JiraBaseURL)
+		}
+
+		// Should use defaults for missing values, NOT fetch from API
+		if config.ProdEnvName != "production" {
+			t.Errorf("expected default ProdEnvName 'production', got %s", config.ProdEnvName)
+		}
+	})
+}
