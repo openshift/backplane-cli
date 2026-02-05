@@ -10,15 +10,16 @@ import (
 	"path/filepath"
 	"strings"
 
-	"go.uber.org/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/trivago/tgo/tcontainer"
+	"go.uber.org/mock/gomock"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
 
 	"github.com/andygrunwald/go-jira"
+	BackplaneApi "github.com/openshift/backplane-api/pkg/client"
 	"github.com/openshift/backplane-cli/pkg/backplaneapi"
 	backplaneapiMock "github.com/openshift/backplane-cli/pkg/backplaneapi/mocks"
 	"github.com/openshift/backplane-cli/pkg/cli/config"
@@ -682,6 +683,79 @@ var _ = Describe("Login command", func() {
 
 			Expect(err).NotTo(BeNil())
 			Expect(err.Error()).To(Equal("clusterID cannot be detected for JIRA issue:OHSS-1000"))
+		})
+	})
+
+	Context("readonly flag functionality", func() {
+		BeforeEach(func() {
+			err := utils.CreateTempKubeConfig(nil)
+			Expect(err).To(BeNil())
+		})
+
+		It("should add readonly=true query parameter when readonly flag is set", func() {
+			// Setup
+			args.multiCluster = false
+			args.readonly = true
+			loginType = LoginTypeClusterID
+
+			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, trueClusterID, nil).Times(1)
+			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).Times(1)
+			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).Times(1)
+			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken(backplaneAPIURI, testToken).Return(mockClient, nil)
+
+			// Mock LoginCluster and capture the request to verify readonly query param
+			var capturedURL string
+			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(trueClusterID), gomock.Any()).DoAndReturn(
+				func(ctx interface{}, clusterId string, reqEditors ...interface{}) (*http.Response, error) {
+					// Create a mock request to test the editor
+					req, _ := http.NewRequest("GET", backplaneAPIURI+"/backplane/login/"+clusterId, nil)
+					// Apply the request editors if any
+					for _, editor := range reqEditors {
+						if fn, ok := editor.(BackplaneApi.RequestEditorFn); ok {
+							_ = fn(nil, req)
+						}
+					}
+					capturedURL = req.URL.String()
+					return fakeResp, nil
+				},
+			)
+
+			err := runLogin(nil, []string{testClusterID})
+
+			Expect(err).To(BeNil())
+			// Verify readonly=true query parameter is present in the URL
+			Expect(capturedURL).To(ContainSubstring("readonly=true"))
+		})
+
+		It("should not add readonly query parameter when readonly flag is false", func() {
+			// Setup
+			args.multiCluster = false
+			args.readonly = false
+			loginType = LoginTypeClusterID
+
+			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
+			mockOcmInterface.EXPECT().GetTargetCluster(testClusterID).Return(trueClusterID, trueClusterID, nil).Times(1)
+			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).Times(1)
+			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).Times(1)
+			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken(backplaneAPIURI, testToken).Return(mockClient, nil)
+
+			// Mock LoginCluster and capture the request
+			var capturedURL string
+			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(trueClusterID)).DoAndReturn(
+				func(ctx interface{}, clusterId string, reqEditors ...interface{}) (*http.Response, error) {
+					// Create a mock request
+					req, _ := http.NewRequest("GET", backplaneAPIURI+"/backplane/login/"+clusterId, nil)
+					capturedURL = req.URL.String()
+					return fakeResp, nil
+				},
+			)
+
+			err := runLogin(nil, []string{testClusterID})
+
+			Expect(err).To(BeNil())
+			// Verify readonly query parameter is not present
+			Expect(capturedURL).NotTo(ContainSubstring("readonly"))
 		})
 	})
 })

@@ -115,6 +115,17 @@ In this example, we will login to a cluster with id `123456abcdef` in production
   ```
   $ ocm backplane login <cluster> --service
   ```
+
+- To login with read-only access to the cluster
+  ```
+  $ ocm backplane login <cluster> --readonly
+  ```
+  
+  The `--readonly` flag restricts access to read-only operations, preventing any modifications to the cluster. This is useful for:
+  - Auditing and troubleshooting without risk of making changes
+  - Providing temporary access with limited privileges
+  - Ensuring compliance with read-only access policies
+
 ### Get cluster information after login
 
 - Login to the target cluster via backplane and add `--cluster-info` flag
@@ -577,11 +588,24 @@ Login to a backplane cluster.
 **Parameters:**
 - `clusterId` (required): The cluster ID to login to
 
+**CLI Flags:**
+- `--readonly`: Login with read-only access (calls `/backplane/login/{clusterId}?readonly=true`)
+- `--multi` or `-m`: Enable multi-cluster login
+- `--pd <incident-id>`: Login using PagerDuty incident ID
+- `--ohss <jira-id>`: Login using JIRA ID
+- `--manager`: Login to the management cluster
+- `--service`: Login to the service cluster
+- `--cluster-info`: Print cluster information after login
+- `--namespace` or `-n`: Set default namespace (default: "default")
+
 **Example usage:**
 ```
 AI: I'll login to cluster abc123 for you.
 [Uses login tool with clusterId: "abc123"]
 Successfully logged in to cluster 'abc123'
+
+# With readonly access
+$ ocm backplane login abc123 --readonly
 ```
 
 #### `console`
