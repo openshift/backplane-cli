@@ -121,8 +121,8 @@ github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSs
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc h1:U9qPSI2PIWSS1VwoXQT9A3Wy9MM3WgvqSxFWenqJduM=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/dvsekhvalnov/jose2go v1.6.0 h1:Y9gnSnP4qEI0+/uQkHvFXeD2PLPJeXEL+ySMEA2EjTY=
-github.com/dvsekhvalnov/jose2go v1.6.0/go.mod h1:QsHjhyTlD/lAVqn/NSbVZmSCGeDehTB/mPZadG+mhXU=
+github.com/dvsekhvalnov/jose2go v1.7.0 h1:bnQc8+GMnidJZA8zc6lLEAb4xNrIqHwO+9TzqvtQZPo=
+github.com/dvsekhvalnov/jose2go v1.7.0/go.mod h1:QsHjhyTlD/lAVqn/NSbVZmSCGeDehTB/mPZadG+mhXU=
 github.com/emicklei/go-restful/v3 v3.11.0 h1:rAQeMHw1c7zTmncogyy8VvRZwtkmkZ4FxERmMY4rD+g=
 github.com/emicklei/go-restful/v3 v3.11.0/go.mod h1:6n3XBCmQQb25CM2LCACGz8ukIrRry+4bhvbpWn3mrbc=
 github.com/envoyproxy/go-control-plane v0.9.0/go.mod h1:YTl/9mNaCwkRvm6d1a2C3ymFceY/DCBVvsKhRF0iEA4=
@@ -403,8 +403,6 @@ github.com/openshift-online/ocm-sdk-go v0.1.493 h1:+889zmbwN0guA8LFRr5WHpH2+VJNq
 github.com/openshift-online/ocm-sdk-go v0.1.493/go.mod h1:ThqKHtIyvTvDA5AxGFZph80sllVr63lZ+sb4qQP57+o=
 github.com/openshift/api v0.0.0-20221018124113-7edcfe3c76cb h1:QsBjYe5UfHIZi/3SMzQBIjYDKnWqZxq50eQkBp9eUew=
 github.com/openshift/api v0.0.0-20221018124113-7edcfe3c76cb/go.mod h1:JRz+ZvTqu9u7t6suhhPTacbFl5K65Y6rJbNM7HjWA3g=
-github.com/openshift/backplane-api v0.0.0-20251026011953-7861d08b3674 h1:2MgXsvaOZzh2oQpyZMvWd2U6xHzpzBC5LaI9sX1rGQ8=
-github.com/openshift/backplane-api v0.0.0-20251026011953-7861d08b3674/go.mod h1:0+HQ/Ujo/hRKpBFePq2Zitrk6sc5viJNrDtbBTx1uh0=
 github.com/openshift/backplane-api v0.0.0-20251117160932-490f3091533f h1:7VGTnBRgyKpyXOitwNVtR05HsPNZARqow8rU5Qo2bGY=
 github.com/openshift/backplane-api v0.0.0-20251117160932-490f3091533f/go.mod h1:0+HQ/Ujo/hRKpBFePq2Zitrk6sc5viJNrDtbBTx1uh0=
 github.com/openshift/client-go v0.0.0-20221019143426-16aed247da5c h1:CV76yFOTXmq9VciBR3Bve5ZWzSxdft7gaMVB3kS0rwg=
