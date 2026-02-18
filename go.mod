@@ -16,6 +16,7 @@ require (
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/onsi/ginkgo/v2 v2.28.0
 	github.com/onsi/gomega v1.39.1
+	github.com/openshift-online/ocm-api-model/clientapi v0.0.448
 	github.com/openshift-online/ocm-cli v1.0.10
 	github.com/openshift-online/ocm-sdk-go v0.1.493
 	github.com/openshift/backplane-api v0.0.0-20251117160932-490f3091533f
@@ -47,7 +48,6 @@ require (
 	github.com/oapi-codegen/runtime v1.1.2 // indirect
 	github.com/oasdiff/yaml v0.0.0-20250309154309-f31be36b4037 // indirect
 	github.com/oasdiff/yaml3 v0.0.0-20250309153720-d2182401db90 // indirect
-	github.com/openshift-online/ocm-api-model/clientapi v0.0.448 // indirect
 	github.com/openshift-online/ocm-api-model/model v0.0.448 // indirect
 	github.com/openshift-online/ocm-common v0.0.29 // indirect
 	github.com/yosida95/uritemplate/v3 v3.0.2 // indirect
@@ -80,7 +80,7 @@ require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/danieljoos/wincred v1.2.0 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
-	github.com/dvsekhvalnov/jose2go v1.6.0 // indirect
+	github.com/dvsekhvalnov/jose2go v1.7.0 // indirect
 	github.com/emicklei/go-restful/v3 v3.11.0 // indirect
 	github.com/evanphx/json-patch v4.12.0+incompatible // indirect
 	github.com/fatih/structs v1.1.0 // indirect
