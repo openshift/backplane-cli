@@ -1,6 +1,7 @@
 package config
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -9,6 +10,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	logger "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
@@ -320,6 +322,14 @@ var _ = Describe("refresh command", func() {
 		})
 
 		It("should warn if no configuration values are returned", func() {
+			// Capture logger output
+			var logBuffer bytes.Buffer
+			originalOutput := logger.StandardLogger().Out
+			logger.SetOutput(&logBuffer)
+			DeferCleanup(func() {
+				logger.SetOutput(originalOutput)
+			})
+
 			// Set up backplane URL
 			ocmEnv, _ := cmv1.NewEnvironment().BackplaneURL("https://backplane.example.com").Build()
 			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
@@ -338,6 +348,10 @@ var _ = Describe("refresh command", func() {
 			// Execute command - should still succeed but log warning
 			err := cmd.Execute()
 			Expect(err).To(BeNil())
+
+			// Verify warning was logged
+			logOutput := logBuffer.String()
+			Expect(logOutput).To(ContainSubstring("No configuration values were returned from the server"))
 		})
 	})
 })
