@@ -166,28 +166,24 @@ func TestMapJiraAccessRequestConfig(t *testing.T) {
 		assert.Equal(t, "Task", result.ProdIssueType)
 	})
 
-	t.Run("handles nil project key", func(t *testing.T) {
+	t.Run("handles nil project key - returns nil for empty config", func(t *testing.T) {
 		input := &BackplaneApi.JiraAccessRequestConfig{
 			ProjectKey: nil,
 		}
 
 		result := mapJiraAccessRequestConfig(input)
 
-		assert.NotNil(t, result)
-		assert.Empty(t, result.DefaultProject)
-		assert.Empty(t, result.ProdProject)
+		assert.Nil(t, result, "should return nil when config has no meaningful data")
 	})
 
-	t.Run("handles nil issue type", func(t *testing.T) {
+	t.Run("handles nil issue type - returns nil for empty config", func(t *testing.T) {
 		input := &BackplaneApi.JiraAccessRequestConfig{
 			IssueType: nil,
 		}
 
 		result := mapJiraAccessRequestConfig(input)
 
-		assert.NotNil(t, result)
-		assert.Empty(t, result.DefaultIssueType)
-		assert.Empty(t, result.ProdIssueType)
+		assert.Nil(t, result, "should return nil when config has no meaningful data")
 	})
 
 	t.Run("maps all transition states correctly", func(t *testing.T) {
@@ -325,7 +321,7 @@ func TestMapJiraAccessRequestConfig(t *testing.T) {
 		assert.NotContains(t, result.ProjectToTransitionsNames, "EMPTY")
 	})
 
-	t.Run("does not add to ProjectToTransitionsNames if project key is nil", func(t *testing.T) {
+	t.Run("does not add to ProjectToTransitionsNames if project key is nil - returns nil", func(t *testing.T) {
 		transitionStates := map[string]string{
 			"approved": "Done",
 		}
@@ -337,8 +333,7 @@ func TestMapJiraAccessRequestConfig(t *testing.T) {
 
 		result := mapJiraAccessRequestConfig(input)
 
-		assert.NotNil(t, result)
-		assert.Len(t, result.ProjectToTransitionsNames, 0)
+		assert.Nil(t, result, "should return nil when transition states exist but project key is nil (no meaningful data)")
 	})
 
 	t.Run("complete config with all fields", func(t *testing.T) {
@@ -370,14 +365,12 @@ func TestMapJiraAccessRequestConfig(t *testing.T) {
 		assert.Equal(t, "Cancelled", transitions.OnError)
 	})
 
-	t.Run("empty config initializes map", func(t *testing.T) {
+	t.Run("empty config returns nil to avoid overwriting local config", func(t *testing.T) {
 		input := &BackplaneApi.JiraAccessRequestConfig{}
 
 		result := mapJiraAccessRequestConfig(input)
 
-		assert.NotNil(t, result)
-		assert.NotNil(t, result.ProjectToTransitionsNames)
-		assert.Len(t, result.ProjectToTransitionsNames, 0)
+		assert.Nil(t, result, "should return nil for completely empty config to prevent overwriting existing local values with zero-values")
 	})
 }
 

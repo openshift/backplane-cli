@@ -88,21 +88,26 @@ func mapAPIResponseToRemoteConfig(apiResp *BackplaneApi.ClientConfig) *RemoteCon
 // mapJiraAccessRequestConfig converts API Jira config to internal format
 // The API schema is simpler (single project/issue-type) than the CLI structure
 // (default/prod project pairs), so we map the API values to both default and prod
+// Returns nil if the API config is effectively empty to avoid overwriting local config with zero-values
 func mapJiraAccessRequestConfig(apiConfig *BackplaneApi.JiraAccessRequestConfig) *AccessRequestsJiraConfiguration {
 	config := &AccessRequestsJiraConfiguration{
 		ProjectToTransitionsNames: make(map[string]JiraTransitionsNamesForAccessRequests),
 	}
 
+	hasData := false
+
 	// Map project-key to both DefaultProject and ProdProject
 	if apiConfig.ProjectKey != nil {
 		config.DefaultProject = *apiConfig.ProjectKey
 		config.ProdProject = *apiConfig.ProjectKey
+		hasData = true
 	}
 
 	// Map issue-type to both DefaultIssueType and ProdIssueType
 	if apiConfig.IssueType != nil {
 		config.DefaultIssueType = *apiConfig.IssueType
 		config.ProdIssueType = *apiConfig.IssueType
+		hasData = true
 	}
 
 	// Map transition-states if present
@@ -130,7 +135,13 @@ func mapJiraAccessRequestConfig(apiConfig *BackplaneApi.JiraAccessRequestConfig)
 		// Add the transitions for the project key only if at least one field is populated
 		if apiConfig.ProjectKey != nil && (transitions.OnApproval != "" || transitions.OnCreation != "" || transitions.OnError != "") {
 			config.ProjectToTransitionsNames[*apiConfig.ProjectKey] = transitions
+			hasData = true
 		}
+	}
+
+	// Return nil if no meaningful data was set to avoid overwriting existing local config
+	if !hasData {
+		return nil
 	}
 
 	return config
