@@ -1,16 +1,13 @@
 package config
 
 import (
-	"context"
 	"fmt"
-	"net/http"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	BackplaneApi "github.com/openshift/backplane-api/pkg/client"
+	"github.com/openshift/backplane-cli/pkg/backplaneapi"
 	"github.com/openshift/backplane-cli/pkg/cli/config"
-	"github.com/openshift/backplane-cli/pkg/info"
 	"github.com/openshift/backplane-cli/pkg/ocm"
 	logger "github.com/sirupsen/logrus"
 )
@@ -51,16 +48,8 @@ func runRefresh(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to get OCM access token: %w", err)
 	}
 
-	// Create backplane API client
-	client, err := BackplaneApi.NewClient(bpConfig.URL, func(c *BackplaneApi.Client) error {
-		c.RequestEditors = append(c.RequestEditors, func(ctx context.Context, req *http.Request) error {
-			req.Header.Add("Authorization", "Bearer "+*token)
-			req.Header.Set("User-Agent", "backplane-cli"+info.Version)
-			req.Header.Set("Backplane-Version", info.DefaultInfoService.GetVersion())
-			return nil
-		})
-		return nil
-	})
+	// Create backplane API client with proper proxy support
+	client, err := backplaneapi.DefaultClientUtils.GetBackplaneClient(bpConfig.URL, *token, bpConfig.ProxyURL)
 	if err != nil {
 		return fmt.Errorf("failed to create backplane API client: %w", err)
 	}
