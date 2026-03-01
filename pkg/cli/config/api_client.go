@@ -10,6 +10,13 @@ import (
 	logger "github.com/sirupsen/logrus"
 )
 
+// Transition state keys used in the API response
+const (
+	transitionStateApproved   = "approved"
+	transitionStateInProgress = "in-progress"
+	transitionStateRejected   = "rejected"
+)
+
 //go:generate mockgen -destination=mocks/mock_config_api_client.go -package=mocks github.com/openshift/backplane-cli/pkg/cli/config ConfigAPIClient
 
 // ConfigAPIClient handles fetching configuration from backplane-api
@@ -85,11 +92,20 @@ func mapAPIResponseToRemoteConfig(apiResp *BackplaneApi.ClientConfig) *RemoteCon
 	return remote
 }
 
-// mapJiraAccessRequestConfig converts API Jira config to internal format
+// mapJiraAccessRequestConfig converts API Jira config to internal format.
 // The API schema is simpler (single project/issue-type) than the CLI structure
-// (default/prod project pairs), so we map the API values to both default and prod
-// Returns nil if the API config is effectively empty to avoid overwriting local config with zero-values
+// (default/prod project pairs), so we map the API values to both default and prod.
+//
+// Returns nil if the API config contains no meaningful data to avoid overwriting
+// local config with zero-values. This nil-return contract is relied upon by the caller
+// to preserve existing local configuration when the API returns empty values.
 func mapJiraAccessRequestConfig(apiConfig *BackplaneApi.JiraAccessRequestConfig) *AccessRequestsJiraConfiguration {
+	// Early return if completely empty - avoids wasteful allocation
+	hasTransitions := apiConfig.TransitionStates != nil && len(*apiConfig.TransitionStates) > 0
+	if apiConfig.ProjectKey == nil && apiConfig.IssueType == nil && !hasTransitions {
+		return nil
+	}
+
 	config := &AccessRequestsJiraConfiguration{
 		ProjectToTransitionsNames: make(map[string]JiraTransitionsNamesForAccessRequests),
 	}
@@ -111,7 +127,7 @@ func mapJiraAccessRequestConfig(apiConfig *BackplaneApi.JiraAccessRequestConfig)
 	}
 
 	// Map transition-states if present
-	if apiConfig.TransitionStates != nil && len(*apiConfig.TransitionStates) > 0 {
+	if hasTransitions {
 		// Extract transition state names from the map
 		// The API has a map[string]string containing transition names (human-readable JIRA state names) in both keys and values
 		// We need to populate ProjectToTransitionsNames with transition names
@@ -122,13 +138,13 @@ func mapJiraAccessRequestConfig(apiConfig *BackplaneApi.JiraAccessRequestConfig)
 		transitions := JiraTransitionsNamesForAccessRequests{}
 
 		// Look for common transition state names in the map keys
-		if val, ok := transitionMap["approved"]; ok {
+		if val, ok := transitionMap[transitionStateApproved]; ok {
 			transitions.OnApproval = val
 		}
-		if val, ok := transitionMap["in-progress"]; ok {
+		if val, ok := transitionMap[transitionStateInProgress]; ok {
 			transitions.OnCreation = val
 		}
-		if val, ok := transitionMap["rejected"]; ok {
+		if val, ok := transitionMap[transitionStateRejected]; ok {
 			transitions.OnError = val
 		}
 
