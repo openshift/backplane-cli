@@ -246,6 +246,10 @@ func TestNoAutomaticConfigFetch(t *testing.T) {
 		}))
 		defer svr.Close()
 
+		// Point to a non-existent config file to ensure test isolation
+		tmpDir := t.TempDir()
+		t.Setenv("BACKPLANE_CONFIG", tmpDir+"/nonexistent-config.json")
+
 		userDefinedProxy := "example-proxy"
 		t.Setenv("BACKPLANE_URL", svr.URL)
 		t.Setenv("HTTPS_PROXY", userDefinedProxy)
