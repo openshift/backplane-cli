@@ -54,8 +54,9 @@ type BackplaneConfiguration struct {
 }
 
 const (
-	prodEnvNameKey                      = "prod-env-name"
-	jiraBaseURLKey                      = "jira-base-url"
+	ProdEnvNameKey                      = "prod-env-name"
+	JiraBaseURLKey                      = "jira-base-url"
+	AssumeInitialArnKey                 = "assume-initial-arn"
 	JiraTokenViperKey                   = "jira-token"
 	JiraConfigForAccessRequestsKey      = "jira-config-for-access-requests"
 	prodEnvNameDefaultValue             = "production"
@@ -102,6 +103,7 @@ func GetConfigFilePath() (string, error) {
 	return configFilePath, nil
 }
 
+
 // GetBackplaneConfiguration parses and returns the given backplane configuration
 func GetBackplaneConfiguration() (bpConfig BackplaneConfiguration, err error) {
 	return GetBackplaneConfigurationWithConn(nil)
@@ -110,8 +112,8 @@ func GetBackplaneConfiguration() (bpConfig BackplaneConfiguration, err error) {
 // GetBackplaneConfiguration parses and returns the given backplane configuration using attributes
 // from provided OCM connection
 func GetBackplaneConfigurationWithConn(ocmConn *ocmsdk.Connection) (bpConfig BackplaneConfiguration, err error) {
-	viper.SetDefault(prodEnvNameKey, prodEnvNameDefaultValue)
-	viper.SetDefault(jiraBaseURLKey, JiraBaseURLDefaultValue)
+	viper.SetDefault(ProdEnvNameKey, prodEnvNameDefaultValue)
+	viper.SetDefault(JiraBaseURLKey, JiraBaseURLDefaultValue)
 	viper.SetDefault(JiraConfigForAccessRequestsKey, JiraConfigForAccessRequestsDefaultValue)
 	viper.SetDefault(GovcloudDefaultValueKey, GovcloudDefaultValue)
 	filePath, err := GetConfigFilePath()
@@ -201,7 +203,7 @@ func GetBackplaneConfigurationWithConn(ocmConn *ocmsdk.Connection) (bpConfig Bac
 	}
 
 	bpConfig.SessionDirectory = viper.GetString("session-dir")
-	bpConfig.AssumeInitialArn = viper.GetString("assume-initial-arn")
+	bpConfig.AssumeInitialArn = viper.GetString(AssumeInitialArnKey)
 	bpConfig.DisplayClusterInfo = viper.GetBool("display-cluster-info")
 	bpConfig.DisableKubePS1Warning = viper.GetBool("disable-kube-ps1-warning")
 
@@ -218,10 +220,10 @@ func GetBackplaneConfigurationWithConn(ocmConn *ocmsdk.Connection) (bpConfig Bac
 	}
 
 	// OCM prod env name is optional as there is a default value
-	bpConfig.ProdEnvName = viper.GetString(prodEnvNameKey)
+	bpConfig.ProdEnvName = viper.GetString(ProdEnvNameKey)
 
 	// JIRA base URL is optional as there is a default value
-	bpConfig.JiraBaseURL = viper.GetString(jiraBaseURLKey)
+	bpConfig.JiraBaseURL = viper.GetString(JiraBaseURLKey)
 
 	// JIRA token is optional
 	// JIRA_API_TOKEN env var takes precedence, fallback to config file

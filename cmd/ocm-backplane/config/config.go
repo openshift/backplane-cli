@@ -32,5 +32,6 @@ govcloud    Set to true if used in FedRAMP
 	cmd.AddCommand(newGetCmd())
 	cmd.AddCommand(newSetCmd())
 	cmd.AddCommand(newTroubleshootCmd())
+	cmd.AddCommand(newRefreshCmd())
 	return cmd
 }

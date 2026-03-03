@@ -403,6 +403,26 @@ func (mr *MockClientInterfaceMockRecorder) GetCloudCredentials(ctx, clusterId an
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCloudCredentials", reflect.TypeOf((*MockClientInterface)(nil).GetCloudCredentials), varargs...)
 }
 
+// GetConfig mocks base method.
+func (m *MockClientInterface) GetConfig(ctx context.Context, reqEditors ...Openapi.RequestEditorFn) (*http.Response, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx}
+	for _, a := range reqEditors {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "GetConfig", varargs...)
+	ret0, _ := ret[0].(*http.Response)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetConfig indicates an expected call of GetConfig.
+func (mr *MockClientInterfaceMockRecorder) GetConfig(ctx any, reqEditors ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx}, reqEditors...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetConfig", reflect.TypeOf((*MockClientInterface)(nil).GetConfig), varargs...)
+}
+
 // GetJobLogs mocks base method.
 func (m *MockClientInterface) GetJobLogs(ctx context.Context, clusterId, jobId string, params *Openapi.GetJobLogsParams, reqEditors ...Openapi.RequestEditorFn) (*http.Response, error) {
 	m.ctrl.T.Helper()
