@@ -18,7 +18,7 @@ require (
 	github.com/onsi/gomega v1.39.1
 	github.com/openshift-online/ocm-api-model/clientapi v0.0.453
 	github.com/openshift-online/ocm-cli v1.0.10
-	github.com/openshift-online/ocm-sdk-go v0.1.497
+	github.com/openshift-online/ocm-sdk-go v0.1.498
 	github.com/openshift/backplane-api v0.0.0-20260205054653-459856398d59
 	github.com/openshift/client-go v0.0.0-20221019143426-16aed247da5c
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
@@ -49,7 +49,7 @@ require (
 	github.com/oapi-codegen/runtime v1.1.2 // indirect
 	github.com/oasdiff/yaml v0.0.0-20250309154309-f31be36b4037 // indirect
 	github.com/oasdiff/yaml3 v0.0.0-20250309153720-d2182401db90 // indirect
-	github.com/openshift-online/ocm-api-model/model v0.0.452 // indirect
+	github.com/openshift-online/ocm-api-model/model v0.0.453 // indirect
 	github.com/openshift-online/ocm-common v0.0.29 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/segmentio/asm v1.1.3 // indirect
