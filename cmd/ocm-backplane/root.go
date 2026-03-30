@@ -34,6 +34,7 @@ import (
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/mcp"
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/monitoring"
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/remediation"
+	"github.com/openshift/backplane-cli/cmd/ocm-backplane/rw"
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/script"
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/session"
 	"github.com/openshift/backplane-cli/cmd/ocm-backplane/status"
@@ -86,4 +87,5 @@ func init() {
 	rootCmd.AddCommand(monitoring.MonitoringCmd)
 	rootCmd.AddCommand(healthcheck.HealthCheckCmd)
 	rootCmd.AddCommand(remediation.NewRemediationCmd())
+	rootCmd.AddCommand(rw.RwCmd)
 }
