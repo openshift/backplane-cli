@@ -120,6 +120,7 @@ var _ = Describe("Login command", func() {
 		globalOpts.Service = false
 		globalOpts.BackplaneURL = ""
 		globalOpts.ProxyURL = ""
+		args.readwrite = false
 		_ = os.Setenv("HTTPS_PROXY", "")
 		_ = os.Unsetenv("BACKPLANE_CONFIG")
 		_ = os.Remove(bpConfigPath)
@@ -150,7 +151,7 @@ var _ = Describe("Login command", func() {
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil)
 			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken(backplaneAPIURI, testToken).Return(mockClient, nil)
-			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(trueClusterID)).Return(fakeResp, nil)
+			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(trueClusterID), gomock.Any()).Return(fakeResp, nil)
 
 			err = runLogin(nil, []string{testClusterID})
 
@@ -174,7 +175,7 @@ var _ = Describe("Login command", func() {
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil)
 			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken("https://sadge.app", testToken).Return(mockClient, nil)
-			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(trueClusterID)).Return(fakeResp, nil)
+			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(trueClusterID), gomock.Any()).Return(fakeResp, nil)
 
 			err = runLogin(nil, []string{testClusterID})
 
@@ -199,7 +200,7 @@ var _ = Describe("Login command", func() {
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil)
 			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken(backplaneAPIURI, testToken).Return(mockClient, nil)
-			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(trueClusterID)).Return(fakeResp, nil)
+			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(trueClusterID), gomock.Any()).Return(fakeResp, nil)
 
 			err = runLogin(nil, []string{testClusterID})
 
@@ -256,7 +257,7 @@ var _ = Describe("Login command", func() {
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil)
 			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken(backplaneAPIURI, testToken).Return(mockClient, nil)
-			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(trueClusterID)).Return(fakeResp, nil)
+			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(trueClusterID), gomock.Any()).Return(fakeResp, nil)
 			mockOcmInterface.EXPECT().GetClusterInfoByID(gomock.Any()).Return(mockCluster, nil).Times(2)
 			mockOcmInterface.EXPECT().SetupOCMConnection().Return(nil, nil)
 			mockOcmInterface.EXPECT().IsClusterAccessProtectionEnabled(gomock.Any(), trueClusterID).Return(false, nil)
@@ -277,7 +278,7 @@ var _ = Describe("Login command", func() {
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
 			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken(backplaneAPIURI, testToken).Return(mockClient, nil).AnyTimes()
-			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(trueClusterID)).Return(fakeResp, nil).AnyTimes()
+			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(trueClusterID), gomock.Any()).Return(fakeResp, nil).AnyTimes()
 
 			// Mock PrintClusterInfo to return an error
 			mockOcmInterface.EXPECT().GetClusterInfoByID(gomock.Any()).Return(nil, errors.New("mock error"))
@@ -295,7 +296,7 @@ var _ = Describe("Login command", func() {
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil)
 			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken(backplaneAPIURI, testToken).Return(mockClient, nil)
-			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(trueClusterID)).Return(fakeResp, nil)
+			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(trueClusterID), gomock.Any()).Return(fakeResp, nil)
 
 			err = runLogin(nil, []string{testClusterID})
 
@@ -318,7 +319,7 @@ var _ = Describe("Login command", func() {
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil)
 			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken(backplaneAPIURI, testToken).Return(mockClient, nil)
-			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(trueClusterID)).Return(fakeResp, nil)
+			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(trueClusterID), gomock.Any()).Return(fakeResp, nil)
 
 			err = runLogin(nil, []string{testClusterID})
 
@@ -353,7 +354,7 @@ var _ = Describe("Login command", func() {
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(managingClusterID)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil)
 			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken(backplaneAPIURI, testToken).Return(mockClient, nil)
-			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(managingClusterID)).Return(fakeResp, nil)
+			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(managingClusterID), gomock.Any()).Return(fakeResp, nil)
 
 			err := runLogin(nil, []string{testClusterID})
 
@@ -373,7 +374,7 @@ var _ = Describe("Login command", func() {
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(managingClusterID)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil).AnyTimes()
 			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken(backplaneAPIURI, testToken).Return(mockClient, nil).AnyTimes()
-			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(managingClusterID)).Return(fakeResp, nil).AnyTimes()
+			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(managingClusterID), gomock.Any()).Return(fakeResp, nil).AnyTimes()
 
 			err := runLogin(nil, []string{testClusterID})
 
@@ -391,7 +392,7 @@ var _ = Describe("Login command", func() {
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(serviceClusterID)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil)
 			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken(backplaneAPIURI, testToken).Return(mockClient, nil)
-			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(serviceClusterID)).Return(fakeResp, nil)
+			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(serviceClusterID), gomock.Any()).Return(fakeResp, nil)
 
 			err := runLogin(nil, []string{testClusterID})
 
@@ -409,7 +410,7 @@ var _ = Describe("Login command", func() {
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(testClusterID)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil)
 			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken(backplaneAPIURI, testToken).Return(mockClient, nil)
-			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(testClusterID)).Return(fakeResp, nil)
+			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(testClusterID), gomock.Any()).Return(fakeResp, nil)
 
 			err = runLogin(nil, nil)
 
@@ -431,7 +432,7 @@ var _ = Describe("Login command", func() {
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil)
 			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken(backplaneAPIURI, testToken).Return(mockClient, nil)
-			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(trueClusterID)).Return(fakeResp, errors.New("dial tcp: lookup yourproxy.com: no such host"))
+			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(trueClusterID), gomock.Any()).Return(fakeResp, errors.New("dial tcp: lookup yourproxy.com: no such host"))
 
 			err = runLogin(nil, []string{testClusterID})
 
@@ -459,7 +460,7 @@ var _ = Describe("Login command", func() {
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(trueClusterID)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil)
 			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken(backplaneAPIURI, testToken).Return(mockClient, nil)
-			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(trueClusterID)).Return(fakeResp, nil)
+			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(trueClusterID), gomock.Any()).Return(fakeResp, nil)
 
 			err = runLogin(nil, []string{testClusterID})
 
@@ -598,7 +599,7 @@ var _ = Describe("Login command", func() {
 			mockOcmInterface.EXPECT().GetClusterInfoByID(testClusterID).Return(mockCluster, nil)
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil)
 			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken(backplaneAPIURI, testToken).Return(mockClient, nil)
-			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(testClusterID)).Return(fakeResp, nil)
+			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(testClusterID), gomock.Any()).Return(fakeResp, nil)
 
 			username := "test-user"
 
@@ -613,7 +614,7 @@ var _ = Describe("Login command", func() {
 			mockOcmInterface.EXPECT().GetClusterInfoByID(testClusterID).Return(mockCluster, nil)
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil)
 			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken(backplaneAPIURI, testToken).Return(mockClient, nil)
-			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(testClusterID)).Return(fakeResp, nil)
+			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(testClusterID), gomock.Any()).Return(fakeResp, nil)
 
 			username := "test-user"
 			elevationReasons := []string{"reason1", "reason2"}
@@ -660,7 +661,7 @@ var _ = Describe("Login command", func() {
 			mockOcmInterface.EXPECT().IsClusterHibernating(gomock.Eq(testClusterID)).Return(false, nil).AnyTimes()
 			mockOcmInterface.EXPECT().GetOCMAccessToken().Return(&testToken, nil)
 			mockClientUtil.EXPECT().MakeRawBackplaneAPIClientWithAccessToken(backplaneAPIURI, testToken).Return(mockClient, nil)
-			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(testClusterID)).Return(fakeResp, nil)
+			mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Eq(testClusterID), gomock.Any()).Return(fakeResp, nil)
 
 			err = runLogin(nil, nil)
 
@@ -692,10 +693,10 @@ var _ = Describe("Login command", func() {
 			Expect(err).To(BeNil())
 		})
 
-		It("should add readonly=true query parameter when readonly flag is set", func() {
+		It("should add readonly=true query parameter by default (when --rw flag is not set)", func() {
 			// Setup
 			args.multiCluster = false
-			args.readonly = true
+			args.readwrite = false
 			loginType = LoginTypeClusterID
 
 			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()
@@ -728,10 +729,10 @@ var _ = Describe("Login command", func() {
 			Expect(capturedURL).To(ContainSubstring("readonly=true"))
 		})
 
-		It("should not add readonly query parameter when readonly flag is false", func() {
+		It("should not add readonly query parameter when --rw flag is set", func() {
 			// Setup
 			args.multiCluster = false
-			args.readonly = false
+			args.readwrite = true
 			loginType = LoginTypeClusterID
 
 			mockOcmInterface.EXPECT().GetOCMEnvironment().Return(ocmEnv, nil).AnyTimes()

@@ -52,6 +52,7 @@ var (
 		remediation      string
 		govcloud         bool
 		readonly         bool
+		readwrite        bool
 	}
 
 	// loginType derive the login type based on flags and args
@@ -138,7 +139,14 @@ func init() {
 		&args.readonly,
 		"readonly",
 		false,
-		"Login with read-only access to the cluster",
+		"(Deprecated) Login with read-only access to the cluster (this is now the default behavior)",
+	)
+	_ = flags.MarkDeprecated("readonly", "read-only is now the default behavior, use --rw to login with write access")
+	flags.BoolVar(
+		&args.readwrite,
+		"rw",
+		false,
+		"Login with read-write access to the cluster",
 	)
 }
 
@@ -340,13 +348,17 @@ func runLogin(cmd *cobra.Command, argv []string) (err error) {
 		return fmt.Errorf("cluster %s is hibernating, login failed", clusterKey)
 	}
 
+	// Determine if login should be readonly (default) or readwrite
+	// Default is readonly unless --rw is explicitly set
+	isReadOnly := !args.readwrite
+
 	logger.WithFields(logger.Fields{
 		"bpURL":     bpURL,
 		"clusterID": clusterID,
-		"readonly":  args.readonly,
+		"readonly":  isReadOnly,
 	}).Debugln("Query backplane-api for proxy url of our target cluster")
 	// Query backplane-api for proxy url
-	bpAPIClusterURL, err := doLoginWithConn(bpURL, clusterID, *accessToken, nil, args.readonly)
+	bpAPIClusterURL, err := doLoginWithConn(bpURL, clusterID, *accessToken, nil, isReadOnly)
 	if err != nil {
 		// Declare helperMsg
 		helperMsg := "\n\033[1mNOTE: To troubleshoot the connectivity issues, please run `ocm-backplane health-check`\033[0m\n\n"
