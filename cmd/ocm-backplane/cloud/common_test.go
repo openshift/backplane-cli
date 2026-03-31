@@ -283,7 +283,7 @@ var _ = Describe("getIsolatedCredentials", func() {
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("failed to fetch arn sequence:"))
 			// Verify the response body is included in the error message
-			Expect(err.Error()).To(ContainSubstring("response body:"))
+			Expect(err.Error()).To(ContainSubstring("Response body:"))
 			Expect(err.Error()).To(ContainSubstring("Internal server error"))
 		})
 		It("should fail if error creating backplane api client", func() {
