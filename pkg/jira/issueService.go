@@ -86,11 +86,16 @@ func createIssueService() (*jira.IssueService, error) {
 	}
 
 	if bpConfig.JiraToken == "" {
-		return nil, fmt.Errorf("JIRA token is not defined, consider defining it running 'ocm-backplane config set %s <token value>'", config.JiraTokenViperKey)
+		return nil, fmt.Errorf("JIRA API token is not defined, consider defining it running 'ocm-backplane config set %s <token value>'", config.JiraTokenViperKey)
 	}
 
-	transport := jira.PATAuthTransport{
-		Token: bpConfig.JiraToken,
+	if bpConfig.JiraEmail == "" {
+		return nil, fmt.Errorf("JIRA email is not defined, consider defining it running 'ocm-backplane config set %s <email>' or setting the JIRA_EMAIL environment variable", config.JiraEmailViperKey)
+	}
+
+	transport := jira.BasicAuthTransport{
+		Username: bpConfig.JiraEmail,
+		Password: bpConfig.JiraToken,
 	}
 
 	jiraClient, err := jira.NewClient(transport.Client(), bpConfig.JiraBaseURL)

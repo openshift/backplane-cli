@@ -2,7 +2,7 @@ package jira
 
 import (
 	"fmt"
-	"strings"
+	"net/url"
 
 	"github.com/andygrunwald/go-jira"
 )
@@ -72,8 +72,9 @@ func (j *OHSSService) formatIssue(issue jira.Issue) (formatIssue OHSSIssue, err 
 		formatIssue.Title = issue.Fields.Summary
 	}
 	if issue.Self != "" {
-		selfSlice := strings.SplitAfter(issue.Self, ".com")
-		formatIssue.WebURL = fmt.Sprintf("%s/browse/%s", selfSlice[0], issue.Key)
+		if u, err := url.Parse(issue.Self); err == nil {
+			formatIssue.WebURL = fmt.Sprintf("%s://%s/browse/%s", u.Scheme, u.Host, issue.Key)
+		}
 	}
 
 	return formatIssue, nil

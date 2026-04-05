@@ -75,6 +75,86 @@ func TestGetBackplaneConfig(t *testing.T) {
 		}
 	})
 
+	t.Run("it reads JIRA email from JIRA_EMAIL environment variable when config file is empty", func(t *testing.T) {
+		viper.Reset()
+		svr := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			_, _ = w.Write([]byte("dummy data"))
+		}))
+
+		expectedEmail := "user@redhat.com"
+		userDefinedProxy := "example-proxy"
+		t.Setenv("BACKPLANE_URL", svr.URL)
+		t.Setenv("HTTPS_PROXY", userDefinedProxy)
+		t.Setenv("JIRA_EMAIL", expectedEmail)
+
+		config, err := GetBackplaneConfiguration()
+		if err != nil {
+			t.Error(err)
+		}
+
+		if config.JiraEmail != expectedEmail {
+			t.Errorf("expected JiraEmail to be %s, got %s", expectedEmail, config.JiraEmail)
+		}
+	})
+
+	t.Run("JIRA_EMAIL environment variable takes precedence over config file value", func(t *testing.T) {
+		viper.Reset()
+		svr := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			_, _ = w.Write([]byte("dummy data"))
+		}))
+
+		configEmail := "config@redhat.com"
+		envEmail := "env@redhat.com"
+
+		t.Setenv("BACKPLANE_URL", svr.URL)
+		t.Setenv("JIRA_EMAIL", envEmail)
+
+		// Simulate config file value
+		viper.Set(JiraEmailViperKey, configEmail)
+
+		config, err := GetBackplaneConfiguration()
+		if err != nil {
+			t.Error(err)
+		}
+
+		if config.JiraEmail != envEmail {
+			t.Errorf("expected environment variable email to take precedence: expected %s, got %s", envEmail, config.JiraEmail)
+		}
+	})
+
+	t.Run("JiraEmail falls back to config file when JIRA_EMAIL env var is not set", func(t *testing.T) {
+		viper.Reset()
+
+		tmpDir := t.TempDir()
+		configPath := tmpDir + "/config.json"
+		configContent := `{
+			"jira-email": "configfile@redhat.com"
+		}`
+		err := os.WriteFile(configPath, []byte(configContent), 0600)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		t.Setenv("BACKPLANE_CONFIG", configPath)
+
+		svr := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			_, _ = w.Write([]byte("dummy data"))
+		}))
+		defer svr.Close()
+
+		t.Setenv("BACKPLANE_URL", svr.URL)
+		t.Setenv("HTTPS_PROXY", "example-proxy")
+
+		config, err := GetBackplaneConfiguration()
+		if err != nil {
+			t.Error(err)
+		}
+
+		if config.JiraEmail != "configfile@redhat.com" {
+			t.Errorf("expected JiraEmail from config file, got %s", config.JiraEmail)
+		}
+	})
+
 	t.Run("JIRA_API_TOKEN environment variable takes precedence over config file JIRA token", func(t *testing.T) {
 		viper.Reset()
 		svr := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
