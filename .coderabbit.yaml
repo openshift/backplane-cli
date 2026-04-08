@@ -1,0 +1,284 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+# CodeRabbit configuration for backplane-cli
+# Documentation: https://docs.coderabbit.ai/reference/configuration
+
+language: "en-US"
+early_access: true  # Enable early-access features
+
+# =============================================================================
+# REVIEW SETTINGS
+# =============================================================================
+reviews:
+  # Review intensity: "chill" (lighter feedback) or "assertive" (more thorough)
+  profile: "chill"
+  
+  # If true, CodeRabbit will request changes instead of just commenting
+  request_changes_workflow: false
+  
+  # Generate a high-level summary of changes
+  high_level_summary: true
+  high_level_summary_in_walkthrough: true
+  
+  # Show the walkthrough expanded (not collapsed)
+  collapse_walkthrough: false
+  
+  # Include these in the review summary
+  changed_files_summary: true   # List of changed files
+  sequence_diagrams: true       # Visual flow diagrams
+  review_effort: true           # Estimated review time
+  related_issues: true          # Link to related issues
+  related_prs: true             # Link to related PRs
+  labels_suggested: true        # Suggest labels for the PR
+  
+  # Disable fun extras (keep reviews professional)
+  poem: false
+  fortune: false
+
+  # ---------------------------------------------------------------------------
+  # PATH-SPECIFIC INSTRUCTIONS
+  # Different review focus based on file location
+  # ---------------------------------------------------------------------------
+  path_instructions:
+    - path: "cmd/**"
+      instructions: |
+        CLI command code for OCM plugin (ocm-backplane).
+        Focus on:
+        - Consistent error messages with actionable guidance
+        - Proper cobra command patterns (Use(), Short, Long, RunE)
+        - Input validation before processing
+        - Help text clarity and completeness
+        - Exit codes (0=success, non-zero=error)
+
+    - path: "pkg/**"
+      instructions: |
+        Core library code.
+        Focus on:
+        - API backward compatibility (don't break existing callers)
+        - Thread safety for concurrent operations
+        - Error wrapping with context (fmt.Errorf with %w)
+        - No hardcoded credentials, URLs, or cluster names
+        - Proper context.Context propagation
+
+    - path: "internal/**"
+      instructions: |
+        Internal packages.
+        Focus on:
+        - Clear separation of concerns
+        - No circular dependencies
+        - Should not be imported outside this module
+
+    - path: "**/*_test.go"
+      instructions: |
+        Test files.
+        Ensure:
+        - Table-driven tests for multiple cases
+        - Cover error paths, not just happy paths
+        - Meaningful test names describing behavior
+        - No hardcoded credentials (use mocks/fakes)
+        - Tests are deterministic (no flaky tests)
+
+    - path: "go.mod"
+      instructions: |
+        Dependency changes.
+        Check:
+        - Is this a major version bump requiring code changes?
+        - Are there known CVEs in new versions?
+        - Is the dependency necessary or can stdlib be used?
+        - Does it align with OpenShift dependency versions?
+
+    - path: ".github/**"
+      instructions: |
+        GitHub Actions and workflows.
+        Verify:
+        - No secrets hardcoded in workflow files
+        - Minimal permissions (principle of least privilege)
+        - Pinned action versions (avoid @main, use @v1.2.3 or SHA)
+        - Proper error handling in scripts
+
+    - path: "hack/**"
+      instructions: |
+        Build and development scripts.
+        Verify:
+        - Scripts are portable (avoid bashisms if targeting sh)
+        - Proper error handling (set -e, set -o pipefail)
+        - No hardcoded paths specific to one developer's machine
+
+  # ---------------------------------------------------------------------------
+  # PATH FILTERS
+  # Skip reviewing these files (reduces noise, faster reviews, lower cost)
+  # ---------------------------------------------------------------------------
+  path_filters:
+    - "!vendor/**"            # Third-party vendored code
+    - "!**/*.generated.go"    # Auto-generated code
+    - "!**/mock_*.go"         # Generated mocks
+    - "!**/zz_generated*.go"  # Kubernetes generated files
+    - "!**/mocks/**"          # Mock directories
+
+  # ---------------------------------------------------------------------------
+  # AUTO-REVIEW SETTINGS
+  # When to automatically trigger reviews
+  # ---------------------------------------------------------------------------
+  auto_review:
+    enabled: true
+    drafts: false  # Don't review draft PRs
+    base_branches:
+      - main
+      - master
+    # Skip review if PR title contains these keywords
+    ignore_title_keywords:
+      - "WIP"
+      - "DO NOT MERGE"
+
+  # ---------------------------------------------------------------------------
+  # FINISHING TOUCHES
+  # Custom automation recipes triggered via @coderabbitai run <name>
+  # ---------------------------------------------------------------------------
+  finishing_touches:
+    docstrings:
+      enabled: true   # Enable @coderabbitai generate docstrings
+    unit_tests:
+      enabled: true   # Enable @coderabbitai generate unit tests
+    
+    # Custom recipes - run with: @coderabbitai run <name>
+    custom_recipes:
+      - name: "security check"
+        enabled: true
+        instructions: |
+          Scan the changes for security issues:
+          - Hardcoded credentials, API keys, tokens, or secrets
+          - Insecure HTTP URLs (should be HTTPS)
+          - Missing input validation that could lead to injection
+          - Sensitive data in logs or error messages
+          - Improper certificate validation
+
+      - name: "breaking changes"
+        enabled: true
+        instructions: |
+          Analyze if this PR introduces breaking changes:
+          - Public function signature changes
+          - Removed or renamed exported types/functions
+          - Changed CLI flag names or behavior
+          - Modified config file format
+          - Changed exit codes or error messages that scripts may depend on
+
+  # ---------------------------------------------------------------------------
+  # PRE-MERGE CHECKS
+  # Validate PRs meet criteria before merging
+  # ---------------------------------------------------------------------------
+  pre_merge_checks:
+    title:
+      mode: "warning"  # "off", "warning", or "error"
+      requirements: |
+        PR title should be clear and descriptive.
+        Preferred format: type: description
+        Types: feat, fix, docs, chore, refactor, test, ci
+        Example: "feat: add cluster login timeout flag"
+
+    description:
+      mode: "warning"
+      
+    custom:
+      - name: "No debug code"
+        mode: "warning"
+        instructions: |
+          Check that no debug code is being committed:
+          - fmt.Println for debugging (use proper logging)
+          - Commented-out code blocks
+          - TODO/FIXME without linked issue
+          - Hardcoded localhost or test URLs
+
+  # ---------------------------------------------------------------------------
+  # AUTO-LABELING
+  # Suggest labels based on PR content
+  # ---------------------------------------------------------------------------
+  labeling_instructions:
+    - label: "security"
+      instructions: "Apply when PR touches authentication, authorization, credentials, or token handling"
+    - label: "breaking-change"
+      instructions: "Apply when public APIs, CLI flags, or config formats change incompatibly"
+    - label: "dependencies"
+      instructions: "Apply when go.mod or go.sum changes"
+    - label: "documentation"
+      instructions: "Apply when docs/, README, or help text changes"
+    - label: "ci"
+      instructions: "Apply when .github/workflows or Makefile changes"
+
+  # ---------------------------------------------------------------------------
+  # TOOLS
+  # Static analysis tools to run during review
+  # ---------------------------------------------------------------------------
+  tools:
+    golangci-lint:
+      enabled: true   # Go linter (uses .golangci.yml if present)
+    gitleaks:
+      enabled: true   # Secret/credential scanning
+    trufflehog:
+      enabled: true   # Additional secret scanning with verification
+    shellcheck:
+      enabled: true   # Shell script linting
+    actionlint:
+      enabled: true   # GitHub Actions workflow validation
+    hadolint:
+      enabled: true   # Dockerfile linting
+    yamllint:
+      enabled: true   # YAML file linting
+    semgrep:
+      enabled: true   # Security vulnerability scanning
+
+# =============================================================================
+# CHAT SETTINGS
+# =============================================================================
+chat:
+  auto_reply: true  # Reply without needing @coderabbitai mention
+
+# =============================================================================
+# KNOWLEDGE BASE
+# CodeRabbit learns from your codebase and reviewer patterns
+# =============================================================================
+knowledge_base:
+  opt_out: false  # Keep knowledge base features enabled
+  
+  # Read coding guidelines from files like CLAUDE.md, CONTRIBUTING.md
+  code_guidelines:
+    enabled: true
+  
+  # Remember reviewer preferences over time
+  # "local" = repo only, "global" = org-wide, "auto" = based on repo visibility
+  learnings:
+    scope: "auto"
+  
+  # Enable web search for additional context (e.g., CVE lookups)
+  web_search:
+    enabled: true
+
+# =============================================================================
+# ISSUE ENRICHMENT
+# Auto-analyze issues when created
+# =============================================================================
+issue_enrichment:
+  # Analyze issues and add context (related code, complexity assessment)
+  auto_enrich:
+    enabled: true
+  
+  # Generate implementation plans for issues
+  planning:
+    enabled: true
+  
+  # Auto-trigger planning based on labels
+  auto_planning:
+    enabled: true
+    labels:
+      - "enhancement"
+      - "feature"
+      - "bug"
+
+  # Auto-suggest labels for new issues
+  labeling:
+    auto_apply: false  # Suggest only, don't auto-apply
+    instructions:
+      - label: "good-first-issue"
+        instructions: "Small, well-scoped changes with clear implementation path"
+      - label: "needs-triage"
+        instructions: "Issue needs more information or investigation"
+      - label: "security"
+        instructions: "Security-related issue or vulnerability"
