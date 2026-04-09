@@ -48,7 +48,7 @@ reviews:
         - Check for table-driven test patterns
         - Ensure tests are deterministic and not flaky
   abort_on_close: true
-  auto_title_placeholder: "CodeRabbit"
+  auto_title_placeholder: "@coderabbitai"
   tools:
     golangci-lint:
       enabled: true
@@ -69,5 +69,3 @@ knowledge_base:
     scope: auto
   jira:
     project_keys: []
-  linear:
-    team_keys: []
