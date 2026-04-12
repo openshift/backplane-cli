@@ -62,5 +62,47 @@ var _ = Describe("Jira", func() {
 			Expect(err).NotTo(BeNil())
 			Expect(err.Error()).To(Equal("no matching issue for issueID:OHSS-1000"))
 		})
+
+		It("Should parse Atlassian Cloud .net Self URL into WebURL", func() {
+			testIssue.Key = testOHSSID
+			testIssue.Self = "https://redhat.atlassian.net/rest/api/2/issue/12345"
+			mockIssueService.EXPECT().Get(testOHSSID, nil).Return(&testIssue, nil, nil).Times(1)
+
+			issue, err := ohssService.GetIssue(testOHSSID)
+			Expect(err).To(BeNil())
+			Expect(issue.WebURL).To(Equal("https://redhat.atlassian.net/browse/OHSS-1000"))
+		})
+
+		It("Should parse legacy .com Self URL into WebURL", func() {
+			testIssue.Key = testOHSSID
+			testIssue.Self = "https://issues.redhat.com/rest/api/2/issue/12345"
+			mockIssueService.EXPECT().Get(testOHSSID, nil).Return(&testIssue, nil, nil).Times(1)
+
+			issue, err := ohssService.GetIssue(testOHSSID)
+			Expect(err).To(BeNil())
+			Expect(issue.WebURL).To(Equal("https://issues.redhat.com/browse/OHSS-1000"))
+		})
+
+		It("Should return empty WebURL when Self is empty", func() {
+			testIssue.Key = testOHSSID
+			testIssue.Self = ""
+			mockIssueService.EXPECT().Get(testOHSSID, nil).Return(&testIssue, nil, nil).Times(1)
+
+			issue, err := ohssService.GetIssue(testOHSSID)
+			Expect(err).To(BeNil())
+			Expect(issue.WebURL).To(Equal(""))
+		})
+
+		It("Should extract ClusterID from custom field", func() {
+			issueFields.Unknowns = map[string]interface{}{
+				CustomFieldClusterID: "abc-123-def-456",
+			}
+			testIssue.Fields = issueFields
+			mockIssueService.EXPECT().Get(testOHSSID, nil).Return(&testIssue, nil, nil).Times(1)
+
+			issue, err := ohssService.GetIssue(testOHSSID)
+			Expect(err).To(BeNil())
+			Expect(issue.ClusterID).To(Equal("abc-123-def-456"))
+		})
 	})
 })

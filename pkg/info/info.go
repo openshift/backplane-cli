@@ -15,6 +15,7 @@ const (
 	BackplaneConfigPathEnvName = "BACKPLANE_CONFIG"
 	BackplaneKubeconfigEnvName = "KUBECONFIG"
 	BackplaneJiraAPITokenEnvName = "JIRA_API_TOKEN" //nolint:gosec
+	BackplaneJiraEmailEnvName   = "JIRA_EMAIL"
 
 	// Configuration
 	BackplaneConfigDefaultFilePath = ".config/backplane"

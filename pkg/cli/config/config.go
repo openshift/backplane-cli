@@ -44,6 +44,7 @@ type BackplaneConfiguration struct {
 	PagerDutyAPIKey             string                          `json:"pd-key"`
 	JiraBaseURL                 string                          `json:"jira-base-url"`
 	JiraToken                   string                          `json:"jira-token"`
+	JiraEmail                   string                          `json:"jira-email"`
 	JiraConfigForAccessRequests AccessRequestsJiraConfiguration `json:"jira-config-for-access-requests"`
 	VPNCheckEndpoint            string                          `json:"vpn-check-endpoint"`
 	ProxyCheckEndpoint          string                          `json:"proxy-check-endpoint"`
@@ -58,9 +59,10 @@ const (
 	JiraBaseURLKey                      = "jira-base-url"
 	AssumeInitialArnKey                 = "assume-initial-arn"
 	JiraTokenViperKey                   = "jira-token"
+	JiraEmailViperKey                   = "jira-email"
 	JiraConfigForAccessRequestsKey      = "jira-config-for-access-requests"
 	prodEnvNameDefaultValue             = "production"
-	JiraBaseURLDefaultValue             = "https://issues.redhat.com"
+	JiraBaseURLDefaultValue             = "https://redhat.atlassian.net"
 	proxyTestTimeout                    = 10 * time.Second
 	GovcloudDefaultValue           bool = false
 	GovcloudDefaultValueKey             = "govcloud"
@@ -230,6 +232,13 @@ func GetBackplaneConfigurationWithConn(ocmConn *ocmsdk.Connection) (bpConfig Bac
 	bpConfig.JiraToken = os.Getenv(info.BackplaneJiraAPITokenEnvName)
 	if bpConfig.JiraToken == "" {
 		bpConfig.JiraToken = viper.GetString(JiraTokenViperKey)
+	}
+
+	// JIRA email is required for Atlassian Cloud basic auth
+	// JIRA_EMAIL env var takes precedence, fallback to config file
+	bpConfig.JiraEmail = os.Getenv(info.BackplaneJiraEmailEnvName)
+	if bpConfig.JiraEmail == "" {
+		bpConfig.JiraEmail = viper.GetString(JiraEmailViperKey)
 	}
 
 	// JIRA config for access requests is optional as there is a default value
