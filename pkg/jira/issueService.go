@@ -9,6 +9,7 @@ import (
 	"github.com/andygrunwald/go-jira"
 )
 
+//go:generate go tool mockgen -destination=mocks/jiraMock.go -package=mocks github.com/openshift/backplane-cli/pkg/jira IssueServiceInterface
 type IssueServiceInterface interface {
 	Create(issue *jira.Issue) (*jira.Issue, *jira.Response, error)
 	Get(issueID string, options *jira.GetQueryOptions) (*jira.Issue, *jira.Response, error)

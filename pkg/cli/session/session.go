@@ -19,6 +19,8 @@ import (
 	"github.com/openshift/backplane-cli/pkg/ocm"
 )
 
+//go:generate go tool mockgen -destination=mocks/sessionMock.go -package=mocks github.com/openshift/backplane-cli/pkg/cli/session BackplaneSessionInterface
+
 // BackplaneSessionInterface abstract backplane session functions
 type BackplaneSessionInterface interface {
 	RunCommand(cmd *cobra.Command, args []string) error

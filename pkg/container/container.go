@@ -19,6 +19,7 @@ var (
 	pullSecretConfigDirectory string
 )
 
+//go:generate go tool mockgen -destination=mocks/containerEngineMock.go -package=mocks github.com/openshift/backplane-cli/pkg/container ContainerEngine
 type ContainerEngine interface {
 	PullImage(imageName string) error
 	PutFileToMount(filename string, content []byte) error

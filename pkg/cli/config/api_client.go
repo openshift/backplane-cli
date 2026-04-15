@@ -17,7 +17,7 @@ const (
 	transitionStateRejected   = "rejected"
 )
 
-//go:generate mockgen -destination=mocks/mock_config_api_client.go -package=mocks github.com/openshift/backplane-cli/pkg/cli/config ConfigAPIClient
+//go:generate go tool mockgen -destination=mocks/mock_config_api_client.go -package=mocks github.com/openshift/backplane-cli/pkg/cli/config ConfigAPIClient
 
 // ConfigAPIClient handles fetching configuration from backplane-api
 type ConfigAPIClient interface {

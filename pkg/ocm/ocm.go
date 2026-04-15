@@ -23,6 +23,7 @@ import (
 // OCM Wrapper to abstract ocm sdk interface
 // Provides a minimal interface for backplane-cli to function
 
+//go:generate go tool mockgen -destination=mocks/ocmWrapperMock.go -package=mocks github.com/openshift/backplane-cli/pkg/ocm OCMInterface
 type OCMInterface interface {
 	IsClusterHibernating(clusterID string) (bool, error)
 	GetTargetCluster(clusterKey string) (clusterID, clusterName string, err error)

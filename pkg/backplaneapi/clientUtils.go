@@ -15,6 +15,7 @@ import (
 	logger "github.com/sirupsen/logrus"
 )
 
+//go:generate go tool mockgen -destination=mocks/clientUtilsMock.go -package=mocks github.com/openshift/backplane-cli/pkg/backplaneapi ClientUtils
 type ClientUtils interface {
 	MakeBackplaneAPIClient(base string) (BackplaneApi.ClientWithResponsesInterface, error)
 	MakeBackplaneAPIClientWithAccessToken(base, accessToken string) (BackplaneApi.ClientWithResponsesInterface, error)

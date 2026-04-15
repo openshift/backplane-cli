@@ -18,6 +18,7 @@ type BackplaneCluster struct {
 	BackplaneHost string // for e.g. https://api-backplane.apps.com
 }
 
+//go:generate go tool mockgen -destination=mocks/ClusterMock.go -package=mocks github.com/openshift/backplane-cli/pkg/utils ClusterUtils
 type ClusterUtils interface {
 	GetClusterIDAndHostFromClusterURL(clusterURL string) (string, string, error)
 	GetBackplaneClusterFromConfig() (BackplaneCluster, error)

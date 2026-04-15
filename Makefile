@@ -12,7 +12,7 @@ GO_BUILD_FLAGS_LINUX_CROSS :=-tags 'include_gcs include_oss containers_image_ope
 GO_VERSION=go1.25.3+auto
 
 GOLANGCI_LINT_VERSION=v2.5.0
-GORELEASER_VERSION=v1.14.1
+GORELEASER_VERSION=v2.15.3
 GOVULNCHECK_VERSION=v1.1.4
 
 TESTOPTS ?=
@@ -75,13 +75,13 @@ lint: getlint
 	$(GOPATH)/bin/golangci-lint run --timeout 5m
 
 ensure-goreleaser:
-	@command -v goreleaser >/dev/null 2>&1 || go install github.com/goreleaser/goreleaser@${GORELEASER_VERSION}
+	@command -v goreleaser >/dev/null 2>&1 || go install github.com/goreleaser/goreleaser/v2@${GORELEASER_VERSION}
 
 release: ensure-goreleaser
-	goreleaser release --rm-dist
+	goreleaser release --clean
 
 release-with-note: ensure-goreleaser
-	goreleaser release --rm-dist --release-notes="$(NOTE)"
+	goreleaser release --clean --release-notes="$(NOTE)"
 
 test:
 	env -u GOTOOLCHAIN GOTOOLCHAIN=$(GO_VERSION) go test -v $(TESTOPTS) ./...
@@ -109,24 +109,6 @@ clean-cross-build:
 .PHONY: generate
 generate:
 	GOTOOLCHAIN=$(GO_VERSION) go generate ./...
-
-.PHONY: mock-gen
-mock-gen:
-	mockgen -destination=./pkg/client/mocks/ClientMock.go -package=mocks github.com/openshift/backplane-api/pkg/client ClientInterface
-	mockgen -destination=./pkg/client/mocks/ClientWithResponsesMock.go -package=mocks github.com/openshift/backplane-api/pkg/client ClientWithResponsesInterface
-	mockgen -destination=./pkg/utils/mocks/ClusterMock.go -package=mocks github.com/openshift/backplane-cli/pkg/utils ClusterUtils
-	mockgen -destination=./pkg/ocm/mocks/ocmWrapperMock.go -package=mocks github.com/openshift/backplane-cli/pkg/ocm OCMInterface
-	mockgen -destination=./pkg/backplaneapi/mocks/clientUtilsMock.go -package=mocks github.com/openshift/backplane-cli/pkg/backplaneapi ClientUtils
-	mockgen -destination=./pkg/cli/session/mocks/sessionMock.go -package=mocks github.com/openshift/backplane-cli/pkg/cli/session BackplaneSessionInterface
-	mockgen -destination=./pkg/utils/mocks/shellCheckerMock.go -package=mocks github.com/openshift/backplane-cli/pkg/utils ShellCheckerInterface
-	mockgen -destination=./pkg/pagerduty/mocks/clientMock.go -package=mocks github.com/openshift/backplane-cli/pkg/pagerduty PagerDutyClient
-	mockgen -destination=./pkg/jira/mocks/jiraMock.go -package=mocks github.com/openshift/backplane-cli/pkg/jira IssueServiceInterface
-	mockgen -destination=./pkg/healthcheck/mocks/networkMock.go -package=mocks github.com/openshift/backplane-cli/pkg/healthcheck NetworkInterface
-	mockgen -destination=./pkg/healthcheck/mocks/httpClientMock.go -package=mocks github.com/openshift/backplane-cli/pkg/healthcheck HTTPClient
-	mockgen -destination=./pkg/info/mocks/infoMock.go -package=mocks github.com/openshift/backplane-cli/pkg/info InfoService
-	mockgen -destination=./pkg/info/mocks/buildInfoMock.go -package=mocks github.com/openshift/backplane-cli/pkg/info BuildInfoService
-	mockgen -destination=./pkg/ssm/mocks/mock_ssmclient.go -package=mocks github.com/openshift/backplane-cli/cmd/ocm-backplane/cloud SSMClient
-	mockgen -destination=./pkg/container/mocks/containerEngineMock.go -package=mocks github.com/openshift/backplane-cli/pkg/container ContainerEngine
 
 .PHONY: build-image
 build-image:

@@ -7,6 +7,8 @@ import (
 	pdApi "github.com/PagerDuty/go-pagerduty"
 )
 
+//go:generate go tool mockgen -destination=mocks/clientMock.go -package=mocks github.com/openshift/backplane-cli/pkg/pagerduty PagerDutyClient
+
 // PagerDutyClient is an interface for the actual PD API
 type PagerDutyClient interface {
 	Connect(authToken string, options ...pdApi.ClientOptions) error

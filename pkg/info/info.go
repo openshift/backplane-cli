@@ -62,6 +62,7 @@ var (
 	UpstreamREADMETagged = fmt.Sprintf(UpstreamREADMETemplate, Version)
 )
 
+//go:generate go tool mockgen -destination=mocks/infoMock.go -package=mocks github.com/openshift/backplane-cli/pkg/info InfoService
 type InfoService interface {
 	// get the current binary version from available sources
 	GetVersion() string

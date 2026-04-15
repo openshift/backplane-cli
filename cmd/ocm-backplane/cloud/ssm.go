@@ -299,6 +299,8 @@ func getCurrentKubeconfig() (*rest.Config, error) {
 	return config, nil
 }
 
+//go:generate go tool mockgen -destination=../../../pkg/ssm/mocks/mock_ssmclient.go -package=mocks github.com/openshift/backplane-cli/cmd/ocm-backplane/cloud SSMClient
+
 // Define SSMClient interface
 type SSMClient interface {
 	StartSession(ctx context.Context, params *ssm.StartSessionInput, optFns ...func(*ssm.Options)) (*ssm.StartSessionOutput, error)
