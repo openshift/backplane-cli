@@ -10,5 +10,3 @@ RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/i
 
 ADD https://password.corp.redhat.com/RH-IT-Root-CA.crt /etc/pki/ca-trust/source/anchors/
 RUN update-ca-trust extract
-
-RUN go install github.com/golang/mock/mockgen@v1.6.0

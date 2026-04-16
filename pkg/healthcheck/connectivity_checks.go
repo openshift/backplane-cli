@@ -11,6 +11,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
+//go:generate go tool mockgen -destination=mocks/networkMock.go -package=mocks github.com/openshift/backplane-cli/pkg/healthcheck NetworkInterface
+//go:generate go tool mockgen -destination=mocks/httpClientMock.go -package=mocks github.com/openshift/backplane-cli/pkg/healthcheck HTTPClient
+
 // Interfaces for dependencies
 type NetworkInterface interface {
 	Interfaces() ([]net.Interface, error)

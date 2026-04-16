@@ -42,10 +42,7 @@ make coverage
 # Security vulnerability scan
 make scan
 
-# Generate mocks
-make mock-gen
-
-# Generate code
+# Generate code (including mocks)
 make generate
 ```
 
