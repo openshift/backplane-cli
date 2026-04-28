@@ -9,7 +9,7 @@ import (
 
 const (
 	JiraOHSSProjectKey   = "OHSS"
-	CustomFieldClusterID = "customfield_12316349"
+	CustomFieldClusterID = "customfield_10852"
 )
 
 type OHSSIssue struct {
