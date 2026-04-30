@@ -100,6 +100,44 @@ var _ = Describe("console container implementation", func() {
 		})
 	})
 
+	Context("when checking Rosetta on macOS Podman", func() {
+		It("should execute podman machine ssh command to check binfmt_misc", func() {
+			capturedCommands = nil
+			checkRosettaEnabled()
+			Expect(len(capturedCommands)).To(Equal(1))
+			command := capturedCommands[0]
+			Expect(command[0]).To(Equal(PODMAN))
+			Expect(command[1]).To(Equal("machine"))
+			Expect(command[2]).To(Equal("ssh"))
+			Expect(strings.Join(command[3:], " ")).To(Equal("ls /proc/sys/fs/binfmt_misc/"))
+		})
+	})
+
+	Context("when running console container on macOS", func() {
+		ce := podmanMac{}
+		It("should check Rosetta before running the container", func() {
+			mockOcmInterface.EXPECT().GetPullSecret().Return(pullSecret, nil).AnyTimes()
+			capturedCommands = nil
+			args := []string{"arg1"}
+			envvars := []EnvVar{{Key: "testkey", Value: "testval"}}
+			err := ce.RunConsoleContainer("console", "8888", args, envvars)
+			Expect(err).To(BeNil())
+			// Should have 2 commands: 1 for Rosetta check, 1 for running container
+			Expect(len(capturedCommands)).To(BeNumerically(">=", 2))
+			// First command should be Rosetta check
+			rosettaCheckCmd := capturedCommands[0]
+			Expect(rosettaCheckCmd[0]).To(Equal(PODMAN))
+			Expect(rosettaCheckCmd[1]).To(Equal("machine"))
+			Expect(rosettaCheckCmd[2]).To(Equal("ssh"))
+			// Last command should be the actual container run
+			runCmd := capturedCommands[len(capturedCommands)-1]
+			fullCommand := strings.Join(runCmd, " ")
+			Expect(fullCommand).To(ContainSubstring("arg1"))
+			Expect(fullCommand).To(ContainSubstring("--env"))
+			Expect(fullCommand).To(ContainSubstring("testkey=testval"))
+		})
+	})
+
 	Context("when running console container", func() {
 		ce := podmanMac{}
 		It("should pass argments and environment variable if specified", func() {
@@ -109,8 +147,9 @@ var _ = Describe("console container implementation", func() {
 			envvars := []EnvVar{{Key: "testkey", Value: "testval"}}
 			err := ce.RunConsoleContainer("console", "8888", args, envvars)
 			Expect(err).To(BeNil())
-			Expect(len(capturedCommands)).To(Equal(1))
-			fullCommand := strings.Join(capturedCommands[0], " ")
+			Expect(len(capturedCommands)).To(BeNumerically(">=", 1))
+			// Find the run command (should be the last one)
+			fullCommand := strings.Join(capturedCommands[len(capturedCommands)-1], " ")
 			// arg
 			Expect(fullCommand).To(ContainSubstring("arg1"))
 			// env var

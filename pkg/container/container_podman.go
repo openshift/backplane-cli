@@ -1,6 +1,7 @@
 package container
 
 import (
+	"bytes"
 	"encoding/base64"
 	"fmt"
 	"os"
@@ -9,6 +10,24 @@ import (
 
 	logger "github.com/sirupsen/logrus"
 )
+
+// checkRosettaEnabled verifies if Rosetta is enabled in Podman on macOS
+// This is a non-blocking check that provides a hint to the user if Rosetta is not configured
+func checkRosettaEnabled() {
+	checkCmd := createCommand(PODMAN, "machine", "ssh", "ls /proc/sys/fs/binfmt_misc/")
+	var out bytes.Buffer
+	checkCmd.Stdout = &out
+	checkCmd.Stderr = nil
+
+	if err := checkCmd.Run(); err != nil {
+		// Silently skip if we can't check
+		return
+	}
+
+	if !strings.Contains(out.String(), "rosetta") {
+		logger.Warnf("Rosetta does not appear to be enabled in Podman. For better compatibility with x86_64 images on Apple Silicon, please configure Rosetta. See docs/macOS.md for setup instructions.")
+	}
+}
 
 type podmanLinux struct {
 	fileMountDir string
@@ -82,6 +101,8 @@ func podmanRunConsoleContainer(containerName string, port string, consoleArgs []
 }
 
 func (ce *podmanMac) RunConsoleContainer(containerName string, port string, consoleArgs []string, envVars []EnvVar) error {
+	// Check if Rosetta is enabled for better compatibility
+	checkRosettaEnabled()
 	return podmanRunConsoleContainer(containerName, port, consoleArgs, envVars)
 }
 
