@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	logger "github.com/sirupsen/logrus"
@@ -14,6 +15,11 @@ import (
 // checkRosettaEnabled verifies if Rosetta is enabled in Podman on macOS
 // This is a non-blocking check that provides a hint to the user if Rosetta is not configured
 func checkRosettaEnabled() {
+	// Rosetta is only relevant on Apple Silicon (arm64); skip on Intel Macs
+	if runtime.GOARCH != "arm64" {
+		return
+	}
+
 	checkCmd := createCommand(PODMAN, "machine", "ssh", "ls /proc/sys/fs/binfmt_misc/")
 	var out bytes.Buffer
 	checkCmd.Stdout = &out
