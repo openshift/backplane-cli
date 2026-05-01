@@ -31,7 +31,7 @@ func checkRosettaEnabled() {
 	}
 
 	if !strings.Contains(out.String(), "rosetta") {
-		logger.Warnf("Rosetta does not appear to be enabled in Podman. For better compatibility with x86_64 images on Apple Silicon, please configure Rosetta. See docs/macOS.md for setup instructions.")
+		logger.Warnf("Rosetta does not appear to be enabled in Podman. For better compatibility with x86_64 images on Apple Silicon, please configure Rosetta. See https://github.com/openshift/backplane-cli/blob/main/docs/macOS.md for setup instructions.")
 	}
 }
 
