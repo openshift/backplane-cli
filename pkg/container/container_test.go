@@ -3,6 +3,7 @@ package container
 import (
 	"os"
 	"os/exec"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -100,6 +101,113 @@ var _ = Describe("console container implementation", func() {
 		})
 	})
 
+	Context("when checking Rosetta on macOS Podman", func() {
+		It("should execute podman machine ssh command on darwin/arm64", func() {
+			if runtime.GOOS == "darwin" && runtime.GOARCH == "arm64" {
+				capturedCommands = nil
+				checkRosettaEnabled()
+				Expect(len(capturedCommands)).To(Equal(1))
+				command := capturedCommands[0]
+				Expect(command[0]).To(Equal(PODMAN))
+				Expect(command[1]).To(Equal("machine"))
+				Expect(command[2]).To(Equal("ssh"))
+				Expect(strings.Join(command[3:], " ")).To(Equal("ls /proc/sys/fs/binfmt_misc/"))
+			} else {
+				Skip("Rosetta check only runs on darwin/arm64")
+			}
+		})
+		It("should skip the check on non-darwin platforms", func() {
+			if runtime.GOOS != "darwin" {
+				capturedCommands = nil
+				checkRosettaEnabled()
+				Expect(len(capturedCommands)).To(Equal(0))
+			} else {
+				Skip("This test only runs on non-darwin platforms")
+			}
+		})
+		It("should skip the check on non-arm64 architectures", func() {
+			if runtime.GOOS == "darwin" && runtime.GOARCH != "arm64" {
+				capturedCommands = nil
+				checkRosettaEnabled()
+				Expect(len(capturedCommands)).To(Equal(0))
+			} else {
+				Skip("This test only runs on darwin with non-arm64 architectures")
+			}
+		})
+	})
+
+	Context("when running console container on macOS", func() {
+		ce := podmanMac{}
+		It("should check Rosetta before running the container on darwin/arm64", func() {
+			if runtime.GOOS == "darwin" && runtime.GOARCH == "arm64" {
+				mockOcmInterface.EXPECT().GetPullSecret().Return(pullSecret, nil).AnyTimes()
+				capturedCommands = nil
+				args := []string{"arg1"}
+				envvars := []EnvVar{{Key: "testkey", Value: "testval"}}
+				err := ce.RunConsoleContainer("console", "8888", args, envvars)
+				Expect(err).To(BeNil())
+				// Count Rosetta check commands
+				rosettaCheckCount := 0
+				for _, cmd := range capturedCommands {
+					if len(cmd) >= 3 && cmd[0] == PODMAN && cmd[1] == "machine" && cmd[2] == "ssh" {
+						rosettaCheckCount++
+					}
+				}
+				// Should have exactly 1 Rosetta check
+				Expect(rosettaCheckCount).To(Equal(1))
+				// First command should be Rosetta check
+				rosettaCheckCmd := capturedCommands[0]
+				Expect(rosettaCheckCmd[0]).To(Equal(PODMAN))
+				Expect(rosettaCheckCmd[1]).To(Equal("machine"))
+				Expect(rosettaCheckCmd[2]).To(Equal("ssh"))
+				// Last command should be the actual container run
+				runCmd := capturedCommands[len(capturedCommands)-1]
+				fullCommand := strings.Join(runCmd, " ")
+				Expect(fullCommand).To(ContainSubstring("arg1"))
+				Expect(fullCommand).To(ContainSubstring("--env"))
+				Expect(fullCommand).To(ContainSubstring("testkey=testval"))
+			} else {
+				Skip("Rosetta check only runs on darwin/arm64")
+			}
+		})
+		It("should skip Rosetta check on non-darwin platforms", func() {
+			if runtime.GOOS != "darwin" {
+				mockOcmInterface.EXPECT().GetPullSecret().Return(pullSecret, nil).AnyTimes()
+				capturedCommands = nil
+				args := []string{"arg1"}
+				envvars := []EnvVar{{Key: "testkey", Value: "testval"}}
+				err := ce.RunConsoleContainer("console", "8888", args, envvars)
+				Expect(err).To(BeNil())
+				// Should only have 1 command for running container (no Rosetta check)
+				Expect(len(capturedCommands)).To(Equal(1))
+				fullCommand := strings.Join(capturedCommands[0], " ")
+				Expect(fullCommand).To(ContainSubstring("arg1"))
+				Expect(fullCommand).To(ContainSubstring("--env"))
+				Expect(fullCommand).To(ContainSubstring("testkey=testval"))
+			} else {
+				Skip("This test only runs on non-darwin platforms")
+			}
+		})
+		It("should skip Rosetta check on darwin with non-arm64 architectures", func() {
+			if runtime.GOOS == "darwin" && runtime.GOARCH != "arm64" {
+				mockOcmInterface.EXPECT().GetPullSecret().Return(pullSecret, nil).AnyTimes()
+				capturedCommands = nil
+				args := []string{"arg1"}
+				envvars := []EnvVar{{Key: "testkey", Value: "testval"}}
+				err := ce.RunConsoleContainer("console", "8888", args, envvars)
+				Expect(err).To(BeNil())
+				// Should only have 1 command for running container (no Rosetta check)
+				Expect(len(capturedCommands)).To(Equal(1))
+				fullCommand := strings.Join(capturedCommands[0], " ")
+				Expect(fullCommand).To(ContainSubstring("arg1"))
+				Expect(fullCommand).To(ContainSubstring("--env"))
+				Expect(fullCommand).To(ContainSubstring("testkey=testval"))
+			} else {
+				Skip("This test only runs on darwin with non-arm64 architectures")
+			}
+		})
+	})
+
 	Context("when running console container", func() {
 		ce := podmanMac{}
 		It("should pass argments and environment variable if specified", func() {
@@ -109,8 +217,9 @@ var _ = Describe("console container implementation", func() {
 			envvars := []EnvVar{{Key: "testkey", Value: "testval"}}
 			err := ce.RunConsoleContainer("console", "8888", args, envvars)
 			Expect(err).To(BeNil())
-			Expect(len(capturedCommands)).To(Equal(1))
-			fullCommand := strings.Join(capturedCommands[0], " ")
+			Expect(len(capturedCommands)).To(BeNumerically(">=", 1))
+			// Find the run command (should be the last one)
+			fullCommand := strings.Join(capturedCommands[len(capturedCommands)-1], " ")
 			// arg
 			Expect(fullCommand).To(ContainSubstring("arg1"))
 			// env var
