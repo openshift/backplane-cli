@@ -146,8 +146,15 @@ var _ = Describe("console container implementation", func() {
 				envvars := []EnvVar{{Key: "testkey", Value: "testval"}}
 				err := ce.RunConsoleContainer("console", "8888", args, envvars)
 				Expect(err).To(BeNil())
-				// Should have 2 commands: 1 for Rosetta check, 1 for running container
-				Expect(len(capturedCommands)).To(BeNumerically(">=", 2))
+				// Count Rosetta check commands
+				rosettaCheckCount := 0
+				for _, cmd := range capturedCommands {
+					if len(cmd) >= 3 && cmd[0] == PODMAN && cmd[1] == "machine" && cmd[2] == "ssh" {
+						rosettaCheckCount++
+					}
+				}
+				// Should have exactly 1 Rosetta check
+				Expect(rosettaCheckCount).To(Equal(1))
 				// First command should be Rosetta check
 				rosettaCheckCmd := capturedCommands[0]
 				Expect(rosettaCheckCmd[0]).To(Equal(PODMAN))
