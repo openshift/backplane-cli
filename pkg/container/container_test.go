@@ -103,7 +103,7 @@ var _ = Describe("console container implementation", func() {
 
 	Context("when checking Rosetta on macOS Podman", func() {
 		It("should execute podman machine ssh command on darwin/arm64", func() {
-			if runtime.GOOS == "darwin" && (os.Getenv("GOARCH") == "arm64" || (os.Getenv("GOARCH") == "" && runtime.GOARCH == "arm64")) {
+			if runtime.GOOS == "darwin" && runtime.GOARCH == "arm64" {
 				capturedCommands = nil
 				checkRosettaEnabled()
 				Expect(len(capturedCommands)).To(Equal(1))
@@ -126,7 +126,7 @@ var _ = Describe("console container implementation", func() {
 			}
 		})
 		It("should skip the check on non-arm64 architectures", func() {
-			if runtime.GOOS == "darwin" && os.Getenv("GOARCH") != "arm64" && (os.Getenv("GOARCH") != "" || runtime.GOARCH != "arm64") {
+			if runtime.GOOS == "darwin" && runtime.GOARCH != "arm64" {
 				capturedCommands = nil
 				checkRosettaEnabled()
 				Expect(len(capturedCommands)).To(Equal(0))
@@ -139,7 +139,7 @@ var _ = Describe("console container implementation", func() {
 	Context("when running console container on macOS", func() {
 		ce := podmanMac{}
 		It("should check Rosetta before running the container on darwin/arm64", func() {
-			if runtime.GOOS == "darwin" && (os.Getenv("GOARCH") == "arm64" || (os.Getenv("GOARCH") == "" && runtime.GOARCH == "arm64")) {
+			if runtime.GOOS == "darwin" && runtime.GOARCH == "arm64" {
 				mockOcmInterface.EXPECT().GetPullSecret().Return(pullSecret, nil).AnyTimes()
 				capturedCommands = nil
 				args := []string{"arg1"}
@@ -182,7 +182,7 @@ var _ = Describe("console container implementation", func() {
 			}
 		})
 		It("should skip Rosetta check on darwin with non-arm64 architectures", func() {
-			if runtime.GOOS == "darwin" && os.Getenv("GOARCH") != "arm64" && (os.Getenv("GOARCH") != "" || runtime.GOARCH != "arm64") {
+			if runtime.GOOS == "darwin" && runtime.GOARCH != "arm64" {
 				mockOcmInterface.EXPECT().GetPullSecret().Return(pullSecret, nil).AnyTimes()
 				capturedCommands = nil
 				args := []string{"arg1"}
