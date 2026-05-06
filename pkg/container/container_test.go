@@ -102,8 +102,8 @@ var _ = Describe("console container implementation", func() {
 	})
 
 	Context("when checking Rosetta on macOS Podman", func() {
-		It("should execute podman machine ssh command on arm64", func() {
-			if os.Getenv("GOARCH") == "arm64" || (os.Getenv("GOARCH") == "" && runtime.GOARCH == "arm64") {
+		It("should execute podman machine ssh command on darwin/arm64", func() {
+			if runtime.GOOS == "darwin" && (os.Getenv("GOARCH") == "arm64" || (os.Getenv("GOARCH") == "" && runtime.GOARCH == "arm64")) {
 				capturedCommands = nil
 				checkRosettaEnabled()
 				Expect(len(capturedCommands)).To(Equal(1))
@@ -113,24 +113,33 @@ var _ = Describe("console container implementation", func() {
 				Expect(command[2]).To(Equal("ssh"))
 				Expect(strings.Join(command[3:], " ")).To(Equal("ls /proc/sys/fs/binfmt_misc/"))
 			} else {
-				Skip("Rosetta check only runs on arm64 architecture")
+				Skip("Rosetta check only runs on darwin/arm64")
 			}
 		})
-		It("should skip the check on non-arm64 architectures", func() {
-			if os.Getenv("GOARCH") != "arm64" && (os.Getenv("GOARCH") != "" || runtime.GOARCH != "arm64") {
+		It("should skip the check on non-darwin platforms", func() {
+			if runtime.GOOS != "darwin" {
 				capturedCommands = nil
 				checkRosettaEnabled()
 				Expect(len(capturedCommands)).To(Equal(0))
 			} else {
-				Skip("This test only runs on non-arm64 architectures")
+				Skip("This test only runs on non-darwin platforms")
+			}
+		})
+		It("should skip the check on non-arm64 architectures", func() {
+			if runtime.GOOS == "darwin" && os.Getenv("GOARCH") != "arm64" && (os.Getenv("GOARCH") != "" || runtime.GOARCH != "arm64") {
+				capturedCommands = nil
+				checkRosettaEnabled()
+				Expect(len(capturedCommands)).To(Equal(0))
+			} else {
+				Skip("This test only runs on darwin with non-arm64 architectures")
 			}
 		})
 	})
 
 	Context("when running console container on macOS", func() {
 		ce := podmanMac{}
-		It("should check Rosetta before running the container on arm64", func() {
-			if os.Getenv("GOARCH") == "arm64" || (os.Getenv("GOARCH") == "" && runtime.GOARCH == "arm64") {
+		It("should check Rosetta before running the container on darwin/arm64", func() {
+			if runtime.GOOS == "darwin" && (os.Getenv("GOARCH") == "arm64" || (os.Getenv("GOARCH") == "" && runtime.GOARCH == "arm64")) {
 				mockOcmInterface.EXPECT().GetPullSecret().Return(pullSecret, nil).AnyTimes()
 				capturedCommands = nil
 				args := []string{"arg1"}
@@ -151,11 +160,11 @@ var _ = Describe("console container implementation", func() {
 				Expect(fullCommand).To(ContainSubstring("--env"))
 				Expect(fullCommand).To(ContainSubstring("testkey=testval"))
 			} else {
-				Skip("Rosetta check only runs on arm64 architecture")
+				Skip("Rosetta check only runs on darwin/arm64")
 			}
 		})
-		It("should skip Rosetta check on non-arm64 architectures", func() {
-			if os.Getenv("GOARCH") != "arm64" && (os.Getenv("GOARCH") != "" || runtime.GOARCH != "arm64") {
+		It("should skip Rosetta check on non-darwin platforms", func() {
+			if runtime.GOOS != "darwin" {
 				mockOcmInterface.EXPECT().GetPullSecret().Return(pullSecret, nil).AnyTimes()
 				capturedCommands = nil
 				args := []string{"arg1"}
@@ -169,7 +178,25 @@ var _ = Describe("console container implementation", func() {
 				Expect(fullCommand).To(ContainSubstring("--env"))
 				Expect(fullCommand).To(ContainSubstring("testkey=testval"))
 			} else {
-				Skip("This test only runs on non-arm64 architectures")
+				Skip("This test only runs on non-darwin platforms")
+			}
+		})
+		It("should skip Rosetta check on darwin with non-arm64 architectures", func() {
+			if runtime.GOOS == "darwin" && os.Getenv("GOARCH") != "arm64" && (os.Getenv("GOARCH") != "" || runtime.GOARCH != "arm64") {
+				mockOcmInterface.EXPECT().GetPullSecret().Return(pullSecret, nil).AnyTimes()
+				capturedCommands = nil
+				args := []string{"arg1"}
+				envvars := []EnvVar{{Key: "testkey", Value: "testval"}}
+				err := ce.RunConsoleContainer("console", "8888", args, envvars)
+				Expect(err).To(BeNil())
+				// Should only have 1 command for running container (no Rosetta check)
+				Expect(len(capturedCommands)).To(Equal(1))
+				fullCommand := strings.Join(capturedCommands[0], " ")
+				Expect(fullCommand).To(ContainSubstring("arg1"))
+				Expect(fullCommand).To(ContainSubstring("--env"))
+				Expect(fullCommand).To(ContainSubstring("testkey=testval"))
+			} else {
+				Skip("This test only runs on darwin with non-arm64 architectures")
 			}
 		})
 	})

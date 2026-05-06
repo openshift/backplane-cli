@@ -15,8 +15,8 @@ import (
 // checkRosettaEnabled verifies if Rosetta is enabled in Podman on macOS
 // This is a non-blocking check that provides a hint to the user if Rosetta is not configured
 func checkRosettaEnabled() {
-	// Rosetta is only relevant on Apple Silicon (arm64); skip on Intel Macs
-	if runtime.GOARCH != "arm64" {
+	// Rosetta is only relevant on Apple Silicon (arm64) macOS; skip on other platforms
+	if runtime.GOOS != "darwin" || runtime.GOARCH != "arm64" {
 		return
 	}
 
