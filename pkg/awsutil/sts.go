@@ -43,7 +43,7 @@ type AWSSigninTokenResponse struct {
 
 var httpGetFunc = http.Get
 
-// Returns a new stsclient, proxy is optional.
+// StsClient returns a new STS API client; proxyURL is optional.
 func StsClient(proxyURL *string) (*sts.Client, error) {
 	cfg := aws.Config{
 		Region: "us-east-1", // We don't care about region here, but the API still wants to see one set
@@ -70,6 +70,7 @@ func (j IdentityTokenValue) GetIdentityToken() ([]byte, error) {
 	return []byte(j), nil
 }
 
+// AssumeRoleWithJWT exchanges jwt for temporary credentials for roleArn using the given STS client.
 func AssumeRoleWithJWT(jwt string, roleArn string, stsClient stscreds.AssumeRoleWithWebIdentityAPIClient) (aws.Credentials, error) {
 	logger.Debug("JWT Assuming role: ", roleArn)
 	email, err := utils.GetStringFieldFromJWT(jwt, "email")
@@ -97,12 +98,14 @@ func AssumeRoleWithJWT(jwt string, roleArn string, stsClient stscreds.AssumeRole
 	return result, nil
 }
 
+// AssumeRole calls STS AssumeRole for roleArn. When externalID is non-empty it is passed as the IAM external ID (cross-account trust).
 func AssumeRole(
 	stsClient stscreds.AssumeRoleAPIClient,
 	roleSessionName string,
 	roleArn string,
 	inlinePolicy *PolicyDocument,
 	policyARNs []types.PolicyDescriptorType,
+	externalID string,
 ) (aws.Credentials, error) {
 	assumeRoleProvider := stscreds.NewAssumeRoleProvider(stsClient, roleArn, func(options *stscreds.AssumeRoleOptions) {
 		options.RoleSessionName = roleSessionName
@@ -115,6 +118,9 @@ func AssumeRole(
 		if len(policyARNs) > 0 {
 			options.PolicyARNs = policyARNs
 		}
+		if externalID != "" {
+			options.ExternalID = aws.String(externalID)
+		}
 	})
 	result, err := assumeRoleProvider.Retrieve(context.TODO())
 	if err != nil {
@@ -124,8 +130,10 @@ func AssumeRole(
 	return result, nil
 }
 
+// STSClientProviderFunc loads an STS AssumeRole API client (e.g. with static credentials from a prior assume step).
 type STSClientProviderFunc func(optFns ...func(*config.LoadOptions) error) (stscreds.AssumeRoleAPIClient, error)
 
+// DefaultSTSClientProviderFunc is the default STSClientProviderFunc using the AWS SDK default config chain.
 var DefaultSTSClientProviderFunc STSClientProviderFunc = func(optnFns ...func(options *config.LoadOptions) error) (stscreds.AssumeRoleAPIClient, error) {
 	cfg, err := config.LoadDefaultConfig(context.TODO(), optnFns...)
 	if err != nil {
@@ -134,6 +142,7 @@ var DefaultSTSClientProviderFunc STSClientProviderFunc = func(optnFns ...func(op
 	return sts.NewFromConfig(cfg), nil
 }
 
+// RoleArnSession is one step in a chained AssumeRole sequence (seed credentials assume into RoleArn, optionally with session policy and external ID).
 type RoleArnSession struct {
 	Name            string
 	RoleSessionName string
@@ -141,8 +150,11 @@ type RoleArnSession struct {
 	IsCustomerRole  bool
 	Policy          *PolicyDocument
 	PolicyARNs      []types.PolicyDescriptorType
+	// ExternalID is the OCM/AWS STS external ID for this assume step (empty when not used).
+	ExternalID string
 }
 
+// AssumeRoleSequence assumes each role in order using credentials from the previous step (or seedClient for the first).
 func AssumeRoleSequence(
 	seedClient stscreds.AssumeRoleAPIClient,
 	roleArnSessionSequence []RoleArnSession,
@@ -164,7 +176,7 @@ func AssumeRoleSequence(
 			roleArnSession.RoleSessionName,
 			roleArnSession.IsCustomerRole,
 		)
-		result, err := AssumeRole(nextClient, roleArnSession.RoleSessionName, roleArnSession.RoleArn, roleArnSession.Policy, roleArnSession.PolicyARNs)
+		result, err := AssumeRole(nextClient, roleArnSession.RoleSessionName, roleArnSession.RoleArn, roleArnSession.Policy, roleArnSession.PolicyARNs, roleArnSession.ExternalID)
 		retryCount := 0
 		for err != nil {
 			// IAM policy updates can take a few seconds to resolve, and the sts.Client in AWS' Go SDK doesn't refresh itself on retries.
@@ -177,7 +189,7 @@ func AssumeRoleSequence(
 					return aws.Credentials{}, fmt.Errorf("failed to create client with credentials for role %v: %w", roleArnSession.RoleArn, err)
 				}
 
-				result, err = AssumeRole(nextClient, roleArnSession.RoleSessionName, roleArnSession.RoleArn, roleArnSession.Policy, roleArnSession.PolicyARNs)
+				result, err = AssumeRole(nextClient, roleArnSession.RoleSessionName, roleArnSession.RoleArn, roleArnSession.Policy, roleArnSession.PolicyARNs, roleArnSession.ExternalID)
 				if err != nil {
 					logger.Debugf("failed to create client with credentials for role %s: name:%s %v", roleArnSession.RoleArn, roleArnSession.Name, err)
 				}
@@ -220,6 +232,7 @@ func createAssumeRoleSequenceClient(stsClientProviderFunc STSClientProviderFunc,
 	)
 }
 
+// GetSigninToken requests an AWS console federation sign-in token for the given temporary credentials.
 func GetSigninToken(awsCredentials aws.Credentials, region string) (*AWSSigninTokenResponse, error) {
 	sessionData := AWSFederatedSessionData{
 		SessionID:    awsCredentials.AccessKeyID,
@@ -266,6 +279,7 @@ func GetSigninToken(awsCredentials aws.Credentials, region string) (*AWSSigninTo
 	return &resp, nil
 }
 
+// GetConsoleURL builds the federated console login URL for signinToken in region, optionally extending session duration.
 func GetConsoleURL(signinToken string, region string, sessionDurationMinutes int) (*url.URL, error) {
 	signinParams := url.Values{}
 	signinParams.Add("Action", "login")

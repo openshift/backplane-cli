@@ -217,6 +217,7 @@ type assumeChainResponse struct {
 	AssumptionSequence      []namedRoleArn `json:"assumptionSequence"`
 	CustomerRoleSessionName string         `json:"customerRoleSessionName"`
 	SessionPolicyArn        string         `json:"sessionPolicyArn"` // SessionPolicyArn is the ARN of the session policy
+	ExternalID              string         `json:"externalId,omitempty"`
 }
 
 type namedRoleArn struct {
@@ -389,6 +390,9 @@ func (cfg *QueryConfig) getIsolatedCredentials(ocmToken string) (aws.Credentials
 			roleArnSession.IsCustomerRole = false
 		}
 		roleArnSession.Name = namedRoleArnEntry.Name
+		if roleChainResponse.ExternalID != "" && (namedRoleArnEntry.Name == OrgRoleArnName || namedRoleArnEntry.Name == CustomerRoleArnName) {
+			roleArnSession.ExternalID = roleChainResponse.ExternalID
+		}
 
 		assumeRoleArnSessionSequence = append(assumeRoleArnSessionSequence, roleArnSession)
 	}

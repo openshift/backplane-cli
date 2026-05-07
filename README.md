@@ -247,6 +247,12 @@ Logging into multiple clusters via different terminal instances.
   $ ocm backplane cloud console
   ```
 
+## Cloud credentials
+
+- `ocm backplane cloud credentials` returns temporary credentials for the logged-in cluster's cloud provider (for example AWS access key, secret key, and session token as JSON or shell exports).
+- For **AWS**, backplane-api performs the STS role chain and returns credentials after assuming the customer support role. If the cluster has an **STS external ID** in OCM, the API passes it on that assume; no extra CLI flags are required for the default (non-isolated) path.
+- **Isolated** access (for example HyperShift hosted clusters and the STS jump-role path) calls backplane-api for an **assume-role sequence**, then the CLI assumes each role locally. When the API response includes optional **`externalId`** (from OCM `AWS.STS.ExternalID`), the CLI supplies it to AWS STS for the **Org** and **Target** roles in the sequence. Older APIs or clusters without an external ID omit the field; behavior matches previous releases.
+
 ## SSM Session
 Now you can directly start an AWS SSM session in your terminal using a single command for the HCP clusters without logging into their cloud consoles. It will start an AWS session directly in your terminal where you can debug into the worker node for the HCP cluster and carry out further operations.
 - Before using ssm command check if Session Manager plugin has been properly set up in your device. Follow this official AWS [documentation](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-prerequisites.html) for further information on setting up AWS SSM. And for installing SSM plugin directly on your device follow this [documentation](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html). Also check AWS CLI version and SSM version and ensure that those are in required versions. Update if required.
