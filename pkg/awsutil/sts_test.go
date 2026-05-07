@@ -175,7 +175,7 @@ func TestAssumeRole(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := AssumeRole(tt.stsClient, "", "", tt.inlinePolicy, []types.PolicyDescriptorType{})
+			got, err := AssumeRole(tt.stsClient, "", "", tt.inlinePolicy, []types.PolicyDescriptorType{}, "")
 			if (err != nil) != tt.wantErr {
 				t.Errorf("AssumeRole() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -402,7 +402,7 @@ func TestAssumeRole_PolicyARNs(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			stsClient := defaultSuccessMockSTSClient()
 
-			got, err := AssumeRole(stsClient, "test-session", "arn:aws:iam::123456789012:role/test-role", nil, tt.policyARNs)
+			got, err := AssumeRole(stsClient, "test-session", "arn:aws:iam::123456789012:role/test-role", nil, tt.policyARNs, "")
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("AssumeRole() error = %v, wantErr %v", err, tt.wantErr)
@@ -595,7 +595,7 @@ func TestAssumeRole_PolicyARNs_ErrorScenarios(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := AssumeRole(tt.stsClient, "test-session", "arn:aws:iam::123456789012:role/test-role", nil, tt.policyARNs)
+			got, err := AssumeRole(tt.stsClient, "test-session", "arn:aws:iam::123456789012:role/test-role", nil, tt.policyARNs, "")
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("AssumeRole() error = %v, wantErr %v", err, tt.wantErr)
@@ -814,6 +814,75 @@ func TestGetSigninToken(t *testing.T) {
 				t.Errorf("GetSigninToken() got = %v, want %v", got, tt.want)
 			}
 		})
+	}
+}
+
+// stsAssumeRoleCapture records the last AssumeRole input for tests.
+type stsAssumeRoleCapture struct {
+	lastInput *sts.AssumeRoleInput
+}
+
+func (s *stsAssumeRoleCapture) AssumeRole(ctx context.Context, in *sts.AssumeRoleInput, _ ...func(*sts.Options)) (*sts.AssumeRoleOutput, error) {
+	s.lastInput = in
+	return &sts.AssumeRoleOutput{
+		Credentials: &types.Credentials{
+			AccessKeyId:     aws.String("a"),
+			SecretAccessKey: aws.String("b"),
+			SessionToken:    aws.String("c"),
+			Expiration:      aws.Time(time.Now().Add(time.Hour)),
+		},
+	}, nil
+}
+
+// TestAssumeRole_externalID verifies non-empty externalID is sent on the STS AssumeRole input.
+func TestAssumeRole_externalID(t *testing.T) {
+	c := &stsAssumeRoleCapture{}
+	_, err := AssumeRole(c, "sess", "arn:aws:iam::123456789012:role/r", nil, nil, "my-external-id")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.lastInput == nil || c.lastInput.ExternalId == nil || *c.lastInput.ExternalId != "my-external-id" {
+		t.Fatalf("STS AssumeRole ExternalId: got %+v", c.lastInput)
+	}
+}
+
+// TestAssumeRole_emptyExternalID verifies empty externalID does not set ExternalId on the STS input.
+func TestAssumeRole_emptyExternalID(t *testing.T) {
+	c := &stsAssumeRoleCapture{}
+	_, err := AssumeRole(c, "sess", "arn:aws:iam::123456789012:role/r", nil, nil, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.lastInput == nil {
+		t.Fatal("expected capture")
+	}
+	if c.lastInput.ExternalId != nil {
+		t.Fatalf("expected nil ExternalId, got %q", *c.lastInput.ExternalId)
+	}
+}
+
+// TestAssumeRoleSequence_propagatesExternalID verifies RoleArnSession.ExternalID reaches STS via AssumeRoleSequence.
+func TestAssumeRoleSequence_propagatesExternalID(t *testing.T) {
+	capture := &stsAssumeRoleCapture{}
+	loader := func(...func(*config.LoadOptions) error) (stscreds.AssumeRoleAPIClient, error) {
+		return capture, nil
+	}
+	seq := []RoleArnSession{
+		{
+			RoleArn:         "arn:aws:iam::123456789012:role/r",
+			RoleSessionName: "sess",
+			ExternalID:      "my-ext-id",
+		},
+	}
+	_, err := AssumeRoleSequence(capture, seq, nil, loader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if capture.lastInput == nil {
+		t.Fatal("expected non-nil last STS AssumeRole input")
+	}
+	if capture.lastInput.ExternalId == nil || *capture.lastInput.ExternalId != "my-ext-id" {
+		t.Fatalf("STS AssumeRole ExternalId: got %+v", capture.lastInput)
 	}
 }
 
