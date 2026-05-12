@@ -11,7 +11,14 @@ backplane-cli is a CLI tool to interact with [backplane api](https://github.com/
 
 Go should be installed in your local system. We recommend using the latest stable Go version. For the minimum required version, see the `go` directive in [go.mod](go.mod)
 
-### Option 1: Download from release
+### MacOS
+
+```brew
+brew install backplane-cli
+```
+
+
+### Download from release
 
 Download the latest binary from the GitHub [releases](https://github.com/openshift/backplane-cli/releases) page.
 
@@ -24,7 +31,7 @@ $ chmod +x ocm-backplane
 $ mv ocm-backplane $GOBIN
 ```
 
-### Option 2: Build from source
+### Build from source
 
 First clone the repository somewhere in your `$PATH`. A common place would be within your `$GOPATH`.
 
