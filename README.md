@@ -352,12 +352,12 @@ If a reason was already stored in the current_context, then this provided reason
 If you run the elevate command with an empty reason for the first time (or after the expiration), then you will be prompt for the reason if possible
 ```
 $ ocm-backplane elevate '' -- get secret xxx
-Please enter a reason for elevation, it will be stored in current context for 20 minutes : <here you can enter your reason>
+Please enter a reason for elevation, it will be stored in current context for 20 minutes: <here you can enter your reason>
 ```
 or 
 ```
 $ ocm-backplane elevate -n -- get secret xxx
-Please enter a reason for elevation, it will be stored in current context for 20 minutes : <here you can enter your reason>
+Please enter a reason for elevation, it will be stored in current context for 20 minutes: <here you can enter your reason>
 ```
 If then you rerun an elevate command, for the same cluster, before the expiration delay, no prompt will be done and previous reason will be used for elevation.
 
@@ -369,7 +369,7 @@ $ ocm-backplane elevate 'OHSS-xxxxxx'
 or you can not provide the reason and will be prompt for it if needed
 ```
 $ ocm-backplane elevate
-Please enter a reason for elevation, it will be stored in current context for 20 minutes : <here you can enter your reason>
+Please enter a reason for elevation, it will be stored in current context for 20 minutes: <here you can enter your reason>
 ```
 
 ### Run elevate without (stored) reason and without valid prompt
@@ -386,7 +386,7 @@ In order to avoid those errors, you can either run the the elevate without comma
 No issue if only stdout is redirected.
 ```
 $ ocm-backplane elevate -n -- get secret xxx | grep xxx
-Please enter a reason for elevation, it will be stored in current context for 20 minutes : <here you can enter your reason>
+Please enter a reason for elevation, it will be stored in current context for 20 minutes: <here you can enter your reason>
 ```
 ## Backplane healthcheck
 The backplane health check can be used to verify VPN and proxy connectivity on the host network as a troubleshooting approach when experiencing issues accessing the backplane API.
@@ -402,7 +402,7 @@ cat ~/.config/backplane/config.json
 }
 ```
 - `vpn-check-endpoint:` To specify this test endpoint to check if it can be accessed with the currently connected VPN.
-- `proxy-check-endpoint:` To specify this test endpoint to check if it can be accssed with the currently working proxy.
+- `proxy-check-endpoint:` To specify this test endpoint to check if it can be accessed with the currently working proxy.
 
 **NOTE:** The `vpn-check-endpoint` and `proxy-check-endpoint` mentioned above are just examples, the end-user can customize them as needed.
 
