@@ -234,7 +234,7 @@ func SaveElevateContextReasons(config api.Config, elevationReason string) ([]str
 	if len(elevationReasons) == 0 {
 		elevationReasons = utils.AppendUniqNoneEmptyString(
 			elevationReasons,
-			utils.AskQuestionFromPrompt(fmt.Sprintf("Please enter a reason for elevation, it will be stored in current context for %d minutes : ", elevateExtensionRetentionMinutes)),
+			utils.AskQuestionFromPrompt(fmt.Sprintf("Please enter a reason for elevation, it will be stored in current context for %d minutes: ", elevateExtensionRetentionMinutes)),
 		)
 	}
 	// and raise an error if not possible
