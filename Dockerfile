@@ -1,16 +1,16 @@
 # This is for CI test and should build on x86_64 environment
 
-FROM registry.access.redhat.com/ubi9:9.8 as base
+FROM registry.access.redhat.com/hi/go:1.25-fips-builder as base
 
 ### Pre-install dependencies
 # These packages will end up in the final image
 # Installed here to save build time
-RUN yum --assumeyes install \
+RUN dnf --assumeyes install \
     jq \
-    && yum clean all;
+    && dnf clean all;
 
 ### Build backplane-cli
-FROM brew.registry.redhat.io/rh-osbs/openshift-golang-builder:rhel_9_golang_1.25 as bp-cli-builder
+FROM registry.access.redhat.com/hi/go:1.25-fips-builder as bp-cli-builder
 
 
 # Configure the env
@@ -35,7 +35,7 @@ RUN cp ./ocm-backplane /out
 RUN chmod -R +x /out
 
 ### Build dependencies
-FROM brew.registry.redhat.io/rh-osbs/openshift-golang-builder:rhel_9_golang_1.25 as dep-builder
+FROM registry.access.redhat.com/hi/go:1.25-fips-builder as dep-builder
 
 # Ensure we can use Go version as we want
 ENV GOTOOLCHAIN=go1.25.3+auto
@@ -58,8 +58,8 @@ RUN mkdir /out
 RUN mkdir /oc
 WORKDIR /oc
 
-# Download jq packages 
-RUN curl -sSLo /usr/bin/jq https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64 && chmod +x /usr/bin/jq
+# Install tools
+RUN dnf --assumeyes install gawk jq tar which gzip
 
 # Download the checksum
 RUN curl -sSLf ${OC_URL}/sha256sum.txt -o sha256sum.txt
