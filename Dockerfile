@@ -59,7 +59,8 @@ RUN mkdir /oc
 WORKDIR /oc
 
 # Install tools
-RUN dnf --assumeyes install gawk jq tar which gzip
+RUN dnf --assumeyes install gawk jq tar which gzip \
+    && dnf clean all;
 
 # Download the checksum
 RUN curl -sSLf ${OC_URL}/sha256sum.txt -o sha256sum.txt
