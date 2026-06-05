@@ -16,7 +16,7 @@ import (
 func fakeExecCommandError(command string, args ...string) *exec.Cmd {
 	cs := []string{"-test.run=TestHelperProcessError", "--", command}
 	cs = append(cs, args...)
-	cmd := exec.Command(os.Args[0], cs...) //#nosec: G204
+	cmd := exec.Command(os.Args[0], cs...) //#nosec G204,G702 -- test helper uses os.Args[0] intentionally
 	cmd.Env = []string{"GO_WANT_HELPER_PROCESS=1"}
 	return cmd
 }
@@ -24,7 +24,7 @@ func fakeExecCommandError(command string, args ...string) *exec.Cmd {
 func fakeExecCommandSuccess(command string, args ...string) *exec.Cmd {
 	cs := []string{"-test.run=TestHelperProcessSuccess", "--", command}
 	cs = append(cs, args...)
-	cmd := exec.Command(os.Args[0], cs...) //#nosec: G204
+	cmd := exec.Command(os.Args[0], cs...) //#nosec G204,G702 -- test helper uses os.Args[0] intentionally
 	cmd.Env = []string{"GO_WANT_HELPER_PROCESS=1"}
 	return cmd
 }

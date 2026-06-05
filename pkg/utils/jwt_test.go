@@ -15,25 +15,25 @@ func TestGetFieldFromJWT(t *testing.T) {
 	tests := []testCase{
 		{
 			name:  "Get string field",
-			token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c", // notsecret
+			token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c", //#nosec G101 -- test JWT
 			field: "sub",
 			want:  "1234567890",
 		},
 		{
 			name:    "Get number field",
-			token:   "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJPbmxpbmUgSldUIEJ1aWxkZXIiLCJpYXQiOjAsImV4cCI6MTcxNjY1MDA3MSwiYXVkIjoid3d3LmV4YW1wbGUuY29tIiwic3ViIjoianJvY2tldEBleGFtcGxlLmNvbSJ9._CyJxncO4NBOH6a-Q_2oIVelCRZKJh9YiPBm4XEBZgI", // notsecret
+			token:   "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJPbmxpbmUgSldUIEJ1aWxkZXIiLCJpYXQiOjAsImV4cCI6MTcxNjY1MDA3MSwiYXVkIjoid3d3LmV4YW1wbGUuY29tIiwic3ViIjoianJvY2tldEBleGFtcGxlLmNvbSJ9._CyJxncO4NBOH6a-Q_2oIVelCRZKJh9YiPBm4XEBZgI", //#nosec G101 -- test JWT
 			field:   "iat",
 			wantErr: true,
 		},
 		{
 			name:    "Get field that doesn't exist",
-			token:   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c", // notsecret
+			token:   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c", //#nosec G101 -- test JWT
 			field:   "foo",
 			wantErr: true,
 		},
 		{
 			name:    "Invalid token",
-			token:   "abcdefg", // notsecret
+			token:   "abcdefg",
 			field:   "foo",
 			wantErr: true,
 		},
@@ -62,17 +62,17 @@ func TestGetUsernameFromJWT(t *testing.T) {
 	tests := []testCase{
 		{
 			name:  "Get username",
-			token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJyZWRoYXQuY29tIiwiZXhwIjoxMTIwODI4MzQ0LCJ1c2VybmFtZSI6InRlc3R1c2VyIn0.2uBp-c/dIUtipUsnT1J6zjkJNVlIE640ZbuCvWevWRQ", // notsecret
+			token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJyZWRoYXQuY29tIiwiZXhwIjoxMTIwODI4MzQ0LCJ1c2VybmFtZSI6InRlc3R1c2VyIn0.2uBp-c/dIUtipUsnT1J6zjkJNVlIE640ZbuCvWevWRQ", //#nosec G101 -- test JWT
 			want:  "testuser",
 		},
 		{
 			name:  "Get username when username field is missing",
-			token: "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJPbmxpbmUgSldUIEJ1aWxkZXIiLCJpYXQiOjAsImV4cCI6MTcxNjY1MDA3MSwiYXVkIjoid3d3LmV4YW1wbGUuY29tIiwic3ViIjoianJvY2tldEBleGFtcGxlLmNvbSJ9._CyJxncO4NBOH6a-Q_2oIVelCRZKJh9YiPBm4XEBZgI", // notsecret
+			token: "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJPbmxpbmUgSldUIEJ1aWxkZXIiLCJpYXQiOjAsImV4cCI6MTcxNjY1MDA3MSwiYXVkIjoid3d3LmV4YW1wbGUuY29tIiwic3ViIjoianJvY2tldEBleGFtcGxlLmNvbSJ9._CyJxncO4NBOH6a-Q_2oIVelCRZKJh9YiPBm4XEBZgI", //#nosec G101 -- test JWT
 			want:  "anonymous",
 		},
 		{
 			name:  "Invalid token",
-			token: "abcdefg", // notsecret
+			token: "abcdefg",
 			want:  "anonymous",
 		},
 	}

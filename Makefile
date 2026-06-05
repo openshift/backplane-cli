@@ -11,7 +11,7 @@ GO_BUILD_FLAGS_LINUX_CROSS :=-tags 'include_gcs include_oss containers_image_ope
 
 GO_VERSION=go1.25.3+auto
 
-GOLANGCI_LINT_VERSION=v2.5.0
+GOLANGCI_LINT_VERSION=v2.12.2
 GORELEASER_VERSION=v2.15.3
 GOVULNCHECK_VERSION=v1.1.4
 
@@ -69,7 +69,7 @@ test-in-container: build-image
 getlint:
 	@mkdir -p $(GOPATH)/bin
 	@echo "Installing golangci-lint $(GOLANGCI_LINT_VERSION)..."
-	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(GOPATH)/bin $(GOLANGCI_LINT_VERSION)
+	curl -sSfL https://golangci-lint.run/install.sh | sh -s -- -b $(GOPATH)/bin $(GOLANGCI_LINT_VERSION)
 .PHONY: lint
 lint: getlint
 	$(GOPATH)/bin/golangci-lint run --timeout 5m

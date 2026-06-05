@@ -240,7 +240,7 @@ func GetSigninToken(awsCredentials aws.Credentials, region string) (*AWSSigninTo
 		SessionToken: awsCredentials.SessionToken,
 	}
 
-	data, err := json.Marshal(sessionData)
+	data, err := json.Marshal(sessionData) //#nosec G117 -- SessionKey contains AWS credentials for federated signin
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal session data: %w", err)
 	}
