@@ -9,7 +9,8 @@ GO_BUILD_FLAGS :=-tags 'include_gcs include_oss containers_image_openpgp gssapi'
 GO_BUILD_FLAGS_DARWIN :=-tags 'include_gcs include_oss containers_image_openpgp'
 GO_BUILD_FLAGS_LINUX_CROSS :=-tags 'include_gcs include_oss containers_image_openpgp'
 
-GO_VERSION=go1.25.3+auto
+# Enforce Go version for the Go toolchains.
+GO_VERSION=go1.26.4+auto
 
 GOLANGCI_LINT_VERSION=v2.12.2
 GORELEASER_VERSION=v2.15.3
@@ -20,14 +21,8 @@ TESTOPTS ?=
 # Temporary lint cache
 export GOLANGCI_LINT_CACHE=/tmp
 
-IMAGE_REGISTRY?=quay.io
-IMAGE_REPOSITORY?=app-sre
-IMAGE_NAME?=backplane-cli
-VERSION=$(shell git rev-parse --short=7 HEAD)
 UNAME_S := $(shell uname -s)
 
-IMAGE_URI_VERSION:=$(IMAGE_REGISTRY)/$(IMAGE_REPOSITORY)/$(IMAGE_NAME):$(VERSION)
-IMAGE_URI_LATEST:=$(IMAGE_REGISTRY)/$(IMAGE_REPOSITORY)/$(IMAGE_NAME):latest
 
 CONTAINER_ENGINE:=$(shell command -v podman 2>/dev/null || command -v docker 2>/dev/null)
 DOCKER_PRESENT := $(shell basename $$(which docker) 2>/dev/null )
@@ -78,10 +73,10 @@ ensure-goreleaser:
 	@command -v goreleaser >/dev/null 2>&1 || go install github.com/goreleaser/goreleaser/v2@${GORELEASER_VERSION}
 
 release: ensure-goreleaser
-	goreleaser release --clean
+	GOTOOLCHAIN=$(GO_VERSION) goreleaser release --clean
 
 release-with-note: ensure-goreleaser
-	goreleaser release --clean --release-notes="$(NOTE)"
+	GOTOOLCHAIN=$(GO_VERSION) goreleaser release --clean --release-notes="$(NOTE)"
 
 test:
 	env -u GOTOOLCHAIN GOTOOLCHAIN=$(GO_VERSION) go test -v $(TESTOPTS) ./...
@@ -129,20 +124,6 @@ scan: ensure-govulncheck
 		exit 0; \
 	fi
 
-image:
-	$(CONTAINER_ENGINE) build --pull --platform linux/amd64 -t $(IMAGE_URI_VERSION) .
-	$(CONTAINER_ENGINE) tag $(IMAGE_URI_VERSION) $(IMAGE_URI_LATEST)
-
-skopeo-push: image
-	skopeo copy \
-		--dest-creds "${QUAY_USER}:${QUAY_TOKEN}" \
-		"docker-daemon:${IMAGE_URI_VERSION}" \
-		"docker://${IMAGE_URI_VERSION}"
-	skopeo copy \
-		--dest-creds "${QUAY_USER}:${QUAY_TOKEN}" \
-		"docker-daemon:${IMAGE_URI_LATEST}" \
-		"docker://${IMAGE_URI_LATEST}"
-
 .PHONY: help
 help:
 	@echo
@@ -157,7 +138,6 @@ help:
 	@echo "  install     Install binary system-wide (set ARCH= for architecture)"
 	@echo "  test        Run unit tests"
 	@echo "  cross-build Create multi-architecture binaries"
-	@echo "  image       Build container image"
 	@echo "  help        Show this help message"
 	@echo
 	@echo "Variables:"

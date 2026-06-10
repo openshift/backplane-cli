@@ -9,7 +9,7 @@ backplane-cli is a CLI tool to interact with [backplane api](https://github.com/
 
 ## Installation
 
-Go should be installed in your local system with version 1.19 
+Go should be installed in your local system. We recommend using the latest stable Go version. For the minimum required version, see the `go` directive in [go.mod](go.mod)
 
 ### Option 1: Download from release
 
@@ -496,11 +496,9 @@ Example: PR [#62885](https://github.com/openshift/release/pull/62885): Bump to G
 Wait for the release repository PR to be merged by the CI bot.
 
 - Update Backplane CLI
-Update the Go version in the Backplane CLI Dockerfile and verify CI builds:
+Update the Go version in the Backplane CLI [Makefile](./Makefile) and verify CI builds.
 
+Update the `GO_VERSION` to the desired version in the Makefile.
 ```
-FROM golang:1.24.4  # Update version to match release PR
+GO_VERSION=go1.26.4+auto
 ```
-Example Implementation: PR [#636](https://github.com/openshift/backplane-cli/pull/636): OSD-28717 Fix build failures
-Update the dockerfile of backplane-cli with the latest go version and check if build passes.
-Check for any issues while updating the dockerfile and start a thread in #sd-ims-backplane channel to mitigate this issue.

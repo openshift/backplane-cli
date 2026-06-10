@@ -26,6 +26,9 @@ make clean
 make cross-build
 make cross-build-darwin-amd64
 make cross-build-linux-amd64
+
+# Clean cross-build artifacts
+make clean-cross-build
 ```
 
 ### Testing and Quality
@@ -48,10 +51,7 @@ make generate
 
 ### Container Operations
 ```bash
-# Build container image
-make image
-
-# Build builder image
+# Build builder image for containerized builds
 make build-image
 
 # Run tests in container
@@ -61,30 +61,47 @@ make test-in-container
 make lint-in-container
 ```
 
+### Release Management
+```bash
+# Create a release using goreleaser
+make release
+
+# Create a release with custom release notes file
+make release-with-note NOTE=/path/to/release-note.md
+
+# See docs/release.md for full release process
+```
+
 ## Project Structure
 
 - `cmd/ocm-backplane/` - Main CLI application entry point
 - `pkg/` - Core packages and libraries
 - `internal/` - Internal packages
-- `vendor/` - Vendored dependencies
 - `docs/` - Documentation
 - `hack/` - Build and development scripts
+- `make.Dockerfile` - Builder image for containerized linting/testing
 
 ## Go Configuration
 
-- **Go Version**: 1.19+
+- **Go Version**:
+  - Minimum: See `go` directive in [go.mod](go.mod) (currently 1.25.5)
+  - GOTOOLCHAIN enforced in Makefile: `go1.26.4+auto`
+  - Recommendation: Use latest stable Go version
 - **Module**: `github.com/openshift/backplane-cli`
 - **Binary Name**: `ocm-backplane`
+- **Build Tags**:
+  - Standard: `include_gcs include_oss containers_image_openpgp gssapi`
+  - Darwin: `include_gcs include_oss containers_image_openpgp`
+  - Linux Cross: `include_gcs include_oss containers_image_openpgp`
 
-## Linting Configuration
+## Linting and Code Quality
 
-The project uses golangci-lint with the following enabled linters:
-- errcheck
-- gosec
-- govet
-- ineffassign
-- staticcheck
-- unused
+The project uses the following tools:
+- **golangci-lint** : Comprehensive Go linter
+  - Timeout: 5 minutes
+  - Cache: /tmp (for CI/CD compatibility)
+- **goreleaser** : Release automation
+- **govulncheck** : Vulnerability scanning (non-blocking warnings)
 
 ## Development Workflow
 
@@ -98,5 +115,8 @@ The project uses golangci-lint with the following enabled linters:
 
 - This is an OCM plugin - the binary has prefix `ocm-` and can be invoked as `ocm backplane`
 - Configuration file expected at `$HOME/.config/backplane/config.json`
-- The project uses Go modules with vendoring
-- Static linking is used for the final binary
+- The project uses Go modules (no vendoring)
+- Static linking is available via `make build-static` target
+- Cross-compilation supported for Darwin (macOS) and Linux on AMD64
+- The `make.Dockerfile` is used only for containerized linting/testing, not for production images
+- Container image builds and publishing (`image`, `skopeo-push`) have been removed from the Makefile
