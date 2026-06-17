@@ -463,7 +463,7 @@ See [design.md](docs/design.md).
 
 Please help us to improve. To contact the backplane team:
 
-- @backplane-team or @backplane-cli in slack channel #team-rosa-thor or #sre-operators
+- @backplane-cli in slack channel #team-rosa-thor or #sre-operators
 - Or reach out [OWNERS](https://github.com/openshift/backplane-cli/blob/main/OWNERS)
 
 ## Vulnerability Scanning with `govulncheck`
