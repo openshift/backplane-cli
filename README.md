@@ -14,7 +14,8 @@ Go should be installed in your local system. We recommend using the latest stabl
 ### MacOS
 
 ```brew
-brew install backplane-cli
+brew tap openshift-online/sre-tools
+brew install openshift-online/sre-tools/backplane-cli
 ```
 
 
