@@ -20,11 +20,13 @@ func NewConfigCmd() *cobra.Command {
 The location of the configuration file is gleaned from ~/.config/backplane/config.json or the 'BACKPLANE_CONFIG' environment variable if set.
 
 The following variables are supported:
-url         Backplane API URL
-proxy-url   Squid proxy URL
-session-dir Backplane CLI session directory
-pd-key		PagerDuty API User Key
-govcloud    Set to true if used in FedRAMP
+url          Backplane API URL
+proxy-url    Squid proxy URL
+session-dir  Backplane CLI session directory
+pd-key	     PagerDuty API User Key
+jira-token   JIRA token
+jira-email   JIRA email
+govcloud     Set to true if used in FedRAMP
 `,
 		SilenceUsage: true,
 	}
