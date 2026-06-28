@@ -61,6 +61,7 @@ func setConfig(cmd *cobra.Command, args []string) error {
 		}
 		bpConfig.SessionDirectory = viper.GetString("session-dir")
 		bpConfig.JiraToken = viper.GetString(config.JiraTokenViperKey)
+		bpConfig.JiraEmail = viper.GetString(config.JiraEmailViperKey)
 	}
 
 	// create config directory if it doesn't exist
@@ -100,13 +101,15 @@ func setConfig(cmd *cobra.Command, args []string) error {
 		bpConfig.PagerDutyAPIKey = args[1]
 	case config.JiraTokenViperKey:
 		bpConfig.JiraToken = args[1]
+	case config.JiraEmailViperKey:
+		bpConfig.JiraEmail = args[1]
 	case GovcloudVar:
 		bpConfig.Govcloud, err = strconv.ParseBool(args[1])
 		if err != nil {
 			return fmt.Errorf("invalid value for %s: %v", GovcloudVar, err)
 		}
 	default:
-		return fmt.Errorf("supported config variables are %s, %s, %s, %s, %s & %s", URLConfigVar, ProxyURLConfigVar, SessionConfigVar, PagerDutyAPIConfigVar, config.JiraTokenViperKey, GovcloudVar)
+		return fmt.Errorf("supported config variables are %s, %s, %s, %s, %s, %s & %s", URLConfigVar, ProxyURLConfigVar, SessionConfigVar, PagerDutyAPIConfigVar, config.JiraTokenViperKey, config.JiraEmailViperKey, GovcloudVar)
 	}
 
 	viper.SetConfigType("json")
@@ -115,6 +118,7 @@ func setConfig(cmd *cobra.Command, args []string) error {
 	viper.Set(SessionConfigVar, bpConfig.SessionDirectory)
 	viper.Set(PagerDutyAPIConfigVar, bpConfig.PagerDutyAPIKey)
 	viper.Set(config.JiraTokenViperKey, bpConfig.JiraToken)
+	viper.Set(config.JiraEmailViperKey, bpConfig.JiraEmail)
 	viper.Set(GovcloudVar, bpConfig.Govcloud)
 
 	err = viper.WriteConfigAs(configPath)
