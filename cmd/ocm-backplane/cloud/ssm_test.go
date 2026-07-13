@@ -1,9 +1,11 @@
 package cloud
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"fmt"
 	"os"
 	"os/exec"
@@ -11,7 +13,6 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
-	"go.uber.org/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
@@ -21,7 +22,9 @@ import (
 	ocmMock "github.com/openshift/backplane-cli/pkg/ocm/mocks"
 	"github.com/openshift/backplane-cli/pkg/ssm/mocks"
 	"github.com/openshift/backplane-cli/pkg/utils"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"go.uber.org/mock/gomock"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -133,6 +136,70 @@ var _ = Describe("SSM command", func() {
 			_, err := GetInstanceID("invalid-node", &rest.Config{})
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("failed to get node invalid-node"))
+		})
+	})
+
+	Context("SSM session should not log sensitive credentials", func() {
+		var (
+			logBuf              bytes.Buffer
+			originalExecCommand func(string, ...string) *exec.Cmd
+			originalLevel       log.Level
+			originalOutput      io.Writer
+		)
+
+		BeforeEach(func() {
+			logBuf.Reset()
+			originalLevel = log.GetLevel()
+			originalOutput = log.StandardLogger().Out
+			log.SetLevel(log.InfoLevel)
+			log.SetOutput(&logBuf)
+
+			originalExecCommand = ExecCommand
+			ExecCommand = func(name string, arg ...string) *exec.Cmd {
+				return exec.Command("echo", "mock command")
+			}
+
+			mockSSMClient.EXPECT().StartSession(
+				context.TODO(),
+				gomock.Any(),
+			).Return(&ssm.StartSessionOutput{
+				SessionId:  aws.String("test-session-id"),
+				StreamUrl:  aws.String("wss://secret-stream-url.example.com"),
+				TokenValue: aws.String("secret-token-value-abc123"),
+			}, nil)
+		})
+
+		AfterEach(func() {
+			ExecCommand = originalExecCommand
+			log.SetLevel(originalLevel)
+			log.SetOutput(originalOutput)
+		})
+
+		It("should not log TokenValue at Info level", func() {
+			err := runSSMsession(mockSSMClient, "i-1234567890abcdef0", nil, "us-west-2")
+			Expect(err).ToNot(HaveOccurred())
+
+			logOutput := logBuf.String()
+			Expect(logOutput).ToNot(ContainSubstring("secret-token-value-abc123"),
+				"TokenValue should not appear in log output at Info level")
+		})
+
+		It("should not log StreamUrl at Info level", func() {
+			err := runSSMsession(mockSSMClient, "i-1234567890abcdef0", nil, "us-west-2")
+			Expect(err).ToNot(HaveOccurred())
+
+			logOutput := logBuf.String()
+			Expect(logOutput).ToNot(ContainSubstring("wss://secret-stream-url.example.com"),
+				"StreamUrl should not appear in log output at Info level")
+		})
+
+		It("should not log SessionId at Info level", func() {
+			err := runSSMsession(mockSSMClient, "i-1234567890abcdef0", nil, "us-west-2")
+			Expect(err).ToNot(HaveOccurred())
+
+			logOutput := logBuf.String()
+			Expect(logOutput).ToNot(ContainSubstring("test-session-id"),
+				"SessionId should only appear at Debug level, not Info")
 		})
 	})
 

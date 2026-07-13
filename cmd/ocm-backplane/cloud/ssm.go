@@ -248,10 +248,10 @@ func runSSMsession(ssmClient SSMClient, instanceID string, command []string, reg
 		return fmt.Errorf("session details are incomplete: SessionId=%v, StreamUrl=%v, TokenValue=%v", result.SessionId, result.StreamUrl, result.TokenValue)
 	}
 
-	// Log session details for debugging
-	logger.Infof("SessionId: %v", *result.SessionId)
-	logger.Infof("StreamUrl: %v", *result.StreamUrl)
-	logger.Infof("TokenValue: %v", *result.TokenValue)
+	// Log non-sensitive session identifier for debugging.
+	// StreamUrl and TokenValue are intentionally excluded from logs
+	// to prevent credential exposure (CWE-532, CWE-312).
+	logger.Debugf("SessionId: %v", *result.SessionId)
 
 	sessionJSON, err := json.Marshal(map[string]string{
 		"SessionId":  *result.SessionId,
