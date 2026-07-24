@@ -29,7 +29,11 @@ func getConfig(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if _, err = os.Stat(configPath); err == nil {
+	if _, err = os.Stat(configPath); err != nil {
+		if !os.IsNotExist(err) {
+			return fmt.Errorf("unable to access config file %s: %w", configPath, err)
+		}
+	} else {
 		viper.SetConfigFile(configPath)
 		viper.SetConfigType("json")
 		if err := viper.ReadInConfig(); err != nil {
