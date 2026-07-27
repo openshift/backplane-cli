@@ -67,7 +67,7 @@ getlint:
 	curl -sSfL https://golangci-lint.run/install.sh | sh -s -- -b $(GOPATH)/bin $(GOLANGCI_LINT_VERSION)
 .PHONY: lint
 lint: getlint
-	$(GOPATH)/bin/golangci-lint run --timeout 5m
+	$(GOPATH)/bin/golangci-lint run --timeout 10m
 
 ensure-goreleaser:
 	@command -v goreleaser >/dev/null 2>&1 || go install github.com/goreleaser/goreleaser/v2@${GORELEASER_VERSION}
