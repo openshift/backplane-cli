@@ -23,6 +23,7 @@ func newGetTestJobLogsCommand() *cobra.Command {
 		Use:           "logs <testId>",
 		Aliases:       []string{"log"},
 		Short:         "Get a backplane testJob logs",
+		Deprecated:    "use 'ocm backplane testjob render' to generate YAML and apply it directly with 'oc apply -f'",
 		Args:          cobra.ExactArgs(1),
 		SilenceUsage:  true,
 		SilenceErrors: true,

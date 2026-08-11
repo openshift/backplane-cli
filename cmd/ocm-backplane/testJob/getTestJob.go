@@ -20,6 +20,7 @@ func newGetTestJobCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:           "get <testID>",
 		Short:         "Get a backplane testjob resource",
+		Deprecated:    "use 'ocm backplane testjob render' to generate YAML and apply it directly with 'oc apply -f'",
 		Args:          cobra.ExactArgs(1),
 		SilenceUsage:  true,
 		SilenceErrors: true,
