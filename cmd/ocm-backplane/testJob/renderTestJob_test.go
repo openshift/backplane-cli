@@ -9,6 +9,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const testImage = "quay.io/test/managed-scripts:abc1234"
+
 var _ = Describe("testJob render command", func() {
 
 	var (
@@ -31,7 +33,7 @@ var _ = Describe("testJob render command", func() {
 			_ = os.WriteFile(path.Join(tempDir, "script.sh"), []byte("echo hello"), 0600)
 
 			outputFile := path.Join(tempDir, "output.yaml")
-			sut.SetArgs([]string{"render", "--source-dir", tempDir, "--output", outputFile})
+			sut.SetArgs([]string{"render", "--source-dir", tempDir, "--output", outputFile, "-i", testImage})
 			err := sut.Execute()
 
 			Expect(err).To(BeNil())
@@ -50,6 +52,7 @@ var _ = Describe("testJob render command", func() {
 			Expect(yamlStr).To(ContainSubstring("namespace: kube-system"))
 			Expect(yamlStr).To(ContainSubstring("openshift-job-dev-"))
 			Expect(yamlStr).To(ContainSubstring("managed.openshift.io/backplane-job-is-test: \"true\""))
+			Expect(yamlStr).To(ContainSubstring("image: " + testImage))
 		})
 
 		It("should render YAML for a script with only namespaced roles", func() {
@@ -73,7 +76,7 @@ language: bash
 			_ = os.WriteFile(path.Join(tempDir, "script.sh"), []byte("echo hello"), 0600)
 
 			outputFile := path.Join(tempDir, "output.yaml")
-			sut.SetArgs([]string{"render", "--source-dir", tempDir, "--output", outputFile})
+			sut.SetArgs([]string{"render", "--source-dir", tempDir, "--output", outputFile, "-i", testImage})
 			err := sut.Execute()
 
 			Expect(err).To(BeNil())
@@ -110,7 +113,7 @@ language: bash
 			_ = os.WriteFile(path.Join(tempDir, "script.sh"), []byte("echo $MY_VAR"), 0600)
 
 			outputFile := path.Join(tempDir, "output.yaml")
-			sut.SetArgs([]string{"render", "--source-dir", tempDir, "--output", outputFile, "-p", "MY_VAR=hello"})
+			sut.SetArgs([]string{"render", "--source-dir", tempDir, "--output", outputFile, "-p", "MY_VAR=hello", "-i", testImage})
 			err := sut.Execute()
 
 			Expect(err).To(BeNil())
@@ -121,6 +124,32 @@ language: bash
 			yamlStr := string(content)
 			Expect(yamlStr).To(ContainSubstring("name: MY_VAR"))
 			Expect(yamlStr).To(ContainSubstring("value: hello"))
+		})
+
+		It("should auto-resolve image from GitHub when --base-image-override is not provided", func() {
+			metadata := `
+file: script.sh
+name: auto-resolve
+description: auto resolve image
+author: tester
+rbac:
+  roles: []
+language: bash
+`
+			_ = os.WriteFile(path.Join(tempDir, "metadata.yaml"), []byte(metadata), 0600)
+			_ = os.WriteFile(path.Join(tempDir, "script.sh"), []byte("echo test"), 0600)
+
+			outputFile := path.Join(tempDir, "output.yaml")
+			sut.SetArgs([]string{"render", "--source-dir", tempDir, "--output", outputFile})
+			err := sut.Execute()
+
+			Expect(err).To(BeNil())
+
+			content, err := os.ReadFile(outputFile)
+			Expect(err).To(BeNil())
+
+			yamlStr := string(content)
+			Expect(yamlStr).To(ContainSubstring("image: " + baseImageRegistry + ":"))
 		})
 
 		It("should fail when a required parameter is missing", func() {
@@ -140,7 +169,7 @@ language: bash
 			_ = os.WriteFile(path.Join(tempDir, "metadata.yaml"), []byte(metadata), 0600)
 			_ = os.WriteFile(path.Join(tempDir, "script.sh"), []byte("echo test"), 0600)
 
-			sut.SetArgs([]string{"render", "--source-dir", tempDir})
+			sut.SetArgs([]string{"render", "--source-dir", tempDir, "-i", testImage})
 			err := sut.Execute()
 
 			Expect(err).ToNot(BeNil())
@@ -164,7 +193,7 @@ language: bash
 			_ = os.WriteFile(path.Join(tempDir, "metadata.yaml"), []byte(metadata), 0600)
 			_ = os.WriteFile(path.Join(tempDir, "script.sh"), []byte("echo test"), 0600)
 
-			sut.SetArgs([]string{"render", "--source-dir", tempDir, "-p", "INVALID_KEY=abc"})
+			sut.SetArgs([]string{"render", "--source-dir", tempDir, "-p", "INVALID_KEY=abc", "-i", testImage})
 			err := sut.Execute()
 
 			Expect(err).ToNot(BeNil())
@@ -172,7 +201,7 @@ language: bash
 		})
 
 		It("should fail when metadata.yaml is missing", func() {
-			sut.SetArgs([]string{"render", "--source-dir", tempDir})
+			sut.SetArgs([]string{"render", "--source-dir", tempDir, "-i", testImage})
 			err := sut.Execute()
 
 			Expect(err).ToNot(BeNil())
@@ -191,14 +220,14 @@ language: bash
 `
 			_ = os.WriteFile(path.Join(tempDir, "metadata.yaml"), []byte(metadata), 0600)
 
-			sut.SetArgs([]string{"render", "--source-dir", tempDir})
+			sut.SetArgs([]string{"render", "--source-dir", tempDir, "-i", testImage})
 			err := sut.Execute()
 
 			Expect(err).ToNot(BeNil())
 			Expect(err.Error()).To(ContainSubstring("unable to read script file"))
 		})
 
-		It("should use base-image-override when specified", func() {
+		It("should use the provided base image in the pod spec", func() {
 			metadata := `
 file: script.sh
 name: custom-img
@@ -212,7 +241,7 @@ language: bash
 			_ = os.WriteFile(path.Join(tempDir, "script.sh"), []byte("echo test"), 0600)
 
 			outputFile := path.Join(tempDir, "output.yaml")
-			sut.SetArgs([]string{"render", "--source-dir", tempDir, "--output", outputFile, "--base-image-override", "quay.io/custom/image:v1"})
+			sut.SetArgs([]string{"render", "--source-dir", tempDir, "--output", outputFile, "-i", "quay.io/custom/image:v1"})
 			err := sut.Execute()
 
 			Expect(err).To(BeNil())
@@ -222,7 +251,6 @@ language: bash
 
 			yamlStr := string(content)
 			Expect(yamlStr).To(ContainSubstring("image: quay.io/custom/image:v1"))
-			Expect(yamlStr).NotTo(ContainSubstring(defaultBaseImage))
 		})
 
 		It("should render python command for python scripts", func() {
@@ -239,7 +267,7 @@ language: python
 			_ = os.WriteFile(path.Join(tempDir, "script.py"), []byte("print('hello')"), 0600)
 
 			outputFile := path.Join(tempDir, "output.yaml")
-			sut.SetArgs([]string{"render", "--source-dir", tempDir, "--output", outputFile})
+			sut.SetArgs([]string{"render", "--source-dir", tempDir, "--output", outputFile, "-i", testImage})
 			err := sut.Execute()
 
 			Expect(err).To(BeNil())

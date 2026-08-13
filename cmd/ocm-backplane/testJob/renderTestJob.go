@@ -2,7 +2,9 @@ package testjob
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 	"strings"
 	"time"
@@ -21,7 +23,8 @@ import (
 const (
 	backplaneJobsNamespace          = "openshift-backplane-managed-scripts"
 	generateNamePrefixForTestScript = "openshift-job-dev-"
-	defaultBaseImage                = "quay.io/redhat-user-workloads/rosa-tenant/managed-scripts:latest"
+	baseImageRegistry               = "quay.io/redhat-user-workloads/rosa-tenant/managed-scripts"
+	managedScriptsCommitAPI         = "https://api.github.com/repos/openshift/managed-scripts/commits/main"
 )
 
 func newRenderTestJobCommand() *cobra.Command {
@@ -68,7 +71,7 @@ To clean up after testing:
 		"base-image-override",
 		"i",
 		"",
-		"Custom container image to use instead of the default managed-scripts image",
+		"Container image to run the script (required). Use 'git ls-remote https://github.com/openshift/managed-scripts HEAD | cut -f1' to get the latest tag.",
 	)
 
 	cmd.Flags().StringP(
@@ -121,9 +124,14 @@ func runRenderTestJob(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	baseImage := defaultBaseImage
-	if baseImageOverride != "" {
-		baseImage = baseImageOverride
+	baseImage := baseImageOverride
+	if baseImage == "" {
+		sha, err := fetchManagedScriptsHeadSHA()
+		if err != nil {
+			return fmt.Errorf("failed to resolve managed-scripts image tag: %v\n\nYou can specify the image manually with --base-image-override (-i).\nTo find the latest tag, run:\n  git ls-remote https://github.com/openshift/managed-scripts HEAD | cut -f1\n\nThen use it as:\n  ocm backplane testjob render -i %s:<full-commit-sha> ...", err, baseImageRegistry)
+		}
+		baseImage = fmt.Sprintf("%s:%s", baseImageRegistry, sha)
+		fmt.Fprintf(os.Stderr, "Resolved image: %s\n", baseImage)
 	}
 
 	yamlOutput, err := renderKubeObjects(metadata, scriptBody, parsedParams, baseImage)
@@ -475,4 +483,27 @@ func getPodCommand(language backplaneApi.ScriptMetadataLanguage, scriptBody stri
 
 func ptrBool(b bool) *bool {
 	return &b
+}
+
+func fetchManagedScriptsHeadSHA() (string, error) {
+	resp, err := http.Get(managedScriptsCommitAPI) //nolint:gosec
+	if err != nil {
+		return "", fmt.Errorf("HTTP request failed: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("GitHub API returned status %d", resp.StatusCode)
+	}
+
+	var result struct {
+		SHA string `json:"sha"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", fmt.Errorf("failed to parse response: %v", err)
+	}
+	if result.SHA == "" {
+		return "", fmt.Errorf("empty SHA in GitHub API response")
+	}
+	return result.SHA, nil
 }
