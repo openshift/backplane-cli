@@ -128,7 +128,8 @@ func runRenderTestJob(cmd *cobra.Command, args []string) error {
 	if baseImage == "" {
 		sha, err := fetchManagedScriptsHeadSHA()
 		if err != nil {
-			return fmt.Errorf("failed to resolve managed-scripts image tag: %v\n\nYou can specify the image manually with --base-image-override (-i).\nTo find the latest tag, run:\n  git ls-remote https://github.com/openshift/managed-scripts HEAD | cut -f1\n\nThen use it as:\n  ocm backplane testjob render -i %s:<full-commit-sha> ...", err, baseImageRegistry)
+			fmt.Fprintf(os.Stderr, "You can specify the image manually with --base-image-override (-i).\nTo find the latest tag, run:\n  git ls-remote https://github.com/openshift/managed-scripts HEAD | cut -f1\n\nThen use it as:\n  ocm backplane testjob render -i %s:<full-commit-sha> ...\n", baseImageRegistry)
+			return fmt.Errorf("failed to resolve managed-scripts image tag: %w", err)
 		}
 		baseImage = fmt.Sprintf("%s:%s", baseImageRegistry, sha)
 		fmt.Fprintf(os.Stderr, "Resolved image: %s\n", baseImage)
