@@ -1,6 +1,7 @@
 package testjob
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -71,7 +72,7 @@ To clean up after testing:
 		"base-image-override",
 		"i",
 		"",
-		"Container image to run the script (required). Use 'git ls-remote https://github.com/openshift/managed-scripts HEAD | cut -f1' to get the latest tag.",
+		"Container image to run the script. Defaults to the latest managed-scripts image resolved from GitHub. Use 'git ls-remote https://github.com/openshift/managed-scripts HEAD | cut -f1' to get a specific tag.",
 	)
 
 	cmd.Flags().StringP(
@@ -126,7 +127,7 @@ func runRenderTestJob(cmd *cobra.Command, args []string) error {
 
 	baseImage := baseImageOverride
 	if baseImage == "" {
-		sha, err := fetchManagedScriptsHeadSHA()
+		sha, err := resolveBaseImageSHA()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "You can specify the image manually with --base-image-override (-i).\nTo find the latest tag, run:\n  git ls-remote https://github.com/openshift/managed-scripts HEAD | cut -f1\n\nThen use it as:\n  ocm backplane testjob render -i %s:<full-commit-sha> ...\n", baseImageRegistry)
 			return fmt.Errorf("failed to resolve managed-scripts image tag: %w", err)
@@ -241,13 +242,26 @@ func renderKubeObjects(metadata backplaneApi.ScriptMetadata, scriptBody string, 
 	}
 	objects = append(objects, string(saYAML))
 
-	// Namespaced Roles and RoleBindings
+	// Namespaced Roles and RoleBindings.
+	// Multiple rbac.roles entries can share a namespace; merge their rules so a
+	// single Role per namespace is emitted (identical Role names in the same
+	// namespace would otherwise overwrite each other on 'oc apply').
 	if metadata.Rbac.Roles != nil {
+		rulesByNamespace := make(map[string][]rbacv1.PolicyRule)
+		var namespaceOrder []string
 		for _, roleDecl := range *metadata.Rbac.Roles {
 			if roleDecl.Namespace == nil || *roleDecl.Namespace == "" || roleDecl.Rules == nil || len(*roleDecl.Rules) == 0 {
+				fmt.Fprintf(os.Stderr, "warning: skipping rbac.roles entry with empty namespace or rules\n")
 				continue
 			}
-			rules := convertPolicyRules(*roleDecl.Rules)
+			ns := *roleDecl.Namespace
+			if _, seen := rulesByNamespace[ns]; !seen {
+				namespaceOrder = append(namespaceOrder, ns)
+			}
+			rulesByNamespace[ns] = append(rulesByNamespace[ns], convertPolicyRules(*roleDecl.Rules)...)
+		}
+
+		for _, ns := range namespaceOrder {
 			role := &rbacv1.Role{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "rbac.authorization.k8s.io/v1",
@@ -255,10 +269,10 @@ func renderKubeObjects(metadata backplaneApi.ScriptMetadata, scriptBody string, 
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      name,
-					Namespace: *roleDecl.Namespace,
+					Namespace: ns,
 					Labels:    labels,
 				},
-				Rules: rules,
+				Rules: rulesByNamespace[ns],
 			}
 			roleYAML, err := yaml.Marshal(role)
 			if err != nil {
@@ -273,7 +287,7 @@ func renderKubeObjects(metadata backplaneApi.ScriptMetadata, scriptBody string, 
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      name,
-					Namespace: *roleDecl.Namespace,
+					Namespace: ns,
 					Labels:    labels,
 				},
 				Subjects: []rbacv1.Subject{
@@ -486,8 +500,20 @@ func ptrBool(b bool) *bool {
 	return &b
 }
 
+// resolveBaseImageSHA resolves the managed-scripts image tag. It is a variable
+// so tests can stub the network call.
+var resolveBaseImageSHA = fetchManagedScriptsHeadSHA
+
 func fetchManagedScriptsHeadSHA() (string, error) {
-	resp, err := http.Get(managedScriptsCommitAPI) //nolint:gosec
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, managedScriptsCommitAPI, nil)
+	if err != nil {
+		return "", fmt.Errorf("failed to build request: %v", err)
+	}
+
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("HTTP request failed: %v", err)
 	}

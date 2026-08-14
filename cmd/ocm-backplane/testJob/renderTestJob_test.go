@@ -1,8 +1,10 @@
 package testjob
 
 import (
+	"fmt"
 	"os"
 	"path"
+	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -126,7 +128,11 @@ language: bash
 			Expect(yamlStr).To(ContainSubstring("value: hello"))
 		})
 
-		It("should auto-resolve image from GitHub when --base-image-override is not provided", func() {
+		It("should auto-resolve image from the resolver when --base-image-override is not provided", func() {
+			original := resolveBaseImageSHA
+			resolveBaseImageSHA = func() (string, error) { return "deadbeef", nil }
+			defer func() { resolveBaseImageSHA = original }()
+
 			metadata := `
 file: script.sh
 name: auto-resolve
@@ -149,7 +155,81 @@ language: bash
 			Expect(err).To(BeNil())
 
 			yamlStr := string(content)
-			Expect(yamlStr).To(ContainSubstring("image: " + baseImageRegistry + ":"))
+			Expect(yamlStr).To(ContainSubstring("image: " + baseImageRegistry + ":deadbeef"))
+		})
+
+		It("should propagate an error when the resolver fails", func() {
+			original := resolveBaseImageSHA
+			resolveBaseImageSHA = func() (string, error) { return "", fmt.Errorf("boom") }
+			defer func() { resolveBaseImageSHA = original }()
+
+			metadata := `
+file: script.sh
+name: resolve-fail
+description: resolver failure
+author: tester
+rbac:
+  roles: []
+language: bash
+`
+			_ = os.WriteFile(path.Join(tempDir, "metadata.yaml"), []byte(metadata), 0600)
+			_ = os.WriteFile(path.Join(tempDir, "script.sh"), []byte("echo test"), 0600)
+
+			sut.SetArgs([]string{"render", "--source-dir", tempDir})
+			err := sut.Execute()
+
+			Expect(err).ToNot(BeNil())
+			Expect(err.Error()).To(ContainSubstring("failed to resolve managed-scripts image tag"))
+		})
+
+		It("should merge rules from multiple rbac.roles entries sharing a namespace", func() {
+			metadata := `
+file: script.sh
+name: shared-ns
+description: shared namespace roles
+author: tester
+allowedGroups:
+  - SREP
+rbac:
+  roles:
+    - namespace: "openshift-monitoring"
+      rules:
+        - verbs: ["get"]
+          apiGroups: [""]
+          resources: ["configmaps"]
+    - namespace: "openshift-monitoring"
+      rules:
+        - verbs: ["list"]
+          apiGroups: [""]
+          resources: ["secrets"]
+language: bash
+`
+			_ = os.WriteFile(path.Join(tempDir, "metadata.yaml"), []byte(metadata), 0600)
+			_ = os.WriteFile(path.Join(tempDir, "script.sh"), []byte("echo hello"), 0600)
+
+			outputFile := path.Join(tempDir, "output.yaml")
+			sut.SetArgs([]string{"render", "--source-dir", tempDir, "--output", outputFile, "-i", testImage})
+			err := sut.Execute()
+
+			Expect(err).To(BeNil())
+
+			content, err := os.ReadFile(outputFile)
+			Expect(err).To(BeNil())
+
+			yamlStr := string(content)
+			// Only one top-level Role should be emitted for the shared namespace,
+			// containing both rule sets. Count only document-level "kind: Role"
+			// lines (no leading indentation) to avoid matching the roleRef inside
+			// the RoleBinding.
+			topLevelRoles := 0
+			for _, line := range strings.Split(yamlStr, "\n") {
+				if line == "kind: Role" {
+					topLevelRoles++
+				}
+			}
+			Expect(topLevelRoles).To(Equal(1))
+			Expect(yamlStr).To(ContainSubstring("configmaps"))
+			Expect(yamlStr).To(ContainSubstring("secrets"))
 		})
 
 		It("should fail when a required parameter is missing", func() {
