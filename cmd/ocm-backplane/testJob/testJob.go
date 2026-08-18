@@ -34,6 +34,7 @@ func NewTestJobCommand() *cobra.Command {
 		newCreateTestJobCommand(),
 		newGetTestJobCommand(),
 		newGetTestJobLogsCommand(),
+		newRenderTestJobCommand(),
 	)
 
 	return cmd

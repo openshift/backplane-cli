@@ -51,6 +51,7 @@ Example usage:
   cd scripts/SREP/example && ocm backplane testjob create -p var1=val1
 
 `,
+		Deprecated:    "use 'ocm backplane testjob render' to generate YAML and apply it directly with 'oc apply -f'",
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		RunE:          runCreateTestJob,
