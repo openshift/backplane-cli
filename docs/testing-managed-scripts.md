@@ -6,6 +6,10 @@ Previously this was done with `ocm backplane testJob create/get/logs`, which req
 
 The recommended way is `ocm backplane testJob render`, which generates the Kubernetes YAML (ServiceAccount, RBAC and Pod) for your script **locally** — no backplane API call is made. You then apply it directly on a non-production cluster where you have cluster-admin access.
 
+
+## Prerequisite
+You have a non-production ROSA cluster that you own or control, with cluster-admin permissions to create resources in it.
+
 ## Example
 
 Assuming your draft script lives in a directory that contains a `metadata.yaml` and the script itself (the same layout used in the [managed-scripts](https://github.com/openshift/managed-scripts) repo):
