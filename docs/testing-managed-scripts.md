@@ -8,7 +8,7 @@ The recommended way is `ocm backplane testJob render`, which generates the Kuber
 
 
 ## Prerequisite
-You have a non-production ROSA cluster that you own or control, with cluster-admin permissions to create resources in it.
+You have a non-production ROSA cluster that you own or control, with cluster-admin permissions to create resources in it. For example, your own cluster with direct cluster-admin access via IDP, or a staging cluster where you have backplane elevation permissions.
 
 ## Example
 
