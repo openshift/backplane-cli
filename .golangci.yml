@@ -1,6 +1,8 @@
 version: "2"
 run:
   modules-download-mode: readonly
+  timeout: 15m
+  concurrency: 2
 linters:
   default: none
   enable:
