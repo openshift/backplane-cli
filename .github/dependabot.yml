@@ -7,6 +7,9 @@ updates:
       - "ok-to-test"
     schedule:
       interval: "weekly"
+    # Align with MintMaker minimumReleaseAge (~3 days) for supply-chain delay
+    cooldown:
+      default-days: 3
     # Enable auto-merge for patch and minor updates
     open-pull-requests-limit: 10
     ignore:
@@ -21,6 +24,9 @@ updates:
       - "ok-to-test"
     schedule:
       interval: "weekly"
+    # Align with MintMaker minimumReleaseAge (~3 days) for supply-chain delay
+    cooldown:
+      default-days: 3
     # Enable auto-merge for patch and minor updates
     open-pull-requests-limit: 10
     # Group related updates together to reduce PR volume
