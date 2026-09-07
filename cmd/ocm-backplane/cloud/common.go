@@ -541,6 +541,11 @@ func getTrustedIPList(connection *ocmsdk.Connection) (awsutil.IPAddress, error) 
 				strings.HasPrefix(ip.ID(), "54.145") {
 				sourceIPList = append(sourceIPList, fmt.Sprintf("%s/32", ip.ID()))
 			}
+
+			// ROSA Boundary (SRE ECS Fargate) IPs
+			if strings.HasPrefix(ip.ID(), "54.243") {
+				sourceIPList = append(sourceIPList, fmt.Sprintf("%s/32", ip.ID()))
+			}
 		}
 
 	}
