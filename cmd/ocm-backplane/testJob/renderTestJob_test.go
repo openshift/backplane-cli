@@ -13,6 +13,37 @@ import (
 
 const testImage = "quay.io/test/managed-scripts:abc1234"
 
+const MetadataYaml = `
+file: script.sh
+name: example
+description: just an example
+author: dude
+allowedGroups:
+  - SREP
+rbac:
+    roles:
+      - namespace: "kube-system"
+        rules:
+          - verbs:
+            - "*"
+            apiGroups:
+            - ""
+            resources:
+            - "*"
+            resourceNames:
+            - "*"
+    clusterRoleRules:
+        - verbs:
+            - "*"
+          apiGroups:
+            - ""
+          resources:
+            - "*"
+          resourceNames:
+            - "*"
+language: bash
+`
+
 var _ = Describe("testJob render command", func() {
 
 	var (
