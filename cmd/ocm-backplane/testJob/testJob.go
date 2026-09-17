@@ -31,9 +31,6 @@ func NewTestJobCommand() *cobra.Command {
 	cmd.PersistentFlags().BoolP("follow", "f", false, "Specify if logs should be streamed")
 
 	cmd.AddCommand(
-		newCreateTestJobCommand(),
-		newGetTestJobCommand(),
-		newGetTestJobLogsCommand(),
 		newRenderTestJobCommand(),
 	)
 

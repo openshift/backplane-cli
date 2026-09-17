@@ -1,12 +1,16 @@
 package testjob
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
+	"os/exec"
+	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -20,6 +24,8 @@ import (
 	backplaneApi "github.com/openshift/backplane-api/pkg/client"
 	"github.com/openshift/backplane-cli/pkg/utils"
 )
+
+var GetGitRepoPath = exec.Command("git", "rev-parse", "--show-toplevel")
 
 const (
 	backplaneJobsNamespace          = "openshift-backplane-managed-scripts"
@@ -174,6 +180,49 @@ func readScriptFromFiles(sourceDir string) (backplaneApi.ScriptMetadata, string,
 	}
 
 	return metadata, fileBodyStr, nil
+}
+
+func inlineLibrarySourceFiles(script string, scriptPath string) (string, error) {
+	re, err := regexp.Compile("source /managed-scripts/(.*)\n")
+	if err != nil {
+		return "", err
+	}
+
+	match := re.FindString(script)
+
+	if match == "" {
+		return script, nil
+	}
+
+	// i.e. /lib/foo.bash
+	libraryPath := re.FindStringSubmatch(script)[1]
+
+	// Assuming the script is inside the managed scripts directory
+	scriptDir := filepath.Dir(scriptPath)
+
+	getManagedScriptsDir := GetGitRepoPath
+	getManagedScriptsDir.Dir = scriptDir
+
+	var out bytes.Buffer
+	getManagedScriptsDir.Stdout = &out
+
+	if err = getManagedScriptsDir.Run(); err != nil {
+		return "", err
+	}
+
+	managedScriptsDir := strings.TrimSpace(out.String())
+
+	fileBody, err := os.ReadFile(managedScriptsDir + "/scripts/" + libraryPath) //nolint:gosec
+	if err != nil {
+		return "", err
+	}
+	libraryEncoded := base64.StdEncoding.EncodeToString([]byte(fileBody))
+
+	inlinedFunction := "base64 -d <<< " + libraryEncoded + " > /tmp/lib.sh\nsource /tmp/lib.sh\n"
+
+	inlinedScript := strings.Replace(script, match, inlinedFunction, 1)
+
+	return inlinedScript, err
 }
 
 func validateParams(metadata backplaneApi.ScriptMetadata, params map[string]string) error {
