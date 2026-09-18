@@ -1,3 +1,9 @@
+// Package monitoring provides functionality for proxying to OpenShift monitoring UIs.
+//
+// DEPRECATED: This package is deprecated and will be removed in v2.0.0.
+// Following version 4.11, Prometheus, AlertManager and Grafana monitoring UIs are deprecated
+// for the openshift-monitoring stack. Users should use 'ocm backplane console' and navigate
+// to the Observe tab instead.
 package monitoring
 
 import (
@@ -51,11 +57,18 @@ type Client struct {
 	http http.Client
 }
 
+// NewClient creates a new monitoring client.
+//
+// Deprecated: This function is deprecated and will be removed in v2.0.0.
+// Use 'ocm backplane console' instead.
 func NewClient(url string, http http.Client) Client {
 	return Client{url, http}
 }
 
 // RunMonitoring serve http proxy URL to monitoring dashboard
+//
+// Deprecated: This function is deprecated and will be removed in v2.0.0.
+// Use 'ocm backplane console' and navigate to the Observe tab instead.
 func (c Client) RunMonitoring(monitoringType string) error {
 
 	// check empty monitoring name

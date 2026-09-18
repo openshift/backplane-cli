@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/backplane-cli/pkg/monitoring"
@@ -12,12 +13,16 @@ import (
 
 var MonitoringCmd = &cobra.Command{
 	Use:          fmt.Sprintf("monitoring <%s>", strings.Join(monitoring.ValidMonitoringNames, "|")),
-	Short:        "Create a local proxy to the monitoring UI",
-	Long:         fmt.Sprintf(`It will proxy to the monitoring UI including %s.`, strings.Join(monitoring.ValidMonitoringNames, ",")),
+	Short:        "[DEPRECATED] Create a local proxy to the monitoring UI",
+	Long:         fmt.Sprintf(`[DEPRECATED - Will be removed in v2.0.0] It will proxy to the monitoring UI including %s.
+
+Following version 4.11, Prometheus, AlertManager and Grafana monitoring UIs are deprecated for openshift-monitoring stack.
+Please use 'ocm backplane console' and navigate to the Observe tab instead.`, strings.Join(monitoring.ValidMonitoringNames, ",")),
 	Args:         cobra.MatchAll(cobra.MinimumNArgs(1), cobra.OnlyValidArgs),
 	ValidArgs:    monitoring.ValidMonitoringNames,
 	RunE:         runMonitoring,
 	SilenceUsage: true,
+	Deprecated:   "use 'ocm backplane console' and navigate to the Observe tab instead. This command will be removed in v2.0.0",
 }
 
 func init() {
@@ -68,6 +73,12 @@ func init() {
 
 // runMonitoring create local proxy url to serve monitoring dashboard
 func runMonitoring(cmd *cobra.Command, argv []string) error {
+	// Print deprecation warning
+	log.Warn("⚠️  DEPRECATION WARNING: The 'monitoring' command is deprecated and will be removed in v2.0.0")
+	log.Warn("⚠️  Following version 4.11, Prometheus, AlertManager and Grafana monitoring UIs are deprecated for openshift-monitoring stack")
+	log.Warn("⚠️  Please use 'ocm backplane console' and navigate to the Observe tab instead")
+	fmt.Println()
+
 	monitoringType := argv[0]
 	monitoring.MonitoringOpts.KeepAlive = true
 	client := monitoring.NewClient("", http.Client{})
