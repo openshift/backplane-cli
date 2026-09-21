@@ -80,20 +80,18 @@ To setup the PS1(prompt) for bash/zsh, please follow [these instructions](https:
 | `ocm backplane cloud credentials [flags]`                                   | Retrieve a set of temporary cloud credentials for the cluster's cloud provider           |
 | `ocm backplane cloud ssm --node <node-name>`                                | Start an aws ssm session for an HCP cluster                                              |
 | `ocm backplane elevate <reason> -- <command>`                               | Elevate privileges to backplane-cluster-admin and add a reason to the api request, this reason will be stored for 20min for future usage        |
-| `ocm backplane monitoring <prometheus/alertmanager/thanos/grafana> [flags]` | Launch the specified monitoring UI (Deprecated following v4.11 for cluster monitoring stack)|
 | `ocm backplane script describe <script> [flags]`                            | Describe the given backplane script                                                      |
 | `ocm backplane script list [flags]`                                         | List available backplane scripts |
 | `ocm backplane session [flags]`                                             | Create a new session and log into the cluster                                            |
 | `ocm backplane status`                                                      | Print essential cluster info                                                             |
-| `ocm backplane managedJob create <script> [flags]`                          | Create a backplane managed job resource                                                  |
-| `ocm backplane managedJob get <job_name> [flags]`                           | Retrieve a backplane managed job resource                                                |
-| `ocm backplane managedJob list [flags]`                                     | Retrieve a list of backplane managed job resources                                       |
-| `ocm backplane managedJob logs <job_name> [flags]`                          | Retrieve logs of the specified managed job resource                                      |
-| `ocm backplane managedJob delete <job_name> [flags]`                        | Delete the specified managed job resource                                                |
-| `ocm backplane testJob render [flags]`                                      | Render the Kubernetes YAML (ServiceAccount, RBAC and Pod) for a draft managed script locally, so it can be applied directly with `oc apply -f`. See [Testing a draft managed script](docs/testing-managed-scripts.md). |
-| `ocm backplane testJob create <script> [flags]`                             | (Deprecated, use `testJob render` instead) Create a backplane test managed job on a non-production cluster for testing.                   |
-| `ocm backplane testJob get <job_name> [flags]`                              | (Deprecated, use `testJob render` instead) Retrieve a backplane test job resource                                                        |
-| `ocm backplane testJob logs <job_name> [flags]`                             | (Deprecated, use `testJob render` instead) Retrieve logs of the specified test job resource                                              |
+| `ocm backplane managedjob create <script> [flags]`                          | Create a backplane managed job resource                                                  |
+| `ocm backplane managedjob get <job_name> [flags]`                           | Retrieve a backplane managed job resource                                                |
+| `ocm backplane managedjob logs <job_name> [flags]`                          | Retrieve logs of the specified managed job resource                                      |
+| `ocm backplane managedjob delete <job_name> [flags]`                        | Delete the specified managed job resource                                                |
+| `ocm backplane testjob render [flags]`                                      | Render the Kubernetes YAML (ServiceAccount, RBAC and Pod) for a draft managed script locally, so it can be applied directly with `oc apply -f`. See [Testing a draft managed script](docs/testing-managed-scripts.md). |
+| `ocm backplane testjob create <script> [flags]`                             | (Deprecated, use `testjob render` instead) Create a backplane test managed job on a non-production cluster for testing.                   |
+| `ocm backplane testjob get <job_name> [flags]`                              | (Deprecated, use `testjob render` instead) Retrieve a backplane test job resource                                                        |
+| `ocm backplane testjob logs <job_name> [flags]`                             | (Deprecated, use `testjob render` instead) Retrieve logs of the specified test job resource                                              |
 | `ocm backplane upgrade`                                                     | Upgrade backplane-cli to the latest version                                              |
 | `ocm backplane version`                                                     | Display the installed backplane-cli version                                              |
 | `ocm backplane healthcheck`                                                 | Check the VPN and Proxy connectivity on the host network when experiencing isssues accessing the backplane API|
@@ -284,16 +282,6 @@ sh-5.1$
 $ ocm backplane cloud ssm --node ip-xx-x-xxx-xxx.xxxxxx.compute.internal -- free -m
 ```
 
-## Monitoring
-Monitoring command can be used to launch the specified monitoring UI.
-
-Run this command from within a cluster :
-
-```
-ocm backplane monitoring <prometheus/alertmanager/thanos/grafana> [flags]
-```
-
->Note: Following version 4.11, Prometheus, AlertManager and Grafana monitoring UIs are deprecated for openshift-monitoring stack, please use 'ocm backplane console' and use the observe tab for the same. Other monitoring stacks remain unaffected.
 ## Backplane Session 
 Backplane session command will create an isolated environment to interact with a cluster in its own directory. 
 The default location for this is ~/backplane. 
