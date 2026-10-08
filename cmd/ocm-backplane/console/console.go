@@ -33,14 +33,16 @@ import (
 	"github.com/Masterminds/semver"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	consolev1typedclient "github.com/openshift/client-go/console/clientset/versioned/typed/console/v1"
-	consolev1alpha1typedclient "github.com/openshift/client-go/console/clientset/versioned/typed/console/v1alpha1"
 	operatorv1typedclient "github.com/openshift/client-go/operator/clientset/versioned/typed/operator/v1"
 	"github.com/pkg/browser"
 	logger "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
@@ -50,6 +52,12 @@ import (
 	"github.com/openshift/backplane-cli/pkg/ocm"
 	"github.com/openshift/backplane-cli/pkg/utils"
 )
+
+var consolePluginV1Alpha1Resource = schema.GroupVersionResource{
+	Group:    "console.openshift.io",
+	Version:  "v1alpha1",
+	Resource: "consoleplugins",
+}
 
 type execActionOnTermInterface interface {
 	execActionOnTerminationFunction(action postTerminateFunc) error
@@ -797,12 +805,12 @@ func getConsolePluginFromCluster(config *rest.Config) ([]string, error) {
 
 // getConsolePluginFrom411Cluster get the consoleplugin from the cluster with version lt 4.12
 func getConsolePluginFrom411Cluster(config *rest.Config) ([]string, error) {
-	consoleInterface, err := consolev1alpha1typedclient.NewForConfig(config)
+	consoleInterface, err := dynamic.NewForConfig(config)
 
 	if err != nil {
 		return nil, err
 	}
-	consolePlugins, err := consoleInterface.ConsolePlugins().List(context.TODO(), metav1.ListOptions{})
+	consolePlugins, err := consoleInterface.Resource(consolePluginV1Alpha1Resource).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -810,17 +818,57 @@ func getConsolePluginFrom411Cluster(config *rest.Config) ([]string, error) {
 	var enabledPlugins []string
 
 	for _, cp := range consolePlugins.Items {
-		enabled, err := isConsolePluginEnabled(config, cp.Name)
+		enabled, err := isConsolePluginEnabled(config, cp.GetName())
 		if err != nil {
 			return nil, err
 		}
 		if enabled {
-			enabledPlugins = append(enabledPlugins, fmt.Sprintf("%s=https://%s.%s.svc.cluster.local:%d%s",
-				cp.Name, cp.Spec.Service.Name, cp.Spec.Service.Namespace, cp.Spec.Service.Port, cp.Spec.Service.BasePath))
+			pluginURL, err := consolePluginV1Alpha1URL(cp)
+			if err != nil {
+				return nil, err
+			}
+			enabledPlugins = append(enabledPlugins, pluginURL)
 		}
 	}
 
 	return enabledPlugins, nil
+}
+
+func consolePluginV1Alpha1URL(consolePlugin unstructured.Unstructured) (string, error) {
+	serviceName, found, err := unstructured.NestedString(consolePlugin.Object, "spec", "service", "name")
+	if err != nil {
+		return "", fmt.Errorf("failed to read spec.service.name from console plugin %q: %w", consolePlugin.GetName(), err)
+	}
+	if !found {
+		return "", fmt.Errorf("console plugin %q is missing spec.service.name", consolePlugin.GetName())
+	}
+
+	serviceNamespace, found, err := unstructured.NestedString(consolePlugin.Object, "spec", "service", "namespace")
+	if err != nil {
+		return "", fmt.Errorf("failed to read spec.service.namespace from console plugin %q: %w", consolePlugin.GetName(), err)
+	}
+	if !found {
+		return "", fmt.Errorf("console plugin %q is missing spec.service.namespace", consolePlugin.GetName())
+	}
+
+	servicePort, found, err := unstructured.NestedInt64(consolePlugin.Object, "spec", "service", "port")
+	if err != nil {
+		return "", fmt.Errorf("failed to read spec.service.port from console plugin %q: %w", consolePlugin.GetName(), err)
+	}
+	if !found {
+		return "", fmt.Errorf("console plugin %q is missing spec.service.port", consolePlugin.GetName())
+	}
+
+	basePath, found, err := unstructured.NestedString(consolePlugin.Object, "spec", "service", "basePath")
+	if err != nil {
+		return "", fmt.Errorf("failed to read spec.service.basePath from console plugin %q: %w", consolePlugin.GetName(), err)
+	}
+	if !found {
+		return "", fmt.Errorf("console plugin %q is missing spec.service.basePath", consolePlugin.GetName())
+	}
+
+	return fmt.Sprintf("%s=https://%s.%s.svc.cluster.local:%d%s",
+		consolePlugin.GetName(), serviceName, serviceNamespace, servicePort, basePath), nil
 }
 
 // isConsolePluginEnabled checks if the consoleplugin object is enabled in console.operator
