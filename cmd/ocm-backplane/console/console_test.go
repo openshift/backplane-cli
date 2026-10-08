@@ -1,19 +1,24 @@
 package console
 
 import (
+	"errors"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"reflect"
+	"strings"
 	"testing"
 
-	"go.uber.org/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/spf13/pflag"
+	"go.uber.org/mock/gomock"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/client-go/kubernetes"
 	testclient "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/rest"
@@ -31,6 +36,218 @@ import (
 func TestIt(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Console Test Suite")
+}
+
+func TestConsolePluginV1Alpha1URL(t *testing.T) {
+	validPlugin := func() unstructured.Unstructured {
+		return unstructured.Unstructured{Object: map[string]interface{}{
+			"metadata": map[string]interface{}{"name": "monitoring-plugin"},
+			"spec": map[string]interface{}{
+				"service": map[string]interface{}{
+					"name":      "monitoring-plugin",
+					"namespace": "openshift-monitoring",
+					"port":      int64(9443),
+					"basePath":  "/",
+				},
+			},
+		}}
+	}
+
+	tests := []struct {
+		name          string
+		mutate        func(map[string]interface{})
+		expectedURL   string
+		expectedField string
+		expectedKind  string
+		expectWrapped bool
+	}{
+		{
+			name:        "valid service with int64 port",
+			expectedURL: "monitoring-plugin=https://monitoring-plugin.openshift-monitoring.svc.cluster.local:9443/",
+		},
+		{
+			name: "missing service name",
+			mutate: func(service map[string]interface{}) {
+				delete(service, "name")
+			},
+			expectedField: "spec.service.name",
+			expectedKind:  "missing",
+		},
+		{
+			name: "wrong typed service name",
+			mutate: func(service map[string]interface{}) {
+				service["name"] = 42
+			},
+			expectedField: "spec.service.name",
+			expectedKind:  "failed to read",
+			expectWrapped: true,
+		},
+		{
+			name: "missing service namespace",
+			mutate: func(service map[string]interface{}) {
+				delete(service, "namespace")
+			},
+			expectedField: "spec.service.namespace",
+			expectedKind:  "missing",
+		},
+		{
+			name: "wrong typed service namespace",
+			mutate: func(service map[string]interface{}) {
+				service["namespace"] = 42
+			},
+			expectedField: "spec.service.namespace",
+			expectedKind:  "failed to read",
+			expectWrapped: true,
+		},
+		{
+			name: "missing service port",
+			mutate: func(service map[string]interface{}) {
+				delete(service, "port")
+			},
+			expectedField: "spec.service.port",
+			expectedKind:  "missing",
+		},
+		{
+			name: "wrong typed string service port",
+			mutate: func(service map[string]interface{}) {
+				service["port"] = "9443"
+			},
+			expectedField: "spec.service.port",
+			expectedKind:  "failed to read",
+			expectWrapped: true,
+		},
+		{
+			name: "missing service base path",
+			mutate: func(service map[string]interface{}) {
+				delete(service, "basePath")
+			},
+			expectedField: "spec.service.basePath",
+			expectedKind:  "missing",
+		},
+		{
+			name: "wrong typed service base path",
+			mutate: func(service map[string]interface{}) {
+				service["basePath"] = 42
+			},
+			expectedField: "spec.service.basePath",
+			expectedKind:  "failed to read",
+			expectWrapped: true,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			plugin := validPlugin()
+			if test.mutate != nil {
+				service := plugin.Object["spec"].(map[string]interface{})["service"].(map[string]interface{})
+				test.mutate(service)
+			}
+
+			actualURL, err := consolePluginV1Alpha1URL(plugin)
+			if test.expectedField != "" {
+				if err == nil {
+					t.Fatalf("expected error for %s", test.expectedField)
+				}
+				for _, expected := range []string{"monitoring-plugin", test.expectedField, test.expectedKind} {
+					if !strings.Contains(err.Error(), expected) {
+						t.Errorf("expected error %q to contain %q", err, expected)
+					}
+				}
+				if test.expectWrapped && errors.Unwrap(err) == nil {
+					t.Errorf("expected error %q to wrap its cause", err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if actualURL != test.expectedURL {
+				t.Fatalf("expected URL %q, got %q", test.expectedURL, actualURL)
+			}
+		})
+	}
+}
+
+func TestGetConsolePluginFrom411Cluster(t *testing.T) {
+	const (
+		consolePluginsPath  = "/apis/console.openshift.io/v1alpha1/consoleplugins"
+		consoleOperatorPath = "/apis/operator.openshift.io/v1/consoles/cluster"
+	)
+
+	t.Run("lists the expected resource, decodes JSON, and filters disabled plugins", func(t *testing.T) {
+		requestCounts := map[string]int{}
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			requestCounts[r.URL.Path]++
+			w.Header().Set("Content-Type", "application/json")
+			switch r.URL.Path {
+			case consolePluginsPath:
+				_, _ = fmt.Fprint(w, `{
+					"apiVersion":"console.openshift.io/v1alpha1",
+					"kind":"ConsolePluginList",
+					"items":[
+						{"apiVersion":"console.openshift.io/v1alpha1","kind":"ConsolePlugin","metadata":{"name":"enabled-plugin"},"spec":{"service":{"name":"enabled-service","namespace":"enabled-namespace","port":9443,"basePath":"/enabled"}}},
+						{"apiVersion":"console.openshift.io/v1alpha1","kind":"ConsolePlugin","metadata":{"name":"disabled-plugin"},"spec":{"service":{"name":"disabled-service","namespace":"disabled-namespace","port":9444,"basePath":"/disabled"}}}
+					]
+				}`)
+			case consoleOperatorPath:
+				_, _ = fmt.Fprint(w, `{"apiVersion":"operator.openshift.io/v1","kind":"Console","metadata":{"name":"cluster"},"spec":{"plugins":["enabled-plugin"]}}`)
+			default:
+				http.NotFound(w, r)
+			}
+		}))
+		defer server.Close()
+
+		plugins, err := getConsolePluginFrom411Cluster(&rest.Config{Host: server.URL})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		expected := []string{"enabled-plugin=https://enabled-service.enabled-namespace.svc.cluster.local:9443/enabled"}
+		if !reflect.DeepEqual(plugins, expected) {
+			t.Fatalf("expected plugins %v, got %v", expected, plugins)
+		}
+		if requestCounts[consolePluginsPath] != 1 {
+			t.Errorf("expected one request to %s, got %d", consolePluginsPath, requestCounts[consolePluginsPath])
+		}
+		if requestCounts[consoleOperatorPath] != 2 {
+			t.Errorf("expected one operator lookup per plugin, got %d", requestCounts[consoleOperatorPath])
+		}
+		if len(requestCounts) != 2 {
+			t.Errorf("unexpected request paths: %v", requestCounts)
+		}
+	})
+
+	tests := []struct {
+		name       string
+		failingURL string
+	}{
+		{name: "console plugin list API error", failingURL: consolePluginsPath},
+		{name: "console operator API error", failingURL: consoleOperatorPath},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				if r.URL.Path == test.failingURL {
+					http.Error(w, `{"kind":"Status","apiVersion":"v1","status":"Failure","message":"injected API error","reason":"InternalError","code":500}`, http.StatusInternalServerError)
+					return
+				}
+				if r.URL.Path != consolePluginsPath {
+					http.NotFound(w, r)
+					return
+				}
+				_, _ = fmt.Fprint(w, `{"apiVersion":"console.openshift.io/v1alpha1","kind":"ConsolePluginList","items":[{"apiVersion":"console.openshift.io/v1alpha1","kind":"ConsolePlugin","metadata":{"name":"enabled-plugin"},"spec":{"service":{"name":"enabled-service","namespace":"enabled-namespace","port":9443,"basePath":"/"}}}]}`)
+			}))
+			defer server.Close()
+
+			plugins, err := getConsolePluginFrom411Cluster(&rest.Config{Host: server.URL})
+			if err == nil {
+				t.Fatalf("expected API error, got plugins %v", plugins)
+			}
+			if !strings.Contains(err.Error(), "injected API error") {
+				t.Errorf("expected propagated API error, got %v", err)
+			}
+		})
+	}
 }
 
 var _ = Describe("console command", func() {
