@@ -1,6 +1,8 @@
 package elevate
 
 import (
+	"errors"
+
 	"github.com/openshift/backplane-cli/pkg/elevate"
 	"github.com/spf13/cobra"
 )
@@ -32,6 +34,9 @@ func init() {
 }
 
 func runElevate(cmd *cobra.Command, argv []string) error {
+	if cmd.ArgsLenAtDash() == 0 && !noReason {
+		return errors.New("elevation reason required before --; use -n to reuse a stored reason or prompt for one")
+	}
 	if noReason {
 		argv = append([]string{""}, argv...)
 	}
