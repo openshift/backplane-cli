@@ -10,6 +10,10 @@ reviewers:
   - Tessg22
   - smarthall
   - diakovnec
+  - geowa4
+  - AlexSmithGH
+  - eth1030
+  - BATMAN-JD
 
 approvers:
   - wanghaoran1988
@@ -21,6 +25,10 @@ approvers:
   - MitaliBhalla
   - smarthall
   - diakovnec
+  - geowa4
+  - AlexSmithGH
+  - eth1030
+  - BATMAN-JD
 
 maintainers:
   - wanghaoran1988
@@ -29,3 +37,7 @@ maintainers:
   - bmeng
   - samanthajayasinghe
   - xiaoyu74
+  - geowa4
+  - AlexSmithGH
+  - eth1030
+  - BATMAN-JD
