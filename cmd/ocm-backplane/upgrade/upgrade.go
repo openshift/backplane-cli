@@ -31,6 +31,10 @@ var UpgradeCmd = &cobra.Command{
 
 func runUpgrade(cmd *cobra.Command, _ []string) error {
 
+	if err := validateReleaseVersion(info.Version); err != nil {
+		return err
+	}
+
 	ctx, cancel := context.WithCancel(cmd.Context())
 	defer cancel()
 
@@ -43,4 +47,18 @@ func runUpgrade(cmd *cobra.Command, _ []string) error {
 	upgrade := upgrade.NewCmd(git)
 
 	return upgrade.UpgradePlugin(ctx, info.Version)
+}
+
+// validateReleaseVersion ensures the binary carries the release version metadata
+// that the native self-upgrade relies on for the SemVer comparison. This metadata
+// is injected via ldflags only when building official release binaries, so a CLI
+// built locally from source has an empty version and cannot self-upgrade.
+func validateReleaseVersion(version string) error {
+	if version == "" {
+		return fmt.Errorf("release version metadata is missing; this usually happens when the CLI is built locally from source. " +
+			"Native self-upgrade requires release version metadata. " +
+			"Use 'backplane-tools upgrade backplane-cli' to install or update an official release")
+	}
+
+	return nil
 }
