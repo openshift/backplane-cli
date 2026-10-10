@@ -124,6 +124,30 @@ func TestRunElevate(t *testing.T) {
 	kubeconfigPath := tmpDir + "config"
 	_ = os.Setenv("KUBECONFIG", kubeconfigPath)
 
+	t.Run("empty reason with command uses stored reason", func(t *testing.T) {
+		ReadKubeConfigRaw = fakeReadKubeConfigRawWithReasons(0)
+		ExecCmd = func(command string, args ...string) *exec.Cmd {
+			if command != "oc" || len(args) != 2 || args[0] != "get" || args[1] != "pods" {
+				t.Errorf("unexpected command: %s %v", command, args)
+			}
+			return fakeExecCommandSuccess(command, args...)
+		}
+		if err := RunElevate([]string{"", "get", "pods"}); err != nil {
+			t.Fatal(err)
+		}
+	})
+
+	t.Run("no arguments uses stored reason without running a command", func(t *testing.T) {
+		ReadKubeConfigRaw = fakeReadKubeConfigRawWithReasons(0)
+		ExecCmd = func(command string, args ...string) *exec.Cmd {
+			t.Errorf("unexpected command: %s %v", command, args)
+			return nil
+		}
+		if err := RunElevate(nil); err != nil {
+			t.Fatal(err)
+		}
+	})
+
 	t.Run("It returns an error if we cannot load the kubeconfig", func(t *testing.T) {
 		ExecCmd = exec.Command
 		ReadKubeConfigRaw = func() (api.Config, error) {

@@ -358,7 +358,7 @@ Please enter a reason for elevation, it will be stored in current context for 20
 If then you rerun an elevate command, for the same cluster, before the expiration delay, no prompt will be done and previous reason will be used for elevation.
 
 ### Run elevate without command
-You can initialize the reson context for a cluster without running a command, then the reason will be used for future commands
+You can initialize the reason context for a cluster without running a command, then the reason will be used for future commands
 ```
 $ ocm-backplane elevate 'OHSS-xxxxxx'
 ```
