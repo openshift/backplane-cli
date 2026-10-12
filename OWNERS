@@ -1,5 +1,4 @@
 reviewers:
-  - wanghaoran1988
   - feichashao
   - MitaliBhalla
   - Tafhim
@@ -16,7 +15,6 @@ reviewers:
   - BATMAN-JD
 
 approvers:
-  - wanghaoran1988
   - feichashao
   - bmeng
   - typeid
@@ -31,7 +29,6 @@ approvers:
   - BATMAN-JD
 
 maintainers:
-  - wanghaoran1988
   - feichashao
   - MitaliBhalla
   - bmeng
