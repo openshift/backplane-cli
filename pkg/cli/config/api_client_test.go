@@ -11,15 +11,13 @@ import (
 func TestMapAPIResponseToRemoteConfig(t *testing.T) {
 	t.Run("maps all fields when present", func(t *testing.T) {
 		jiraURL := "https://jira.example.com"
-		arnValue := "arn:aws:iam::123456789:role/Test-Role"
 		prodEnv := "production"
 		projectKey := "TESTPROJ"
 		issueType := "Story"
 
 		input := &BackplaneApi.ClientConfig{
-			JiraBaseUrl:      &jiraURL,
-			AssumeInitialArn: &arnValue,
-			ProdEnvName:      &prodEnv,
+			JiraBaseUrl: &jiraURL,
+			ProdEnvName: &prodEnv,
 			JiraConfigForAccessRequests: &BackplaneApi.JiraAccessRequestConfig{
 				ProjectKey: &projectKey,
 				IssueType:  &issueType,
@@ -31,8 +29,6 @@ func TestMapAPIResponseToRemoteConfig(t *testing.T) {
 		require.NotNil(t, result)
 		require.NotNil(t, result.JiraBaseURL)
 		assert.Equal(t, jiraURL, *result.JiraBaseURL)
-		require.NotNil(t, result.AssumeInitialArn)
-		assert.Equal(t, arnValue, *result.AssumeInitialArn)
 		require.NotNil(t, result.ProdEnvName)
 		assert.Equal(t, prodEnv, *result.ProdEnvName)
 		require.NotNil(t, result.JiraConfigForAccessRequests)
@@ -48,17 +44,6 @@ func TestMapAPIResponseToRemoteConfig(t *testing.T) {
 
 		assert.NotNil(t, result)
 		assert.Nil(t, result.JiraBaseURL)
-	})
-
-	t.Run("handles nil AssumeInitialArn", func(t *testing.T) {
-		input := &BackplaneApi.ClientConfig{
-			AssumeInitialArn: nil,
-		}
-
-		result := mapAPIResponseToRemoteConfig(input)
-
-		assert.NotNil(t, result)
-		assert.Nil(t, result.AssumeInitialArn)
 	})
 
 	t.Run("handles nil ProdEnvName", func(t *testing.T) {
@@ -90,7 +75,6 @@ func TestMapAPIResponseToRemoteConfig(t *testing.T) {
 
 		assert.NotNil(t, result)
 		assert.Nil(t, result.JiraBaseURL)
-		assert.Nil(t, result.AssumeInitialArn)
 		assert.Nil(t, result.ProdEnvName)
 		assert.Nil(t, result.JiraConfigForAccessRequests)
 	})

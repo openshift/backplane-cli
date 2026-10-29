@@ -31,9 +31,14 @@ type DefaultConfigAPIClient struct{}
 var DefaultAPIClient ConfigAPIClient = &DefaultConfigAPIClient{}
 
 // RemoteConfig represents the config values fetched from /config endpoint
+// RemoteConfig is the server-managed configuration returned by /config.
+//
+// There is no AssumeInitialArn here: backplane-api removed it from
+// ClientConfig, so the endpoint cannot supply one. The initial ARN is now
+// purely local configuration — set it with the assume-initial-arn key, or let
+// cmd/ocm-backplane/cloud derive it from the OCM URL.
 type RemoteConfig struct {
 	JiraBaseURL                 *string
-	AssumeInitialArn            *string
 	ProdEnvName                 *string
 	JiraConfigForAccessRequests *AccessRequestsJiraConfiguration
 }
@@ -74,10 +79,6 @@ func mapAPIResponseToRemoteConfig(apiResp *BackplaneApi.ClientConfig) *RemoteCon
 	// Map simple string fields
 	if apiResp.JiraBaseUrl != nil {
 		remote.JiraBaseURL = apiResp.JiraBaseUrl
-	}
-
-	if apiResp.AssumeInitialArn != nil {
-		remote.AssumeInitialArn = apiResp.AssumeInitialArn
 	}
 
 	if apiResp.ProdEnvName != nil {

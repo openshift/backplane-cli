@@ -92,13 +92,11 @@ var _ = Describe("refresh command", func() {
 
 			// Mock remote config response
 			jiraBaseURL := "https://jira.example.com"
-			assumeArn := "arn:aws:iam::123456789:role/Test-Role"
 			prodEnv := "production-test"
 
 			remoteConfig := &config.RemoteConfig{
-				JiraBaseURL:      &jiraBaseURL,
-				AssumeInitialArn: &assumeArn,
-				ProdEnvName:      &prodEnv,
+				JiraBaseURL: &jiraBaseURL,
+				ProdEnvName: &prodEnv,
 				JiraConfigForAccessRequests: &config.AccessRequestsJiraConfiguration{
 					DefaultProject:   "TEST",
 					DefaultIssueType: "Story",
@@ -128,7 +126,6 @@ var _ = Describe("refresh command", func() {
 
 			// Verify server-managed values were written
 			Expect(string(fileContent)).To(ContainSubstring("https://jira.example.com"))
-			Expect(string(fileContent)).To(ContainSubstring("arn:aws:iam::123456789:role/Test-Role"))
 			Expect(string(fileContent)).To(ContainSubstring("production-test"))
 			Expect(string(fileContent)).To(ContainSubstring("TEST"))
 
@@ -188,13 +185,11 @@ var _ = Describe("refresh command", func() {
 
 			// Mock remote config response with NEW values
 			newJiraBaseURL := "https://new-jira.example.com"
-			newAssumeArn := "arn:aws:iam::999999999:role/New-Role"
 			newProdEnv := "new-production"
 
 			remoteConfig := &config.RemoteConfig{
-				JiraBaseURL:      &newJiraBaseURL,
-				AssumeInitialArn: &newAssumeArn,
-				ProdEnvName:      &newProdEnv,
+				JiraBaseURL: &newJiraBaseURL,
+				ProdEnvName: &newProdEnv,
 			}
 
 			mockAPIClient.EXPECT().
@@ -210,13 +205,15 @@ var _ = Describe("refresh command", func() {
 			Expect(err).To(BeNil())
 
 			Expect(string(fileContent)).To(ContainSubstring("new-jira.example.com"))
-			Expect(string(fileContent)).To(ContainSubstring("arn:aws:iam::999999999:role/New-Role"))
 			Expect(string(fileContent)).To(ContainSubstring("new-production"))
 
 			// Verify OLD values are not present
 			Expect(string(fileContent)).NotTo(ContainSubstring("old-jira.example.com"))
-			Expect(string(fileContent)).NotTo(ContainSubstring("arn:aws:iam::111111111:role/Old-Role"))
 			Expect(string(fileContent)).NotTo(ContainSubstring("old-production"))
+
+			// assume-initial-arn is no longer server-managed, so refresh must
+			// leave the user's existing value alone rather than clearing it.
+			Expect(string(fileContent)).To(ContainSubstring("arn:aws:iam::111111111:role/Old-Role"))
 
 			// Verify user settings were preserved
 			Expect(string(fileContent)).To(ContainSubstring("http://user-proxy:3128"))
