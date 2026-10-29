@@ -86,11 +86,9 @@ func runRefresh(cmd *cobra.Command, args []string) error {
 		updated = true
 	}
 
-	if remoteConfig.AssumeInitialArn != nil {
-		viper.Set(config.AssumeInitialArnKey, *remoteConfig.AssumeInitialArn)
-		logger.Infof("Updated assume-initial-arn: %s", *remoteConfig.AssumeInitialArn)
-		updated = true
-	}
+	// assume-initial-arn is deliberately not refreshed: /config no longer
+	// returns one, so there is nothing server-managed left to copy. Any value
+	// already in the user's config file is left untouched.
 
 	if remoteConfig.ProdEnvName != nil {
 		viper.Set(config.ProdEnvNameKey, *remoteConfig.ProdEnvName)
