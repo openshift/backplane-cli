@@ -76,10 +76,6 @@ func mapAPIResponseToRemoteConfig(apiResp *BackplaneApi.ClientConfig) *RemoteCon
 		remote.JiraBaseURL = apiResp.JiraBaseUrl
 	}
 
-	if apiResp.AssumeInitialArn != nil {
-		remote.AssumeInitialArn = apiResp.AssumeInitialArn
-	}
-
 	if apiResp.ProdEnvName != nil {
 		remote.ProdEnvName = apiResp.ProdEnvName
 	}

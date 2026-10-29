@@ -183,6 +183,46 @@ func (mr *MockClientInterfaceMockRecorder) CreateTestScriptRunWithBody(ctx, clus
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateTestScriptRunWithBody", reflect.TypeOf((*MockClientInterface)(nil).CreateTestScriptRunWithBody), varargs...)
 }
 
+// CreateTrustedAction mocks base method.
+func (m *MockClientInterface) CreateTrustedAction(ctx context.Context, clusterId string, params *Openapi.CreateTrustedActionParams, body Openapi.CreateTrustedActionJSONRequestBody, reqEditors ...Openapi.RequestEditorFn) (*http.Response, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx, clusterId, params, body}
+	for _, a := range reqEditors {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "CreateTrustedAction", varargs...)
+	ret0, _ := ret[0].(*http.Response)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreateTrustedAction indicates an expected call of CreateTrustedAction.
+func (mr *MockClientInterfaceMockRecorder) CreateTrustedAction(ctx, clusterId, params, body any, reqEditors ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx, clusterId, params, body}, reqEditors...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateTrustedAction", reflect.TypeOf((*MockClientInterface)(nil).CreateTrustedAction), varargs...)
+}
+
+// CreateTrustedActionWithBody mocks base method.
+func (m *MockClientInterface) CreateTrustedActionWithBody(ctx context.Context, clusterId string, params *Openapi.CreateTrustedActionParams, contentType string, body io.Reader, reqEditors ...Openapi.RequestEditorFn) (*http.Response, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx, clusterId, params, contentType, body}
+	for _, a := range reqEditors {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "CreateTrustedActionWithBody", varargs...)
+	ret0, _ := ret[0].(*http.Response)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreateTrustedActionWithBody indicates an expected call of CreateTrustedActionWithBody.
+func (mr *MockClientInterfaceMockRecorder) CreateTrustedActionWithBody(ctx, clusterId, params, contentType, body any, reqEditors ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx, clusterId, params, contentType, body}, reqEditors...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateTrustedActionWithBody", reflect.TypeOf((*MockClientInterface)(nil).CreateTrustedActionWithBody), varargs...)
+}
+
 // DeleteBackplaneClusterClusterId mocks base method.
 func (m *MockClientInterface) DeleteBackplaneClusterClusterId(ctx context.Context, clusterId string, reqEditors ...Openapi.RequestEditorFn) (*http.Response, error) {
 	m.ctrl.T.Helper()
@@ -223,6 +263,26 @@ func (mr *MockClientInterfaceMockRecorder) DeleteBackplaneRemediateClusterIdReme
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteBackplaneRemediateClusterIdRemediation", reflect.TypeOf((*MockClientInterface)(nil).DeleteBackplaneRemediateClusterIdRemediation), varargs...)
 }
 
+// DeleteBackplaneTrustedactionClusterIdTrustedActionInstanceId mocks base method.
+func (m *MockClientInterface) DeleteBackplaneTrustedactionClusterIdTrustedActionInstanceId(ctx context.Context, clusterId, trustedActionInstanceId string, reqEditors ...Openapi.RequestEditorFn) (*http.Response, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx, clusterId, trustedActionInstanceId}
+	for _, a := range reqEditors {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "DeleteBackplaneTrustedactionClusterIdTrustedActionInstanceId", varargs...)
+	ret0, _ := ret[0].(*http.Response)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// DeleteBackplaneTrustedactionClusterIdTrustedActionInstanceId indicates an expected call of DeleteBackplaneTrustedactionClusterIdTrustedActionInstanceId.
+func (mr *MockClientInterfaceMockRecorder) DeleteBackplaneTrustedactionClusterIdTrustedActionInstanceId(ctx, clusterId, trustedActionInstanceId any, reqEditors ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx, clusterId, trustedActionInstanceId}, reqEditors...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteBackplaneTrustedactionClusterIdTrustedActionInstanceId", reflect.TypeOf((*MockClientInterface)(nil).DeleteBackplaneTrustedactionClusterIdTrustedActionInstanceId), varargs...)
+}
+
 // DeleteJob mocks base method.
 func (m *MockClientInterface) DeleteJob(ctx context.Context, clusterId, jobId string, reqEditors ...Openapi.RequestEditorFn) (*http.Response, error) {
 	m.ctrl.T.Helper()
@@ -261,6 +321,26 @@ func (mr *MockClientInterfaceMockRecorder) DeleteRemediation(ctx, clusterId, par
 	mr.mock.ctrl.T.Helper()
 	varargs := append([]any{ctx, clusterId, params}, reqEditors...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteRemediation", reflect.TypeOf((*MockClientInterface)(nil).DeleteRemediation), varargs...)
+}
+
+// DeleteTrustedAction mocks base method.
+func (m *MockClientInterface) DeleteTrustedAction(ctx context.Context, clusterId, trustedActionInstanceId string, reqEditors ...Openapi.RequestEditorFn) (*http.Response, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx, clusterId, trustedActionInstanceId}
+	for _, a := range reqEditors {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "DeleteTrustedAction", varargs...)
+	ret0, _ := ret[0].(*http.Response)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// DeleteTrustedAction indicates an expected call of DeleteTrustedAction.
+func (mr *MockClientInterfaceMockRecorder) DeleteTrustedAction(ctx, clusterId, trustedActionInstanceId any, reqEditors ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx, clusterId, trustedActionInstanceId}, reqEditors...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteTrustedAction", reflect.TypeOf((*MockClientInterface)(nil).DeleteTrustedAction), varargs...)
 }
 
 // GetAllJobs mocks base method.
@@ -361,6 +441,26 @@ func (mr *MockClientInterfaceMockRecorder) GetBackplaneRemediateClusterIdRemedia
 	mr.mock.ctrl.T.Helper()
 	varargs := append([]any{ctx, clusterId, remediation}, reqEditors...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBackplaneRemediateClusterIdRemediation", reflect.TypeOf((*MockClientInterface)(nil).GetBackplaneRemediateClusterIdRemediation), varargs...)
+}
+
+// GetBackplaneTrustedactionClusterIdTrustedActionInstanceId mocks base method.
+func (m *MockClientInterface) GetBackplaneTrustedactionClusterIdTrustedActionInstanceId(ctx context.Context, clusterId, trustedActionInstanceId string, reqEditors ...Openapi.RequestEditorFn) (*http.Response, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx, clusterId, trustedActionInstanceId}
+	for _, a := range reqEditors {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "GetBackplaneTrustedactionClusterIdTrustedActionInstanceId", varargs...)
+	ret0, _ := ret[0].(*http.Response)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetBackplaneTrustedactionClusterIdTrustedActionInstanceId indicates an expected call of GetBackplaneTrustedactionClusterIdTrustedActionInstanceId.
+func (mr *MockClientInterfaceMockRecorder) GetBackplaneTrustedactionClusterIdTrustedActionInstanceId(ctx, clusterId, trustedActionInstanceId any, reqEditors ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx, clusterId, trustedActionInstanceId}, reqEditors...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBackplaneTrustedactionClusterIdTrustedActionInstanceId", reflect.TypeOf((*MockClientInterface)(nil).GetBackplaneTrustedactionClusterIdTrustedActionInstanceId), varargs...)
 }
 
 // GetCloudConsole mocks base method.
@@ -603,6 +703,26 @@ func (mr *MockClientInterfaceMockRecorder) HeadBackplaneRemediateClusterIdRemedi
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HeadBackplaneRemediateClusterIdRemediation", reflect.TypeOf((*MockClientInterface)(nil).HeadBackplaneRemediateClusterIdRemediation), varargs...)
 }
 
+// HeadBackplaneTrustedactionClusterIdTrustedActionInstanceId mocks base method.
+func (m *MockClientInterface) HeadBackplaneTrustedactionClusterIdTrustedActionInstanceId(ctx context.Context, clusterId, trustedActionInstanceId string, reqEditors ...Openapi.RequestEditorFn) (*http.Response, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx, clusterId, trustedActionInstanceId}
+	for _, a := range reqEditors {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "HeadBackplaneTrustedactionClusterIdTrustedActionInstanceId", varargs...)
+	ret0, _ := ret[0].(*http.Response)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// HeadBackplaneTrustedactionClusterIdTrustedActionInstanceId indicates an expected call of HeadBackplaneTrustedactionClusterIdTrustedActionInstanceId.
+func (mr *MockClientInterfaceMockRecorder) HeadBackplaneTrustedactionClusterIdTrustedActionInstanceId(ctx, clusterId, trustedActionInstanceId any, reqEditors ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx, clusterId, trustedActionInstanceId}, reqEditors...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HeadBackplaneTrustedactionClusterIdTrustedActionInstanceId", reflect.TypeOf((*MockClientInterface)(nil).HeadBackplaneTrustedactionClusterIdTrustedActionInstanceId), varargs...)
+}
+
 // LoginCluster mocks base method.
 func (m *MockClientInterface) LoginCluster(ctx context.Context, clusterId string, reqEditors ...Openapi.RequestEditorFn) (*http.Response, error) {
 	m.ctrl.T.Helper()
@@ -663,6 +783,26 @@ func (mr *MockClientInterfaceMockRecorder) OptionsBackplaneRemediateClusterIdRem
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "OptionsBackplaneRemediateClusterIdRemediation", reflect.TypeOf((*MockClientInterface)(nil).OptionsBackplaneRemediateClusterIdRemediation), varargs...)
 }
 
+// OptionsBackplaneTrustedactionClusterIdTrustedActionInstanceId mocks base method.
+func (m *MockClientInterface) OptionsBackplaneTrustedactionClusterIdTrustedActionInstanceId(ctx context.Context, clusterId, trustedActionInstanceId string, reqEditors ...Openapi.RequestEditorFn) (*http.Response, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx, clusterId, trustedActionInstanceId}
+	for _, a := range reqEditors {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "OptionsBackplaneTrustedactionClusterIdTrustedActionInstanceId", varargs...)
+	ret0, _ := ret[0].(*http.Response)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// OptionsBackplaneTrustedactionClusterIdTrustedActionInstanceId indicates an expected call of OptionsBackplaneTrustedactionClusterIdTrustedActionInstanceId.
+func (mr *MockClientInterfaceMockRecorder) OptionsBackplaneTrustedactionClusterIdTrustedActionInstanceId(ctx, clusterId, trustedActionInstanceId any, reqEditors ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx, clusterId, trustedActionInstanceId}, reqEditors...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "OptionsBackplaneTrustedactionClusterIdTrustedActionInstanceId", reflect.TypeOf((*MockClientInterface)(nil).OptionsBackplaneTrustedactionClusterIdTrustedActionInstanceId), varargs...)
+}
+
 // PatchBackplaneClusterClusterId mocks base method.
 func (m *MockClientInterface) PatchBackplaneClusterClusterId(ctx context.Context, clusterId string, reqEditors ...Openapi.RequestEditorFn) (*http.Response, error) {
 	m.ctrl.T.Helper()
@@ -701,6 +841,106 @@ func (mr *MockClientInterfaceMockRecorder) PatchBackplaneRemediateClusterIdRemed
 	mr.mock.ctrl.T.Helper()
 	varargs := append([]any{ctx, clusterId, remediation}, reqEditors...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PatchBackplaneRemediateClusterIdRemediation", reflect.TypeOf((*MockClientInterface)(nil).PatchBackplaneRemediateClusterIdRemediation), varargs...)
+}
+
+// PatchBackplaneTrustedactionClusterIdTrustedActionInstanceId mocks base method.
+func (m *MockClientInterface) PatchBackplaneTrustedactionClusterIdTrustedActionInstanceId(ctx context.Context, clusterId, trustedActionInstanceId string, body Openapi.PatchBackplaneTrustedactionClusterIdTrustedActionInstanceIdJSONRequestBody, reqEditors ...Openapi.RequestEditorFn) (*http.Response, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx, clusterId, trustedActionInstanceId, body}
+	for _, a := range reqEditors {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "PatchBackplaneTrustedactionClusterIdTrustedActionInstanceId", varargs...)
+	ret0, _ := ret[0].(*http.Response)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// PatchBackplaneTrustedactionClusterIdTrustedActionInstanceId indicates an expected call of PatchBackplaneTrustedactionClusterIdTrustedActionInstanceId.
+func (mr *MockClientInterfaceMockRecorder) PatchBackplaneTrustedactionClusterIdTrustedActionInstanceId(ctx, clusterId, trustedActionInstanceId, body any, reqEditors ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx, clusterId, trustedActionInstanceId, body}, reqEditors...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PatchBackplaneTrustedactionClusterIdTrustedActionInstanceId", reflect.TypeOf((*MockClientInterface)(nil).PatchBackplaneTrustedactionClusterIdTrustedActionInstanceId), varargs...)
+}
+
+// PatchBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithApplicationJSONPatchPlusJSONBody mocks base method.
+func (m *MockClientInterface) PatchBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithApplicationJSONPatchPlusJSONBody(ctx context.Context, clusterId, trustedActionInstanceId string, body Openapi.PatchBackplaneTrustedactionClusterIdTrustedActionInstanceIdApplicationJSONPatchPlusJSONRequestBody, reqEditors ...Openapi.RequestEditorFn) (*http.Response, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx, clusterId, trustedActionInstanceId, body}
+	for _, a := range reqEditors {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "PatchBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithApplicationJSONPatchPlusJSONBody", varargs...)
+	ret0, _ := ret[0].(*http.Response)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// PatchBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithApplicationJSONPatchPlusJSONBody indicates an expected call of PatchBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithApplicationJSONPatchPlusJSONBody.
+func (mr *MockClientInterfaceMockRecorder) PatchBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithApplicationJSONPatchPlusJSONBody(ctx, clusterId, trustedActionInstanceId, body any, reqEditors ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx, clusterId, trustedActionInstanceId, body}, reqEditors...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PatchBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithApplicationJSONPatchPlusJSONBody", reflect.TypeOf((*MockClientInterface)(nil).PatchBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithApplicationJSONPatchPlusJSONBody), varargs...)
+}
+
+// PatchBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithApplicationMergePatchPlusJSONBody mocks base method.
+func (m *MockClientInterface) PatchBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithApplicationMergePatchPlusJSONBody(ctx context.Context, clusterId, trustedActionInstanceId string, body Openapi.PatchBackplaneTrustedactionClusterIdTrustedActionInstanceIdApplicationMergePatchPlusJSONRequestBody, reqEditors ...Openapi.RequestEditorFn) (*http.Response, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx, clusterId, trustedActionInstanceId, body}
+	for _, a := range reqEditors {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "PatchBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithApplicationMergePatchPlusJSONBody", varargs...)
+	ret0, _ := ret[0].(*http.Response)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// PatchBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithApplicationMergePatchPlusJSONBody indicates an expected call of PatchBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithApplicationMergePatchPlusJSONBody.
+func (mr *MockClientInterfaceMockRecorder) PatchBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithApplicationMergePatchPlusJSONBody(ctx, clusterId, trustedActionInstanceId, body any, reqEditors ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx, clusterId, trustedActionInstanceId, body}, reqEditors...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PatchBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithApplicationMergePatchPlusJSONBody", reflect.TypeOf((*MockClientInterface)(nil).PatchBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithApplicationMergePatchPlusJSONBody), varargs...)
+}
+
+// PatchBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithApplicationStrategicMergePatchPlusJSONBody mocks base method.
+func (m *MockClientInterface) PatchBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithApplicationStrategicMergePatchPlusJSONBody(ctx context.Context, clusterId, trustedActionInstanceId string, body Openapi.PatchBackplaneTrustedactionClusterIdTrustedActionInstanceIdApplicationStrategicMergePatchPlusJSONRequestBody, reqEditors ...Openapi.RequestEditorFn) (*http.Response, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx, clusterId, trustedActionInstanceId, body}
+	for _, a := range reqEditors {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "PatchBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithApplicationStrategicMergePatchPlusJSONBody", varargs...)
+	ret0, _ := ret[0].(*http.Response)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// PatchBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithApplicationStrategicMergePatchPlusJSONBody indicates an expected call of PatchBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithApplicationStrategicMergePatchPlusJSONBody.
+func (mr *MockClientInterfaceMockRecorder) PatchBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithApplicationStrategicMergePatchPlusJSONBody(ctx, clusterId, trustedActionInstanceId, body any, reqEditors ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx, clusterId, trustedActionInstanceId, body}, reqEditors...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PatchBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithApplicationStrategicMergePatchPlusJSONBody", reflect.TypeOf((*MockClientInterface)(nil).PatchBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithApplicationStrategicMergePatchPlusJSONBody), varargs...)
+}
+
+// PatchBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithBody mocks base method.
+func (m *MockClientInterface) PatchBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithBody(ctx context.Context, clusterId, trustedActionInstanceId, contentType string, body io.Reader, reqEditors ...Openapi.RequestEditorFn) (*http.Response, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx, clusterId, trustedActionInstanceId, contentType, body}
+	for _, a := range reqEditors {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "PatchBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithBody", varargs...)
+	ret0, _ := ret[0].(*http.Response)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// PatchBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithBody indicates an expected call of PatchBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithBody.
+func (mr *MockClientInterfaceMockRecorder) PatchBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithBody(ctx, clusterId, trustedActionInstanceId, contentType, body any, reqEditors ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx, clusterId, trustedActionInstanceId, contentType, body}, reqEditors...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PatchBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithBody", reflect.TypeOf((*MockClientInterface)(nil).PatchBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithBody), varargs...)
 }
 
 // PostBackplaneClusterClusterId mocks base method.
@@ -743,6 +983,106 @@ func (mr *MockClientInterfaceMockRecorder) PostBackplaneRemediateClusterIdRemedi
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PostBackplaneRemediateClusterIdRemediation", reflect.TypeOf((*MockClientInterface)(nil).PostBackplaneRemediateClusterIdRemediation), varargs...)
 }
 
+// PostBackplaneTrustedactionClusterIdTrustedActionInstanceId mocks base method.
+func (m *MockClientInterface) PostBackplaneTrustedactionClusterIdTrustedActionInstanceId(ctx context.Context, clusterId, trustedActionInstanceId string, body Openapi.PostBackplaneTrustedactionClusterIdTrustedActionInstanceIdJSONRequestBody, reqEditors ...Openapi.RequestEditorFn) (*http.Response, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx, clusterId, trustedActionInstanceId, body}
+	for _, a := range reqEditors {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "PostBackplaneTrustedactionClusterIdTrustedActionInstanceId", varargs...)
+	ret0, _ := ret[0].(*http.Response)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// PostBackplaneTrustedactionClusterIdTrustedActionInstanceId indicates an expected call of PostBackplaneTrustedactionClusterIdTrustedActionInstanceId.
+func (mr *MockClientInterfaceMockRecorder) PostBackplaneTrustedactionClusterIdTrustedActionInstanceId(ctx, clusterId, trustedActionInstanceId, body any, reqEditors ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx, clusterId, trustedActionInstanceId, body}, reqEditors...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PostBackplaneTrustedactionClusterIdTrustedActionInstanceId", reflect.TypeOf((*MockClientInterface)(nil).PostBackplaneTrustedactionClusterIdTrustedActionInstanceId), varargs...)
+}
+
+// PostBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithApplicationJSONPatchPlusJSONBody mocks base method.
+func (m *MockClientInterface) PostBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithApplicationJSONPatchPlusJSONBody(ctx context.Context, clusterId, trustedActionInstanceId string, body Openapi.PostBackplaneTrustedactionClusterIdTrustedActionInstanceIdApplicationJSONPatchPlusJSONRequestBody, reqEditors ...Openapi.RequestEditorFn) (*http.Response, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx, clusterId, trustedActionInstanceId, body}
+	for _, a := range reqEditors {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "PostBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithApplicationJSONPatchPlusJSONBody", varargs...)
+	ret0, _ := ret[0].(*http.Response)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// PostBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithApplicationJSONPatchPlusJSONBody indicates an expected call of PostBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithApplicationJSONPatchPlusJSONBody.
+func (mr *MockClientInterfaceMockRecorder) PostBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithApplicationJSONPatchPlusJSONBody(ctx, clusterId, trustedActionInstanceId, body any, reqEditors ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx, clusterId, trustedActionInstanceId, body}, reqEditors...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PostBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithApplicationJSONPatchPlusJSONBody", reflect.TypeOf((*MockClientInterface)(nil).PostBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithApplicationJSONPatchPlusJSONBody), varargs...)
+}
+
+// PostBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithApplicationMergePatchPlusJSONBody mocks base method.
+func (m *MockClientInterface) PostBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithApplicationMergePatchPlusJSONBody(ctx context.Context, clusterId, trustedActionInstanceId string, body Openapi.PostBackplaneTrustedactionClusterIdTrustedActionInstanceIdApplicationMergePatchPlusJSONRequestBody, reqEditors ...Openapi.RequestEditorFn) (*http.Response, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx, clusterId, trustedActionInstanceId, body}
+	for _, a := range reqEditors {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "PostBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithApplicationMergePatchPlusJSONBody", varargs...)
+	ret0, _ := ret[0].(*http.Response)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// PostBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithApplicationMergePatchPlusJSONBody indicates an expected call of PostBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithApplicationMergePatchPlusJSONBody.
+func (mr *MockClientInterfaceMockRecorder) PostBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithApplicationMergePatchPlusJSONBody(ctx, clusterId, trustedActionInstanceId, body any, reqEditors ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx, clusterId, trustedActionInstanceId, body}, reqEditors...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PostBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithApplicationMergePatchPlusJSONBody", reflect.TypeOf((*MockClientInterface)(nil).PostBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithApplicationMergePatchPlusJSONBody), varargs...)
+}
+
+// PostBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithApplicationStrategicMergePatchPlusJSONBody mocks base method.
+func (m *MockClientInterface) PostBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithApplicationStrategicMergePatchPlusJSONBody(ctx context.Context, clusterId, trustedActionInstanceId string, body Openapi.PostBackplaneTrustedactionClusterIdTrustedActionInstanceIdApplicationStrategicMergePatchPlusJSONRequestBody, reqEditors ...Openapi.RequestEditorFn) (*http.Response, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx, clusterId, trustedActionInstanceId, body}
+	for _, a := range reqEditors {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "PostBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithApplicationStrategicMergePatchPlusJSONBody", varargs...)
+	ret0, _ := ret[0].(*http.Response)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// PostBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithApplicationStrategicMergePatchPlusJSONBody indicates an expected call of PostBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithApplicationStrategicMergePatchPlusJSONBody.
+func (mr *MockClientInterfaceMockRecorder) PostBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithApplicationStrategicMergePatchPlusJSONBody(ctx, clusterId, trustedActionInstanceId, body any, reqEditors ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx, clusterId, trustedActionInstanceId, body}, reqEditors...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PostBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithApplicationStrategicMergePatchPlusJSONBody", reflect.TypeOf((*MockClientInterface)(nil).PostBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithApplicationStrategicMergePatchPlusJSONBody), varargs...)
+}
+
+// PostBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithBody mocks base method.
+func (m *MockClientInterface) PostBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithBody(ctx context.Context, clusterId, trustedActionInstanceId, contentType string, body io.Reader, reqEditors ...Openapi.RequestEditorFn) (*http.Response, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx, clusterId, trustedActionInstanceId, contentType, body}
+	for _, a := range reqEditors {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "PostBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithBody", varargs...)
+	ret0, _ := ret[0].(*http.Response)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// PostBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithBody indicates an expected call of PostBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithBody.
+func (mr *MockClientInterfaceMockRecorder) PostBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithBody(ctx, clusterId, trustedActionInstanceId, contentType, body any, reqEditors ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx, clusterId, trustedActionInstanceId, contentType, body}, reqEditors...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PostBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithBody", reflect.TypeOf((*MockClientInterface)(nil).PostBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithBody), varargs...)
+}
+
 // PutBackplaneClusterClusterId mocks base method.
 func (m *MockClientInterface) PutBackplaneClusterClusterId(ctx context.Context, clusterId string, reqEditors ...Openapi.RequestEditorFn) (*http.Response, error) {
 	m.ctrl.T.Helper()
@@ -783,6 +1123,106 @@ func (mr *MockClientInterfaceMockRecorder) PutBackplaneRemediateClusterIdRemedia
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PutBackplaneRemediateClusterIdRemediation", reflect.TypeOf((*MockClientInterface)(nil).PutBackplaneRemediateClusterIdRemediation), varargs...)
 }
 
+// PutBackplaneTrustedactionClusterIdTrustedActionInstanceId mocks base method.
+func (m *MockClientInterface) PutBackplaneTrustedactionClusterIdTrustedActionInstanceId(ctx context.Context, clusterId, trustedActionInstanceId string, body Openapi.PutBackplaneTrustedactionClusterIdTrustedActionInstanceIdJSONRequestBody, reqEditors ...Openapi.RequestEditorFn) (*http.Response, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx, clusterId, trustedActionInstanceId, body}
+	for _, a := range reqEditors {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "PutBackplaneTrustedactionClusterIdTrustedActionInstanceId", varargs...)
+	ret0, _ := ret[0].(*http.Response)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// PutBackplaneTrustedactionClusterIdTrustedActionInstanceId indicates an expected call of PutBackplaneTrustedactionClusterIdTrustedActionInstanceId.
+func (mr *MockClientInterfaceMockRecorder) PutBackplaneTrustedactionClusterIdTrustedActionInstanceId(ctx, clusterId, trustedActionInstanceId, body any, reqEditors ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx, clusterId, trustedActionInstanceId, body}, reqEditors...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PutBackplaneTrustedactionClusterIdTrustedActionInstanceId", reflect.TypeOf((*MockClientInterface)(nil).PutBackplaneTrustedactionClusterIdTrustedActionInstanceId), varargs...)
+}
+
+// PutBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithApplicationJSONPatchPlusJSONBody mocks base method.
+func (m *MockClientInterface) PutBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithApplicationJSONPatchPlusJSONBody(ctx context.Context, clusterId, trustedActionInstanceId string, body Openapi.PutBackplaneTrustedactionClusterIdTrustedActionInstanceIdApplicationJSONPatchPlusJSONRequestBody, reqEditors ...Openapi.RequestEditorFn) (*http.Response, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx, clusterId, trustedActionInstanceId, body}
+	for _, a := range reqEditors {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "PutBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithApplicationJSONPatchPlusJSONBody", varargs...)
+	ret0, _ := ret[0].(*http.Response)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// PutBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithApplicationJSONPatchPlusJSONBody indicates an expected call of PutBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithApplicationJSONPatchPlusJSONBody.
+func (mr *MockClientInterfaceMockRecorder) PutBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithApplicationJSONPatchPlusJSONBody(ctx, clusterId, trustedActionInstanceId, body any, reqEditors ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx, clusterId, trustedActionInstanceId, body}, reqEditors...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PutBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithApplicationJSONPatchPlusJSONBody", reflect.TypeOf((*MockClientInterface)(nil).PutBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithApplicationJSONPatchPlusJSONBody), varargs...)
+}
+
+// PutBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithApplicationMergePatchPlusJSONBody mocks base method.
+func (m *MockClientInterface) PutBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithApplicationMergePatchPlusJSONBody(ctx context.Context, clusterId, trustedActionInstanceId string, body Openapi.PutBackplaneTrustedactionClusterIdTrustedActionInstanceIdApplicationMergePatchPlusJSONRequestBody, reqEditors ...Openapi.RequestEditorFn) (*http.Response, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx, clusterId, trustedActionInstanceId, body}
+	for _, a := range reqEditors {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "PutBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithApplicationMergePatchPlusJSONBody", varargs...)
+	ret0, _ := ret[0].(*http.Response)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// PutBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithApplicationMergePatchPlusJSONBody indicates an expected call of PutBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithApplicationMergePatchPlusJSONBody.
+func (mr *MockClientInterfaceMockRecorder) PutBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithApplicationMergePatchPlusJSONBody(ctx, clusterId, trustedActionInstanceId, body any, reqEditors ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx, clusterId, trustedActionInstanceId, body}, reqEditors...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PutBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithApplicationMergePatchPlusJSONBody", reflect.TypeOf((*MockClientInterface)(nil).PutBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithApplicationMergePatchPlusJSONBody), varargs...)
+}
+
+// PutBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithApplicationStrategicMergePatchPlusJSONBody mocks base method.
+func (m *MockClientInterface) PutBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithApplicationStrategicMergePatchPlusJSONBody(ctx context.Context, clusterId, trustedActionInstanceId string, body Openapi.PutBackplaneTrustedactionClusterIdTrustedActionInstanceIdApplicationStrategicMergePatchPlusJSONRequestBody, reqEditors ...Openapi.RequestEditorFn) (*http.Response, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx, clusterId, trustedActionInstanceId, body}
+	for _, a := range reqEditors {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "PutBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithApplicationStrategicMergePatchPlusJSONBody", varargs...)
+	ret0, _ := ret[0].(*http.Response)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// PutBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithApplicationStrategicMergePatchPlusJSONBody indicates an expected call of PutBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithApplicationStrategicMergePatchPlusJSONBody.
+func (mr *MockClientInterfaceMockRecorder) PutBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithApplicationStrategicMergePatchPlusJSONBody(ctx, clusterId, trustedActionInstanceId, body any, reqEditors ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx, clusterId, trustedActionInstanceId, body}, reqEditors...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PutBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithApplicationStrategicMergePatchPlusJSONBody", reflect.TypeOf((*MockClientInterface)(nil).PutBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithApplicationStrategicMergePatchPlusJSONBody), varargs...)
+}
+
+// PutBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithBody mocks base method.
+func (m *MockClientInterface) PutBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithBody(ctx context.Context, clusterId, trustedActionInstanceId, contentType string, body io.Reader, reqEditors ...Openapi.RequestEditorFn) (*http.Response, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx, clusterId, trustedActionInstanceId, contentType, body}
+	for _, a := range reqEditors {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "PutBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithBody", varargs...)
+	ret0, _ := ret[0].(*http.Response)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// PutBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithBody indicates an expected call of PutBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithBody.
+func (mr *MockClientInterfaceMockRecorder) PutBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithBody(ctx, clusterId, trustedActionInstanceId, contentType, body any, reqEditors ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx, clusterId, trustedActionInstanceId, contentType, body}, reqEditors...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PutBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithBody", reflect.TypeOf((*MockClientInterface)(nil).PutBackplaneTrustedactionClusterIdTrustedActionInstanceIdWithBody), varargs...)
+}
+
 // TraceBackplaneClusterClusterId mocks base method.
 func (m *MockClientInterface) TraceBackplaneClusterClusterId(ctx context.Context, clusterId string, reqEditors ...Openapi.RequestEditorFn) (*http.Response, error) {
 	m.ctrl.T.Helper()
@@ -821,4 +1261,24 @@ func (mr *MockClientInterfaceMockRecorder) TraceBackplaneRemediateClusterIdRemed
 	mr.mock.ctrl.T.Helper()
 	varargs := append([]any{ctx, clusterId, remediation}, reqEditors...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TraceBackplaneRemediateClusterIdRemediation", reflect.TypeOf((*MockClientInterface)(nil).TraceBackplaneRemediateClusterIdRemediation), varargs...)
+}
+
+// TraceBackplaneTrustedactionClusterIdTrustedActionInstanceId mocks base method.
+func (m *MockClientInterface) TraceBackplaneTrustedactionClusterIdTrustedActionInstanceId(ctx context.Context, clusterId, trustedActionInstanceId string, reqEditors ...Openapi.RequestEditorFn) (*http.Response, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx, clusterId, trustedActionInstanceId}
+	for _, a := range reqEditors {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "TraceBackplaneTrustedactionClusterIdTrustedActionInstanceId", varargs...)
+	ret0, _ := ret[0].(*http.Response)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// TraceBackplaneTrustedactionClusterIdTrustedActionInstanceId indicates an expected call of TraceBackplaneTrustedactionClusterIdTrustedActionInstanceId.
+func (mr *MockClientInterfaceMockRecorder) TraceBackplaneTrustedactionClusterIdTrustedActionInstanceId(ctx, clusterId, trustedActionInstanceId any, reqEditors ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx, clusterId, trustedActionInstanceId}, reqEditors...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TraceBackplaneTrustedactionClusterIdTrustedActionInstanceId", reflect.TypeOf((*MockClientInterface)(nil).TraceBackplaneTrustedactionClusterIdTrustedActionInstanceId), varargs...)
 }
