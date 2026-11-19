@@ -337,6 +337,9 @@ func (o *DefaultOCMInterfaceImpl) GetPullSecret() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to get pull secret from ocm: %v", err)
 	}
+	if response.Status() != http.StatusOK {
+		return "", fmt.Errorf("failed to get pull secret from ocm: status %d: %s", response.Status(), response.String())
+	}
 
 	logger.Debugln("Found pull secret from ocm")
 	pullSecret := response.String()
