@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -63,6 +64,8 @@ var _ = Describe("New Remediation command", func() {
 
 		mockClient.EXPECT().LoginCluster(gomock.Any(), gomock.Any()).Return(nil, nil).Times(0)
 
+		// Never touch the developer's real kubeconfig
+		GinkgoT().Setenv("KUBECONFIG", filepath.Join(GinkgoT().TempDir(), "config"))
 		_ = clientcmd.ModifyConfig(clientcmd.NewDefaultPathOptions(), api.Config{}, true)
 		clientcmd.UseModifyConfigLock = false
 

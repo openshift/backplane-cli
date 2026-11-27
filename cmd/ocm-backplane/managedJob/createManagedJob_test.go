@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -113,6 +114,8 @@ var _ = Describe("managedJob create command", func() {
 		fakeJobResp.Header.Add("Content-Type", "json")
 
 		// Clear config file
+		// Never touch the developer's real kubeconfig
+		GinkgoT().Setenv("KUBECONFIG", filepath.Join(GinkgoT().TempDir(), "config"))
 		_ = clientcmd.ModifyConfig(clientcmd.NewDefaultPathOptions(), api.Config{}, true)
 
 		_ = os.Setenv(info.BackplaneURLEnvName, proxyURI)

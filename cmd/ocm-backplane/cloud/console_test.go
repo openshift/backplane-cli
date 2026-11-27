@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 
 	"go.uber.org/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
@@ -73,6 +74,8 @@ var _ = Describe("Cloud console command", func() {
 		fakeGCloudResp.Header.Add("Content-Type", "json")
 
 		// Clear config file
+		// Never touch the developer's real kubeconfig
+		GinkgoT().Setenv("KUBECONFIG", filepath.Join(GinkgoT().TempDir(), "config"))
 		_ = clientcmd.ModifyConfig(clientcmd.NewDefaultPathOptions(), api.Config{}, true)
 		clientcmd.UseModifyConfigLock = false
 
