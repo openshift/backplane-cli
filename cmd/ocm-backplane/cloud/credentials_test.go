@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"go.uber.org/mock/gomock"
@@ -130,6 +131,8 @@ var _ = Describe("Cloud console command", func() {
 		fakeBrokenGCPResp.Header.Add("Content-Type", "json")
 
 		// Clear config file
+		// Never touch the developer's real kubeconfig
+		GinkgoT().Setenv("KUBECONFIG", filepath.Join(GinkgoT().TempDir(), "config"))
 		_ = clientcmd.ModifyConfig(clientcmd.NewDefaultPathOptions(), api.Config{}, true)
 		clientcmd.UseModifyConfigLock = false
 

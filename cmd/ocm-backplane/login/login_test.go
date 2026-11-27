@@ -101,6 +101,8 @@ var _ = Describe("Login command", func() {
 		fakeResp.Header.Add("Content-Type", "json")
 
 		// Clear config file
+		// Never touch the developer's real kubeconfig
+		GinkgoT().Setenv("KUBECONFIG", filepath.Join(GinkgoT().TempDir(), "config"))
 		_ = clientcmd.ModifyConfig(clientcmd.NewDefaultPathOptions(), api.Config{}, true)
 		clientcmd.UseModifyConfigLock = false
 
